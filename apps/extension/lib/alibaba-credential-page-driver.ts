@@ -12,7 +12,6 @@ import type {
 } from '@one-vegetable/core';
 
 export const ALIBABA_APPLICATION_CENTER_URL = 'https://i.alibaba.com/explore/open-api';
-const ALIBABA_LEGACY_APPLICATION_URL = 'https://crosstrade.alibaba.com/ecology/index.htm';
 
 export const ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS = [
   'https://i.alibaba.com/*',
@@ -85,10 +84,11 @@ export async function openAlibabaApplicationCenterTab(): Promise<number> {
   return tab.id;
 }
 
-export async function openAlibabaLegacyApplicationTab(): Promise<number> {
-  const tab = await browser.tabs.create({ url: ALIBABA_LEGACY_APPLICATION_URL, active: false });
-  if (tab.id === undefined) throw new Error('无法创建 Alibaba 旧应用标签页');
-  return tab.id;
+export async function findAlibabaLegacyApplicationTab(): Promise<number | null> {
+  // The retired landing page can return 404. Never open it as an automatic
+  // fallback from the new IOP console; only reuse an existing legacy page.
+  const tabs = await browser.tabs.query({ url: 'https://crosstrade.alibaba.com/ecology/*' });
+  return tabs.find((tab) => tab.id !== undefined && !/404|not found/iu.test(tab.title ?? ''))?.id ?? null;
 }
 
 export async function openAlibabaOAuthTab(url: URL): Promise<number> {
@@ -175,7 +175,7 @@ export async function focusNextAlibabaDeveloperRegistrationField(tabId: number):
 
 export async function showAlibabaDeveloperGuide(
   tabId: number,
-  state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }>
+  state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' | 'failed' }>
 ): Promise<void> {
   const stored = await browser.storage.local.get(APP_PREFERENCES_STORAGE_KEY);
   const { uiLocale } = parseAppPreferences(stored[APP_PREFERENCES_STORAGE_KEY]);

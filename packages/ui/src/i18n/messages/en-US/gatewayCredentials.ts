@@ -2,9 +2,13 @@ export const gatewayCredentials = {
   title: 'Alibaba credentials',
   dualTitle: 'TOP + IOP authorizations',
   dualDescription:
-    'Two independent grants are recommended, not mandatory. You can keep one profile. Configuring one never replaces the other.',
-  profileTop: 'TOP authorization',
-  profileIop: 'IOP authorization',
+    'Merchants with both app types should authorize TOP and IOP for broader capability coverage. Each grant is stored separately and never replaces the other; a single app type is still supported.',
+  profileTop: 'TOP authorization (legacy)',
+  profileIop: 'IOP authorization (new)',
+  profileHelpTop:
+    'Use a complete legacy TOP credential set. Import an existing grant or enter it manually; a new IOP app cannot replace it.',
+  profileHelpIop:
+    'Apps at i.alibaba.com/explore/open-api use IOP. Authorize with the IOP tool, export JSON, then import it into this profile.',
   selectProfile: 'Select the authorization profile to configure',
   configureProfile: 'Configure {protocol}',
   selectedProfile: 'Editing {protocol} authorization',

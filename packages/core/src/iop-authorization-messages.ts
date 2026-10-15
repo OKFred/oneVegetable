@@ -4,7 +4,8 @@ export const zh = {
   language: 'EN',
   intro: '公共页面只提供指引和回调。App Secret、Token 和口令只在插件内处理，不上传到本网站。',
   step1: '1. 准备应用',
-  step1Text: '在国际站应用中心完成开发者注册，准备自己的新版 IOP 应用及所需 API 权限。',
+  step1Text:
+    '此国际站应用中心展示新版 IOP 应用，不是旧 TOP 应用的另一个页签。准备新版应用及所需 API 权限；已有 TOP 凭据请另存为 TOP 档案。',
   step2: '2. 登记回调',
   step2Text: '将下方地址登记为应用的 Callback URL。已有地址也可在插件工具中填写；我们不会自动修改应用。',
   step3: '3. 授权并导出',
@@ -53,7 +54,7 @@ export const zh = {
   invalidCallback: '回调无效或任务已过期，请在插件中重新授权。',
   clipboardError: '无法复制，请手工选择回调地址复制。',
   boundary:
-    '这是独立 IOP 授权工具。导出后可在工作台显式导入，当前仅兼容部分只读能力；原 TOP 配置不会自动改变。',
+    '这是独立 IOP 授权工具，只能使用新版 IOP 应用的整套 AppKey 和 Secret。导出后在工作台选择 IOP 导入；已有两类应用时建议分别授权，原 TOP 配置不会自动改变。',
   privacy: '本服务与 alibaba.com 无官方关联。使用前请阅读平台规则。不要分享授权文件。',
   privacyLink: '隐私说明',
   rules: '平台规则',
@@ -84,7 +85,7 @@ export const en: Record<keyof typeof zh, string> = {
     'This public page provides guidance and a callback only. App Secrets, tokens and passphrases stay inside the extension, never on this website.',
   step1: '1. Prepare your application',
   step1Text:
-    'Complete developer registration and prepare your own IOP application with the required API permissions.',
+    'This console shows new IOP apps, not a second tab for legacy TOP. Prepare your IOP app and required permissions; keep existing TOP credentials in a separate TOP profile.',
   step2: '2. Register the callback',
   step2Text:
     'Register the address below as your application Callback URL. You can enter an existing address in the tool instead. We never change application settings automatically.',
@@ -139,7 +140,7 @@ export const en: Record<keyof typeof zh, string> = {
   invalidCallback: 'Invalid callback or expired task. Start authorization again in the extension.',
   clipboardError: 'Copy failed. Select and copy the callback address manually.',
   boundary:
-    'This is an independent IOP authorization tool. Explicitly import its export into the workbench for supported reads only. Existing TOP settings never change automatically.',
+    'This independent tool requires a complete AppKey and Secret from a new IOP app. Export, then select IOP in the workbench to import. If you have both app types, authorize each separately; existing TOP settings never change automatically.',
   privacy: 'Not affiliated with alibaba.com. Read platform rules before use. Do not share credential files.',
   privacyLink: 'Privacy',
   rules: 'Platform rules',

@@ -1,5 +1,7 @@
 export const errors = {
   codes: {
+    TOP_APPLICATION_REQUIRED:
+      'No usable legacy TOP application was found. This console is for IOP: use the IOP authorization tool, or import or enter existing TOP credentials in Settings.',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
       'Confirm that TOP and IOP belong to the same merchant in credential settings before using automatic capability routing.',
     ALIBABA_AUTHORIZATION_BINDING_CHANGED:

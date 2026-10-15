@@ -1,9 +1,13 @@
 export const gatewayCredentials = {
   title: 'Alibaba 凭据配置',
   dualTitle: 'TOP + IOP 双授权',
-  dualDescription: '推荐同时配置两份独立授权，但不是必需；也可只使用一份。配置其中一份不会覆盖另一份。',
-  profileTop: 'TOP 授权',
-  profileIop: 'IOP 授权',
+  dualDescription:
+    '建议拥有两类应用的商家分别完成 TOP 和 IOP 授权，以覆盖更多能力。两份独立保存，不互相覆盖；只有一类应用也可使用。',
+  profileTop: 'TOP 授权（旧版）',
+  profileIop: 'IOP 授权（新版）',
+  profileHelpTop: '使用旧 TOP 应用的整套凭据。可导入已有授权或手动填写，不能使用新版 IOP 应用替代。',
+  profileHelpIop:
+    'i.alibaba.com/explore/open-api 中的应用是新版 IOP。用 IOP 工具授权，导出 JSON 后导入此档案。',
   selectProfile: '选择要配置的授权档案',
   configureProfile: '配置 {protocol}',
   selectedProfile: '正在编辑 {protocol} 授权',

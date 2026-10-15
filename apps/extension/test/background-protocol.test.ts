@@ -54,7 +54,7 @@ vi.mock('wxt/browser', () => {
   return {
     browser: {
       storage: { local: area('local'), session: area('session') },
-      tabs: { onUpdated: { addListener: vi.fn() } },
+      tabs: { onUpdated: { addListener: vi.fn() }, create: vi.fn() },
       permissions: { contains: () => Promise.resolve(true) },
       runtime: {
         id: 'protocol-test-extension',
@@ -171,7 +171,7 @@ afterEach(() => {
 });
 
 describe('extension background protocol persistence and dispatch', () => {
-  it('allows a bound guide to recheck, but never to acquire, export or save credentials', async () => {
+  it('allows a bound guide to recheck and open the local IOP tool, never to acquire, export or save credentials', async () => {
     vi.spyOn(ExtensionAlibabaCredentialAcquisitionController.prototype, 'isGuideSender').mockReturnValue(
       true
     );
@@ -185,11 +185,26 @@ describe('extension background protocol persistence and dispatch', () => {
         source
       )
     ).toMatchObject({ ok: true, data: null });
+    expect(
+      await sendEnvelope(
+        { kind: 'alibaba-credential-acquisition-request', operation: 'open-iop-tool' },
+        source
+      )
+    ).toMatchObject({ ok: true, data: null });
     for (const operation of ['start', 'status', 'continue', 'cancel', 'export-bundle', 'save-to-vault']) {
       expect(
         await sendEnvelope({ kind: 'alibaba-credential-acquisition-request', operation }, source)
       ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
     }
+    vi.spyOn(ExtensionAlibabaCredentialAcquisitionController.prototype, 'isGuideSender').mockReturnValue(
+      false
+    );
+    expect(
+      await sendEnvelope(
+        { kind: 'alibaba-credential-acquisition-request', operation: 'open-iop-tool' },
+        source
+      )
+    ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
     expect(fetch).not.toHaveBeenCalled();
   });
 

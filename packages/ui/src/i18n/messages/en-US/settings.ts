@@ -109,9 +109,9 @@ export const settings = {
     title: 'Alibaba.com Open Platform credentials',
     guideTitle: 'Connect real APIs in three steps',
     guideDescription:
-      'The TOP assistant reuses Chrome sign-in and an existing app for OAuth. Handle CAPTCHA, sliders and secret confirmation in the Alibaba tab. Or enter/import credentials.',
-    acquire: 'Get Open Platform credentials',
-    openCenter: 'Open Alibaba Application Center',
+      'Use the IOP tool for new applications. TOP needs separate legacy-app credentials: import or enter them manually; the retired URL is never opened automatically. If you have both app types, authorize both and confirm the same merchant for capability routing.',
+    acquire: 'Get legacy TOP credentials',
+    openCenter: 'Open new IOP Application Center',
     importBundle: 'Import credential bundle JSON',
     importLabel: 'Import credential bundle JSON',
     encryptedPlaceholder: 'Encrypted value saved; leave blank to keep it',

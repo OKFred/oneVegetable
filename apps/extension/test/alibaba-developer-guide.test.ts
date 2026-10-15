@@ -64,10 +64,44 @@ beforeEach(() => {
   mocks.sendTabMessage.mockResolvedValue(undefined);
 });
 afterEach(() => {
+  notify({ kind: 'one-vegetable-alibaba-developer-guide-remove' });
   document.body.replaceChildren();
 });
 
 describe('Alibaba page guide storage isolation', () => {
+  it('explains IOP versus legacy TOP and only opens the local IOP tool, never acquires credentials', async () => {
+    mountGuide.main();
+    notify({
+      kind: 'one-vegetable-alibaba-developer-guide-update',
+      uiLocale: 'zh-CN',
+      state: {
+        status: 'failed',
+        error: { code: 'TOP_APPLICATION_REQUIRED', message: 'fixture', retryable: false }
+      }
+    });
+    expect(panel().textContent).toContain('TOP 与 IOP 是两套独立授权');
+    expect(panel().textContent).toContain('旧 TOP 应用不是这里的另一个页签');
+    expect(panel().querySelector('h2')?.textContent).toBe('请使用新版 IOP 授权工具');
+    expect(control('重新检查').hidden).toBe(true);
+    control('打开 IOP 授权工具').click();
+    await vi.waitFor(() => {
+      expect(mocks.sendMessage).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ operation: 'open-iop-tool' })
+      );
+    });
+    expect(mocks.get).not.toHaveBeenCalled();
+    notify({
+      kind: 'one-vegetable-alibaba-developer-guide-update',
+      uiLocale: 'en-US',
+      state: {
+        status: 'failed',
+        error: { code: 'TOP_APPLICATION_REQUIRED', message: 'fixture', retryable: false }
+      }
+    });
+    expect(panel().textContent).toContain('TOP and IOP are separate authorizations');
+    expect(control('Open IOP authorization tool')).toBeDefined();
+  });
+
   it('mounts with storage denied and accepts only the locale passed by the worker', () => {
     mountGuide.main();
     notify({ kind: 'one-vegetable-alibaba-developer-guide-update', state: prerequisite, uiLocale: 'zh-CN' });

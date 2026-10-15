@@ -334,7 +334,10 @@ describe('independent authorization metadata and user binding', () => {
 
   it('requires the same-merchant checkbox and an explicit confirmation, with both opaque IDs', async () => {
     const view = await harness(GatewayAuthorizationsPanel);
-    expect(view.wrapper.text()).toContain('推荐同时配置');
+    expect(view.wrapper.text()).toContain('建议拥有两类应用的商家分别完成 TOP 和 IOP 授权');
+    expect(view.wrapper.text()).toContain('TOP 授权（旧版）');
+    expect(view.wrapper.text()).toContain('IOP 授权（新版）');
+    expect(view.wrapper.text()).toContain('不能使用新版 IOP 应用替代');
     expect(view.wrapper.text()).toContain('不是平台官方验证');
     expect(view.wrapper.get('[data-testid="authorization-top"]').text()).toContain('有效期未知');
     expect(view.wrapper.get('[data-testid="authorization-iop"]').text()).toContain('剩余约');

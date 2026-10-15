@@ -97,7 +97,8 @@ export const auth = {
       },
       authorization: {
         title: 'Authorize and save',
-        description: 'Validate the OAuth Callback and state, then save the acquired credentials encrypted.'
+        description:
+          'Authorize and save IOP and legacy TOP separately. If you have both app types, configure both and confirm they belong to the same merchant.'
       }
     },
     safety: {

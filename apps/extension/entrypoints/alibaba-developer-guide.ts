@@ -38,6 +38,11 @@ interface GuideCopy {
   noField: string;
   ready: string;
   error: string;
+  protocolTitle: string;
+  protocolDescription: string;
+  iopApplication: string;
+  topUnavailable: string;
+  openIop: string;
 }
 
 const COPY: Record<UiLocale, GuideCopy> = {
@@ -72,7 +77,14 @@ const COPY: Record<UiLocale, GuideCopy> = {
     focused: '已定位下一项。',
     noField: '未找到可定位字段，请查看页面提示。',
     ready: '前置状态已变化，请返回 oneVegetable 继续。',
-    error: '检查失败，请稍后重试。'
+    error: '检查失败，请稍后重试。',
+    protocolTitle: 'TOP 与 IOP 是两套独立授权',
+    protocolDescription:
+      '此应用中心展示新版 IOP 应用，旧 TOP 应用不是这里的另一个页签。已有两类应用时建议分别授权，再回设置确认同一商家；没有 TOP 应用不强制补齐。AppKey、Secret 和 Token 不可跨协议混用。',
+    iopApplication: '请使用新版 IOP 授权工具',
+    topUnavailable:
+      '旧版 TOP 向导未发现可用旧应用，不会再自动打开已失效的 crosstrade 页面。新版 IOP 请使用下方工具；已有 TOP 凭据请返回设置导入或手动填写。',
+    openIop: '打开 IOP 授权工具'
   },
   'en-US': {
     product: 'oneVegetable Open Platform guide',
@@ -118,7 +130,14 @@ const COPY: Record<UiLocale, GuideCopy> = {
     focused: 'The next item is focused.',
     noField: 'No field could be focused. Review the page message.',
     ready: 'The prerequisite changed. Return to oneVegetable to continue.',
-    error: 'The check failed. Try again later.'
+    error: 'The check failed. Try again later.',
+    protocolTitle: 'TOP and IOP are separate authorizations',
+    protocolDescription:
+      'This console shows the new IOP app, not a second tab for legacy TOP. If you have both app types, authorize each, then confirm the same merchant in Settings. TOP is optional. Never mix AppKeys, secrets, or tokens across protocols.',
+    iopApplication: 'Use the new IOP authorization tool',
+    topUnavailable:
+      'The TOP assistant found no usable legacy app and will not open the retired crosstrade page. Use the IOP tool below for the new app, or return to Settings to import or enter existing TOP credentials.',
+    openIop: 'Open IOP authorization tool'
   }
 };
 
@@ -151,6 +170,10 @@ function mountGuide(): void {
   const steps = element('ol', 'steps');
   const title = element('h2', 'title');
   const description = element('p', 'description');
+  const protocolTitle = element('strong', 'protocol-title', copy.protocolTitle);
+  const protocolDescription = element('p', 'description', copy.protocolDescription);
+  const protocols = element('section', 'protocols');
+  protocols.append(protocolTitle, protocolDescription);
   const checklist = element('ul', 'checklist');
   const checkedAt = element('p', 'checked-at');
   const privacy = element('p', 'privacy', copy.privacy);
@@ -160,8 +183,20 @@ function mountGuide(): void {
   const locate = button(copy.locate, 'secondary');
   const recheck = button(copy.recheck, 'primary');
   const back = button(copy.back, 'secondary');
-  actions.append(locate, recheck, back);
-  body.append(progress, steps, title, description, checklist, checkedAt, privacy, feedback, actions);
+  const openIop = button(copy.openIop, 'secondary');
+  actions.append(locate, recheck, openIop, back);
+  body.append(
+    progress,
+    steps,
+    title,
+    description,
+    protocols,
+    checklist,
+    checkedAt,
+    privacy,
+    feedback,
+    actions
+  );
   panel.append(header, body);
   shadow.append(panel);
   document.documentElement.append(host);
@@ -178,6 +213,11 @@ function mountGuide(): void {
 
   locate.addEventListener('click', () => void locateNextField());
   recheck.addEventListener('click', () => void recheckPrerequisite());
+  openIop.addEventListener('click', () => {
+    void requestAcquisition('open-iop-tool').catch(() => {
+      showFeedback(copy.error, true);
+    });
+  });
   back.addEventListener('click', () => {
     void browser.runtime.openOptionsPage().catch(() => {
       showFeedback(copy.error, true);
@@ -199,9 +239,12 @@ function mountGuide(): void {
       product.textContent = copy.product;
       progress.textContent = copy.progress;
       privacy.textContent = copy.privacy;
+      protocolTitle.textContent = copy.protocolTitle;
+      protocolDescription.textContent = copy.protocolDescription;
       for (const [control, label] of [
         [locate, copy.locate],
         [recheck, copy.recheck],
+        [openIop, copy.openIop],
         [back, copy.back]
       ] as const) {
         control.textContent = label;
@@ -245,9 +288,13 @@ function mountGuide(): void {
   }
 
   function render(state: AlibabaCredentialAcquisitionState | null): void {
+    const needsIop = state?.status === 'failed' && state.error.code === 'TOP_APPLICATION_REQUIRED';
+    progress.hidden = needsIop;
+    steps.hidden = needsIop;
+    recheck.hidden = needsIop;
     if (state?.status !== 'prerequisite-required') {
-      title.textContent = copy.ready;
-      description.textContent = '';
+      title.textContent = needsIop ? copy.iopApplication : copy.ready;
+      description.textContent = needsIop ? copy.topUnavailable : '';
       checklist.replaceChildren();
       checkedAt.textContent = '';
       locate.hidden = true;
@@ -272,6 +319,7 @@ function mountGuide(): void {
   function setBusy(busy: boolean): void {
     locate.disabled = busy;
     recheck.disabled = busy;
+    openIop.disabled = busy;
     back.disabled = busy;
   }
 
@@ -346,6 +394,8 @@ const guideStyles = `
   .title { margin: 0; font-size: 17px; line-height: 24px; }
   .description, .checked-at, .privacy, .feedback { margin: 0; font-size: 12px; line-height: 19px; }
   .description, .checked-at { color: #526174; }
+  .protocols { display: grid; gap: 6px; border: 1px solid #d7dde7; border-radius: 8px; padding: 10px; }
+  .protocol-title { font-size: 12px; }
   .privacy { border-radius: 8px; background: #fff7ed; padding: 9px 10px; color: #7c2d12; }
   .checklist { display: grid; gap: 5px; margin: 0; padding-left: 19px; font-size: 12px; line-height: 18px; }
   .feedback { border-radius: 7px; background: #ecfdf5; padding: 7px 9px; color: #065f46; }
@@ -364,6 +414,7 @@ const guideStyles = `
   @media (prefers-color-scheme: dark) {
     .panel { border-color: #334155; background: #111827; color: #f8fafc; box-shadow: 0 18px 56px rgba(0, 0, 0, .5); }
     .header { border-color: #334155; background: #172033; }
+    .protocols { border-color: #334155; }
     .eyebrow, .description, .checked-at { color: #a5b4c7; }
     .steps li { background: #1e293b; color: #a5b4c7; }
     .steps li.active { background: #17335f; color: #bfdbfe; }

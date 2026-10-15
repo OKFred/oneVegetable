@@ -292,11 +292,13 @@ export default defineBackground({
       }
       const acquisitionMessage = asAlibabaCredentialAcquisitionRequest(value);
       if (acquisitionMessage) {
-        // A known injected guide may only inspect/focus prerequisites, never acquire or export secrets.
+        // A known guide can inspect/focus prerequisites or open the local IOP UI,
+        // never acquire, import, change or export credentials.
         const trustedGuideRead =
           alibabaCredentialAcquisition.isGuideSender(sender) &&
           (acquisitionMessage.operation === 'read-prerequisite' ||
-            acquisitionMessage.operation === 'locate-prerequisite-field');
+            acquisitionMessage.operation === 'locate-prerequisite-field' ||
+            acquisitionMessage.operation === 'open-iop-tool');
         return handleAlibabaCredentialAcquisitionRequest(
           acquisitionMessage,
           storageAccessReady,

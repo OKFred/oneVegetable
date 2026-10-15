@@ -104,9 +104,9 @@ export const settings = {
     title: '国际站开放平台凭证',
     guideTitle: '三步完成真实接口连接',
     guideDescription:
-      'TOP 向导复用 Chrome 登录、已有应用完成 OAuth；滑块、验证码及密钥确认在 Alibaba 标签页处理。也可手填或导入。',
-    acquire: '获取开放平台凭证',
-    openCenter: '打开 Alibaba 应用中心',
+      '新版应用请用 IOP 授权工具。TOP 使用旧应用的独立凭据，可导入或手填；不再自动打开已失效的旧地址。已有两类应用时建议都授权，再确认同一商家以按能力选路。',
+    acquire: '获取旧版 TOP 凭据',
+    openCenter: '打开新版 IOP 应用中心',
     importBundle: '一键导入授权包 JSON',
     importLabel: '导入授权包 JSON',
     encryptedPlaceholder: '已加密保存，留空保持不变',

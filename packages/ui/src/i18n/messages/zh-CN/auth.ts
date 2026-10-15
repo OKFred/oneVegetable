@@ -91,7 +91,7 @@ export const auth = {
       },
       authorization: {
         title: '授权并保存',
-        description: '校验 OAuth 回调与 state，然后加密保存获取到的凭证。'
+        description: '新版 IOP 与旧版 TOP 分别授权、分别保存；已有两类应用时建议都配置，再确认属于同一商家。'
       }
     },
     safety: {

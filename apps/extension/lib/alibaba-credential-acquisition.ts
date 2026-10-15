@@ -27,21 +27,18 @@ import {
   advanceAlibabaOAuthPage,
   ALIBABA_APPLICATION_CENTER_URL,
   closeAlibabaTabs,
+  findAlibabaLegacyApplicationTab,
   focusNextAlibabaDeveloperRegistrationField,
   hideAlibabaDeveloperGuide,
   inspectAlibabaApplicationCenter,
   inspectAlibabaApplicationPageState,
   openAlibabaApplicationCenterSection,
   openAlibabaApplicationCenterTab,
-  openAlibabaLegacyApplicationTab,
   openAlibabaOAuthTab,
   readAlibabaLegacyApplications,
   readTabUrl,
-  revealAlibabaApplicationSecret,
   revealAlibabaLegacyApplicationSecret,
-  selectAlibabaApplicationInPage,
   showAlibabaDeveloperGuide,
-  updateAlibabaCallbackInPage,
   type ExtensionAlibabaApplicationCandidate,
   type ExtensionAlibabaApplicationDetails
 } from './alibaba-credential-page-driver';
@@ -49,7 +46,7 @@ import {
 const ALIBABA_TOKEN_ENDPOINT = 'https://oauth.alibaba.com/token';
 const ALIBABA_OAUTH_AUTHORIZE_ENDPOINT = 'https://oauth.alibaba.com/authorize';
 
-type AcquisitionPhase = 'discover' | 'selecting' | 'callback-confirmation' | 'secret' | 'oauth' | 'completed';
+type AcquisitionPhase = 'discover' | 'callback-confirmation' | 'secret' | 'oauth' | 'completed';
 
 interface InternalApplicationCandidate extends AlibabaCredentialApplicationCandidate {
   callbackUrl: string | null;
@@ -110,7 +107,7 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     let applicationTabId: number;
     if (previousTask?.state.status === 'prerequisite-required') {
       this.#task = null;
-      await closeAlibabaTabs([previousTask.legacyTabId, previousTask.oauthTabId]);
+      await closeAlibabaTabs([previousTask.oauthTabId]);
       applicationTabId = await activateAlibabaTab(previousTask.applicationTabId).catch(() =>
         openAlibabaApplicationCenterTab()
       );
@@ -157,7 +154,7 @@ export class ExtensionAlibabaCredentialAcquisitionController {
       }
       task.selected = selected;
       task.state = transitionAlibabaCredentialAcquisitionState(task.state, { type: 'resume' });
-      await this.#prepareSelectedApplication(task);
+      this.#requireCallbackConfirmation(task);
       return cloneState(task.state);
     }
 
@@ -168,15 +165,8 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     const requested = parseAlibabaCredentialCallbackUrl(task.state.requestedUrl);
     const effective = command.confirmed ? requested : current;
     if (command.confirmed && effective.href !== current.href) {
-      if (task.selected.source === 'legacy-crosstrade') {
-        task.state = failedAcquisitionState('CALLBACK_UPDATE_FAILED');
-        return cloneState(task.state);
-      }
-      const updated = await updateAlibabaCallbackInPage(task.applicationTabId, effective);
-      if (!updated) {
-        task.state = failedAcquisitionState('CALLBACK_UPDATE_FAILED');
-        return cloneState(task.state);
-      }
+      task.state = failedAcquisitionState('CALLBACK_UPDATE_FAILED');
+      return cloneState(task.state);
     }
     task.selected = { ...task.selected, callbackUrl: effective.href };
     task.phase = 'secret';
@@ -191,7 +181,6 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     }
     try {
       if (task.phase === 'discover') await this.#discoverApplications(task);
-      else if (task.phase === 'selecting') await this.#finishApplicationSelection(task);
       else if (task.phase === 'secret') await this.#revealSecretAndOpenOAuth(task);
       else if (task.phase === 'oauth') await this.#advanceOAuth(task);
     } catch (error: unknown) {
@@ -206,7 +195,8 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     const state = isTerminalState(task.state)
       ? task.state
       : transitionAlibabaCredentialAcquisitionState(task.state, { type: 'cancel' });
-    await closeAlibabaTabs([task.applicationTabId, task.legacyTabId, task.oauthTabId]);
+    await closeAlibabaTabs([task.applicationTabId, task.oauthTabId]);
+    await hideAlibabaDeveloperGuide(task.legacyTabId ?? task.applicationTabId);
     this.#task = null;
     return cloneState(state);
   }
@@ -274,7 +264,7 @@ export class ExtensionAlibabaCredentialAcquisitionController {
 
   async #showGuide(
     tabId: number,
-    state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }>
+    state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' | 'failed' }>
   ): Promise<void> {
     await showAlibabaDeveloperGuide(tabId, state);
     this.#guideTabId = tabId;
@@ -335,19 +325,21 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     await this.#clearPrerequisite();
 
     if (task.legacyTabId === null) {
-      task.legacyTabId = await openAlibabaLegacyApplicationTab();
-      return;
+      task.legacyTabId = await findAlibabaLegacyApplicationTab();
+      if (task.legacyTabId === null) {
+        await this.#requireTopApplication(task);
+        return;
+      }
     }
     const legacyCandidates = await readAlibabaLegacyApplications(task.legacyTabId).catch(() => []);
     task.legacyDiscoveryAttempts += 1;
-    if (
-      snapshot.application.appKey.length < 8 &&
-      legacyCandidates.length === 0 &&
-      task.legacyDiscoveryAttempts < 10
-    ) {
+    if (legacyCandidates.length === 0) {
+      if (task.legacyDiscoveryAttempts >= 10) await this.#requireTopApplication(task);
       return;
     }
-    task.candidates = buildApplicationCandidates(snapshot.application, snapshot.candidates, legacyCandidates);
+    // This controller exchanges TOP tokens only. The new application center is
+    // not a source of TOP credentials, regardless of AppKey length or app name.
+    task.candidates = legacyCandidates.map((candidate, index) => toInternalCandidate(candidate, index + 1));
     const selection = resolveAlibabaCredentialApplication(task.candidates);
     if (selection.kind === 'failed') {
       task.state = failedAcquisitionState(selection.code);
@@ -367,38 +359,21 @@ export class ExtensionAlibabaCredentialAcquisitionController {
       task.state = failedAcquisitionState('APPLICATION_NOT_FOUND');
       return;
     }
-    await this.#prepareSelectedApplication(task);
+    this.#requireCallbackConfirmation(task);
   }
 
-  async #prepareSelectedApplication(task: ExtensionAcquisitionTask): Promise<void> {
-    const selected = task.selected;
-    if (!selected) throw acquisitionError('APPLICATION_NOT_FOUND', '没有已选择的 Alibaba 应用');
-    if (selected.source === 'application-center' && selected.callbackUrl === null) {
-      const clicked = await selectAlibabaApplicationInPage(task.applicationTabId, selected);
-      if (!clicked) {
-        task.state = failedAcquisitionState('APPLICATION_NOT_FOUND');
-        return;
+  async #requireTopApplication(task: ExtensionAcquisitionTask): Promise<void> {
+    const state = {
+      status: 'failed',
+      error: {
+        code: 'TOP_APPLICATION_REQUIRED',
+        message:
+          'No usable legacy TOP application was found. Use the IOP tool or import existing TOP credentials.',
+        retryable: false
       }
-      task.phase = 'selecting';
-      return;
-    }
-    this.#requireCallbackConfirmation(task);
-  }
-
-  async #finishApplicationSelection(task: ExtensionAcquisitionTask): Promise<void> {
-    const selected = task.selected;
-    if (!selected) throw acquisitionError('APPLICATION_NOT_FOUND', '没有已选择的 Alibaba 应用');
-    const snapshot = await inspectAlibabaApplicationCenter(task.applicationTabId);
-    const current = snapshot.application;
-    if (current?.appName !== selected.appName) return;
-    task.selected = {
-      ...selected,
-      appKey: selected.appKey.length >= current.appKey.length ? selected.appKey : current.appKey,
-      callbackUrl: current.callbackUrl,
-      status: current.status,
-      permissions: current.permissions
-    };
-    this.#requireCallbackConfirmation(task);
+    } as const;
+    task.state = state;
+    await this.#showGuide(task.applicationTabId, state).catch(() => undefined);
   }
 
   #requireCallbackConfirmation(task: ExtensionAcquisitionTask): void {
@@ -422,12 +397,11 @@ export class ExtensionAlibabaCredentialAcquisitionController {
   async #revealSecretAndOpenOAuth(task: ExtensionAcquisitionTask): Promise<void> {
     const selected = task.selected;
     if (!selected?.callbackUrl) throw acquisitionError('CALLBACK_INVALID', 'Alibaba Callback 缺失');
-    const secret =
-      selected.source === 'legacy-crosstrade'
-        ? task.legacyTabId === null
-          ? { status: 'waiting' as const, reason: 'layout' as const }
-          : await revealAlibabaLegacyApplicationSecret(task.legacyTabId, selected.appKey)
-        : await revealAlibabaApplicationSecret(task.applicationTabId);
+    if (task.legacyTabId === null || selected.source !== 'legacy-crosstrade') {
+      await this.#requireTopApplication(task);
+      return;
+    }
+    const secret = await revealAlibabaLegacyApplicationSecret(task.legacyTabId, selected.appKey);
     if (secret.status !== 'available') return;
     task.appSecret = secret.appSecret;
     task.oauthState = crypto.randomUUID();
@@ -597,7 +571,7 @@ export class ExtensionAlibabaCredentialAcquisitionController {
     task.oauthState = null;
     task.oauthCallbackUrl = null;
     task.bundle = null;
-    await closeAlibabaTabs([task.applicationTabId, task.legacyTabId, task.oauthTabId]);
+    await closeAlibabaTabs([task.applicationTabId, task.oauthTabId]);
   }
 }
 
@@ -606,51 +580,6 @@ async function activateAlibabaTab(tabId: number): Promise<number> {
   if (tab?.id === undefined) throw new Error(`无法打开 ${ALIBABA_APPLICATION_CENTER_URL}`);
   await browser.windows.update(tab.windowId, { focused: true }).catch(() => undefined);
   return tab.id;
-}
-
-function buildApplicationCandidates(
-  current: ExtensionAlibabaApplicationDetails,
-  applicationCenterCandidates: readonly ExtensionAlibabaApplicationCandidate[],
-  legacyCandidates: readonly ExtensionAlibabaApplicationCandidate[]
-): InternalApplicationCandidate[] {
-  if (current.appKey.length < 8 && legacyCandidates.length === 1) {
-    const legacy = legacyCandidates[0];
-    if (legacy) return [toInternalCandidate(legacy, 1)];
-  }
-  const fullCurrent = applicationCenterCandidates.find(
-    (candidate) =>
-      candidate.appName === current.appName &&
-      (candidate.appKey.includes(current.appKey) || current.appKey.includes(candidate.appKey))
-  );
-  const currentCandidate: ExtensionAlibabaApplicationCandidate = {
-    appName: current.appName,
-    appKey: fullCurrent?.appKey ?? current.appKey,
-    callbackUrl: current.callbackUrl,
-    status: current.status,
-    source: 'application-center'
-  };
-  const combined = [
-    currentCandidate,
-    ...applicationCenterCandidates.map((candidate) => ({
-      ...candidate,
-      callbackUrl:
-        candidate.appName === current.appName || candidate.appKey === currentCandidate.appKey
-          ? current.callbackUrl
-          : candidate.callbackUrl,
-      status: candidate.status || current.status
-    })),
-    ...legacyCandidates
-  ];
-  const unique = [
-    ...new Map(combined.map((candidate) => [`${candidate.source}:${candidate.appKey}`, candidate])).values()
-  ];
-  return unique.map((candidate, index) =>
-    toInternalCandidate(
-      candidate,
-      index + 1,
-      candidate.source === 'application-center' ? current.permissions : []
-    )
-  );
 }
 
 function toInternalCandidate(

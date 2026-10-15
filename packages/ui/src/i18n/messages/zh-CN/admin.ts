@@ -61,11 +61,12 @@ export const admin = {
     }
   },
   credentialAcquisition: {
-    title: '获取开放平台凭证',
+    title: '获取旧版 TOP 凭据',
     description: '复用当前 Chrome 的 Alibaba 登录态；插件不会读取或保存网站密码。',
-    existingApplicationTitle: '登录 → 授权 → 保存',
+    existingApplicationTitle: '旧版 TOP：登录 → 授权 → 保存',
     existingApplicationDescription:
-      '首次连接或授权失效时都用此入口。复用已有应用和 Callback；登录、协议及验证码由你完成，缺少应用时再展示注册指引。',
+      '此兼容向导只读取已打开且可用的旧 TOP 应用页面，不会自动打开旧 crosstrade 地址。新版应用中心的 IOP 应用请使用独立工具；已有 TOP 授权 JSON 也可直接在设置中导入。两套凭据不会互相覆盖。',
+    openIopTool: '改用新版 IOP 授权工具',
     advanced: '高级设置（通常无需修改）',
     callbackLabel: 'Callback URL（可选）',
     callbackPlaceholder: '留空则保留应用现有 Callback',
@@ -165,7 +166,7 @@ export const admin = {
       '插件会复用你当前 Chrome 的 Alibaba 登录态，不读取网站密码，并允许你直接完成人机验证。',
     extensionSteps: {
       install: '安装或打开 oneVegetable 正式版插件。',
-      authorize: '在插件设置中点击“获取开放平台凭证”，按向导完成授权。',
+      authorize: '在插件设置中选择新版 IOP 工具，或导入已有 TOP 授权；两套授权独立保存，不可混用。',
       import: '导出 credentialInfo.json，再回到本页使用“导入凭据”加密保存。'
     },
     back: '返回',

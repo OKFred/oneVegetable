@@ -1,5 +1,7 @@
 export const errors = {
   codes: {
+    TOP_APPLICATION_REQUIRED:
+      '未发现可用的旧版 TOP 应用。此应用中心是新版 IOP，请使用 IOP 授权工具；已有 TOP 凭据可在设置中导入或手动填写。',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
       '请先在凭据配置中确认 TOP 和 IOP 属于同一商家，再使用按能力自动路由。',
     ALIBABA_AUTHORIZATION_BINDING_CHANGED: '授权已变化，请核对两份配置并重新确认同一商家；不会自动重试操作。',

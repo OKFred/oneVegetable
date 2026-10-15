@@ -31,6 +31,7 @@ const readPrerequisite = vi.fn(
 );
 const locatePrerequisiteField = vi.fn(() => Promise.resolve(null));
 const focusPrerequisitePage = vi.fn(() => Promise.resolve());
+const openIopTool = vi.fn(() => Promise.resolve());
 const anchorClick = vi.fn();
 
 beforeEach(() => {
@@ -50,6 +51,43 @@ afterEach(() => {
 });
 
 describe('AlibabaCredentialAcquisitionDialog', () => {
+  it('can switch to the separate IOP tool without starting TOP or changing either authorization', async () => {
+    const Host = defineComponent({
+      setup() {
+        provideServices({
+          gateway: new MockGatewayClient(0),
+          settings: { load: vi.fn(), save: vi.fn() },
+          mode: 'extension',
+          alibabaCredentialAcquisition: {
+            start,
+            continue: continueAcquisition,
+            status: statusAcquisition,
+            cancel: cancelAcquisition,
+            saveToVault,
+            exportBundle,
+            readPrerequisite,
+            locatePrerequisiteField,
+            focusPrerequisitePage,
+            openIopTool
+          }
+        });
+        return () => h(AlibabaCredentialAcquisitionDialog, { open: true });
+      }
+    });
+    const wrapper = mount(Host, { attachTo: document.body });
+    await flushPromises();
+    clickButton('改用新版 IOP 授权工具');
+    await flushPromises();
+    expect(openIopTool).toHaveBeenCalledOnce();
+    expect(start).not.toHaveBeenCalled();
+    expect(saveToVault).not.toHaveBeenCalled();
+    expect(exportBundle).not.toHaveBeenCalled();
+    expect(wrapper.findComponent(AlibabaCredentialAcquisitionDialog).emitted('update:open')).toEqual([
+      [false]
+    ]);
+    wrapper.unmount();
+  });
+
   it('walks through app selection, exact callback confirmation, vault save and explicit export', async () => {
     const Host = defineComponent({
       setup() {
@@ -76,6 +114,7 @@ describe('AlibabaCredentialAcquisitionDialog', () => {
             updatePolicy: () => Promise.resolve(vaultStatus('unlocked'))
           },
           alibabaCredentialAcquisition: {
+            openIopTool,
             start,
             continue: continueAcquisition,
             status: statusAcquisition,
@@ -95,6 +134,8 @@ describe('AlibabaCredentialAcquisitionDialog', () => {
     await flushPromises();
 
     expect(document.body.textContent).toContain('插件不会读取或保存网站密码');
+    expect(document.body.textContent).toContain('获取旧版 TOP 凭据');
+    expect(document.body.textContent).toContain('改用新版 IOP 授权工具');
     expect(document.body.querySelector('input[autocomplete="current-password"]')).toBeNull();
     expect(document.body.querySelector('input[type="url"]')?.closest('details')?.open).toBe(false);
     expect(document.body.querySelector('ol[aria-label]')).toBeNull();

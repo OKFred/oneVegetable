@@ -20,6 +20,9 @@ const t = useGatewayCredentialsI18n();
     <h3 class="flex items-center gap-2 text-sm font-semibold">
       <KeyRound class="size-4" aria-hidden="true" />{{ t(protocol === 'top' ? 'profileTop' : 'profileIop') }}
     </h3>
+    <p class="text-xs leading-5 text-muted-foreground">
+      {{ t(protocol === 'top' ? 'profileHelpTop' : 'profileHelpIop') }}
+    </p>
     <p class="text-sm text-muted-foreground">{{ t(summary?.configured ? 'configured' : 'empty') }}</p>
     <CredentialExpiryNotice
       v-if="summary && (summary.configured || summary.accessTokenExpiresTimeUtc != null)"
