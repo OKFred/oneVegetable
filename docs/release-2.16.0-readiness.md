@@ -113,3 +113,27 @@ A controlled original-image test confirmed that Alibaba deduplicates identical u
 最终提示文案另经 49 项组件测试及 i18n 检查通过（`artifacts/template-consent-copy-final.log`）。冻结构建后的七项 Web/MV3 浏览器流程涵盖模板 ZIP 图片替换、已确认回执复用、页面切换与手工恢复、未知结果保护、活跃窗口互斥、任务中心及独立插件本地模板。最终文案的 Web 及 Worker 另重建、预算检查和干跑通过（`artifacts/template-consent-fresh-web.log`、`artifacts/template-consent-fresh-api.log`），没有部署。更早 Cloudflare 生产模式专用构建仍按原记录保留，不冒充本轮生产部署验收。
 
 常规发布应等待同一候选的远端 CI 成功，以当前提交的 Actions 结果为准，不以旧提交通过替代。本次用户明确允许先推进主线和 Tag；这只改变推进时机，不取消正式发布流水线的门禁。主线合并、不可变 Tag/GitHub Release、现有网站部署及商店提交仍区分记录；不移动旧 Tag，不覆盖旧 Release，不自动部署或提交商店。
+
+## 2026-10-16 登录与开发者引导补验
+
+首次集成推送在收到密码调整需求后已中止，远端主线和 `v2.16.0` 均未更新；只删除了未推送的本地候选 Tag，没有移动任何已发布 Tag。新增变更通过独立小提交集成后重新制作候选。
+
+- 工作台新密码改为至少 6 个字符、最多 256 UTF-8 字节；初始化、创建用户、修改和重置一致。登录保留旧 Unicode 密码兼容，PBKDF2 600,000 次及登录锁定规则不变，不重置既有账号，也不改变 Passkey 或插件保险库。此前 22 项定向单测、6 项真实 Node/UI 隔离浏览器测试通过，含中英文六位密码登录；没有用测试密码替换用户本机密码。
+- 实际只读查看 Alibaba 开发者资料页，确认最后一步为 `Review Approved`，此前 `Under Review` 为已完成步骤，不能将它们视为当前退回或审核中。页面脚本的多语言资源还包含 `rejected/not approved`，不能扫描这些资源来判定审核结果。脱敏的进度结构加入 `mock/data/alibaba-auth`，不保存注册资料。
+- Node、Cloud Browser Run 与插件共用可序列化的状态检测器。仅检查可见文本，排除脚本、样式、隐藏元素及向导自身；当前审核进度优先，已批准的禁用表单不再被推断为审核中。已有前置状态在读取时只读核对，明确确认已批准或已有应用才清理旧退回状态；导航文字不算批准证据。
+- 修复 `alibaba-developer-guide.js` 在内容脚本中读取 `TRUSTED_CONTEXTS` 存储而产生未处理 Promise 错误的问题。语言偏好改由受信后台读取并只传递枚举值；不放宽 local/session 的存储访问级别。页面向导只可从绑定的标签页和精确 URL 检查前置状态、定位字段，不能开始 OAuth、保存或导出凭据；重新检查不再轮询。
+- 回归先复现 6 项状态误判，再通过修复后的 72 项定向测试和 24 项 Worker 测试。原始失败及更早的类型/Lint 失败日志保留，不将失败日志冒充最终通过。最终源码全量门禁及正式扩展注入验收另以最新回执为准。
+
+本地预览保持 `http://localhost:5173` → Node `http://localhost:8787`，`gatewayMode=real`，使用原有 SQLite 与加密凭据。浏览器控制允许只读查看 Alibaba HTTPS 页面，但不允许读取用户已安装的 `chrome-extension://` 页面，因此不宣称已经替用户重载或现场验证该插件。更新未打包构建后需重新加载插件，并刷新 Alibaba 与工作台页面，以替换旧内容脚本。
+
+国际站日志中的 `cacheSW.js` 网络无响应、通知请求超时和权限策略告警与本次插件存储错误分别记录。安全验证脚本或主页面请求失败可能影响登录/授权，不能一概解释为无害埋点；本次没有删除官网 Service Worker、清缓存、禁用安全验证或修改网络配置。
+
+### 最终构建与补验回执
+
+- `artifacts/release-2.16.0-final-check-fixed.log` 的格式、Lint（0 error / 30 项既有 warning）、双语、OpenAPI/快照、全工作区类型及全量 316 文件 / 2,548 项单测通过。该次末尾的启动脚本预算检查失败，没有将整条 `pnpm check` 记为成功。
+- 失败原因是引导驱动从 core 总入口导入共享函数，改变了扩展的启动依赖图。改成显式子路径导入后正式扩展重建，启动 JS 为 216,853 字节，低于原有 250 KB 门禁；解包为 4,239,379 字节，213 个文件。没有放宽任何预算或增加依赖。重建及预算日志：`artifacts/developer-guide-extension-rebuild.log`；商店合规检查：`artifacts/developer-guide-compliance.log`。
+- 固定正式 MV3 的四项浏览器测试通过，实际验证 trusted-only 存储下的向导注入、中文文案、已批准进度识别、移除，以及初始解锁、后台重启和多工作台协调。测试仅使用本地回放页面，不访问 Alibaba 账号或绕过扩展权限；日志：`artifacts/developer-guide-formal-e2e.log`。
+- 最新 Node 中英文登录及设置浏览器流程 6/6 通过，使用隔离 SQLite 和回放网关，不改现有本机账号或凭据；日志：`artifacts/release-2.16.0-node-auth-e2e-final.log`。Worker 隔离测试 24/24 及最终 API/Worker 干跑通过，没有部署。
+- 最终本地 ZIP 为 1,234,792 字节，SHA-256 为 `2e216da8b743ce0a5d0e114bd1f13640de5a986788be0208a6c45400916a2666`。逐文件比对固定产物、权限对比 2.15.1 及当前本机敏感值扫描通过（`artifacts/release-2.16.0-package-audit-final.log`）。上文真实 S3 测试的旧候选哈希保留为历史证据，不能用新 ZIP 的哈希冒充那次实际上传所用构建；新源码的离线回归与真实账号页面观察分开记录。
+
+推送仍需执行原有 pre-push 全工作区类型及全量单测；正式 Tag 流水线继续独立执行全部门禁，成功前不宣称已生成 GitHub Release。此次没有替用户读取 App Secret、重置应用密钥、接受新的 OAuth 协议或更换 TOP/IOP 配置。

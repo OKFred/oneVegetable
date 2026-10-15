@@ -2,7 +2,6 @@ import { acquire, connect, limits } from '@cloudflare/playwright';
 
 import {
   createAlibabaOpenApiCredentialBundle,
-  inspectAlibabaDeveloperPageDocument,
   NetworkManager,
   parseAlibabaTokenResponse,
   resolveAlibabaCredentialApplication,
@@ -10,6 +9,7 @@ import {
   toAlibabaCredentialApplicationSummary,
   validateAlibabaOAuthCallback
 } from '@one-vegetable/core';
+import { inspectAlibabaDeveloperPageDocument } from '@one-vegetable/core/alibaba-developer-page-inspection';
 
 import type {
   AlibabaCredentialAcquisitionContinueCommand,

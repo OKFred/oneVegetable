@@ -1,9 +1,6 @@
 import { browser } from 'wxt/browser';
-import {
-  APP_PREFERENCES_STORAGE_KEY,
-  inspectAlibabaDeveloperPageDocument,
-  parseAppPreferences
-} from '@one-vegetable/core';
+import { APP_PREFERENCES_STORAGE_KEY, parseAppPreferences } from '@one-vegetable/core/preferences';
+import { inspectAlibabaDeveloperPageDocument } from '@one-vegetable/core/alibaba-developer-page-inspection';
 
 export { inspectAlibabaDeveloperPageDocument as inspectApplicationPageStateInFrame };
 
