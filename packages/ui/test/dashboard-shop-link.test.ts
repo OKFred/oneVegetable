@@ -2,6 +2,7 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'vue-sonner';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { provideServices } from '../src/lib/services';
 import { uiI18n } from '../src/i18n';
@@ -12,7 +13,12 @@ import {
   saveDashboardShopUrl
 } from '../src/lib/dashboard-shop-url';
 
+vi.mock('vue-sonner', () => ({
+  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), dismiss: vi.fn() }
+}));
+
 beforeEach(() => {
+  vi.clearAllMocks();
   localStorage.clear();
   uiI18n.global.locale.value = 'zh-CN';
 });
@@ -130,10 +136,15 @@ describe('dashboard shop link', () => {
     const item = await setup();
     item.readContext.mockRejectedValueOnce(new Error('VAULT_LOCKED'));
     await clickTestId('dashboard-shop-edit');
-    expect(item.wrapper.text()).toContain('暂时无法确认当前账号');
+    expect(item.wrapper.text()).not.toContain('暂时无法确认当前账号');
+    expect(toast.warning).toHaveBeenCalledWith(
+      '暂时无法确认当前账号或读取本地设置，请解锁凭据或重新登录后再试。',
+      expect.objectContaining({ id: 'dashboard-shop-context-unavailable', duration: 4_000 })
+    );
     expect(document.querySelector('[data-testid="dashboard-shop-url"]')).toBeNull();
     await clickTestId('dashboard-shop-edit');
     expect(getInput()).toBeDefined();
+    expect(toast.dismiss).toHaveBeenCalledWith('dashboard-shop-context-unavailable');
     item.wrapper.unmount();
   });
 
@@ -145,9 +156,67 @@ describe('dashboard shop link', () => {
       throw new Error('quota');
     });
     await clickTestId('dashboard-shop-save');
-    expect(document.body.textContent).toContain('无法保存店铺链接');
+    expect(document.body.textContent).not.toContain('无法保存店铺链接');
+    expect(toast.error).toHaveBeenCalledWith(
+      '无法保存店铺链接，请确认登录和凭据状态，以及浏览器本地存储是否可用。',
+      expect.objectContaining({ id: 'dashboard-shop-save-failed', duration: 4_000 })
+    );
+    expect(toast.success).not.toHaveBeenCalled();
     expect(getInput().value).toBe('https://shop.en.alibaba.com');
     expect(item.wrapper.find('[data-testid="dashboard-shop-visit"]').exists()).toBe(false);
     item.wrapper.unmount();
+  });
+
+  it('warns once per unavailable episode on focus, but lets an explicit retry show feedback again', async () => {
+    const item = await setup();
+    item.readContext.mockRejectedValue(new Error('VAULT_LOCKED'));
+    globalThis.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    globalThis.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(toast.warning).toHaveBeenCalledTimes(1);
+    expect(item.wrapper.find('[role="status"]').exists()).toBe(false);
+    await clickTestId('dashboard-shop-edit');
+    expect(toast.warning).toHaveBeenCalledTimes(2);
+    item.readContext.mockResolvedValue({ ...item.context });
+    globalThis.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    item.readContext.mockRejectedValue(new Error('VAULT_LOCKED'));
+    globalThis.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(toast.warning).toHaveBeenCalledTimes(3);
+    item.wrapper.unmount();
+  });
+
+  it('uses the current UI language and provides a Settings action without permanently displaying the warning', async () => {
+    const item = await setup();
+    uiI18n.global.locale.value = 'en-US';
+    item.readContext.mockRejectedValueOnce(new Error('VAULT_LOCKED'));
+    await clickTestId('dashboard-shop-edit');
+    expect(toast.warning).toHaveBeenCalledWith(
+      'Unable to identify the current account or read local settings. Unlock credentials or sign in again, then retry.',
+      expect.objectContaining({ id: 'dashboard-shop-context-unavailable', duration: 4_000 })
+    );
+    const action = vi.mocked(toast.warning).mock.calls.at(-1)?.[1]?.action;
+    expect(action).toMatchObject({ label: 'Settings' });
+    expect(action && 'onClick' in action ? typeof action.onClick : null).toBe('function');
+    expect(item.wrapper.text()).not.toContain('Unable to identify');
+    item.wrapper.unmount();
+  });
+
+  it('does not emit a late warning after leaving the page', async () => {
+    const item = await setup();
+    let rejectRead: ((reason: Error) => void) | undefined;
+    item.readContext.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectRead = reject;
+        })
+    );
+    globalThis.dispatchEvent(new Event('focus'));
+    item.wrapper.unmount();
+    rejectRead?.(new Error('VAULT_LOCKED'));
+    await flushPromises();
+    expect(toast.warning).not.toHaveBeenCalled();
   });
 });

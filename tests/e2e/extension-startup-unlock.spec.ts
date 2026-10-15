@@ -101,6 +101,22 @@ async function unlock(page: Page): Promise<void> {
   await expect(dialog).toBeHidden();
 }
 
+test('an unavailable dashboard account uses an expiring notification, not a permanent banner', async () => {
+  const page = await boot();
+  const dialog = page.getByRole('dialog', { name: unlockTitle, exact: true });
+  await dialog.getByRole('button', { name: '稍后解锁', exact: true }).click();
+  await page.getByRole('link', { name: '总览', exact: true }).click();
+  const message = '暂时无法确认当前账号或读取本地设置，请解锁凭据或重新登录后再试。';
+  const notification = page.locator('[data-sonner-toast]').filter({ hasText: message });
+  await expect(notification).toBeVisible();
+  await expect(page.getByTestId('dashboard-shop-link')).not.toContainText(message);
+  await expect(notification).toBeHidden({ timeout: 8_000 });
+  await page.getByTestId('dashboard-shop-edit').click();
+  await expect(notification).toBeVisible();
+  await notification.getByRole('button', { name: '设置', exact: true }).click();
+  await expect(page).toHaveURL(/#\/settings$/u);
+});
+
 test('onboarding precedes unlock; Later, X, Escape and backdrop never trap the locked workbench', async () => {
   const page = await boot({ onboarding: false });
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
