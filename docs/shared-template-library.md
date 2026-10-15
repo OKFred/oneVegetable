@@ -45,9 +45,19 @@ S3 **不是实时模板数据库**，不自动同步、合并冲突或跨设备�
 
 - 限制：ZIP 50 MiB、解压总量 100 MiB、最多 500 张图片、单图 5 MiB、清单 5 MiB。仅接受 JPEG/PNG/GIF/BMP，并检查文件头、大小、SHA-256 与清单引用；拒绝路径穿越、重复条目、未声明素材和不支持的 ZIP 结构。
 - 导入 JSON/ZIP 自动识别。图片包先选一个**真实图片分组**，检查上传权限并预览，再二次确认。没有图片的 ZIP 不要求 Alibaba 凭据或图库权限。
-- 确认后，复用图库传输任务的持久发送记录；上传并按 fileId/目标分组完整分页回读后，才将新 URL 和 fileId 写入模板。不能以同名图片代替确认，也不保存缺图模板。
+- 确认后，复用图库传输任务的持久发送记录；上传并按返回的 fileId/目标分组完整分页回读后，才将 URL 和 fileId 写入模板。不能以同名图片代替确认，也不保存缺图模板。
 - 两个窗口的同包任务通过 Web Locks 原子认领。相同账号、配置、图片包及目标分组下复用已确认回执；未知上传仅核对，不自动重传。恢复时重新选择原模板 ZIP，图库任务可自动校验其确定性转换后的指纹。
 - 任一模板写入失败即停止，已完成模板及图片保留。同名全部跳过时不再上传图片；部分跳过时仍可能传输整个包。图片任务与模板写入不是跨服务事务，不能承诺无孤立图片；不自动删除素材。
+
+#### 相同图片与原分组
+
+Alibaba 可能将相同内容的上传去重，返回已有 fileId，并保留它的原分组；上传成功响应中的请求分组不等于实际归组成功。默认仍要求在指定分组找到确切 fileId，否则停止保存模板，不自动重复上传或移动图片。
+
+确实希望复用图片时，主动勾选 **“复用已存在图片（保留原分组）”** 并再次确认。系统只在全部图片的第一页（最多 100 条）中查找返回的确切 fileId，并下载核对字节数和 SHA-256。匹配后记录实际分组，模板使用已验证的图片；指定分组不会被伪装为实际分组。未找到、内容不符、配置变化或权限拒绝时仍然停止，不扩大为整店扫描。
+
+遇到分组不符后，可关闭弹窗，重新选择**同一个包、同一个目标分组**并启用上述选项；会复用原任务及 requestId，仅核对已发送结果，不再次上传。没有 fileId 或结果仍不明的任务不能据此强制重传。插件会在最终确认点击时申请所需的精确图片域名权限，拒绝权限就不开始本次上传；未新增永久权限。
+
+**Existing-image reuse:** Alibaba can return an existing file ID without moving the image into the requested group. Strict group verification remains the default. Explicitly enable reuse to verify the exact returned ID, byte length and SHA-256 while keeping its original group. Reopening the same package and target reuses the existing durable receipt rather than uploading again. Lookup is bounded to the first 100 gallery images; absence or ambiguity never proves success.
 
 S3 勾选“备份包含图片文件”后，图片和清单分别保存到独立批次前缀，**不上传一个大 ZIP，也不放宽 S3 单对象 5 MiB 限制**。逐个 PUT 后精确 GET 核对，全部图片确认后才写 `templates.json`。结果不明的当前备份只允许读取核对，不重复 PUT；关闭/刷新后不自动续传，保留前缀供人工核查。导入先读清单并校验素材，再按同一图库流程上传；配置或身份变化停止执行，不自动换绑。
 
@@ -65,11 +75,13 @@ JSON/S3 packages contain portable content only. Imports skip same-language names
 
 ## 验证边界
 
+2026-10-15 携图导入整改补验：真实 Node/Web 已完成 ZIP 导出、目标分组严格拒绝、显式复用已有图片、同回执再次导入，以及 RustFS 图片/清单导出、回读和导入，共七项检查。相同内容被平台去重时保留原分组，只有确切 fileId 和哈希核对通过才保存模板；同包恢复未重复上传。少量测试图片及备份对象保留，没有商品/库存修改或远端删除。正式插件的域名授权及真实导入补验单独记录，不以 Web/BFF 结果替代；正式发布仍暂停。详情见 [2.16.0 发布准备](release-2.16.0-readiness.md)。以下为此前各阶段的历史记录。
+
 2026-10-15 模板图片素材包：312 个测试文件、2502 项全量单测通过，Worker/D1 隔离回归 9 个文件、24 项通过；Web 模板组合、JSON/ZIP 往返、真实代码路径的 Mock 图库上传/回读及同包回执复用，加上正式独立 MV3 本地模板/ZIP 往返与 1 MiB DEFLATE 素材解析，共 4 项浏览器回归通过。覆盖中英文、暗色、跨窗口旧预览复用未知回执、发送前落盘、配置变化、原图链接脱敏、S3 清单最后写入，以及错误后从弹窗转到任务中心。
 
 格式、Lint（仅保留既有 warning）、i18n、OpenAPI/生成漂移、类型、静态授权页/Web/Worker dry-run/MV3 构建、包体与商店合规检查通过。Windows 全量测试固定最多 2 个 worker，原有 5 秒测试超时没有放宽。最终构建 212 个文件、解包 4,223,348 字节；按正式参数内存测量 ZIP 为 1,229,513 字节，低于现有 2,000,000/5,470,000 字节预算，未替换正式发布附件。
 
-这些为离线/隔离验收；新增图片迁移**尚未执行真实 Alibaba、RustFS 或云 S3 上传**，不能由 Mock 回读、此前 JSON-only S3 验收或构建结果代替。原来的 Node/Web 真实模式本地服务已启动；未重置账号、修改凭据、部署 Worker 或合入主线。截图位于忽略目录 `artifacts/template-materials/`、`artifacts/template-library/` 与 `artifacts/template-composition/`。
+该阶段为离线/隔离验收，当时尚未执行新增图片迁移的真实 Alibaba、RustFS 或云 S3 上传，不能由 Mock 回读、此前 JSON-only S3 验收或构建结果代替。后续真实补验见本节首段。原来的 Node/Web 真实模式本地服务已启动；未重置账号、修改凭据、部署 Worker 或合入主线。截图位于忽略目录 `artifacts/template-materials/`、`artifacts/template-library/` 与 `artifacts/template-composition/`。
 
 2026-10-14 固定变量/组合补验：全量 308 个测试文件、2356 项单测通过；Web 模板变量组合、原详情编辑及模板库往返，加上正式独立 MV3 的本地模板编辑/JSON 往返，共 4 项浏览器验收通过。覆盖模板顺序、商品标题回填、缺失信息、显式确认、变量不回写、中英文、暗色，以及旧模板继续使用。测试使用 `mock/data/template-composition.json` 等隔离样本，未执行 Alibaba mutation，也未重新执行真实 S3 上传。
 
