@@ -1,6 +1,9 @@
 export const gatewayCredentials = {
   title: 'Alibaba 凭据配置',
   dualTitle: 'TOP + IOP 双授权',
+  automaticRouting: '已默认启用按能力自动路由',
+  singleRouting: '当前使用 {protocol} 授权',
+  routingOwnership: '请确保两份授权属于同一商家；系统不会替你验证店铺归属。',
   dualDescription:
     '建议拥有两类应用的商家分别完成 TOP 和 IOP 授权，以覆盖更多能力。两份独立保存，不互相覆盖；只有一类应用也可使用。',
   profileTop: 'TOP 授权（旧版）',
@@ -15,9 +18,8 @@ export const gatewayCredentials = {
   profileAlreadySelected: '当前正在配置 {protocol}，请在下方导入或填写。',
   profileIsolation: '导入、保存、测试、续期和清除仅针对当前授权，不自动续期。',
   profileMismatch: '此 JSON 属于另一协议，请先选择对应授权再导入；尚未修改任何配置。',
-  profileConfirmBody:
-    '仅更换服务端的 {protocol} 授权，影响所有用户；另一份授权保留，同商家确认失效。不会修改 Alibaba 商品。',
-  profileClearBody: '仅清除 {protocol} 授权，保留另一份；同商家确认失效。此操作不撤销平台授权。',
+  profileConfirmBody: '仅更换服务端的 {protocol} 授权，影响所有用户；另一份授权保留。不会修改 Alibaba 商品。',
+  profileClearBody: '仅清除 {protocol} 授权，保留另一份。此操作不撤销平台授权。',
   bindingConfirmed: '用户已确认同一商家，已启用按能力自动路由',
   bindingRequired: '按能力自动路由需要先确认同一商家',
   bindingNeedsBoth: '请先配置两份授权再确认；单份授权仍可独立使用。',
@@ -28,7 +30,7 @@ export const gatewayCredentials = {
   bindingDisclaimer: '这是用户确认，不是平台官方验证。更换或清除任一授权后需要重新确认。',
   bindingTime: '用户确认时间：{time}',
   routingPolicy:
-    '确认后，已验证支持的请求优先使用 IOP，其他受支持请求使用 TOP；不支持的操作仍会阻止。结果不确定的写操作不会跨协议重试。',
+    '两份授权配置齐全后，已验证支持的请求默认优先使用 IOP，其他受支持请求使用 TOP；不支持的操作仍会阻止。结果不确定的写操作不会跨协议重试。',
   protocol: '网关协议',
   protocolTop: 'TOP（默认）',
   protocolIop: 'IOP（显式选择）',

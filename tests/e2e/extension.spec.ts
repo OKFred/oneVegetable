@@ -100,7 +100,7 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   await expect(page.getByTestId('dashboard-authorization-card')).not.toContainText('剩余约');
 });
 
-test('formal MV3 dual profiles persist user confirmation and route photo reads independently', async () => {
+test('formal MV3 dual profiles persist automatic routing without merchant confirmation', async () => {
   if (!context) throw new Error('Missing extension context');
   const browserContext = context;
   const worker = browserContext.serviceWorkers()[0] ?? (await browserContext.waitForEvent('serviceworker'));
@@ -275,16 +275,14 @@ test('formal MV3 dual profiles persist user confirmation and route photo reads i
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
   await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
-  const beforeConfirmation = await readAuthorizations();
-  expect(beforeConfirmation.top).toEqual(topOnly.top);
-  expect(beforeConfirmation).toMatchObject({ defaultProtocol: 'top', binding: { confirmed: false } });
-  expect(beforeConfirmation.iop?.configurationId).toEqual(expect.any(String));
-  const checkbox = panel.getByTestId('same-merchant-confirmation');
-  const confirm = panel.getByTestId('confirm-authorization-binding');
-  await expect(checkbox).not.toBeChecked();
-  await expect(confirm).toBeDisabled();
-  await expect(panel.getByTestId('authorization-binding')).toContainText('不是平台官方验证');
-  await expect(panel.getByTestId('authorization-binding')).toContainText('请求仍使用原默认协议（TOP）');
+  const configuredPair = await readAuthorizations();
+  expect(configuredPair.top).toEqual(topOnly.top);
+  expect(configuredPair).toMatchObject({ defaultProtocol: 'top', binding: { confirmed: false } });
+  expect(configuredPair.iop?.configurationId).toEqual(expect.any(String));
+  await expect(panel.getByTestId('same-merchant-confirmation')).toHaveCount(0);
+  await expect(panel.getByTestId('confirm-authorization-binding')).toHaveCount(0);
+  await expect(panel.getByTestId('authorization-binding')).toContainText('系统不会替你验证店铺归属');
+  await expect(panel.getByTestId('authorization-binding')).toContainText('已默认启用按能力自动路由');
 
   const listPhotos = async (selectedGroupId: string) => {
     const requestId = crypto.randomUUID();
@@ -319,26 +317,16 @@ test('formal MV3 dual profiles persist user confirmation and route photo reads i
   };
   expect(calls).toEqual([]); // Imports never auto-renew or test a gateway.
   await listPhotos(groupId);
-  expect(calls).toEqual([{ protocol: 'top', location: 'SUB_GROUP' }]);
-  await checkbox.check();
-  await expect(confirm).toBeEnabled();
-  expect((await readAuthorizations()).binding.confirmed).toBe(false); // Checkbox alone does not bind.
-  await confirm.click();
-  await expect(panel.getByTestId('authorization-binding')).toContainText('用户已确认同一商家');
-  const confirmed = await readAuthorizations();
-  expect(confirmed.binding).toMatchObject({
-    confirmed: true,
-    topConfigurationId: topOnly.top?.configurationId,
-    iopConfigurationId: beforeConfirmation.iop?.configurationId,
-    confirmedAtUtc: expect.any(Number)
-  });
+  expect(calls).toEqual([{ protocol: 'iop', location: groupId }]);
+  // Routing is automatic; it never fabricates a user confirmation or ownership verification.
+  expect(await readAuthorizations()).toEqual(configuredPair);
   await page.reload();
   await expect(panel.getByTestId('authorization-top')).toContainText(
     credentialFixture.knownExpiry.slice(0, 10)
   );
   await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
-  await expect(panel.getByTestId('authorization-binding')).toContainText('用户已确认同一商家');
-  expect(await readAuthorizations()).toEqual(confirmed);
+  await expect(panel.getByTestId('authorization-binding')).toContainText('已默认启用按能力自动路由');
+  expect(await readAuthorizations()).toEqual(configuredPair);
   await expect(page.getByLabel('App Secret', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('Access Token', { exact: true })).toHaveValue('');
   const encrypted = await readExtensionLocalValue(page, 'gatewaySettings');
@@ -353,7 +341,7 @@ test('formal MV3 dual profiles persist user confirmation and route photo reads i
   await listPhotos('-1');
   await listPhotos(groupId);
   expect(calls).toEqual([
-    { protocol: 'top', location: 'SUB_GROUP' },
+    { protocol: 'iop', location: groupId },
     { protocol: 'top', location: 'ALL_GROUP' },
     { protocol: 'iop', location: groupId }
   ]);

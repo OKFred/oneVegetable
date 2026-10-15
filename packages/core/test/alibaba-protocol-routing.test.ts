@@ -3,11 +3,23 @@ import { authorizationBindingMatches, selectAlibabaOperationProtocol } from '../
 
 const both = { top: true, iop: true, defaultProtocol: 'top' as const, bindingConfirmed: true };
 describe('Alibaba protocol routing before dispatch', () => {
-  it('preserves single-profile behavior and never silently activates an unconfirmed pair', () => {
-    expect(selectAlibabaOperationProtocol('listProducts', {}, { ...both, bindingConfirmed: false })).toBe(
-      'top'
-    );
+  it.each([false, true])(
+    'routes a configured pair independently of legacy confirmation (%s)',
+    (bindingConfirmed) => {
+      const available = { ...both, bindingConfirmed };
+      expect(selectAlibabaOperationProtocol('listProducts', {}, available)).toBe('iop');
+      expect(selectAlibabaOperationProtocol('listPhotos', {}, available)).toBe('top');
+      expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1' }, available)).toBe('iop');
+      expect(selectAlibabaOperationProtocol('updateProduct', {}, available)).toBe('iop');
+      expect(selectAlibabaOperationProtocol('updateProductDisplay', {}, available)).toBe('top');
+    }
+  );
+  it('preserves single-profile behavior and uses the remaining profile when the default is absent', () => {
     expect(selectAlibabaOperationProtocol('listProducts', {}, { ...both, iop: false })).toBe('top');
+    expect(selectAlibabaOperationProtocol('listProducts', {}, { ...both, top: false })).toBe('iop');
+    expect(
+      selectAlibabaOperationProtocol('listProducts', {}, { ...both, iop: false, defaultProtocol: 'iop' })
+    ).toBe('top');
     expect(
       selectAlibabaOperationProtocol('listPhotos', {}, { ...both, top: false, defaultProtocol: 'iop' })
     ).toBe('iop');
@@ -71,7 +83,7 @@ describe('Alibaba protocol routing before dispatch', () => {
       )
     ).toBe('iop');
   });
-  it('invalidates a confirmation when either configuration changes, not on token refresh', () => {
+  it('retains legacy confirmation matching without treating it as a routing prerequisite', () => {
     const binding = {
       topConfigurationId: 'top-config',
       iopConfigurationId: 'iop-config',

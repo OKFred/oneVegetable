@@ -1,6 +1,10 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
   dualTitle: 'TOP + IOP authorizations',
+  automaticRouting: 'Capability-based routing is enabled automatically',
+  singleRouting: 'Using the {protocol} authorization',
+  routingOwnership:
+    'Both grants should belong to the same merchant; the system does not verify store ownership for you.',
   dualDescription:
     'Merchants with both app types should authorize TOP and IOP for broader capability coverage. Each grant is stored separately and never replaces the other; a single app type is still supported.',
   profileTop: 'TOP authorization (legacy)',
@@ -19,9 +23,9 @@ export const gatewayCredentials = {
   profileMismatch:
     'This JSON belongs to the other protocol. Select its profile first, then import again. Nothing was changed.',
   profileConfirmBody:
-    'Replace only {protocol} for all users of this server. The other profile is preserved; same-merchant confirmation becomes invalid. No Alibaba products are changed.',
+    'Replace only {protocol} for all users of this server. The other profile is preserved. No Alibaba products are changed.',
   profileClearBody:
-    'Clear only {protocol}; the other profile remains configured. Same-merchant confirmation becomes invalid. This does not revoke the platform grant.',
+    'Clear only {protocol}; the other profile remains configured. This does not revoke the platform grant.',
   bindingConfirmed: 'User confirmed the same merchant; capability routing enabled',
   bindingRequired: 'Same-merchant confirmation required for automatic capability routing',
   bindingNeedsBoth:
@@ -36,7 +40,7 @@ export const gatewayCredentials = {
     'This is your confirmation, not official platform verification. Replacing or clearing either profile requires confirmation again.',
   bindingTime: 'User confirmed at {time}',
   routingPolicy:
-    'Once confirmed, verified supported requests prefer IOP; other supported requests use TOP. Unsupported operations stay blocked. Uncertain writes are never retried through the other protocol.',
+    'With both profiles configured, verified supported requests automatically prefer IOP; other supported requests use TOP. Unsupported operations stay blocked. Uncertain writes are never retried through the other protocol.',
   protocol: 'Gateway protocol',
   protocolTop: 'TOP (default)',
   protocolIop: 'IOP (explicit choice)',

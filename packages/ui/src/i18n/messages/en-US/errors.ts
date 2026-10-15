@@ -3,11 +3,11 @@ export const errors = {
     TOP_APPLICATION_REQUIRED:
       'No usable legacy TOP application was found. This console is for IOP: use the IOP authorization tool, or import or enter existing TOP credentials in Settings.',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
-      'Confirm that TOP and IOP belong to the same merchant in credential settings before using automatic capability routing.',
+      'Check that both TOP and IOP authorizations are configured, then reload their status in credential settings.',
     ALIBABA_AUTHORIZATION_BINDING_CHANGED:
-      'An authorization changed. Review both profiles and confirm the same merchant again; nothing was automatically retried.',
+      'An authorization changed. Reload both profiles and review unfinished tasks; nothing was automatically retried.',
     ALIBABA_AUTHORIZATION_BINDING_STALE:
-      'An authorization changed. Review both profiles and confirm the same merchant again; nothing was automatically retried.',
+      'An authorization changed. Reload both profiles and review unfinished tasks; nothing was automatically retried.',
     ALIBABA_PROTOCOL_SELECTION_REQUIRED:
       'Choose TOP or IOP explicitly before replacing credentials. The other authorization must be preserved.',
     ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:

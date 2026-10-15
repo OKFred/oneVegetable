@@ -30,8 +30,8 @@ describe('extension operation policy', () => {
     await client.get(OPERATION_IDS);
     expect(readStatus).toHaveBeenCalledTimes(2);
   });
-  it('uses confirmed pools for static availability/capabilities and keeps locked or unconfirmed pools closed', async () => {
-    const pool = { top: true, iop: true, defaultProtocol: 'iop' as const, bindingConfirmed: true };
+  it('routes configured pools without confirmation while keeping locked pools and unsupported writes closed', async () => {
+    const pool = { top: true, iop: true, defaultProtocol: 'iop' as const, bindingConfirmed: false };
     const client = createExtensionOperationAvailabilityClient(() =>
       Promise.resolve({ state: 'unlocked', protocol: 'iop', pool })
     );
@@ -50,9 +50,9 @@ describe('extension operation policy', () => {
       applyExtensionCapabilityProtocol(capability, {
         state: 'unlocked',
         protocol: 'iop',
-        pool: { ...pool, bindingConfirmed: false }
+        pool: { ...pool, bindingConfirmed: true }
       }).realCallEnabled
-    ).toBe(false);
+    ).toBe(true);
   });
   it('reports IOP verification without inheriting TOP metadata or unlocking a locked vault', () => {
     const top = {

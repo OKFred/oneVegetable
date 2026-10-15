@@ -98,7 +98,7 @@ export const auth = {
       authorization: {
         title: 'Authorize and save',
         description:
-          'Authorize and save IOP and legacy TOP separately. If you have both app types, configure both and confirm they belong to the same merchant.'
+          'Authorize and save IOP and legacy TOP separately. Configuring both enables capability routing automatically. Ensure both grants belong to the same merchant; store ownership is not verified by the system.'
       }
     },
     safety: {

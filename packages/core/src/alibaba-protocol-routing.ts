@@ -7,7 +7,7 @@ export interface AlibabaProtocolAvailability {
   top: boolean;
   iop: boolean;
   defaultProtocol: AlibabaProtocol;
-  /** User-confirmed ownership, bound to both configuration identities; not platform verification. */
+  /** Legacy confirmation metadata. Routing now activates whenever both profiles are configured. */
   bindingConfirmed: boolean;
 }
 
@@ -35,7 +35,7 @@ export function selectAlibabaOperationProtocol(
   payload: unknown,
   available: AlibabaProtocolAvailability
 ): AlibabaProtocol {
-  if (!available.bindingConfirmed || !available.top || !available.iop)
+  if (!available.top || !available.iop)
     return available[available.defaultProtocol]
       ? available.defaultProtocol
       : available.top

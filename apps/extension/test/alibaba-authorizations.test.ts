@@ -92,7 +92,7 @@ describe('extension encrypted protocol profiles', () => {
       defaultProtocol: 'iop'
     });
   });
-  it('routes all/ungrouped photos to TOP and selected groups to verified IOP only when confirmed', async () => {
+  it('routes a configured pair by capability without requiring legacy confirmation', async () => {
     const settings = pair();
     for (const payload of [{}, { groupId: '-1' }, { ungrouped: true }])
       expect((await resolveAuthorization(settings, 'listPhotos', payload)).accessToken).toBe(top.accessToken);
@@ -100,8 +100,11 @@ describe('extension encrypted protocol profiles', () => {
     const unconfirmed = { ...settings };
     delete unconfirmed.authorizationBinding;
     expect((await resolveAuthorization(unconfirmed, 'listPhotos', { groupId: '123' })).accessToken).toBe(
-      top.accessToken
+      iop.accessToken
     );
+    expect((await resolveAuthorization(unconfirmed, 'listProducts')).protocol).toBe('iop');
+    expect(summarizeAuthorizations(unconfirmed).binding.confirmed).toBe(false);
+    expect(unconfirmed.authorizationBinding).toBeUndefined();
     expect((await resolveAuthorization(settings, 'getDashboard')).accessToken).toBe(top.accessToken);
     expect((await resolveAuthorization(settings, 'getTradeOrderAggregate')).accessToken).toBe(
       top.accessToken
@@ -109,6 +112,7 @@ describe('extension encrypted protocol profiles', () => {
   });
   it('matches exact saved contexts ahead of preference and rejects removed contexts without rebinding', async () => {
     const settings = pair();
+    delete settings.authorizationBinding;
     const profiles = authorizationProfiles(settings);
     if (!profiles.top || !profiles.iop) throw new Error('Missing fixture profiles');
     const topId = await galleryGatewayId(runtimeAuthorization(profiles.top));

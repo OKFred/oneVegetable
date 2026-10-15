@@ -91,7 +91,8 @@ export const auth = {
       },
       authorization: {
         title: '授权并保存',
-        description: '新版 IOP 与旧版 TOP 分别授权、分别保存；已有两类应用时建议都配置，再确认属于同一商家。'
+        description:
+          '新版 IOP 与旧版 TOP 分别授权、分别保存；两份配置齐全后默认按能力选路。请确保属于同一商家，系统不会验证店铺归属。'
       }
     },
     safety: {

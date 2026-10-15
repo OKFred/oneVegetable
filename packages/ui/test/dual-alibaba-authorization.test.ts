@@ -297,7 +297,7 @@ async function manualSave(wrapper: VueWrapper): Promise<void> {
   await flushPromises();
 }
 
-describe('independent authorization metadata and user binding', () => {
+describe('independent authorization metadata and automatic capability routing', () => {
   it.each([false, true])(
     'notifies profile selection without saving or changing defaults (extension=%s)',
     async (extension) => {
@@ -332,33 +332,49 @@ describe('independent authorization metadata and user binding', () => {
     );
   });
 
-  it('requires the same-merchant checkbox and an explicit confirmation, with both opaque IDs', async () => {
+  it('shows automatic routing without a same-merchant confirmation or ownership-verification claim', async () => {
     const view = await harness(GatewayAuthorizationsPanel);
     expect(view.wrapper.text()).toContain('建议拥有两类应用的商家分别完成 TOP 和 IOP 授权');
     expect(view.wrapper.text()).toContain('TOP 授权（旧版）');
     expect(view.wrapper.text()).toContain('IOP 授权（新版）');
     expect(view.wrapper.text()).toContain('不能使用新版 IOP 应用替代');
-    expect(view.wrapper.text()).toContain('不是平台官方验证');
+    expect(view.wrapper.text()).toContain('系统不会替你验证店铺归属');
     expect(view.wrapper.get('[data-testid="authorization-top"]').text()).toContain('有效期未知');
     expect(view.wrapper.get('[data-testid="authorization-iop"]').text()).toContain('剩余约');
-    const action = view.wrapper.get('[data-testid="confirm-authorization-binding"]');
-    expect(action.attributes('disabled')).toBeDefined();
+    expect(view.wrapper.find('[data-testid="confirm-authorization-binding"]').exists()).toBe(false);
+    expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
     expect(view.confirm).not.toHaveBeenCalled();
-    await view.wrapper.get('[data-testid="same-merchant-confirmation"]').setValue(true);
-    expect(view.confirm).not.toHaveBeenCalled();
-    await action.trigger('click');
-    await flushPromises();
-    expect(view.confirm).toHaveBeenCalledWith('top-opaque-configuration', 'iop-opaque-configuration');
-    expect(view.wrapper.text()).toContain('用户已确认同一商家');
+    expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.text()).not.toContain('用户已确认同一商家');
+    expect(view.current().binding.confirmed).toBe(false);
     expect(view.test).not.toHaveBeenCalled();
     expect(view.refresh).not.toHaveBeenCalled();
   });
 
-  it.each(['missing-profile', 'missing-id', 'stale-binding'] as const)(
-    'does not enable routing for %s',
+  it('keeps automatic-routing and ownership guidance accurate in both UI languages without API calls', async () => {
+    const view = await harness(GatewayAuthorizationsPanel);
+    const reads = view.read.mock.calls.length;
+    const statusReads = view.status.mock.calls.length;
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    const guidance = view.wrapper.get('[data-testid="authorization-binding"]').text();
+    expect(guidance).toContain('Capability-based routing is enabled automatically');
+    expect(guidance).toContain('With both profiles configured');
+    expect(guidance).toContain('the system does not verify store ownership');
+    expect(guidance).not.toMatch(/once confirmed|after confirmation|user confirmed/iu);
+    expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
+    expect(view.read).toHaveBeenCalledTimes(reads);
+    expect(view.status).toHaveBeenCalledTimes(statusReads);
+    expect(view.confirm).not.toHaveBeenCalled();
+    expect(view.current().binding.confirmed).toBe(false);
+  });
+
+  it.each(['missing-profile', 'unconfigured-profile', 'missing-id', 'stale-binding'] as const)(
+    'derives routing availability from configured profiles rather than legacy binding: %s',
     async (caseName) => {
       const summary = dualSummary();
       if (caseName === 'missing-profile') summary.iop = null;
+      else if (caseName === 'unconfigured-profile' && summary.iop) summary.iop.configured = false;
       else if (caseName === 'missing-id' && summary.top) summary.top.configurationId = null;
       else
         summary.binding = {
@@ -370,30 +386,34 @@ describe('independent authorization metadata and user binding', () => {
       const view = await harness(AlibabaAuthorizationsPanel, {
         props: { summary, selectedProtocol: 'top', canConfirm: true }
       });
-      expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
-      if (caseName !== 'stale-binding')
-        expect(
-          view.wrapper.get('[data-testid="same-merchant-confirmation"]').attributes('disabled')
-        ).toBeDefined();
-      if (caseName === 'missing-id') expect(view.wrapper.text()).toContain('分别导入托管授权 JSON');
+      const automatic = caseName === 'missing-id' || caseName === 'stale-binding';
+      expect(view.wrapper.text().includes('已默认启用按能力自动路由')).toBe(automatic);
+      if (!automatic) expect(view.wrapper.text()).toContain('当前使用 TOP 授权');
+      expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
+      expect(view.wrapper.find('[data-testid="confirm-authorization-binding"]').exists()).toBe(false);
+      expect(view.confirm).not.toHaveBeenCalled();
     }
   );
 
-  it('resets the checkbox after replacement and keeps stale-ID refusal visible without retrying', async () => {
+  it('reloads replaced profile metadata without confirming ownership or changing the default', async () => {
     const view = await harness(GatewayAuthorizationsPanel);
-    await view.wrapper.get('[data-testid="same-merchant-confirmation"]').setValue(true);
     const next = dualSummary();
     if (next.iop) next.iop.configurationId = 'iop-replaced-externally';
     view.replace(next);
-    view.confirm.mockRejectedValue(new Error('ALIBABA_AUTHORIZATION_BINDING_CHANGED'));
-    await view.wrapper.get('[data-testid="confirm-authorization-binding"]').trigger('click');
+    const panel = view.wrapper.findComponent(GatewayAuthorizationsPanel).vm as unknown as {
+      reload(): Promise<void>;
+    };
+    await panel.reload();
     await flushPromises();
-    expect(view.confirm).toHaveBeenCalledOnce();
-    expect(view.wrapper.text()).toContain('ALIBABA_AUTHORIZATION_BINDING_CHANGED');
-    expect(
-      (view.wrapper.get('[data-testid="same-merchant-confirmation"]').element as HTMLInputElement).checked
-    ).toBe(false);
-    expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
+    expect(view.read).toHaveBeenCalledTimes(2);
+    expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+    expect(view.current().iop?.configurationId).toBe('iop-replaced-externally');
+    expect(view.current().defaultProtocol).toBe('top');
+    expect(view.current().binding.confirmed).toBe(false);
+    expect(view.confirm).not.toHaveBeenCalled();
+    expect(view.save).not.toHaveBeenCalled();
+    expect(view.test).not.toHaveBeenCalled();
+    expect(view.refresh).not.toHaveBeenCalled();
   });
 
   it('does not load administrator summaries for regular users', async () => {
@@ -458,7 +478,9 @@ describe('protocol-targeted BFF credential actions', () => {
       expect(view.refresh.mock.calls).toEqual([['top']]);
       expect(changed).toHaveBeenCalledOnce();
       expect(view.read).toHaveBeenCalledTimes(2);
-      expect(view.wrapper.text()).toContain('用户已确认同一商家');
+      expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+      expect(view.current().binding).toEqual(summary.binding);
+      expect(view.confirm).not.toHaveBeenCalled();
     } finally {
       globalThis.removeEventListener(GATEWAY_CONFIGURATION_EVENT, changed);
     }
@@ -500,7 +522,8 @@ describe('protocol-targeted BFF credential actions', () => {
     await flushPromises();
     expect(view.clear.mock.calls).toEqual([[37, 'iop']]);
     expect(view.current().top?.configurationId).toBe('top-opaque-configuration');
-    expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
+    expect(view.wrapper.text()).not.toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.text()).toContain('当前使用 TOP 授权');
   });
 
   it('keeps a failed IOP renewal and recorded expiry without replacing credentials or retrying TOP', async () => {
@@ -596,15 +619,13 @@ describe('extension settings profile isolation', () => {
     expect(view.current().binding.confirmed).toBe(false);
   });
 
-  it('confirms local grants with the exact IDs, and targets renewal/clear separately', async () => {
+  it('automatically routes local grants without confirming ownership, targeting renewal/clear separately', async () => {
     const view = await harness(SettingsView, { extension: true });
-    await view.wrapper.get('[data-testid="same-merchant-confirmation"]').setValue(true);
-    await view.wrapper.get('[data-testid="confirm-authorization-binding"]').trigger('click');
-    await flushPromises();
-    expect(view.confirmAuthorizations).toHaveBeenCalledWith(
-      'top-opaque-configuration',
-      'iop-opaque-configuration'
-    );
+    expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
+    expect(view.wrapper.find('[data-testid="confirm-authorization-binding"]').exists()).toBe(false);
+    expect(view.confirmAuthorizations).not.toHaveBeenCalled();
+    expect(view.current().binding.confirmed).toBe(false);
     await view.wrapper.get('[data-testid="renew-authorization-iop"]').trigger('click');
     await flushPromises();
     expect(view.refreshAuthorization.mock.calls).toEqual([['iop']]);
@@ -615,7 +636,10 @@ describe('extension settings profile isolation', () => {
     await flushPromises();
     expect(view.clearAuthorization.mock.calls).toEqual([['iop']]);
     expect(view.current().top?.configurationId).toBe('top-opaque-configuration');
-    expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
+    expect(view.current().defaultProtocol).toBe('top');
+    expect(view.wrapper.text()).not.toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.text()).toContain('当前使用 TOP 授权');
+    expect(view.confirmAuthorizations).not.toHaveBeenCalled();
   });
 
   it('guards unsaved profile edits and preserves them after a failed renewal', async () => {

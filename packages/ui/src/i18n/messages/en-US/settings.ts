@@ -109,7 +109,7 @@ export const settings = {
     title: 'Alibaba.com Open Platform credentials',
     guideTitle: 'Connect real APIs in three steps',
     guideDescription:
-      'Use the IOP tool for new applications. TOP needs separate legacy-app credentials: import or enter them manually; the retired URL is never opened automatically. If you have both app types, authorize both and confirm the same merchant for capability routing.',
+      'Use the IOP tool for new applications. TOP needs separate legacy-app credentials: import or enter them manually; the retired URL is never opened automatically. Configure both grants for automatic capability routing. Ensure they belong to the same merchant; store ownership is not verified by the system.',
     acquire: 'Get legacy TOP credentials',
     openCenter: 'Open new IOP Application Center',
     importBundle: 'Import credential bundle JSON',
