@@ -134,6 +134,7 @@ A controlled original-image test confirmed that Alibaba deduplicates identical u
 - 失败原因是引导驱动从 core 总入口导入共享函数，改变了扩展的启动依赖图。改成显式子路径导入后正式扩展重建，启动 JS 为 216,853 字节，低于原有 250 KB 门禁；解包为 4,239,379 字节，213 个文件。没有放宽任何预算或增加依赖。重建及预算日志：`artifacts/developer-guide-extension-rebuild.log`；商店合规检查：`artifacts/developer-guide-compliance.log`。
 - 固定正式 MV3 的四项浏览器测试通过，实际验证 trusted-only 存储下的向导注入、中文文案、已批准进度识别、移除，以及初始解锁、后台重启和多工作台协调。测试仅使用本地回放页面，不访问 Alibaba 账号或绕过扩展权限；日志：`artifacts/developer-guide-formal-e2e.log`。
 - 最新 Node 中英文登录及设置浏览器流程 6/6 通过，使用隔离 SQLite 和回放网关，不改现有本机账号或凭据；日志：`artifacts/release-2.16.0-node-auth-e2e-final.log`。Worker 隔离测试 24/24 及最终 API/Worker 干跑通过，没有部署。
+- 固定正式构建的授权回归 9/9 通过：静态 Callback、插件内加密导出与单次刷新、state 不匹配拒绝、IOP 商品写入回放回读、历史 TOP 导入及异常不自动跨协议重试。日志：`artifacts/developer-guide-authorization-e2e-final.log`；这些使用离线回放，不代表再次取得真实授权或执行商品写入。
 - 最终本地 ZIP 为 1,234,792 字节，SHA-256 为 `2e216da8b743ce0a5d0e114bd1f13640de5a986788be0208a6c45400916a2666`。逐文件比对固定产物、权限对比 2.15.1 及当前本机敏感值扫描通过（`artifacts/release-2.16.0-package-audit-final.log`）。上文真实 S3 测试的旧候选哈希保留为历史证据，不能用新 ZIP 的哈希冒充那次实际上传所用构建；新源码的离线回归与真实账号页面观察分开记录。
 
 推送仍需执行原有 pre-push 全工作区类型及全量单测；正式 Tag 流水线继续独立执行全部门禁，成功前不宣称已生成 GitHub Release。此次没有替用户读取 App Secret、重置应用密钥、接受新的 OAuth 协议或更换 TOP/IOP 配置。
