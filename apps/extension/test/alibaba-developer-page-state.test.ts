@@ -37,6 +37,8 @@ describe('Alibaba developer prerequisite page state', () => {
     ['registrationRequired', 'developer-registration-required'],
     ['underReview', 'developer-registration-under-review'],
     ['registrationRejected', 'developer-registration-rejected'],
+    ['pendingWithFutureApprovedStep', 'developer-registration-under-review'],
+    ['registrationWithHiddenRejection', 'developer-registration-required'],
     ['applicationRequired', 'application-required'],
     ['applicationNotReady', 'application-not-ready']
   ])('classifies %s without returning registration values', (scenarioName, reasonCode) => {
@@ -52,6 +54,12 @@ describe('Alibaba developer prerequisite page state', () => {
     document.body.innerHTML = requireScenario('applicationReady').html;
 
     expect(inspectApplicationPageStateInFrame()).toEqual({ kind: 'ready' });
+  });
+
+  it('recognizes completed Review Approved without confusing scripts or completed review steps', () => {
+    document.body.innerHTML = requireScenario('reviewApproved').html;
+
+    expect(inspectApplicationPageStateInFrame()).toEqual({ kind: 'registration-approved' });
   });
 
   it('keeps challenge and login precedence across frames while preferring a real app over navigation text', () => {

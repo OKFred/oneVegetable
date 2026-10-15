@@ -16,5 +16,14 @@
   },
   "applicationReady": {
     "html": "<main><div class=\"cloud-form\"><span class=\"form-label\">App Status</span><span class=\"form-item\">Online</span></div></main>"
+  },
+  "reviewApproved": {
+    "html": "<script>window.exampleMessages = { failure: 'Profile is rejected', notApproved: 'was not approved due to a reason' };</script><main><input id=\"companyName\" disabled><input id=\"bizRegistNumber\" disabled><input id=\"address\" disabled><ol class=\"next-step\"><li class=\"next-step-item next-step-item-finish\"><div class=\"next-step-item-title\">Complete information</div></li><li class=\"next-step-item next-step-item-finish\"><div class=\"next-step-item-title\">Under Review</div></li><li class=\"next-step-item next-step-item-finish\"><div class=\"next-step-item-title\">Review Approved</div></li></ol><span hidden>Profile is rejected</span><button>Edit</button></main>"
+  },
+  "pendingWithFutureApprovedStep": {
+    "html": "<main><input id=\"companyName\" disabled><input id=\"bizRegistNumber\" disabled><input id=\"address\" disabled><ol class=\"next-step\"><li class=\"next-step-item next-step-item-finish\"><div class=\"next-step-item-title\">Complete information</div></li><li class=\"next-step-item next-step-item-process\"><div class=\"next-step-item-title\">Under Review</div></li><li class=\"next-step-item next-step-item-wait\"><div class=\"next-step-item-title\">Review Approved</div></li></ol><div style=\"display:none\">Review failed</div></main>"
+  },
+  "registrationWithHiddenRejection": {
+    "html": "<script>const message = 'Profile is rejected';</script><main><h1>Complete information</h1><input id=\"companyName\"><input id=\"bizRegistNumber\"><input id=\"address\"><div hidden>Review failed</div><div style=\"visibility:hidden\">not approved</div><div id=\"one-vegetable-alibaba-developer-guide\">开发者注册已被退回</div></main>"
   }
 }

@@ -21,6 +21,32 @@ export const RELEASE_NOTES_DOCUMENT = {
       compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.15.1...v2.16.0',
       changes: [
         {
+          type: 'fix',
+          title: {
+            'zh-CN': '修正开发者审核状态与页面引导',
+            'en-US': 'Correct developer approval status and the page guide'
+          },
+          description: {
+            'zh-CN':
+              '识别当前审核进度，排除隐藏脚本和向导自身文案，避免已通过的资料被误报为退回或审核中。已有前置状态会重新核对；页面引导不再读取受保护存储，仅允许当前向导标签页检查与定位，不扩大凭据访问权限。',
+            'en-US':
+              'Detect the current review step while excluding hidden scripts and the guide itself, so approved profiles are not mistaken for rejected or pending registrations. Recheck cached prerequisites. The page guide no longer reads protected storage, and its bound tab can only check or focus prerequisites without gaining credential access.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '工作台密码支持 6 个字符',
+            'en-US': 'Six-character workspace passwords'
+          },
+          description: {
+            'zh-CN':
+              '初始化、创建用户、修改和重置工作台密码统一支持至少 6 个字符，不强制大小写或符号组合。中英文提示同步调整，既有密码仍可登录，Passkey、加密强度及登录失败锁定机制不变。',
+            'en-US':
+              'Workspace initialization, user creation, password changes and resets now accept at least six characters without mandatory character combinations. Both language hints are updated, existing passwords remain valid, and passkeys, hashing strength and failed-login protections are unchanged.'
+          }
+        },
+        {
           type: 'feature',
           title: {
             'zh-CN': '填写变量并组合详情模板',

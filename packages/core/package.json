@@ -11,6 +11,8 @@
     "./alibaba-iop-business": "./src/alibaba-iop-business.ts",
     "./alibaba-protocol-routing": "./src/alibaba-protocol-routing.ts",
     "./network": "./src/network.ts",
+    "./preferences": "./src/preferences.ts",
+    "./alibaba-developer-page-inspection": "./src/alibaba-developer-page-inspection.ts",
     "./credential-vault": "./src/credential-vault.ts",
     "./iop-messages": "./src/iop-authorization-messages.ts",
     "./alibaba-authorization-vault": "./src/alibaba-authorization-vault.ts",

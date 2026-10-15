@@ -59,7 +59,7 @@ export const auth = {
     username: 'Workspace username',
     recoveryCode: 'One-time recovery code',
     password: 'Workspace password',
-    passwordHint: 'Use at least about 12 characters; a password manager is recommended'
+    passwordHint: 'At least 6 characters'
   },
   submit: {
     working: 'Follow the browser prompt…',

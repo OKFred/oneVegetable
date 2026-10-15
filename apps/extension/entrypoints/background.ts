@@ -292,10 +292,15 @@ export default defineBackground({
       }
       const acquisitionMessage = asAlibabaCredentialAcquisitionRequest(value);
       if (acquisitionMessage) {
+        // A known injected guide may only inspect/focus prerequisites, never acquire or export secrets.
+        const trustedGuideRead =
+          alibabaCredentialAcquisition.isGuideSender(sender) &&
+          (acquisitionMessage.operation === 'read-prerequisite' ||
+            acquisitionMessage.operation === 'locate-prerequisite-field');
         return handleAlibabaCredentialAcquisitionRequest(
           acquisitionMessage,
           storageAccessReady,
-          trustedOptionsPage
+          trustedOptionsPage || trustedGuideRead
         );
       }
       if (isRecord(value) && value.kind === 'credential-vault-request')

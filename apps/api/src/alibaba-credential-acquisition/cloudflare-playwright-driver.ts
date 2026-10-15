@@ -2,7 +2,6 @@ import { acquire, connect, limits } from '@cloudflare/playwright';
 
 import {
   createAlibabaOpenApiCredentialBundle,
-  inspectAlibabaDeveloperPrerequisiteDocument,
   NetworkManager,
   parseAlibabaTokenResponse,
   resolveAlibabaCredentialApplication,
@@ -10,6 +9,7 @@ import {
   toAlibabaCredentialApplicationSummary,
   validateAlibabaOAuthCallback
 } from '@one-vegetable/core';
+import { inspectAlibabaDeveloperPageDocument } from '@one-vegetable/core/alibaba-developer-page-inspection';
 
 import type {
   AlibabaCredentialAcquisitionContinueCommand,
@@ -440,7 +440,8 @@ async function detectDeveloperPrerequisite(
       page.frames().map((frame) =>
         frame
           .locator('body')
-          .evaluate(inspectAlibabaDeveloperPrerequisiteDocument)
+          .evaluate(inspectAlibabaDeveloperPageDocument)
+          .then((state) => (state.kind === 'prerequisite' ? state.reasonCode : null))
           .catch(() => null)
       )
     )

@@ -171,6 +171,28 @@ afterEach(() => {
 });
 
 describe('extension background protocol persistence and dispatch', () => {
+  it('allows a bound guide to recheck, but never to acquire, export or save credentials', async () => {
+    vi.spyOn(ExtensionAlibabaCredentialAcquisitionController.prototype, 'isGuideSender').mockReturnValue(
+      true
+    );
+    vi.spyOn(ExtensionAlibabaCredentialAcquisitionController.prototype, 'readPrerequisite').mockResolvedValue(
+      null
+    );
+    const source = { ...sender, url: 'https://i.alibaba.com/explore/open-api' };
+    expect(
+      await sendEnvelope(
+        { kind: 'alibaba-credential-acquisition-request', operation: 'read-prerequisite' },
+        source
+      )
+    ).toMatchObject({ ok: true, data: null });
+    for (const operation of ['start', 'status', 'continue', 'cancel', 'export-bundle', 'save-to-vault']) {
+      expect(
+        await sendEnvelope({ kind: 'alibaba-credential-acquisition-request', operation }, source)
+      ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('returns a safe empty profile for first-time import without requiring an existing vault', async () => {
     for (const protocol of ['top', 'iop'] as const) {
       expect(await send('credential-vault-request', 'get-authorization', { protocol })).toMatchObject({

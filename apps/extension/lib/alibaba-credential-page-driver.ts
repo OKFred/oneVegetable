@@ -1,4 +1,8 @@
 import { browser } from 'wxt/browser';
+import { APP_PREFERENCES_STORAGE_KEY, parseAppPreferences } from '@one-vegetable/core/preferences';
+import { inspectAlibabaDeveloperPageDocument } from '@one-vegetable/core/alibaba-developer-page-inspection';
+
+export { inspectAlibabaDeveloperPageDocument as inspectApplicationPageStateInFrame };
 
 import type {
   AlibabaCredentialAcquisitionPrerequisiteReason,
@@ -64,6 +68,7 @@ export interface ExtensionAlibabaRegistrationProgress {
 
 export type ExtensionAlibabaPageState =
   | { kind: 'ready' }
+  | { kind: 'registration-approved' }
   | { kind: 'navigation-ready' }
   | { kind: 'login-required' }
   | { kind: 'challenge' }
@@ -128,7 +133,7 @@ export async function inspectAlibabaApplicationPageState(tabId: number): Promise
   const results = await browser.scripting.executeScript({
     target: { tabId, allFrames: true },
     world: 'MAIN',
-    func: inspectApplicationPageStateInFrame
+    func: inspectAlibabaDeveloperPageDocument
   });
   return selectAlibabaApplicationPageState(results.map((result) => result.result));
 }
@@ -138,6 +143,8 @@ export function selectAlibabaApplicationPageState(values: readonly unknown[]): E
   if (states.some((state) => state.kind === 'challenge')) return { kind: 'challenge' };
   if (states.some((state) => state.kind === 'login-required')) return { kind: 'login-required' };
   if (states.some((state) => state.kind === 'ready')) return { kind: 'ready' };
+  if (states.some((state) => state.kind === 'registration-approved'))
+    return { kind: 'registration-approved' };
   for (const reasonCode of [
     'developer-registration-rejected',
     'developer-registration-under-review',
@@ -170,12 +177,15 @@ export async function showAlibabaDeveloperGuide(
   tabId: number,
   state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }>
 ): Promise<void> {
+  const stored = await browser.storage.local.get(APP_PREFERENCES_STORAGE_KEY);
+  const { uiLocale } = parseAppPreferences(stored[APP_PREFERENCES_STORAGE_KEY]);
   await browser.scripting.executeScript({
     target: { tabId },
     files: ['/alibaba-developer-guide.js']
   });
   await sendAlibabaDeveloperGuideMessage(tabId, {
     kind: 'one-vegetable-alibaba-developer-guide-update',
+    uiLocale,
     state
   });
 }
@@ -393,6 +403,7 @@ function parsePageState(value: unknown): ExtensionAlibabaPageState | null {
   if (!record || typeof record.kind !== 'string') return null;
   if (
     record.kind === 'ready' ||
+    record.kind === 'registration-approved' ||
     record.kind === 'navigation-ready' ||
     record.kind === 'login-required' ||
     record.kind === 'challenge' ||
@@ -495,91 +506,6 @@ async function inspectApplicationCenterFrame(): Promise<unknown> {
     },
     candidates: [...new Map(candidates.map((candidate) => [candidate.appKey, candidate])).values()]
   };
-}
-
-export function inspectApplicationPageStateInFrame(): unknown {
-  const body = document.body.innerText || document.body.textContent || '';
-  if (/captcha|验证码|滑块|slide to verify|security verification|二次验证|安全验证/iu.test(body)) {
-    return { kind: 'challenge' };
-  }
-  const password = document.querySelector('input[type="password"], input[autocomplete="current-password"]');
-  if (password) return { kind: 'login-required' };
-
-  const applicationForms = [...document.querySelectorAll('.cloud-form')];
-  if (applicationForms.some((element) => element.querySelector('.form-label'))) {
-    const status = applicationForms
-      .find((element) => (element.querySelector('.form-label')?.textContent ?? '').trim() === 'App Status')
-      ?.querySelector('.form-item')
-      ?.textContent.trim();
-    if (
-      status &&
-      /under review|pending|offline|disabled|rejected|审核|待处理|未上线|已停用|已驳回/iu.test(status)
-    ) {
-      return {
-        kind: 'prerequisite',
-        reasonCode: 'application-not-ready',
-        registration: null
-      };
-    }
-    return { kind: 'ready' };
-  }
-
-  const fieldIds = [
-    'country',
-    'companyName',
-    'bizRegistNumber',
-    'address',
-    'city',
-    'province',
-    'postcode',
-    'bizInfoDocs'
-  ];
-  const registrationElements = fieldIds.map((id) => document.getElementById(id));
-  const registrationFormDetected = registrationElements.filter(Boolean).length >= 3;
-  const hasValue = (id: string, element: Element | null): boolean => {
-    if (id === 'bizInfoDocs') {
-      const hiddenResult = document.getElementById('bizInfoDoc');
-      const hiddenValue = hiddenResult instanceof HTMLInputElement ? hiddenResult.value.trim() : '';
-      const upload = element instanceof HTMLInputElement ? element : null;
-      return hiddenValue !== '' || (upload?.files?.length ?? 0) > 0 || (upload?.value.trim() ?? '') !== '';
-    }
-    return element instanceof HTMLInputElement || element instanceof HTMLSelectElement
-      ? element.value.trim() !== ''
-      : false;
-  };
-  const missingFieldIds = fieldIds.filter((id, index) => !hasValue(id, registrationElements[index] ?? null));
-  const agreement = document.querySelector('input[type="checkbox"]');
-  const registration = {
-    missingFieldIds,
-    agreementAccepted: agreement instanceof HTMLInputElement && agreement.checked
-  };
-
-  if (/rejected|review failed|not approved|审核未通过|已驳回|退回修改/iu.test(body)) {
-    return { kind: 'prerequisite', reasonCode: 'developer-registration-rejected', registration };
-  }
-  if (
-    registrationFormDetected &&
-    (/under review|审核中|审核处理中|2\s*[-–]\s*5\s*working days/iu.test(body) ||
-      registrationElements.filter(Boolean).every((element) => {
-        if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) {
-          return element.disabled || (element instanceof HTMLInputElement && element.readOnly);
-        }
-        return true;
-      }))
-  ) {
-    return { kind: 'prerequisite', reasonCode: 'developer-registration-under-review', registration };
-  }
-  if (
-    registrationFormDetected ||
-    /you have not yet registered as a developer|尚未注册.*开发者/iu.test(body)
-  ) {
-    return { kind: 'prerequisite', reasonCode: 'developer-registration-required', registration };
-  }
-  if (/no applications?|you have not created an application|暂无应用|还没有应用/iu.test(body)) {
-    return { kind: 'prerequisite', reasonCode: 'application-required', registration: null };
-  }
-  if (/application center|应用中心/iu.test(body)) return { kind: 'navigation-ready' };
-  return { kind: 'waiting' };
 }
 
 export function focusNextRegistrationFieldInFrame(): string | null {

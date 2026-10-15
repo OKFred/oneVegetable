@@ -5,7 +5,7 @@ import type { BrowserContext, Frame, Locator, Page, Request } from '@playwright/
 
 import { resolveAlibabaCredentialApplication } from '../../packages/core/src/alibaba-credential-acquisition';
 import {
-  inspectAlibabaDeveloperPrerequisiteDocument,
+  inspectAlibabaDeveloperPageDocument,
   selectAlibabaDeveloperPrerequisite
 } from '../../packages/core/src/alibaba-developer-page-inspection';
 
@@ -460,7 +460,8 @@ export async function detectAlibabaDeveloperPrerequisite(
       page.frames().map((frame) =>
         frame
           .locator('body')
-          .evaluate(inspectAlibabaDeveloperPrerequisiteDocument)
+          .evaluate(inspectAlibabaDeveloperPageDocument)
+          .then((state) => (state.kind === 'prerequisite' ? state.reasonCode : null))
           .catch(() => null)
       )
     )
