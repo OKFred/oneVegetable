@@ -14,6 +14,7 @@ export const templateMaterials = {
   chooseGroup: '请选择真实图片分组；全部图片和未分组不是上传目标。',
   selectedGroup: '目标分组：{name}',
   reuseExisting: '复用已存在图片（保留原分组）',
+  permissionNotice: '点击确认时，插件将申请访问 {hosts}，仅用于下载图片核对哈希；拒绝后不上传。',
   reuseExplanation:
     '平台可能对相同图片去重，不会把已有图片移动到目标分组。勾选后，仅在返回的图片 ID、实际分组及内容哈希均核对一致时复用；未勾选仍要求图片位于目标分组。不会扫描整个图库。',
   confirmReuse: '同意复用经核对的已有图片，并保留其实际分组；新图片仍上传到目标分组。',
@@ -44,6 +45,8 @@ export const templateMaterials = {
   packing: '正在打包文件 {current}/{total}',
   verifying: '正在核对文件 {current}/{total}',
   codes: {
+    TEMPLATE_MATERIAL_PERMISSION_REQUIRED:
+      '未获得图片校验所需的域名权限，未开始上传。请再次确认并允许所列图片域名，或取消复用已有图片。',
     TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP:
       '平台返回了其他分组中的已有图片，未重复上传或移动。请关闭并重新导入同一包，选择同一目标分组，勾选“复用已存在图片（保留原分组）”后只读核对；或先在官方图库调整分组。',
     TEMPLATE_MATERIAL_INVALID: '模板素材清单无效。',

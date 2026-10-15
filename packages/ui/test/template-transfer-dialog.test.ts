@@ -109,6 +109,7 @@ async function setup(
   const scope = ref('account-a');
   const open = ref(true);
   const gateway = new MockGatewayClient(0);
+  const permissionRequest = vi.fn().mockResolvedValue(true);
   const availability = {
     get: vi.fn().mockResolvedValue({
       items: [{ operation: 'uploadPhoto', allowed: true, reasonCode: 'ADMIN_MUTATION_ALLOWED' }]
@@ -131,6 +132,11 @@ async function setup(
         provideListIdentityScope(computed(() => scope.value));
         const supplied: AppServices = {
           gateway,
+          permissions: {
+            list: () => Promise.resolve([]),
+            revoke: () => Promise.resolve(false),
+            request: permissionRequest
+          },
           mode: 'extension',
           s3Storage: s3,
           productDescriptionTemplates: client,
@@ -369,6 +375,30 @@ describe('template material UI without provider writes', () => {
     await button('Confirm').trigger('click');
     await flushPromises();
     expect(mocks.executeImport).toHaveBeenCalledOnce();
+  });
+
+  it('requests exact image-host permissions only on confirmation and refuses writes after denial', async () => {
+    const request = vi.fn().mockResolvedValue(false);
+    const { chooseBytes, selectGroup, button, body } = await setup('import', {
+      services: {
+        permissions: { list: () => Promise.resolve([]), revoke: () => Promise.resolve(false), request }
+      }
+    });
+    await chooseBytes();
+    await selectGroup();
+    await body.get('[data-testid="template-reuse-existing-photos"]').setValue(true);
+    await button('Import').trigger('click');
+    await flushPromises();
+    expect(request).not.toHaveBeenCalled();
+    expect(body.text()).toContain('Confirming requests extension access');
+    await button('Confirm').trigger('click');
+    await flushPromises();
+    expect(request).toHaveBeenCalledOnce();
+    expect(request.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^https:\/\/[^*]+\.alicdn\.com\/\*$/u)])
+    );
+    expect(mocks.executeImport).not.toHaveBeenCalled();
+    expect(body.text()).toContain('No upload started');
   });
 
   it('passes copy conflicts to the material executor and cancels confirmation when the group changes', async () => {

@@ -29,8 +29,19 @@
             "en-US": "Move template images through ZIP or S3"
           },
           "description": {
-            "zh-CN": "导出图片至 assets 相对路径并校验完整性，导入时确认图片分组，上传并按新 fileId 回读后保存模板。复用已确认回执，结果不明不自动重传；S3 清单最后写入，原 JSON 模式保留，不新增永久权限。",
-            "en-US": "Export images to integrity-checked relative assets paths. Confirm an image group on import, then upload and verify new file IDs before saving templates. Confirmed receipts are reused, uncertain writes are not resent and the S3 manifest is written last. JSON mode remains available without new permanent permissions."
+            "zh-CN": "导出图片至 assets 相对路径并校验完整性，导入时确认图片分组，按平台返回的 fileId 回读后保存模板。复用已确认回执，结果不明不自动重传；S3 清单最后写入，原 JSON 模式保留，不新增永久权限。",
+            "en-US": "Export images to integrity-checked relative assets paths. Confirm an image group on import, then verify the returned file IDs before saving templates. Confirmed receipts are reused, uncertain writes are not resent and the S3 manifest is written last. JSON mode remains available without new permanent permissions."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "明确处理平台图片去重",
+            "en-US": "Handle platform image deduplication explicitly"
+          },
+          "description": {
+            "zh-CN": "相同图片可能返回原 fileId 并保留原分组。默认仍严格核对目标分组；用户可确认复用已有图片，核对实际分组和内容哈希后导入，不静默移动、不扫描整店或重复发送旧上传。插件先申请精确图片域名权限，拒绝则不上传。",
+            "en-US": "Identical images may return their existing file ID and original group. Strict target-group checks remain the default. Explicit reuse verifies the actual group and content hash without silent moves, full-library scans or resending previous uploads. Extensions request exact image-host permissions before uploading; denial prevents writes."
           }
         },
         {

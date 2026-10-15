@@ -10,7 +10,12 @@ import {
   type TemplateBundle,
   type TemplateImportOutcome
 } from '@one-vegetable/core/template-library';
-import type { ControlClient, PhotoGroup, ProductDescriptionTemplate } from '@one-vegetable/core';
+import {
+  isPhotoBankUrl,
+  type ControlClient,
+  type PhotoGroup,
+  type ProductDescriptionTemplate
+} from '@one-vegetable/core';
 import {
   TEMPLATE_MATERIAL_MAX_ZIP_BYTES,
   templateImageSources,
@@ -107,6 +112,10 @@ const materialBackup = shallowRef<TemplateMaterialBackupPlan | null>(null);
 const archive = shallowRef<Uint8Array | null>(null);
 const targetGroup = shallowRef<PhotoGroup | null>(null);
 const reuseExistingPhotos = ref(false);
+const reusePermissionOrigins = ref<string[]>([]);
+const reusePermissionHosts = computed(() =>
+  reusePermissionOrigins.value.map((origin) => new URL(origin.slice(0, -2)).hostname).join(', ')
+);
 const progress = shallowRef<TemplateMaterialProgress | null>(null);
 const permissionPending = ref(false);
 const permissionReason = ref<'permissionUnavailable' | 'permissionDenied' | null>(null);
@@ -211,6 +220,7 @@ const confirmationDescription = computed(() => {
 });
 const backupKey = computed(() => materialBackup.value?.key ?? plan.value?.key ?? '');
 function clearPrepared(): void {
+  reusePermissionOrigins.value = [];
   materialExport.value = null;
   materialImport.value = null;
   materialBackup.value = null;
@@ -448,6 +458,19 @@ async function prepare(): Promise<void> {
         isCurrent,
         reuseExistingPhotos.value
       );
+      if (requiresUpload.value && reuseExistingPhotos.value && services.mode === 'extension') {
+        const page = await services.gateway.request('listPhotos', { page: 1, pageSize: 100 });
+        assertCurrent();
+        reusePermissionOrigins.value = [
+          ...new Set(
+            page.items.flatMap((photo) => {
+              if (!isPhotoBankUrl(photo.url)) return [];
+              const url = new URL(photo.url.startsWith('//') ? `https:${photo.url}` : photo.url);
+              return url.protocol === 'https:' ? [`${url.origin}/*`] : [];
+            })
+          )
+        ];
+      }
     }
     assertCurrent();
     confirmation.value = true;
@@ -482,6 +505,12 @@ async function execute(): Promise<void> {
   error.value = null;
   try {
     assertCurrent();
+    // Start the optional permission request in this confirmation click, before any await.
+    if (props.mode === 'import' && reusePermissionOrigins.value.length) {
+      const allowed = services.permissions?.request?.([...reusePermissionOrigins.value]);
+      if (!allowed || !(await allowed)) throw templateError('TEMPLATE_MATERIAL_PERMISSION_REQUIRED');
+      assertCurrent();
+    }
     if (props.mode === 'import') {
       if (!productDescriptionTemplates) return;
       if (materialPackage.value) {
@@ -774,5 +803,13 @@ async function execute(): Promise<void> {
     :description="confirmationDescription"
     :pending="busy"
     @confirm="execute"
-  />
+  >
+    <p v-if="reusePermissionOrigins.length" class="text-sm text-muted-foreground">
+      {{
+        mt('permissionNotice', {
+          hosts: reusePermissionHosts
+        })
+      }}
+    </p>
+  </ConfirmActionDialog>
 </template>

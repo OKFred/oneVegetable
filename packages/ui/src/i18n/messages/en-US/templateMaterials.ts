@@ -16,6 +16,8 @@ export const templateMaterials = {
   chooseGroup: 'Select a real photo group. All photos and ungrouped are not upload targets.',
   selectedGroup: 'Target group: {name}',
   reuseExisting: 'Reuse existing images (keep their original groups)',
+  permissionNotice:
+    'Confirming requests extension access to {hosts} to download and hash-check images. Denying access prevents uploads.',
   reuseExplanation:
     'Alibaba may deduplicate identical images without moving them. When enabled, reuse requires matching the returned file ID, actual group and content hash. Otherwise the target group is required. The full library is never scanned.',
   confirmReuse:
@@ -50,6 +52,8 @@ export const templateMaterials = {
   packing: 'Packing files {current}/{total}',
   verifying: 'Verifying files {current}/{total}',
   codes: {
+    TEMPLATE_MATERIAL_PERMISSION_REQUIRED:
+      'Image verification host access was not granted. No upload started. Confirm again to allow the listed hosts, or disable existing-image reuse.',
     TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP:
       'Alibaba returned an existing image in another group. Nothing was reuploaded or moved. Reopen the same package and target group, enable existing-image reuse, and confirm a read-only check; or change its group on Alibaba first.',
     TEMPLATE_MATERIAL_INVALID: 'The template material manifest is invalid.',
