@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
-import { decodeBase64, type GatewaySettings, type RequestOf, type ResponseOf } from '@one-vegetable/core';
+import {
+  decodeBase64,
+  type GatewaySettings,
+  type OperationId,
+  type RequestOf,
+  type ResponseOf
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { MemoryProductDescriptionTemplateClient } from '../../core/src/product-description-template-client';
 import {
@@ -9,6 +15,7 @@ import {
 } from '@one-vegetable/core/template-materials';
 import imageFixture from '../../../mock/data/gallery-task-assets.json';
 import photoFixture from '../../../mock/data/photos.json';
+import deduplication from '../../../mock/data/template-material-deduplication.json';
 import { GalleryTransferService } from '../src/lib/gallery-transfer-service';
 import { galleryAssetSha256 } from '../src/lib/gallery-transfer-archive';
 import {
@@ -127,6 +134,76 @@ async function materialPackage(withImage = true): Promise<TemplateMaterialPackag
 }
 
 describe('template material runtime with persistent gallery tasks', () => {
+  it('reconciles a known deduplicated receipt only after consent, without a second upload', async () => {
+    const s = setup();
+    const pack = await materialPackage();
+    const existing = {
+      ...required(photoFixture.responses.listPhotos.items[0]),
+      id: deduplication.fileId,
+      groupId: deduplication.actualGroupId,
+      url: deduplication.url
+    };
+    let sent = false;
+    s.request.mockImplementation(async (operation, input, options) => {
+      if (operation === 'uploadPhoto') {
+        sent = true;
+        return existing;
+      }
+      if (operation === 'listPhotos') {
+        const query = input as RequestOf<'listPhotos'>;
+        return {
+          ...photoFixture.responses.listPhotos,
+          page: query.page ?? 1,
+          pageSize: query.pageSize ?? 100,
+          total: sent && !query.groupId ? 1 : 0,
+          hasNextPage: false,
+          items: sent && !query.groupId ? [existing] : []
+        };
+      }
+      if (operation === 'downloadProductAsset')
+        return {
+          ...(await s.originalRequest(
+            'downloadProductAsset',
+            input as RequestOf<'downloadProductAsset'>,
+            options
+          )),
+          contentBase64: imageFixture.base64,
+          byteLength: decodeBase64(imageFixture.base64).length
+        };
+      return s.originalRequest<OperationId>(operation, input, options);
+    });
+    const strict = await prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true);
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, strict, 'copy', () => true)
+    ).rejects.toThrow('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP');
+    const taskId = required(strict.task).id;
+    const originalReceipt = await s.transfers.repository.get(taskId);
+    expect((await s.client.list()).items).toHaveLength(0);
+    const consented = await prepareTemplateMaterialImport(
+      s.transfers,
+      pack,
+      '2001',
+      'Target',
+      () => true,
+      true
+    );
+    expect(consented.task?.id).toBe(taskId);
+    await executeTemplateMaterialImport(s.services, s.transfers, consented, 'copy', () => true);
+    const result = await s.transfers.repository.get(taskId);
+    expect(result.status).toBe('completed');
+    expect(result.reuseExistingPhotos).toBe(true);
+    expect(required(result.items[0]).targetGroupId).toBe('2001');
+    expect(required(result.items[0]).actualGroupId).toBe(deduplication.actualGroupId);
+    expect(required(result.items[0]).requestId).toBe(required(originalReceipt.items[0]).requestId);
+    expect(s.request.mock.calls.filter(([operation]) => operation === 'uploadPhoto')).toHaveLength(1);
+    expect(required((await s.client.list()).items[0]).html).toContain(deduplication.fileId);
+    const noConsent = await prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true);
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, noConsent, 'copy', () => true)
+    ).rejects.toThrow('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP');
+    expect(s.request.mock.calls.filter(([operation]) => operation === 'uploadPhoto')).toHaveLength(1);
+    expect((await s.client.list()).items).toHaveLength(1);
+  });
   it('persists the write-ahead receipt before uploading, then uses a fresh verified fileId and URL', async () => {
     const s = setup();
     const pack = await materialPackage();

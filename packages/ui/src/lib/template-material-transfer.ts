@@ -34,6 +34,7 @@ import {
 } from '@one-vegetable/core/template-materials';
 import { galleryAssetSha256 } from './gallery-transfer-archive';
 import { allGalleryPhotos } from './gallery-transfer-driver';
+import { galleryImportReadback } from './gallery-import-readback';
 import { templateMaterialGalleryArchive } from './template-material-archive';
 import type { GalleryTransferService } from './gallery-transfer-service';
 import type { AppServices } from './services';
@@ -53,6 +54,7 @@ export interface TemplateMaterialImportPlan {
   task: GalleryTransferTaskV1 | null;
   groupId: string;
   context: GalleryTransferContext | null;
+  reuseExistingPhotos?: boolean;
 }
 const MATERIAL_IMPORT_CLAIM_LOCK = 'one-vegetable.template-material.import-claim.v1';
 function matchingMaterialTasks(
@@ -158,7 +160,8 @@ export async function prepareTemplateMaterialImport(
   pack: TemplateMaterialPackage,
   groupId: string,
   groupName: string,
-  isCurrent: () => boolean
+  isCurrent: () => boolean,
+  reuseExistingPhotos = false
 ): Promise<TemplateMaterialImportPlan> {
   assertTemplateMaterialCurrent(isCurrent);
   // Codec verifies hashes, bytes, file headers and all referenced paths before preview.
@@ -187,13 +190,14 @@ export async function prepareTemplateMaterialImport(
       createMissingGroups: false,
       importMapping: 'current',
       exportMapping: 'flat',
-      exportPrefix: ''
+      exportPrefix: '',
+      reuseExistingPhotos
     }));
   const after = await transfers.driver.context();
   if (!sameGalleryTransferContext(context, after) || !sameGalleryTransferContext(task.context, context))
     throw templateError('TEMPLATE_CONTEXT_CHANGED');
   assertTemplateMaterialCurrent(isCurrent);
-  return { package: pack, archiveBytes, task, groupId, context };
+  return { package: pack, archiveBytes, task, groupId, context, reuseExistingPhotos };
 }
 
 export async function executeTemplateMaterialImport(
@@ -241,6 +245,13 @@ export async function executeTemplateMaterialImport(
       if (matches.length > 1) throw templateError('TEMPLATE_MATERIAL_UNCONFIRMED');
       const task = matches[0] ?? proposed;
       if (!matches.length) await transfers.create(task, archiveBytes, false);
+      // Explicitly confirmed reconciliation policy: target/context/request IDs stay frozen.
+      // No replacement task and no new upload for an already-sent receipt.
+      if (plan.reuseExistingPhotos && !task.reuseExistingPhotos) {
+        return transfers.repository.update(task.id, (current) => {
+          current.reuseExistingPhotos = true;
+        });
+      }
       return task;
     });
     if (claimed.status !== 'completed') await transfers.driver.attachArchive(claimed, archiveBytes);
@@ -269,6 +280,8 @@ export async function executeTemplateMaterialImport(
     }
     await assertContext(services, plan.context, isCurrent);
     const result = await transfers.repository.get(claimed.id);
+    if (result.items.some((item) => item.errorCode === 'GALLERY_TASK_EXISTING_OTHER_GROUP'))
+      throw templateError('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP');
     if (
       result.status !== 'completed' ||
       result.items.some((item) => item.status !== 'confirmed' || !item.fileId)
@@ -278,7 +291,15 @@ export async function executeTemplateMaterialImport(
     const found = await allGalleryPhotos(services.gateway, plan.groupId, { galleryContext: plan.context });
     await assertContext(services, plan.context, isCurrent);
     for (const item of result.items) {
-      const photo = found.find((value) => value.id === item.fileId && value.groupId === plan.groupId);
+      if (item.actualGroupId && item.actualGroupId !== plan.groupId && !plan.reuseExistingPhotos)
+        throw templateError('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP');
+      const photo = await galleryImportReadback(
+        services.gateway,
+        { ...result, reuseExistingPhotos: plan.reuseExistingPhotos === true },
+        item,
+        found
+      );
+      await assertContext(services, plan.context, isCurrent);
       if (!photo) throw templateError('TEMPLATE_MATERIAL_UNCONFIRMED');
       photos.set(item.sourcePath, { url: photo.url, fileId: photo.id });
     }

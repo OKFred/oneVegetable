@@ -13,6 +13,10 @@ export const templateMaterials = {
   targetGroup: '目标真实图片分组',
   chooseGroup: '请选择真实图片分组；全部图片和未分组不是上传目标。',
   selectedGroup: '目标分组：{name}',
+  reuseExisting: '复用已存在图片（保留原分组）',
+  reuseExplanation:
+    '平台可能对相同图片去重，不会把已有图片移动到目标分组。勾选后，仅在返回的图片 ID、实际分组及内容哈希均核对一致时复用；未勾选仍要求图片位于目标分组。不会扫描整个图库。',
+  confirmReuse: '同意复用经核对的已有图片，并保留其实际分组；新图片仍上传到目标分组。',
   uploadCount: '将上传 {count} 个图片文件，或复用持久图库任务中已确认的素材。',
   preparedImages: '计划新上传：{uploads} 个；复用已确认素材：{reused} 个。跳过重名模板时可能无需上传。',
   verifyOnly: '已有图库任务包含结果未知的上传；本次仅核对回执，不会发起新的图片上传。',
@@ -40,6 +44,8 @@ export const templateMaterials = {
   packing: '正在打包文件 {current}/{total}',
   verifying: '正在核对文件 {current}/{total}',
   codes: {
+    TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP:
+      '平台返回了其他分组中的已有图片，未重复上传或移动。请关闭并重新导入同一包，选择同一目标分组，勾选“复用已存在图片（保留原分组）”后只读核对；或先在官方图库调整分组。',
     TEMPLATE_MATERIAL_INVALID: '模板素材清单无效。',
     TEMPLATE_MATERIAL_INVALID_DOCUMENT: 'ZIP 中缺少 templates.json 清单，或清单无效。',
     TEMPLATE_MATERIAL_INVALID_ZIP: 'ZIP 结构无效或不受支持。',

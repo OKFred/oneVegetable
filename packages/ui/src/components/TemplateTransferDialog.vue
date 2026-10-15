@@ -106,6 +106,7 @@ const materialImport = shallowRef<TemplateMaterialImportPlan | null>(null);
 const materialBackup = shallowRef<TemplateMaterialBackupPlan | null>(null);
 const archive = shallowRef<Uint8Array | null>(null);
 const targetGroup = shallowRef<PhotoGroup | null>(null);
+const reuseExistingPhotos = ref(false);
 const progress = shallowRef<TemplateMaterialProgress | null>(null);
 const permissionPending = ref(false);
 const permissionReason = ref<'permissionUnavailable' | 'permissionDenied' | null>(null);
@@ -191,14 +192,19 @@ const ready = computed(
     (props.mode === 'export' || bundle.value !== null || materialPackage.value !== null)
 );
 const confirmationDescription = computed(() => {
+  const reuseNotice = requiresUpload.value && reuseExistingPhotos.value ? ` ${mt('confirmReuse')}` : '';
   if (requiresUpload.value && imagePlan.value.verifyOnly)
-    return mt('confirmVerify', { templates: count.value, group: targetGroup.value?.name ?? '' });
+    return (
+      mt('confirmVerify', { templates: count.value, group: targetGroup.value?.name ?? '' }) + reuseNotice
+    );
   if (requiresUpload.value)
-    return mt('confirmImport', {
-      templates: count.value,
-      images: images.value,
-      group: targetGroup.value?.name ?? ''
-    });
+    return (
+      mt('confirmImport', {
+        templates: count.value,
+        images: images.value,
+        group: targetGroup.value?.name ?? ''
+      }) + reuseNotice
+    );
   if (materialPackage.value || materialExportSelected.value)
     return mt('confirm', { action: actionLabel.value, templates: count.value, images: images.value });
   return t('products.templates.transfer.confirm', { action: actionLabel.value, count: count.value });
@@ -238,7 +244,7 @@ watch(
   },
   { flush: 'sync' }
 );
-watch([targetGroup, conflict], () => {
+watch([targetGroup, conflict, reuseExistingPhotos], () => {
   if (!writeStarted.value) {
     materialImport.value = null;
     confirmation.value = false;
@@ -439,7 +445,8 @@ async function prepare(): Promise<void> {
         materialPackage.value,
         targetGroup.value?.id ?? '',
         targetGroup.value?.name ?? '',
-        isCurrent
+        isCurrent,
+        reuseExistingPhotos.value
       );
     }
     assertCurrent();
@@ -683,6 +690,17 @@ async function execute(): Promise<void> {
               />
             </fieldset>
             <p v-if="validGroup" class="text-sm">{{ mt('selectedGroup', { name: targetGroup?.name }) }}</p>
+            <label class="flex items-start gap-2 text-sm">
+              <input
+                v-model="reuseExistingPhotos"
+                type="checkbox"
+                class="mt-1"
+                :disabled="busy || writeStarted"
+                data-testid="template-reuse-existing-photos"
+              />
+              {{ mt('reuseExisting') }}
+            </label>
+            <p class="text-xs text-muted-foreground">{{ mt('reuseExplanation') }}</p>
             <p v-if="!materialImport" class="text-sm">{{ mt('uploadCount', { count: images }) }}</p>
             <p v-else class="text-sm">
               {{ mt('preparedImages', { uploads: imagePlan.uploads, reused: imagePlan.reused }) }}

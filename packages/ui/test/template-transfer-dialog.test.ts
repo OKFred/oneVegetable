@@ -342,7 +342,8 @@ describe('template material UI without provider writes', () => {
       expect.any(Object),
       'group-real',
       'Product materials',
-      expect.any(Function)
+      expect.any(Function),
+      false
     );
     expect(body.text()).toContain('upload or reuse 1 image files in “Product materials”');
     expect(mocks.executeImport).not.toHaveBeenCalled();
@@ -351,6 +352,23 @@ describe('template material UI without provider writes', () => {
     expect(mocks.executeImport).toHaveBeenCalledOnce();
     expect(mocks.executeImport.mock.calls[0]?.[3]).toBe('skip');
     expect(s3.putS3Object).not.toHaveBeenCalled();
+  });
+
+  it('keeps existing-image reuse off by default and includes opt-in in final confirmation', async () => {
+    const { chooseBytes, selectGroup, button, body } = await setup();
+    await chooseBytes();
+    await selectGroup();
+    const checkbox = body.get<HTMLInputElement>('[data-testid="template-reuse-existing-photos"]');
+    expect(checkbox.element.checked).toBe(false);
+    await checkbox.setValue(true);
+    await button('Import').trigger('click');
+    await flushPromises();
+    expect(mocks.prepareImport.mock.calls.at(-1)?.[5]).toBe(true);
+    expect(body.text()).toContain('Reuse verified existing images in their actual groups');
+    expect(mocks.executeImport).not.toHaveBeenCalled();
+    await button('Confirm').trigger('click');
+    await flushPromises();
+    expect(mocks.executeImport).toHaveBeenCalledOnce();
   });
 
   it('passes copy conflicts to the material executor and cancels confirmation when the group changes', async () => {
