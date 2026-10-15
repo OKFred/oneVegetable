@@ -7,12 +7,14 @@ import {
   Eye,
   FilePlus2,
   LayoutTemplate,
+  Layers,
   Pencil,
   RefreshCw,
   Upload
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { listAllTemplates } from '@one-vegetable/core/template-library';
+import { DESCRIPTION_COMPOSITION_MAX_TEMPLATES } from '@one-vegetable/core/template-composition';
 
 import { sanitizeProductDescriptionHtml } from '@one-vegetable/core/browser';
 import {
@@ -22,6 +24,7 @@ import {
 } from '@one-vegetable/core';
 
 import SafeHtmlContent from './SafeHtmlContent.vue';
+import DescriptionTemplateComposer from './DescriptionTemplateComposer.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -29,11 +32,13 @@ import ModalDialog from './ui/ModalDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import TriStateCheckbox from './TriStateCheckbox.vue';
 import { useUiI18n } from '../i18n';
+import { useTemplateCompositionI18n } from '../i18n/template-composition';
+import { useDescriptionTemplateContext } from '../lib/template-composition-context';
 import { useServices } from '../lib/services';
 import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 type ApplyMode = 'insert' | 'append' | 'replace';
-type PanelView = 'browse' | 'edit' | 'replace';
+type PanelView = 'browse' | 'edit' | 'compose';
 
 const props = defineProps<{
   language: ProductDescriptionTemplateLanguage;
@@ -44,6 +49,8 @@ const emit = defineEmits<{ apply: [payload: { mode: ApplyMode; html: string }] }
 
 const { productDescriptionTemplates, mode } = useServices();
 const { locale, t } = useUiI18n();
+const tc = useTemplateCompositionI18n();
+const templateContext = useDescriptionTemplateContext();
 const open = ref(false);
 const view = ref<PanelView>('browse');
 const templates = ref<ProductDescriptionTemplate[]>([]);
@@ -58,7 +65,8 @@ const transferMode = ref<'import' | 'export' | null>(null);
 const previewTemplate = ref<ProductDescriptionTemplate | null>(null);
 const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
 const TemplateTransferDialog = defineAsyncComponent(() => import('./TemplateTransferDialog.vue'));
-const selected = ref<ProductDescriptionTemplate | null>(null);
+const compositionTemplates = ref<ProductDescriptionTemplate[]>([]);
+const compositionMode = ref<ApplyMode>('append');
 const formId = ref<string | null>(null);
 const formRevision = ref(0);
 const formName = ref('');
@@ -80,6 +88,12 @@ const visibleTemplates = computed(() =>
   )
 );
 const exportTemplates = computed(() => templates.value.filter((item) => selectedIds.value.includes(item.id)));
+const canCompose = computed(
+  () =>
+    exportTemplates.value.length > 0 &&
+    exportTemplates.value.length <= DESCRIPTION_COMPOSITION_MAX_TEMPLATES &&
+    exportTemplates.value.every((item) => item.status === 'active')
+);
 const allSelected = computed(
   () =>
     visibleTemplates.value.length > 0 &&
@@ -103,11 +117,15 @@ const title = computed(() => {
   if (view.value === 'edit') {
     return t(formId.value ? 'products.templates.editTitle' : 'products.templates.createTitle');
   }
-  if (view.value === 'replace') return t('products.templates.replaceTitle');
+  if (view.value === 'compose')
+    return compositionMode.value === 'replace' ? t('products.templates.replaceTitle') : tc('title');
   return t('products.templates.title');
 });
 const description = computed(() => {
-  if (view.value === 'replace') return t('products.templates.replaceDescription');
+  if (view.value === 'compose')
+    return compositionMode.value === 'replace'
+      ? t('products.templates.replaceDescription')
+      : tc('description');
   if (view.value === 'edit')
     return t(
       mode === 'extension' ? 'products.templates.localDescription' : 'products.templates.editDescription'
@@ -115,9 +133,6 @@ const description = computed(() => {
   return t('products.templates.browseDescription');
 });
 const currentSafeHtml = computed(() => sanitizeProductDescriptionHtml(props.currentHtml, locale.value).html);
-const selectedSafeHtml = computed(() =>
-  selected.value ? sanitizeProductDescriptionHtml(selected.value.html, locale.value).html : ''
-);
 
 watch(open, (value) => {
   if (!value) return;
@@ -161,18 +176,24 @@ async function loadTemplates(): Promise<void> {
 }
 
 function applyTemplate(template: ProductDescriptionTemplate, applyMode: ApplyMode): void {
-  if (applyMode === 'replace') {
-    selected.value = template;
-    view.value = 'replace';
-    return;
-  }
-  emit('apply', { mode: applyMode, html: template.html });
-  open.value = false;
+  compositionTemplates.value = [template];
+  compositionMode.value = applyMode;
+  view.value = 'compose';
 }
 
-function confirmReplace(): void {
-  if (!selected.value) return;
-  emit('apply', { mode: 'replace', html: selected.value.html });
+function composeSelected(): void {
+  if (!canCompose.value) return;
+  compositionTemplates.value = selectedIds.value.flatMap((id) => {
+    const template = templates.value.find((item) => item.id === id);
+    return template ? [template] : [];
+  });
+  compositionMode.value = 'append';
+  view.value = 'compose';
+}
+
+function confirmComposition(payload: { mode: ApplyMode; html: string }): void {
+  emit('apply', payload);
+  toast.success(tc('applied'));
   open.value = false;
 }
 
@@ -255,7 +276,7 @@ async function changeStatus(template: ProductDescriptionTemplate): Promise<void>
 
 function resetView(): void {
   view.value = 'browse';
-  selected.value = null;
+  compositionTemplates.value = [];
   operationError.value = null;
 }
 
@@ -304,6 +325,19 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
           }}
         </label>
         <div class="flex flex-wrap justify-end gap-2">
+          <Button
+            v-if="!standalone"
+            variant="outline"
+            size="sm"
+            :disabled="loading || !canCompose"
+            :title="
+              exportTemplates.length > DESCRIPTION_COMPOSITION_MAX_TEMPLATES
+                ? tc('tooMany', { count: DESCRIPTION_COMPOSITION_MAX_TEMPLATES })
+                : undefined
+            "
+            @click="composeSelected"
+            ><Layers class="size-4" />{{ tc('combine') }}</Button
+          >
           <Button v-if="canManage" variant="outline" size="sm" @click="transferMode = 'import'"
             ><Upload class="size-4" />{{ t('products.transfer.import') }}</Button
           >
@@ -427,7 +461,12 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
         <label class="block text-sm font-medium">
           {{ t('products.templates.name') }}<Input v-model="formName" class="mt-2" />
         </label>
-        <ProductDescriptionEditor v-model="formHtml" :language="language" :show-templates="false" />
+        <ProductDescriptionEditor
+          v-model="formHtml"
+          :language="language"
+          :show-templates="false"
+          template-authoring
+        />
         <label class="block text-sm font-medium">
           {{ t('products.templates.category') }}
           <select v-model="formCategory" class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm">
@@ -459,22 +498,14 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
     </template>
 
     <template v-else>
-      <div class="grid gap-4 md:grid-cols-2">
-        <section class="min-w-0 rounded-lg border p-3">
-          <h3 class="mb-3 text-sm font-medium">{{ t('products.templates.current') }}</h3>
-          <SafeHtmlContent :html="currentSafeHtml" class="max-h-80 overflow-auto text-sm" />
-        </section>
-        <section class="min-w-0 rounded-lg border border-primary/40 p-3">
-          <h3 class="mb-3 text-sm font-medium">
-            {{ t('products.templates.afterReplace', { name: selected?.name ?? '' }) }}
-          </h3>
-          <SafeHtmlContent :html="selectedSafeHtml" class="max-h-80 overflow-auto text-sm" />
-        </section>
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <Button variant="ghost" @click="view = 'browse'">{{ t('products.templates.back') }}</Button>
-        <Button @click="confirmReplace">{{ t('products.templates.confirmReplace') }}</Button>
-      </div>
+      <DescriptionTemplateComposer
+        v-model:mode="compositionMode"
+        :templates="compositionTemplates"
+        :initial-values="templateContext"
+        :current-html="currentHtml"
+        @apply="confirmComposition"
+        @back="view = 'browse'"
+      />
     </template>
 
     <ErrorNotice v-if="operationError" :error="operationError" compact />

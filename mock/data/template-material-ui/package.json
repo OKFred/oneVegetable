@@ -1,0 +1,25 @@
+{
+  "document": {
+    "kind": "oneVegetable.product-description-template-assets",
+    "schemaVersion": 1,
+    "exportedAtUtc": 1791907200000,
+    "templates": [
+      {
+        "name": "Portable company",
+        "category": "company",
+        "language": "en_US",
+        "html": "<p>Safe material preview</p><img src=\"assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png\"><script>alert(1)</script>",
+        "remark": null
+      }
+    ],
+    "assets": [
+      {
+        "path": "assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+        "fileName": "company.png",
+        "contentType": "image/png",
+        "byteLength": 8,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  }
+}

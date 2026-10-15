@@ -7,6 +7,7 @@ import {
   type GalleryTransferTaskRepository,
   type GalleryTransferTaskV1
 } from '@one-vegetable/core/gallery-transfer-task';
+import { GatewayException } from '@one-vegetable/core/errors';
 
 export const GALLERY_TASK_DATABASE = 'one-vegetable-gallery-transfers-v1';
 export class IndexedDbGalleryTaskRepository implements GalleryTransferTaskRepository {
@@ -35,13 +36,19 @@ export class IndexedDbGalleryTaskRepository implements GalleryTransferTaskReposi
     });
   }
   private async transaction<T>(
-    run: (store: IDBObjectStore, tx: IDBTransaction, result: (value: T) => void) => void
+    run: (
+      store: IDBObjectStore,
+      tx: IDBTransaction,
+      result: (value: T) => void,
+      abort: (reason: unknown) => void
+    ) => void
   ): Promise<T> {
     const db = await this.open();
     return new Promise<T>((resolve, reject) => {
       const tx = db.transaction(['tasks', 'quarantine'], 'readwrite');
       let value: T;
       let ready = false;
+      let rejection: GalleryTaskError | GatewayException | null = null;
       tx.oncomplete = () => {
         db.close();
         if (ready) resolve(value);
@@ -49,13 +56,21 @@ export class IndexedDbGalleryTaskRepository implements GalleryTransferTaskReposi
       };
       tx.onabort = tx.onerror = () => {
         db.close();
-        reject(new GalleryTaskError('GALLERY_TASK_STORAGE'));
+        reject(rejection ?? new GalleryTaskError('GALLERY_TASK_STORAGE'));
       };
       try {
-        run(tx.objectStore('tasks'), tx, (result) => {
-          value = result;
-          ready = true;
-        });
+        run(
+          tx.objectStore('tasks'),
+          tx,
+          (result) => {
+            value = result;
+            ready = true;
+          },
+          (reason) => {
+            if (reason instanceof GalleryTaskError || reason instanceof GatewayException) rejection = reason;
+            tx.abort();
+          }
+        );
       } catch (error) {
         tx.abort();
         reject(error instanceof Error ? error : new GalleryTaskError('GALLERY_TASK_STORAGE'));
@@ -123,7 +138,7 @@ export class IndexedDbGalleryTaskRepository implements GalleryTransferTaskReposi
     });
   }
   async update(id: string, change: (task: GalleryTransferTaskV1) => void): Promise<GalleryTransferTaskV1> {
-    return this.transaction((store, tx, done) => {
+    return this.transaction((store, _tx, done, abort) => {
       const request = store.get(id);
       request.onsuccess = () => {
         try {
@@ -133,8 +148,8 @@ export class IndexedDbGalleryTaskRepository implements GalleryTransferTaskReposi
           task.revision += 1;
           store.put(validateGalleryTransferTask(task));
           done(task);
-        } catch {
-          tx.abort();
+        } catch (reason: unknown) {
+          abort(reason);
         }
       };
     });

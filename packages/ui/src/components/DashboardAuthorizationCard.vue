@@ -14,8 +14,6 @@ import { VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
 import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import Card from './ui/Card.vue';
 import Tooltip from './ui/Tooltip.vue';
-import AlibabaAuthorizationProfile from './AlibabaAuthorizationProfile.vue';
-import DashboardAuthorizationAction from './DashboardAuthorizationAction.vue';
 import { parseAuthorizationSummary } from '../lib/alibaba-authorizations';
 
 const { mode, control, settings, vault } = useServices();
@@ -36,23 +34,24 @@ const tone = computed(() =>
     ? 'normal'
     : credentialExpiryTone(expires.value, tokenCaptured.value, now.value)
 );
-const toneClass = computed(() =>
-  tone.value === 'danger'
+function expiryClass(value: ReturnType<typeof credentialExpiryTone>): string {
+  return value === 'danger'
     ? 'text-red-700 dark:text-red-300'
-    : tone.value === 'warning'
+    : value === 'warning'
       ? 'text-amber-700 dark:text-amber-300'
-      : 'text-foreground'
-);
+      : 'text-foreground';
+}
+const toneClass = computed(() => expiryClass(tone.value));
+function remainingText(time: number | null): string {
+  const current = credentialExpiryState(time, now.value);
+  return current.status === 'valid' || current.status === 'expiring'
+    ? t(`compact${current.unit}`, { count: current.count })
+    : current.status === 'expired'
+      ? t('compactExpired')
+      : t('unknown');
+}
 const value = computed(() =>
-  loading.value
-    ? '—'
-    : reason.value
-      ? t('unknown')
-      : state.value === 'valid' || state.value === 'expiring'
-        ? t(`remaining${expiry.value.unit}`, { count: expiry.value.count })
-        : state.value === 'unknown'
-          ? t('unknown')
-          : t(`expiry${state.value}`)
+  loading.value ? '—' : reason.value ? t('unknown') : remainingText(expires.value)
 );
 const reminder = computed(
   () =>
@@ -63,9 +62,36 @@ const reminder = computed(
         ? t(`permission${permission.value}`)
         : t(`expiry${state.value}`))
 );
+const profiles = computed(() =>
+  (['top', 'iop'] as const).map((protocol) => {
+    const summary = authorizations.value?.[protocol];
+    const time = summary?.accessTokenExpiresTimeUtc ?? null;
+    const status = credentialExpiryState(time, now.value).status;
+    const unavailable = reason.value ?? summary?.errorCode;
+    return {
+      protocol,
+      value: loading.value ? '—' : unavailable ? t('unknown') : remainingText(time),
+      tone:
+        loading.value || unavailable
+          ? ('normal' as const)
+          : credentialExpiryTone(time, summary?.accessTokenCapturedTimeUtc, now.value),
+      details: [
+        protocol.toUpperCase(),
+        unavailable
+          ? t(reason.value ?? 'expiryReadFailed')
+          : summary?.lastRefreshErrorCode
+            ? t('refreshFailed')
+            : status === 'unknown'
+              ? t(`permission${summary?.systemApiPermission ?? 'unknown'}`)
+              : t(`expiry${status}`),
+        time === null ? t('expiryunknown') : `${t('expires')}: ${formatDateTime(time)}`
+      ].join(' · ')
+    };
+  })
+);
 const details = computed(() =>
   authorizations.value
-    ? t('dualDescription')
+    ? profiles.value.map((profile) => profile.details).join(' · ')
     : [
         reminder.value,
         expires.value === null ? t('expiryunknown') : `${t('expires')}: ${formatDateTime(expires.value)}`,
@@ -90,7 +116,7 @@ function applySingleProfile(status: ControlGatewayCredentialSummary | null): voi
 }
 
 function applyAuthorizations(next: AlibabaAuthorizationsSummary): void {
-  // Optional metadata does not change the established one-profile card/tooltip layout.
+  // Show separate countdowns only when both profiles are configured; keep the legacy metadata path.
   if (next.top?.configured && next.iop?.configured) authorizations.value = next;
   else {
     authorizations.value = null;
@@ -195,41 +221,46 @@ onBeforeUnmount(() => {
     <div class="flex items-center justify-between gap-3">
       <span class="text-sm text-muted-foreground">{{ t('authorizationRemaining') }}</span>
       <Tooltip :text="details"
-        ><button
-          type="button"
+        ><span
+          role="img"
+          tabindex="0"
           :aria-label="details"
+          data-testid="authorization-details"
           class="rounded text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <KeyRound class="size-4" /></button
+          <KeyRound class="size-4" aria-hidden="true" /></span
       ></Tooltip>
     </div>
-    <div v-if="authorizations" class="mt-3 grid gap-3" data-testid="dashboard-dual-authorizations">
-      <p v-if="reason" class="text-xs text-amber-700 dark:text-amber-300" role="status">{{ t(reason) }}</p>
-      <AlibabaAuthorizationProfile
-        v-for="protocol in ['top', 'iop'] as const"
-        :key="protocol"
-        :protocol="protocol"
-        :summary="authorizations[protocol]"
-        :extension="mode === 'extension'"
-      >
-        <DashboardAuthorizationAction :protocol="protocol" />
-      </AlibabaAuthorizationProfile>
-    </div>
-    <p v-else class="mt-3 text-xl font-semibold" :class="toneClass" :data-tone="tone" role="status">
-      {{ value }}
-    </p>
-    <p
-      v-if="!loading && !authorizations"
-      class="mt-2 text-xs"
-      :class="
-        tone === 'danger'
-          ? 'text-red-700 dark:text-red-300'
-          : tone === 'normal' && state === 'valid' && !reason && !refreshFailed
-            ? 'text-muted-foreground'
-            : 'text-amber-700 dark:text-amber-300'
-      "
+    <div
+      v-if="authorizations"
+      class="mt-3 grid grid-cols-2 gap-3"
+      data-testid="dashboard-dual-authorizations"
     >
-      {{ reminder }}
+      <div
+        v-for="profile in profiles"
+        :key="profile.protocol"
+        class="min-w-0"
+        :data-testid="`authorization-${profile.protocol}`"
+      >
+        <p class="text-xs text-muted-foreground">{{ profile.protocol.toUpperCase() }}</p>
+        <p
+          class="mt-1 truncate text-xl font-semibold"
+          :class="expiryClass(profile.tone)"
+          :data-tone="profile.tone"
+          role="status"
+        >
+          {{ profile.value }}
+        </p>
+      </div>
+    </div>
+    <p
+      v-else
+      class="mt-3 whitespace-nowrap text-3xl font-semibold"
+      :class="toneClass"
+      :data-tone="tone"
+      role="status"
+    >
+      {{ value }}
     </p>
   </Card>
 </template>

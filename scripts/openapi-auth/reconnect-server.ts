@@ -81,12 +81,15 @@ export async function startReconnectServer(input: {
       // Never retry the one-time exchange, including ambiguous failures or local write failure.
       submitted = true;
       const token = await input.exchange(code);
-      const bundle = createAlibabaOpenApiCredentialBundle({
-        capturedAtTimeUtc: Date.now(),
-        application: input.application,
-        token,
-        receivedCallbackUrl: received.href
-      });
+      const bundle: AlibabaOpenApiCredentialBundle = {
+        ...createAlibabaOpenApiCredentialBundle({
+          capturedAtTimeUtc: Date.now(),
+          application: input.application,
+          token,
+          receivedCallbackUrl: received.href
+        }),
+        protocol: input.protocol === 'iop' ? 'iop' : 'top'
+      };
       await input.save(bundle);
       response.end(
         '<h1>授权包已保存</h1><p>state 与 Callback 校验通过。接下来请导入本地服务并测试只读连接；未执行商品操作。</p>'

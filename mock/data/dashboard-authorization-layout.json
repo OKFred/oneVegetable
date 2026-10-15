@@ -1,0 +1,11 @@
+{
+  "top": { "protocol": "top", "configurationId": "top-layout-fixture" },
+  "iop": { "protocol": "iop", "configurationId": "iop-layout-fixture" },
+  "defaultProtocol": "top",
+  "binding": {
+    "confirmed": false,
+    "topConfigurationId": null,
+    "iopConfigurationId": null,
+    "confirmedAtUtc": null
+  }
+}

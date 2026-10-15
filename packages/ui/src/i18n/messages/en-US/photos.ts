@@ -10,6 +10,10 @@ export const photos = {
     maximumSize: 'Maximum size (KiB)'
   },
   tasks: {
+    existingOtherGroup:
+      'Alibaba returned an existing image in another group. It was not moved or reuploaded. For template imports, reopen the original package and target group, then explicitly enable existing-image reuse.',
+    reusedGroup:
+      'Verified existing image reused in group {actual}; originally requested group {target}. The image was not moved.',
     retention: '100 tasks max. Keep unresolved records; clear terminal records after 30 days.',
     title: 'Transfer history',
     boundary: 'Continues across dialogs and navigation. After reload, confirm to resume. Local history only.',

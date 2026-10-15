@@ -484,6 +484,8 @@ export type CredentialVaultResponse =
 export interface HostPermissionsRepository {
   list(): Promise<string[]>;
   revoke(origin: string): Promise<boolean>;
+  /** Must be invoked directly from a user gesture. Never grants permanent manifest permissions. */
+  request?(origins: readonly string[]): Promise<boolean>;
 }
 
 export interface OnboardingState {

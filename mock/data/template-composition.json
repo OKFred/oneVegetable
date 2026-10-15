@@ -1,0 +1,36 @@
+{
+  "values": {
+    "productName": "Cotton T-shirt",
+    "model": "CT-100",
+    "companyName": "Example Textile",
+    "leadTime": "15 days",
+    "packaging": "One item per recyclable bag",
+    "shippingOrigin": "Shanghai"
+  },
+  "templates": [
+    {
+      "id": "company",
+      "name": "Company introduction",
+      "category": "company",
+      "language": "en_US",
+      "html": "<h2>About {{companyName}}</h2><p>Product: {{productName}}. Model: {{model}}.</p>"
+    },
+    {
+      "id": "logistics",
+      "name": "Shipping",
+      "category": "logistics",
+      "language": "en_US",
+      "html": "<h2>Shipping</h2><p>Lead time: {{leadTime}}. Origin: {{shippingOrigin}}.</p>"
+    },
+    {
+      "id": "packaging",
+      "name": "Packaging",
+      "category": "packaging",
+      "language": "en_US",
+      "html": "<h2>Packaging</h2><p>{{packaging}}</p>"
+    }
+  ],
+  "unsafeValue": "<img src=x onerror=alert(1)> & \"quoted\"",
+  "imageHtml": "<p>{{productName}}</p><img src=\"https://s.alicdn.com/@sc04/test.jpg\" alt=\"Product\" data-photobank-file-id=\"fixture-photo\">",
+  "schemaXml": "<schema><field id=\"subject\" type=\"input\"><value>Cotton T-shirt</value></field><field id=\"modelNumber\" type=\"input\"><value>CT-100</value></field><field id=\"shipping\" type=\"complex\"><fields><field id=\"deliveryTime\" type=\"input\"/></fields><complex-value><field id=\"deliveryTime\" type=\"input\"><value>15</value></field><field id=\"shippingOrigin\" type=\"input\"><value>Shanghai</value></field></complex-value></field><field id=\"superText\" type=\"input\"><value>&lt;p&gt;Original description&lt;/p&gt;</value></field></schema>"
+}

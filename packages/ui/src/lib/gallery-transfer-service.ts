@@ -27,6 +27,7 @@ export interface GalleryTaskPlanInput {
   importMapping: 'rules' | 'current';
   exportMapping: 'flat' | 'groups';
   exportPrefix: string;
+  reuseExistingPhotos?: boolean;
 }
 function item(fields: Partial<Item>): Item {
   return {
@@ -164,6 +165,7 @@ export class GalleryTransferService {
     const now = Date.now();
     const task: Task = {
       schemaVersion: 1,
+      ...(input.reuseExistingPhotos === true ? { reuseExistingPhotos: true } : {}),
       id,
       direction: input.direction,
       storage: input.storage,
@@ -329,11 +331,12 @@ export class GalleryTransferService {
     if (!task.items.some((i) => i.kind === 'asset')) throw new GalleryTaskError('GALLERY_TASK_EMPTY');
     return validateGalleryTransferTask(task);
   }
-  async create(task: Task, archiveBytes: Uint8Array | null): Promise<void> {
+  async create(task: Task, archiveBytes: Uint8Array | null, reveal = true): Promise<void> {
     task = structuredClone(toRaw(task));
     if (archiveBytes) await this.driver.attachArchive(task, archiveBytes);
     await this.repository.create(task);
-    this.show(task.id);
+    if (reveal) this.show(task.id);
+    else await this.reload();
   }
   async run(id: string, verifyOnly = false): Promise<void> {
     if (this.executing) throw new GalleryTaskError('GALLERY_TASK_BUSY');

@@ -371,6 +371,9 @@ async function requestVault<K extends CredentialVaultOperation>(
 }
 
 const permissions: HostPermissionsRepository = {
+  request(origins) {
+    return browser.permissions.request({ origins: [...origins] });
+  },
   async list() {
     const granted = await browser.permissions.getAll();
     return (granted.origins ?? [])

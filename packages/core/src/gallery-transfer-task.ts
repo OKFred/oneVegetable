@@ -25,6 +25,8 @@ export interface GalleryTransferItemV1 {
   fileId: string | null;
   errorCode: string | null;
   skipReason: string | null;
+  /** Exact-ID readback group; may differ only with explicit existing-image reuse consent. */
+  actualGroupId?: string;
 }
 export interface GalleryTransferTaskV1 {
   schemaVersion: 1;
@@ -44,6 +46,7 @@ export interface GalleryTransferTaskV1 {
   createMissingGroups: boolean;
   errorCode: string | null;
   items: GalleryTransferItemV1[];
+  reuseExistingPhotos?: boolean;
 }
 export const GALLERY_TASK_LIMIT = 100;
 export const GALLERY_TASK_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -60,8 +63,9 @@ const text = (v: unknown, max = 2048): v is string =>
 const nullableText = (v: unknown): boolean => v === null || text(v);
 const integer = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
 const oneOf = (v: unknown, values: string[]): boolean => typeof v === 'string' && values.includes(v);
-const onlyKeys = (v: Record<string, unknown>, keys: string[]): boolean =>
-  Object.keys(v).length === keys.length && Object.keys(v).every((k) => keys.includes(k));
+const onlyKeys = (v: Record<string, unknown>, keys: string[], optional: string[] = []): boolean =>
+  keys.every((key) => Object.hasOwn(v, key)) &&
+  Object.keys(v).every((key) => keys.includes(key) || optional.includes(key));
 export function validGalleryTransferContext(v: unknown): v is GalleryTransferContext {
   return (
     record(v) &&
@@ -79,26 +83,32 @@ export function sameGalleryTransferContext(a: GalleryTransferContext, b: Gallery
 function isGalleryTransferTask(value: unknown): value is GalleryTransferTaskV1 {
   if (
     !record(value) ||
-    !onlyKeys(value, [
-      'schemaVersion',
-      'id',
-      'direction',
-      'storage',
-      'status',
-      'command',
-      'context',
-      'createTimeUtc',
-      'updateTimeUtc',
-      'revision',
-      'archiveSha256',
-      'archiveName',
-      'batchPrefix',
-      'conflictPolicy',
-      'createMissingGroups',
-      'errorCode',
-      'items'
-    ]) ||
+    !onlyKeys(
+      value,
+      [
+        'schemaVersion',
+        'id',
+        'direction',
+        'storage',
+        'status',
+        'command',
+        'context',
+        'createTimeUtc',
+        'updateTimeUtc',
+        'revision',
+        'archiveSha256',
+        'archiveName',
+        'batchPrefix',
+        'conflictPolicy',
+        'createMissingGroups',
+        'errorCode',
+        'items'
+      ],
+      ['reuseExistingPhotos']
+    ) ||
     value.schemaVersion !== 1 ||
+    (value.reuseExistingPhotos !== undefined && typeof value.reuseExistingPhotos !== 'boolean') ||
+    (value.reuseExistingPhotos === true && value.direction !== 'import') ||
     !text(value.id, 80) ||
     !value.id ||
     !oneOf(value.direction, ['import', 'export']) ||
@@ -125,27 +135,31 @@ function isGalleryTransferTask(value: unknown): value is GalleryTransferTaskV1 {
   for (const item of value.items) {
     if (
       !record(item) ||
-      !onlyKeys(item, [
-        'id',
-        'kind',
-        'status',
-        'mutation',
-        'sourcePath',
-        'sourcePhotoId',
-        'sourceUrl',
-        'sourceSize',
-        'sourceEtag',
-        'sha256',
-        'contentType',
-        'targetPath',
-        'targetGroupId',
-        'parentItemId',
-        'fileName',
-        'requestId',
-        'fileId',
-        'errorCode',
-        'skipReason'
-      ]) ||
+      !onlyKeys(
+        item,
+        [
+          'id',
+          'kind',
+          'status',
+          'mutation',
+          'sourcePath',
+          'sourcePhotoId',
+          'sourceUrl',
+          'sourceSize',
+          'sourceEtag',
+          'sha256',
+          'contentType',
+          'targetPath',
+          'targetGroupId',
+          'parentItemId',
+          'fileName',
+          'requestId',
+          'fileId',
+          'errorCode',
+          'skipReason'
+        ],
+        ['actualGroupId']
+      ) ||
       !text(item.id, 80) ||
       !item.id ||
       ids.has(item.id) ||
@@ -175,6 +189,15 @@ function isGalleryTransferTask(value: unknown): value is GalleryTransferTaskV1 {
         'skipReason'
       ].every((k) => nullableText(item[k])) ||
       !(item.sourceSize === null || integer(item.sourceSize))
+    )
+      throw new GalleryTaskError('GALLERY_TASK_INVALID');
+    if (
+      item.actualGroupId !== undefined &&
+      (!text(item.actualGroupId, 128) ||
+        !item.actualGroupId ||
+        (item.status === 'confirmed' &&
+          item.actualGroupId !== item.targetGroupId &&
+          value.reuseExistingPhotos !== true))
     )
       throw new GalleryTaskError('GALLERY_TASK_INVALID');
     ids.add(item.id);
@@ -241,7 +264,8 @@ export function galleryTaskReport(task: GalleryTransferTaskV1): object {
       kind: item.kind,
       status: item.status,
       requestId: item.requestId,
-      errorCode: item.errorCode
+      errorCode: item.errorCode,
+      reusedExistingPhoto: item.actualGroupId !== undefined && item.actualGroupId !== item.targetGroupId
     }))
   };
 }

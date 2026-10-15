@@ -248,7 +248,17 @@ async function pause(): Promise<void> {
           </p>
           <p v-if="item.requestId" class="break-all text-muted-foreground">requestId: {{ item.requestId }}</p>
           <p v-if="item.errorCode" class="text-amber-700 dark:text-amber-300">
-            {{ t('photos.tasks.error', { code: item.errorCode }) }}
+            {{
+              item.errorCode === 'GALLERY_TASK_EXISTING_OTHER_GROUP'
+                ? t('photos.tasks.existingOtherGroup')
+                : t('photos.tasks.error', { code: item.errorCode })
+            }}
+          </p>
+          <p
+            v-if="item.actualGroupId && item.actualGroupId !== item.targetGroupId"
+            class="text-muted-foreground"
+          >
+            {{ t('photos.tasks.reusedGroup', { actual: item.actualGroupId, target: item.targetGroupId }) }}
           </p>
           <p v-if="item.skipReason">{{ item.skipReason }}</p>
           <Button

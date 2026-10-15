@@ -2,12 +2,43 @@ import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
 import fixture from '../../../mock/data/gallery-transfer-task.json';
 import {
+  GalleryTaskError,
   validateGalleryTransferTask,
   GALLERY_TASK_RETENTION_MS
 } from '@one-vegetable/core/gallery-transfer-task';
+import { templateError } from '@one-vegetable/core/template-library';
 import { IndexedDbGalleryTaskRepository, GALLERY_TASK_DATABASE } from '../src/lib/gallery-task-repository';
 
 describe('local durable gallery repository', () => {
+  it.each([
+    new GalleryTaskError('GALLERY_TASK_BUSY'),
+    templateError('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP')
+  ])('preserves a known policy rejection and rolls back changes: %s', async (reason) => {
+    const repo = new IndexedDbGalleryTaskRepository(new IDBFactory());
+    const task = validateGalleryTransferTask(structuredClone(fixture));
+    await repo.create(task);
+    await expect(
+      repo.update(task.id, (current) => {
+        current.status = 'running';
+        throw reason;
+      })
+    ).rejects.toBe(reason);
+    expect(await repo.get(task.id)).toEqual(task);
+  });
+
+  it('normalizes unexpected updater errors without exposing their contents or committing changes', async () => {
+    const repo = new IndexedDbGalleryTaskRepository(new IDBFactory());
+    const task = validateGalleryTransferTask(structuredClone(fixture));
+    await repo.create(task);
+    await expect(
+      repo.update(task.id, (current) => {
+        current.status = 'running';
+        throw new Error('private updater detail');
+      })
+    ).rejects.toThrow('GALLERY_TASK_STORAGE');
+    expect(await repo.get(task.id)).toEqual(task);
+  });
+
   it('persists across repository instances, commits revisions and refuses running cleanup', async () => {
     const factory = new IDBFactory();
     const task = validateGalleryTransferTask(structuredClone(fixture));

@@ -43,6 +43,11 @@ import {
 
 import PhotoBankPicker from './PhotoBankPicker.vue';
 import ProductDescriptionTemplatePanel from './ProductDescriptionTemplatePanel.vue';
+import DescriptionTemplateVariablePicker from './DescriptionTemplateVariablePicker.vue';
+import {
+  descriptionTemplateToken,
+  type DescriptionTemplateVariable
+} from '@one-vegetable/core/template-composition';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
@@ -54,8 +59,9 @@ const props = withDefaults(
     smartDetail?: boolean;
     language?: 'zh_CN' | 'en_US';
     showTemplates?: boolean;
+    templateAuthoring?: boolean;
   }>(),
-  { smartDetail: false, language: 'en_US', showTemplates: true }
+  { smartDetail: false, language: 'en_US', showTemplates: true, templateAuthoring: false }
 );
 const emit = defineEmits<{
   'update:modelValue': [html: string];
@@ -211,6 +217,15 @@ function applyTemplate(payload: { mode: 'insert' | 'append' | 'replace'; html: s
   }
 }
 
+function insertTemplateVariable(variable: DescriptionTemplateVariable): void {
+  if (!editable.value || !props.templateAuthoring) return;
+  editor.value
+    ?.chain()
+    .focus()
+    .insertContent({ type: 'text', text: descriptionTemplateToken(variable) })
+    .run();
+}
+
 function reportImageStatus(event: Event, loaded: boolean): void {
   if (!(event.target instanceof HTMLImageElement)) return;
   emit('imageStatus', {
@@ -320,6 +335,7 @@ function reportImageStatus(event: Event, loaded: boolean): void {
     </div>
 
     <template v-else>
+      <DescriptionTemplateVariablePicker v-if="templateAuthoring" @insert="insertTemplateVariable" />
       <div class="flex flex-wrap items-center gap-1 border-b bg-muted/30 p-2">
         <Button
           size="icon"

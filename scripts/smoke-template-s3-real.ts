@@ -393,8 +393,7 @@ async function verifyExtension(
     await view.getByLabel('Secret Access Key', { exact: true }).fill(configuration.secretAccessKey);
     await view.getByLabel('素材根目录', { exact: true }).fill(configuration.rootPrefix);
     await view.getByLabel('使用 Path-style 地址', { exact: false }).setChecked(configuration.pathStyle);
-    if (configuration.allowInsecureLocal)
-      await view.getByRole('checkbox', { name: /仅在可信局域网/u }).check();
+    if (configuration.allowInsecureLocal) await view.getByRole('checkbox', { name: /HTTP 未加密/u }).check();
     if (configuration.sessionToken)
       await view.getByLabel('Session Token（可选）', { exact: true }).fill(configuration.sessionToken);
     console.log(

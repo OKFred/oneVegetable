@@ -41,6 +41,11 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              name: 'release-notes',
+              test: /core[\\/]src[\\/](?:generated[\\/])?release-notes\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
               name: 'alibaba-authorizations',
               test: /[\\/]apps[\\/]extension[\\/]lib[\\/](?:alibaba-authorizations|authorization-refresh)\.ts$/u,
               includeDependenciesRecursively: false

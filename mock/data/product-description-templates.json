@@ -111,6 +111,34 @@
       "updaterId": "system:bundled",
       "revision": 1,
       "remark": "Built-in template; service commitments must be achievable"
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000009",
+      "name": "商品与交付概览（可填）",
+      "category": "custom",
+      "language": "zh_CN",
+      "html": "<h2>{{productName}}</h2><p>供应商：{{companyName}}</p><table><tbody><tr><th>项目</th><th>说明</th></tr><tr><td>型号</td><td>{{model}}</td></tr><tr><td>包装</td><td>{{packaging}}</td></tr><tr><td>交期</td><td>{{leadTime}}</td></tr><tr><td>发货地</td><td>{{shippingOrigin}}</td></tr></tbody></table>",
+      "status": "active",
+      "createTimeUtc": 1791936000000,
+      "updateTimeUtc": 1791936000000,
+      "creatorId": "system:bundled",
+      "updaterId": "system:bundled",
+      "revision": 1,
+      "remark": "填写实际信息后使用；不会自动提交或修改商品其他字段"
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000010",
+      "name": "Product and delivery (fillable)",
+      "category": "custom",
+      "language": "en_US",
+      "html": "<h2>{{productName}}</h2><p>Supplier: {{companyName}}</p><table><tbody><tr><th>Item</th><th>Details</th></tr><tr><td>Model</td><td>{{model}}</td></tr><tr><td>Packaging</td><td>{{packaging}}</td></tr><tr><td>Lead time</td><td>{{leadTime}}</td></tr><tr><td>Shipping origin</td><td>{{shippingOrigin}}</td></tr></tbody></table>",
+      "status": "active",
+      "createTimeUtc": 1791936000000,
+      "updateTimeUtc": 1791936000000,
+      "creatorId": "system:bundled",
+      "updaterId": "system:bundled",
+      "revision": 1,
+      "remark": "Fill with verified information before use; no automatic publishing or other product changes"
     }
   ]
 }

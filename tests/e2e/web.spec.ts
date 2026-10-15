@@ -698,6 +698,10 @@ test('web mock supports visual detail editing, PhotoBank transfer and non-blocki
   let templateDialog = await openDescriptionTemplates(page);
   const companyTemplate = templateDialog.locator('article').filter({ hasText: 'Company profile' });
   await companyTemplate.getByRole('button', { name: '追加末尾' }).click();
+  await page
+    .getByRole('dialog', { name: '组合与填入模板', exact: true })
+    .getByRole('button', { name: '确认追加', exact: true })
+    .click();
   await expect(page.locator('.ProseMirror')).toContainText('About Us');
   await expect(templateDialog).toHaveCount(0);
 

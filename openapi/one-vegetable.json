@@ -18789,6 +18789,44 @@
           "status": { "type": "string", "enum": ["active", "archived"] }
         }
       },
+      "ProductDescriptionTemplateMaterial": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "fileName", "contentType", "byteLength", "sha256"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^assets/[a-f0-9]{64}\\.(jpg|jpeg|png|gif|bmp)$" },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^[^\\\\/\\u0000-\\u001f]+$"
+          },
+          "contentType": { "type": "string", "enum": ["image/jpeg", "image/png", "image/gif", "image/bmp"] },
+          "byteLength": { "type": "integer", "minimum": 1, "maximum": 5242880 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      },
+      "ProductDescriptionTemplateMaterialBundle": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "schemaVersion", "exportedAtUtc", "templates", "assets"],
+        "properties": {
+          "kind": { "type": "string", "const": "oneVegetable.product-description-template-assets" },
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "exportedAtUtc": { "type": "integer", "minimum": 0 },
+          "templates": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": { "$ref": "#/components/schemas/ProductDescriptionTemplatePortable" }
+          },
+          "assets": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/components/schemas/ProductDescriptionTemplateMaterial" }
+          }
+        }
+      },
       "ProductDescriptionTemplatePage": {
         "type": "object",
         "additionalProperties": false,

@@ -80,10 +80,11 @@ targets.set(
   'validators-templates.ts',
   compileValidators(
     Object.fromEntries(
-      ['ProductDescriptionTemplate', 'ProductDescriptionTemplateBundle'].map((name) => [
-        `validate${name}`,
-        schemas[name]
-      ])
+      [
+        'ProductDescriptionTemplate',
+        'ProductDescriptionTemplateBundle',
+        'ProductDescriptionTemplateMaterialBundle'
+      ].map((name) => [`validate${name}`, schemas[name]])
     ),
     'fast',
     false

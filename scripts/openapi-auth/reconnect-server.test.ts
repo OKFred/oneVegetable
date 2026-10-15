@@ -45,6 +45,23 @@ async function harness(fail = false, protocol: 'legacy' | 'iop' = 'legacy') {
   };
 }
 describe('local manual reauthorization', () => {
+  it.each(['legacy', 'iop'] as const)(
+    'saves an explicit protocol for %s without persisting the code',
+    async (protocol) => {
+      const h = await harness(false, protocol);
+      try {
+        expect(
+          (await h.api.post('/complete', { form: h.form, headers: { Origin: h.server.origin } })).status()
+        ).toBe(200);
+        expect(h.save).toHaveBeenCalledWith(
+          expect.objectContaining({ protocol: protocol === 'iop' ? 'iop' : 'top' })
+        );
+        expect(JSON.stringify(h.save.mock.calls)).not.toContain('one-time');
+      } finally {
+        await h.close();
+      }
+    }
+  );
   it('uses the documented IOP authorization origin only when explicitly selected', async () => {
     const h = await harness(false, 'iop');
     try {

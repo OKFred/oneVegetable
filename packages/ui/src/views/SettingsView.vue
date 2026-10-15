@@ -418,14 +418,11 @@ async function loadSelectedAuthorization(): Promise<GatewaySettings> {
 }
 
 async function selectAuthorization(protocol: 'top' | 'iop'): Promise<void> {
-  if (
-    !settings.loadAuthorization ||
-    selectedProtocol.value === protocol ||
-    switchingAuthorization.value ||
-    saving.value ||
-    vaultBusy.value
-  )
+  if (!settings.loadAuthorization || switchingAuthorization.value || saving.value || vaultBusy.value) return;
+  if (selectedProtocol.value === protocol) {
+    toast.info(credentialText('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
     return;
+  }
   if (!(await credentialEditing.confirmLeave())) return;
   switchingAuthorization.value = true;
   credentialImportError.value = null;
@@ -433,6 +430,7 @@ async function selectAuthorization(protocol: 'top' | 'iop'): Promise<void> {
     model.value = await settings.loadAuthorization(protocol);
     credentialEditing.markClean();
     feedback.value = '';
+    toast.info(credentialText('profileSelected', { protocol: protocol.toUpperCase() }));
   } catch (cause) {
     credentialImportError.value = userVisibleCause(cause, credentialText('error'));
   } finally {

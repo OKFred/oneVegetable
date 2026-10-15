@@ -23,6 +23,7 @@ import {
   readGalleryTransferArchive,
   type GalleryTransferArchive
 } from './gallery-transfer-archive';
+import { galleryImportReadback } from './gallery-import-readback';
 
 export function transferOptions(task: Task, item?: Item): GalleryRequestOptions {
   return { galleryContext: task.context, ...(item?.requestId ? { requestId: item.requestId } : {}) };
@@ -103,8 +104,19 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
     return this.services.gateway.galleryTransferContext();
   }
   async attachArchive(task: Task, bytes: Uint8Array): Promise<void> {
-    if ((await galleryAssetSha256(bytes)) !== task.archiveSha256)
-      throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_CHANGED');
+    if ((await galleryAssetSha256(bytes)) !== task.archiveSha256) {
+      // Template materials reuse gallery write-ahead receipts. Recovery accepts
+      // the original template ZIP, but still verifies the frozen gallery hash.
+      const { readTemplateMaterialArchive, templateMaterialGalleryArchive } =
+        await import('./template-material-archive');
+      try {
+        bytes = await templateMaterialGalleryArchive(await readTemplateMaterialArchive(bytes));
+      } catch {
+        throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_CHANGED');
+      }
+      if ((await galleryAssetSha256(bytes)) !== task.archiveSha256)
+        throw new GalleryTaskError('GALLERY_TASK_ARCHIVE_CHANGED');
+    }
     this.archives.set(task.id, await readGalleryTransferArchive(bytes));
   }
   private control() {
@@ -277,8 +289,16 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
           photos = await allGalleryPhotos(this.services.gateway, item.targetGroupId, options);
           this.verifiedPages.set(item.targetGroupId, photos);
         }
-        if (photos.some((p) => p.id === item.fileId && p.groupId === item.targetGroupId))
-          return { ...item, status: 'confirmed', errorCode: null };
+        const photo = await galleryImportReadback(this.services.gateway, task, item, photos);
+        if (photo)
+          return {
+            ...item,
+            status: 'confirmed',
+            errorCode: null,
+            ...(photo.groupId !== item.targetGroupId || item.actualGroupId !== undefined
+              ? { actualGroupId: photo.groupId }
+              : {})
+          };
       } else if (task.direction === 'export' && task.storage === 's3' && item.sha256) {
         const control = this.control();
         if (!control.getS3Object) throw new GalleryTaskError('GALLERY_CONTEXT_UNAVAILABLE');
@@ -286,7 +306,12 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
         if ((await galleryAssetSha256(object.bytes)) === item.sha256)
           return { ...item, status: 'confirmed', errorCode: null };
       }
-    } catch {
+    } catch (error: unknown) {
+      if (
+        error instanceof GalleryTaskError &&
+        ['GALLERY_TASK_EXISTING_OTHER_GROUP', 'GALLERY_TASK_SOURCE_CHANGED'].includes(error.code)
+      )
+        return { ...item, errorCode: error.code };
       /* A failed read must never authorize repeating a mutation. */
     }
     return { ...item, errorCode: 'GALLERY_TASK_UNCONFIRMED' };

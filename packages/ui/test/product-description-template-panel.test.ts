@@ -12,6 +12,9 @@ import {
   UnsavedEditingService
 } from '../src/lib/unsaved-editing';
 import { uiI18n } from '../src/i18n';
+import compositionFixture from '../../../mock/data/template-composition.json' with { type: 'json' };
+import { parseProductSchemaXml } from '@one-vegetable/core';
+import { provideDescriptionTemplateContext } from '../src/lib/template-composition-context';
 
 const template: ProductDescriptionTemplate = {
   id: 'template-1',
@@ -39,11 +42,11 @@ afterEach(() => {
   uiI18n.global.locale.value = 'zh-CN';
 });
 
-async function mountPanel() {
+async function mountPanel(items: ProductDescriptionTemplate[] = [template]) {
   const repository = {
     list: vi
       .fn<ProductDescriptionTemplateClient['list']>()
-      .mockResolvedValue({ items: [template], page: 1, pageSize: 100, total: 1 }),
+      .mockResolvedValue({ items, page: 1, pageSize: 100, total: items.length }),
     create: vi.fn<ProductDescriptionTemplateClient['create']>().mockResolvedValue(template),
     update: vi.fn<ProductDescriptionTemplateClient['update']>().mockResolvedValue(template),
     archive: vi.fn<ProductDescriptionTemplateClient['archive']>().mockResolvedValue(template),
@@ -53,6 +56,7 @@ async function mountPanel() {
   const host = mount(
     defineComponent({
       setup() {
+        provideDescriptionTemplateContext(() => parseProductSchemaXml(compositionFixture.schemaXml));
         provideUnsavedEditing(editing);
         provideServices({
           gateway: new MockGatewayClient(0),
@@ -98,6 +102,28 @@ async function mountPanel() {
 }
 
 describe('description template unsaved editing', () => {
+  it('composes selected templates with product context and does not persist filled values or write products', async () => {
+    const items: ProductDescriptionTemplate[] = compositionFixture.templates.slice(0, 2).map((item) => ({
+      ...template,
+      id: item.id,
+      name: item.name,
+      html: item.html
+    }));
+    const { wrapper, button, repository, panel } = await mountPanel(items);
+    for (const item of items) await wrapper.get(`input[aria-label="Select ${item.name}"]`).setValue(true);
+    await button('Use together').trigger('click');
+    expect(wrapper.get<HTMLInputElement>('input[id$="-productName"]').element.value).toBe('Cotton T-shirt');
+    await wrapper.get('input[id$="-companyName"]').setValue(compositionFixture.values.companyName);
+    await wrapper.get('input[id$="-leadTime"]').setValue(compositionFixture.values.leadTime);
+    expect(panel.emitted('apply')).toBeUndefined();
+    await button('Confirm append').trigger('click');
+    const applied = panel.emitted<[{ mode: string; html: string }]>('apply')?.[0]?.[0];
+    expect(applied?.mode).toBe('append');
+    expect(applied?.html).toContain('Example Textile');
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+    expect(items[0]?.html).toContain('{{companyName}}');
+  });
   it.each([
     ['Create template', 'Create description template'],
     ['Edit', 'Edit description template'],

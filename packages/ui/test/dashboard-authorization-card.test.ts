@@ -96,10 +96,11 @@ describe('overview authorization card', () => {
       expect(value.attributes('data-tone')).toBe('danger');
       expect(value.classes()).toContain('text-red-700');
       expect(value.classes()).toContain('dark:text-red-300');
-      expect(view.wrapper.text()).toContain('剩余约 24 天');
+      expect(view.wrapper.text()).toContain('24 天');
       uiI18n.global.locale.value = 'en-US';
       await flushPromises();
-      expect(view.wrapper.text()).toContain('About 24 days left');
+      expect(view.wrapper.text()).toContain('24 days');
+      expect(view.wrapper.findAll('button')).toHaveLength(0);
       expect(view.refresh).not.toHaveBeenCalled();
       view.wrapper.unmount();
     }
@@ -150,12 +151,12 @@ describe('overview authorization card', () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_800_000_000_000);
     const view = await harness({ status: { accessTokenExpiresTimeUtc: Date.now() + 120_000 } });
-    expect(view.wrapper.text()).toContain('剩余约 2 分钟');
+    expect(view.wrapper.text()).toContain('2 分钟');
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(view.wrapper.text()).toContain('剩余约 1 分钟');
+    expect(view.wrapper.text()).toContain('1 分钟');
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
-    expect(view.wrapper.text()).toContain('About 1 minutes left');
+    expect(view.wrapper.text()).toContain('1 min');
     expect(view.read).toHaveBeenCalledOnce();
     expect(view.refresh).not.toHaveBeenCalled();
     view.wrapper.unmount();
@@ -170,15 +171,23 @@ describe('overview authorization card', () => {
     const view = await harness({
       status: { accessTokenExpiresTimeUtc: null, systemApiPermission: permission }
     });
-    expect(view.wrapper.text()).toContain(expected);
+    expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+      expected
+    );
     expect(view.wrapper.text()).not.toContain('剩余约');
-    expect(view.wrapper.get('button').attributes('aria-label')).toContain('非实时查询');
+    expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+      '非实时查询'
+    );
+    expect(view.wrapper.get('[role="status"]').text()).toBe('未知');
+    expect(view.wrapper.findAll('button')).toHaveLength(0);
     expect(view.refresh).not.toHaveBeenCalled();
     view.wrapper.unmount();
   });
   it('does not request administrator metadata for regular users', async () => {
     const view = await harness({ role: 'user' });
-    expect(view.wrapper.text()).toContain('只有管理员');
+    expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+      '只有管理员'
+    );
     expect(view.read).not.toHaveBeenCalled();
     view.wrapper.unmount();
   });
@@ -193,27 +202,35 @@ describe('overview authorization card', () => {
           lastRefreshErrorCode: 'ALIBABA_TOKEN_REFRESH_FAILED'
         }
       });
-      expect(view.wrapper.text()).toContain('续期失败，请测试连接或重新授权');
+      expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+        '续期失败，请测试连接或重新授权'
+      );
       expect(view.wrapper.text()).not.toContain('授权已失效');
-      expect(view.wrapper.text()).toContain(lifetime === null ? '未知' : '剩余约 2 分钟');
+      expect(view.wrapper.text()).toContain(lifetime === null ? '未知' : '2 分钟');
       expect(view.refresh).not.toHaveBeenCalled();
       view.wrapper.unmount();
     }
   );
   it('reads only safe extension settings; a locked vault is not a missing permission', async () => {
     const view = await harness({ extension: true, locked: true });
-    expect(view.wrapper.text()).toContain('解锁凭据');
+    expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+      '解锁凭据'
+    );
     expect(view.load).not.toHaveBeenCalled();
     expect(view.read).not.toHaveBeenCalled();
     view.wrapper.unmount();
   });
   it('reads unlocked extension metadata and reloads when credentials change, never replaying refresh', async () => {
+    // An exact day boundary must not depend on CI scheduling between request and render.
+    vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000);
     const view = await harness({ extension: true });
-    expect(view.wrapper.text()).toContain('有效期未返回');
+    expect(view.wrapper.get('[data-testid="authorization-details"]').attributes('aria-label')).toContain(
+      '有效期未返回'
+    );
     view.load.mockResolvedValueOnce({ accessTokenExpiresTimeUtc: Date.now() + 2 * 86_400_000 });
     globalThis.dispatchEvent(new Event(GATEWAY_CONFIGURATION_EVENT));
     await flushPromises();
-    expect(view.wrapper.text()).toContain('剩余约');
+    expect(view.wrapper.text()).toContain('2 天');
     expect(view.load).toHaveBeenCalledTimes(2);
     expect(view.readSession).not.toHaveBeenCalled();
     expect(view.refresh).not.toHaveBeenCalled();

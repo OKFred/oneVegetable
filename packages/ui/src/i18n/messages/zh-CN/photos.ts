@@ -38,6 +38,9 @@ export const photos = {
     skip: '标记跳过',
     reason: '请填写跳过原因',
     error: '需要处理（{code}）：检查登录、权限、配置或重选原 ZIP。未知结果须先核对，不能重传。',
+    existingOtherGroup:
+      '平台返回了其他分组中的已有图片，不会移动或重复上传。模板导入可重新打开原包、选择同一目标分组，并确认“复用已存在图片（保留原分组）”。',
+    reusedGroup: '已确认复用现有图片：实际分组 {actual}；原目标分组 {target}。未移动图片。',
     status: {
       pending: '待开始',
       running: '执行中',
