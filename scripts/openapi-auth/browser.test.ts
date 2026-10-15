@@ -31,7 +31,10 @@ describe('Node Playwright Alibaba developer prerequisite detection', () => {
     ['registrationRejected', 'developer-registration-rejected'],
     ['applicationRequired', 'application-required'],
     ['applicationNotReady', 'application-not-ready'],
-    ['applicationReady', null]
+    ['applicationReady', null],
+    ['reviewApproved', null],
+    ['pendingWithFutureApprovedStep', 'developer-registration-under-review'],
+    ['registrationWithHiddenRejection', 'developer-registration-required']
   ])('classifies the sanitized %s page without returning field values', async (scenarioName, expected) => {
     document.body.innerHTML = requireScenario(scenarioName).html;
 

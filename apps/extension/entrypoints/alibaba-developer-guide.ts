@@ -11,11 +11,11 @@ import type {
 } from '@one-vegetable/core';
 
 const HOST_ID = 'one-vegetable-alibaba-developer-guide';
-const PREFERENCES_STORAGE_KEY = 'one-vegetable:preferences:v2';
 
 interface GuideUpdateMessage {
   kind: 'one-vegetable-alibaba-developer-guide-update';
   state: AlibabaCredentialAcquisitionState;
+  uiLocale?: UiLocale;
 }
 
 interface GuideCopy {
@@ -123,23 +123,14 @@ const COPY: Record<UiLocale, GuideCopy> = {
 };
 
 export default defineUnlistedScript(() => {
-  void mountGuide();
+  mountGuide();
 });
 
-async function mountGuide(): Promise<void> {
+function mountGuide(): void {
   if (document.getElementById(HOST_ID)) return;
 
-  const stored = await browser.storage.local.get(PREFERENCES_STORAGE_KEY);
-  const preference = isRecord(stored[PREFERENCES_STORAGE_KEY])
-    ? stored[PREFERENCES_STORAGE_KEY].uiLocale
-    : null;
-  const locale: UiLocale =
-    preference === 'zh-CN' || preference === 'en-US'
-      ? preference
-      : navigator.language.toLowerCase().includes('zh')
-        ? 'zh-CN'
-        : 'en-US';
-  const copy = COPY[locale];
+  let locale: UiLocale = navigator.language.toLowerCase().includes('zh') ? 'zh-CN' : 'en-US';
+  let copy = COPY[locale];
   const host = document.createElement('div');
   host.id = HOST_ID;
   host.style.cssText = 'all: initial; position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;';
@@ -187,18 +178,42 @@ async function mountGuide(): Promise<void> {
 
   locate.addEventListener('click', () => void locateNextField());
   recheck.addEventListener('click', () => void recheckPrerequisite());
-  back.addEventListener('click', () => void browser.runtime.openOptionsPage());
+  back.addEventListener('click', () => {
+    void browser.runtime.openOptionsPage().catch(() => {
+      showFeedback(copy.error, true);
+    });
+  });
 
-  browser.runtime.onMessage.addListener((message: unknown) => {
+  const onMessage = (message: unknown): void => {
     if (!isRecord(message)) return;
     if (message.kind === 'one-vegetable-alibaba-developer-guide-remove') {
       host.remove();
+      browser.runtime.onMessage.removeListener(onMessage);
       return;
     }
     if (message.kind !== 'one-vegetable-alibaba-developer-guide-update') return;
     const update = message as unknown as GuideUpdateMessage;
+    if (update.uiLocale === 'zh-CN' || update.uiLocale === 'en-US') {
+      locale = update.uiLocale;
+      copy = COPY[locale];
+      product.textContent = copy.product;
+      progress.textContent = copy.progress;
+      privacy.textContent = copy.privacy;
+      for (const [control, label] of [
+        [locate, copy.locate],
+        [recheck, copy.recheck],
+        [back, copy.back]
+      ] as const) {
+        control.textContent = label;
+        control.setAttribute('aria-label', label);
+        control.title = label;
+      }
+      collapse.setAttribute('aria-label', collapsed ? copy.expand : copy.collapse);
+      collapse.title = collapsed ? copy.expand : copy.collapse;
+    }
     render(update.state);
-  });
+  };
+  browser.runtime.onMessage.addListener(onMessage);
 
   async function locateNextField(): Promise<void> {
     setBusy(true);
@@ -216,14 +231,12 @@ async function mountGuide(): Promise<void> {
     setBusy(true);
     showFeedback(copy.checking);
     try {
-      let next = asAcquisitionState(await requestAcquisition('start', { callbackUrl: null }));
+      const value = await requestAcquisition('read-prerequisite');
+      const next = value === null ? null : asAcquisitionState(value);
       render(next);
-      for (let attempt = 0; next.status === 'running' && attempt < 30; attempt += 1) {
-        await delay(1_000);
-        next = asAcquisitionState(await requestAcquisition('status', { jobId: next.jobId }));
-        render(next);
-      }
-      showFeedback(next.status === 'prerequisite-required' ? copy.descriptions[next.reasonCode] : copy.ready);
+      showFeedback(
+        next?.status === 'prerequisite-required' ? copy.descriptions[next.reasonCode] : copy.ready
+      );
     } catch {
       showFeedback(copy.error, true);
     } finally {
@@ -231,8 +244,8 @@ async function mountGuide(): Promise<void> {
     }
   }
 
-  function render(state: AlibabaCredentialAcquisitionState): void {
-    if (state.status !== 'prerequisite-required') {
+  function render(state: AlibabaCredentialAcquisitionState | null): void {
+    if (state?.status !== 'prerequisite-required') {
       title.textContent = copy.ready;
       description.textContent = '';
       checklist.replaceChildren();
@@ -316,10 +329,6 @@ function button(label: string, className: string): HTMLButtonElement {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
 }
 
 const guideStyles = `

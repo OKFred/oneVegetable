@@ -2,7 +2,7 @@ import { acquire, connect, limits } from '@cloudflare/playwright';
 
 import {
   createAlibabaOpenApiCredentialBundle,
-  inspectAlibabaDeveloperPrerequisiteDocument,
+  inspectAlibabaDeveloperPageDocument,
   NetworkManager,
   parseAlibabaTokenResponse,
   resolveAlibabaCredentialApplication,
@@ -440,7 +440,8 @@ async function detectDeveloperPrerequisite(
       page.frames().map((frame) =>
         frame
           .locator('body')
-          .evaluate(inspectAlibabaDeveloperPrerequisiteDocument)
+          .evaluate(inspectAlibabaDeveloperPageDocument)
+          .then((state) => (state.kind === 'prerequisite' ? state.reasonCode : null))
           .catch(() => null)
       )
     )
