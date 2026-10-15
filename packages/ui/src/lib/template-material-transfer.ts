@@ -72,6 +72,19 @@ function matchingMaterialTasks(
       task.items.every((item) => item.kind === 'asset' && item.targetGroupId === groupId)
   );
 }
+function assertImportConsent(task: GalleryTransferTaskV1, reuse: boolean): void {
+  if (task.status === 'running') throw templateError('GALLERY_TASK_BUSY');
+  if (
+    !reuse &&
+    task.items.some(
+      (item) =>
+        item.status === 'confirmed' &&
+        item.actualGroupId !== undefined &&
+        item.actualGroupId !== item.targetGroupId
+    )
+  )
+    throw templateError('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP');
+}
 export function assertTemplateMaterialCurrent(isCurrent: () => boolean): void {
   if (!isCurrent()) throw templateError('TEMPLATE_CONTEXT_CHANGED');
 }
@@ -244,12 +257,17 @@ export async function executeTemplateMaterialImport(
       );
       if (matches.length > 1) throw templateError('TEMPLATE_MATERIAL_UNCONFIRMED');
       const task = matches[0] ?? proposed;
+      const reuse = plan.reuseExistingPhotos === true;
+      assertImportConsent(task, reuse);
       if (!matches.length) await transfers.create(task, archiveBytes, false);
-      // Explicitly confirmed reconciliation policy: target/context/request IDs stay frozen.
-      // No replacement task and no new upload for an already-sent receipt.
-      if (plan.reuseExistingPhotos && !task.reuseExistingPhotos) {
+      // Use this confirmation, not an earlier window's checkbox. Never alter a live
+      // execution or erase a confirmed cross-group receipt to revoke its consent.
+      // Target/context/request IDs stay frozen; sent writes are not replaced.
+      if (reuse !== (task.reuseExistingPhotos === true)) {
         return transfers.repository.update(task.id, (current) => {
-          current.reuseExistingPhotos = true;
+          assertImportConsent(current, reuse);
+          if (reuse) current.reuseExistingPhotos = true;
+          else delete current.reuseExistingPhotos;
         });
       }
       return task;

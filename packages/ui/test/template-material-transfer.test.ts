@@ -134,6 +134,132 @@ async function materialPackage(withImage = true): Promise<TemplateMaterialPackag
 }
 
 describe('template material runtime with persistent gallery tasks', () => {
+  it('uses the current confirmation when resuming a pending task with previous reuse consent', async () => {
+    const s = setup();
+    const pack = await materialPackage();
+    const previous = await prepareTemplateMaterialImport(
+      s.transfers,
+      pack,
+      '2001',
+      'Target',
+      () => true,
+      true
+    );
+    const task = required(previous.task);
+    await s.transfers.create(task, required(previous.archiveBytes), false);
+    const strict = await prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true);
+    const run = vi.spyOn(s.transfers, 'run').mockResolvedValue(undefined);
+    s.request.mockClear();
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, strict, 'copy', () => true)
+    ).rejects.toThrow('TEMPLATE_MATERIAL_UNCONFIRMED');
+    const stored = await s.transfers.repository.get(task.id);
+    expect(stored.reuseExistingPhotos).not.toBe(true);
+    expect(stored.id).toBe(task.id);
+    expect(stored.context).toEqual(task.context);
+    expect(stored.items).toEqual(task.items);
+    expect(run).toHaveBeenCalledWith(task.id, false);
+    expect(s.request).not.toHaveBeenCalled();
+    expect((await s.client.list()).items).toHaveLength(0);
+  });
+
+  it('never changes the reuse policy of a task already running in another window', async () => {
+    const s = setup();
+    const pack = await materialPackage();
+    const previous = await prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true);
+    const task = required(previous.task);
+    await s.transfers.create(task, required(previous.archiveBytes), false);
+    await s.transfers.repository.update(task.id, (current) => {
+      current.status = 'running';
+    });
+    const baseline = await s.transfers.repository.get(task.id);
+    const consented = await prepareTemplateMaterialImport(
+      s.transfers,
+      pack,
+      '2001',
+      'Target',
+      () => true,
+      true
+    );
+    const run = vi.spyOn(s.transfers, 'run').mockResolvedValue(undefined);
+    s.request.mockClear();
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, consented, 'copy', () => true)
+    ).rejects.toThrow('GALLERY_TASK_BUSY');
+    expect(await s.transfers.repository.get(task.id)).toEqual(baseline);
+    expect(run).not.toHaveBeenCalled();
+    expect(s.request).not.toHaveBeenCalled();
+    expect((await s.client.list()).items).toHaveLength(0);
+  });
+
+  it('rechecks execution state atomically before persisting a new reuse policy', async () => {
+    const s = setup();
+    const pack = await materialPackage();
+    const previous = await prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true);
+    const task = required(previous.task);
+    await s.transfers.create(task, required(previous.archiveBytes), false);
+    const consented = await prepareTemplateMaterialImport(
+      s.transfers,
+      pack,
+      '2001',
+      'Target',
+      () => true,
+      true
+    );
+    const update = s.transfers.repository.update.bind(s.transfers.repository);
+    vi.spyOn(s.transfers.repository, 'update').mockImplementationOnce(async (id, apply) => {
+      await update(id, (current) => {
+        current.status = 'running';
+      });
+      return update(id, apply);
+    });
+    const run = vi.spyOn(s.transfers, 'run').mockResolvedValue(undefined);
+    s.request.mockClear();
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, consented, 'copy', () => true)
+    ).rejects.toThrow('GALLERY_TASK_BUSY');
+    const stored = await s.transfers.repository.get(task.id);
+    expect(stored.status).toBe('running');
+    expect(stored.reuseExistingPhotos).not.toBe(true);
+    expect(stored.items).toEqual(task.items);
+    expect(run).not.toHaveBeenCalled();
+    expect(s.request).not.toHaveBeenCalled();
+  });
+
+  it('keeps confirmed cross-group receipts unchanged when the new confirmation refuses reuse', async () => {
+    const s = setup();
+    const pack = await materialPackage();
+    const previous = await prepareTemplateMaterialImport(
+      s.transfers,
+      pack,
+      '2001',
+      'Target',
+      () => true,
+      true
+    );
+    const task = required(previous.task);
+    await s.transfers.create(task, required(previous.archiveBytes), false);
+    await s.transfers.repository.update(task.id, (current) => {
+      current.status = 'paused';
+      const item = required(current.items[0]);
+      item.status = 'confirmed';
+      item.requestId = crypto.randomUUID();
+      item.fileId = deduplication.fileId;
+      item.actualGroupId = deduplication.actualGroupId;
+    });
+    const baseline = await s.transfers.repository.get(task.id);
+    const strict = await prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true);
+    const run = vi.spyOn(s.transfers, 'run').mockResolvedValue(undefined);
+    s.request.mockClear();
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, strict, 'copy', () => true)
+    ).rejects.toThrow('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP');
+    expect(await s.transfers.repository.get(task.id)).toEqual(baseline);
+    expect(run).not.toHaveBeenCalled();
+    expect(s.request).not.toHaveBeenCalled();
+    expect((await s.client.list()).items).toHaveLength(0);
+  });
+
   it('reconciles a known deduplicated receipt only after consent, without a second upload', async () => {
     const s = setup();
     const pack = await materialPackage();
