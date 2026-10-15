@@ -92,11 +92,13 @@ Lint 为 0 error，保留 30 项既有 warning；未提高测试超时或放宽�
 
 验收脚本最初使用过期的本地 HTTP 勾选项文案，另一次误把叠层弹窗的可访问节点数当作确认条件。这些是测试定位问题，未改动产品流程；修正后先读取测试前缀再继续，没有盲目重复上传。原始失败记录保留，仓库 JSON-only S3 smoke 的对应勾选项定位同步修正。真实 S3 携图结果独立记录，不能以旧 JSON-only smoke 替代。
 
-**发布决策：** 用户已明确选择“暂停正式发布，先处理携图导入”。修复及验收不会自动撤销该决定；本轮仅提交、推送开发分支和准备候选包，不合并主线、不创建正式 Tag/Release、不部署或提交商店。
+**此前发布决策：** 用户先前明确选择“暂停正式发布，先处理携图导入”；当时只提交、推送开发分支和准备候选包，没有合并主线、创建正式 Tag/Release、部署或提交商店。
+
+**2026-10-15 推进授权：** 真实携图验收及 Windows 全量 313 个文件 / 2,527 项单测通过后，用户明确要求“CI 太久了，先不管，继续下一步”。据此恢复推进 `feature → staging → master` 和 annotated Tag `v2.16.0`，不等待功能分支 CI，但不将进行中的 CI 算作通过，也不绕过分支保护或修改工作流。正式 GitHub Release 仍由 Tag 流水线完成全套门禁后生成；本轮不部署网站或提交 Chrome 商店。旧 Tag/Release 保持不可变，主线与新 Tag 使用原子推送，避免只更新其中一部分。
 
 ### Live acceptance summary
 
-A controlled original-image test confirmed that Alibaba deduplicates identical uploads, returning the existing file ID without moving its gallery group. Strict verification remains the default. Explicit reuse verifies the exact ID and image hash, records the actual group and reconciles the same durable receipt without another upload. Real Web/Node ZIP and image-inclusive RustFS import/export passed. The formal standalone MV3 ZIP import passed; the current recovery-patch candidate separately passed real image-inclusive S3 export/import, exact object hashes, manifest-last writes, repeat-import receipt reuse and worker restart. Saved HTML was independently checked for HTTPS URLs, the correct file ID and replaced relative paths. Original failures remain recorded. Formal publication is still paused at the user's request. No product/inventory mutation or remote deletion was performed.
+A controlled original-image test confirmed that Alibaba deduplicates identical uploads, returning the existing file ID without moving its gallery group. Strict verification remains the default. Explicit reuse verifies the exact ID and image hash, records the actual group and reconciles the same durable receipt without another upload. Real Web/Node ZIP and image-inclusive RustFS import/export passed. The formal standalone MV3 ZIP import passed; the current recovery-patch candidate separately passed real image-inclusive S3 export/import, exact object hashes, manifest-last writes, repeat-import receipt reuse and worker restart. Saved HTML was independently checked for HTTPS URLs, the correct file ID and replaced relative paths. Original failures remain recorded. After live acceptance, the user authorized integration and tagging without waiting for feature-branch CI. The unchanged formal-release workflow must pass its own gates before publishing; website deployment and store submission are not included. No product/inventory mutation or remote deletion was performed.
 
 ## 发布操作边界
 
@@ -110,4 +112,4 @@ A controlled original-image test confirmed that Alibaba deduplicates identical u
 
 最终提示文案另经 49 项组件测试及 i18n 检查通过（`artifacts/template-consent-copy-final.log`）。冻结构建后的七项 Web/MV3 浏览器流程涵盖模板 ZIP 图片替换、已确认回执复用、页面切换与手工恢复、未知结果保护、活跃窗口互斥、任务中心及独立插件本地模板。最终文案的 Web 及 Worker 另重建、预算检查和干跑通过（`artifacts/template-consent-fresh-web.log`、`artifacts/template-consent-fresh-api.log`），没有部署。更早 Cloudflare 生产模式专用构建仍按原记录保留，不冒充本轮生产部署验收。
 
-候选代码与检查说明推送后，须等待同一候选的远端 CI 成功；以当前提交的 Actions 结果为准，不以旧提交通过替代。主线合并、不可变 Tag/GitHub Release、现有网站部署及商店提交分别确认；不移动旧 Tag，不覆盖旧 Release，不自动提交商店。
+常规发布应等待同一候选的远端 CI 成功，以当前提交的 Actions 结果为准，不以旧提交通过替代。本次用户明确允许先推进主线和 Tag；这只改变推进时机，不取消正式发布流水线的门禁。主线合并、不可变 Tag/GitHub Release、现有网站部署及商店提交仍区分记录；不移动旧 Tag，不覆盖旧 Release，不自动部署或提交商店。
