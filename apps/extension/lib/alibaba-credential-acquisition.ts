@@ -39,6 +39,7 @@ import {
   readTabUrl,
   revealAlibabaLegacyApplicationSecret,
   showAlibabaDeveloperGuide,
+  showAlibabaAuthorizationGuide,
   type ExtensionAlibabaApplicationCandidate,
   type ExtensionAlibabaApplicationDetails
 } from './alibaba-credential-page-driver';
@@ -92,6 +93,8 @@ export class ExtensionAlibabaCredentialAcquisitionController {
   constructor() {
     browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
       const task = this.#task;
+      if (task?.applicationTabId === tabId && changeInfo.status === 'complete' && task.phase === 'discover')
+        void showAlibabaAuthorizationGuide(tabId, 'top', 'opening').catch(() => undefined);
       if (task?.oauthTabId !== tabId || typeof changeInfo.url !== 'string') return;
       try {
         task.oauthCallbackUrl = new URL(changeInfo.url);
@@ -135,6 +138,8 @@ export class ExtensionAlibabaCredentialAcquisitionController {
       appSecret: null,
       bundle: null
     };
+    this.#guideTabId = applicationTabId;
+    await showAlibabaAuthorizationGuide(applicationTabId, 'top', 'opening').catch(() => undefined);
     return cloneState(state);
   }
 

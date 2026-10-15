@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Alice offline IOP application</title>
+  </head>
+  <body data-view-clicks="0" data-reset-clicks="0" data-view-pointer="false">
+    <h1>Application details</h1>
+    <div class="cloud-form" data-field="name">
+      <span class="form-label">App Name</span><span class="form-item"></span>
+    </div>
+    <div class="cloud-form" data-field="key">
+      <span class="form-label">AppKey</span><span class="form-item"></span>
+    </div>
+    <div class="cloud-form" data-field="callback">
+      <span class="form-label">Callback URL</span><span class="form-item"></span>
+    </div>
+    <div class="cloud-form" data-field="secret">
+      <span class="form-label">App Secret</span>
+      <span class="form-item">
+        <span id="secret-value">****************</span>
+        <button id="view-secret" type="button">View</button>
+        <button id="reset-secret" type="button">Reset</button>
+      </span>
+    </div>
+    <div class="cloud-form">
+      <span class="form-label">App Status</span><span class="form-item">Online</span>
+    </div>
+    <table>
+      <tbody>
+        <tr>
+          <td>System API</td>
+          <td>Free</td>
+          <td>Active</td>
+        </tr>
+      </tbody>
+    </table>
+    <script type="module" src="/fixtures/application-center.js"></script>
+  </body>
+</html>

@@ -1,4 +1,72 @@
 export const zh = {
+  AUTH_PROTOCOL_CHANGED: '授权类型已切换，已取消之前的操作。请在当前协议下重新开始。',
+  IOP_APP_SELECTION_REQUIRED:
+    '打开了多个应用中心标签页，无法安全确定目标。请保留要授权的那个应用中心，再重新读取。',
+  TOP_APP_NOT_AVAILABLE:
+    '无法从已打开的旧 TOP 应用页读取完整信息。旧入口可能已失效或未登记 Callback；不会改用 IOP 的密钥。请在高级模式粘贴已有 TOP 授权 JSON，或手动填写整套旧应用信息。',
+  TOP_APP_SELECTION_REQUIRED:
+    '旧页面有多个 TOP 应用，无法安全确定目标。请手动填写目标旧应用，或在高级模式粘贴它的 TOP 授权 JSON。',
+  advancedJson: '高级模式：粘贴授权 JSON',
+  jsonLabel: '当前协议的完整授权包 JSON',
+  jsonHelp:
+    '将示例全部替换为你已有的有效授权包（最大 64 KiB）。示例只说明格式，不代表真实授权；不会导入占位值。内容只留在本页内存，不自动保存。',
+  importJson: '校验并导入 JSON',
+  importPassphraseHelp:
+    '请用至少 6 个字符的本机口令加密这份授权包；不是 Alibaba 网站密码。只替换本工具当前协议的包，另一协议和工作台配置不变。',
+  AUTH_JSON_INVALID: 'JSON 格式或授权包字段不正确，请按示例粘贴完整有效的授权包。',
+  AUTH_JSON_TOO_LARGE: '授权 JSON 不能超过 64 KiB，请移除与授权无关的内容。',
+  AUTH_JSON_EXAMPLE: '请先将示例占位值全部替换为自己的有效授权信息。',
+  dismissNotification: '关闭通知',
+  IOP_APP_CHANGED: '读取期间当前应用或 Callback 发生了变化，已停止授权。请确认目标应用后重新读取。',
+  discoverApplication: '自动读取应用并授权',
+  discoveringApplication: '正在打开应用中心并读取当前应用，请留意页面上的指针；最多等待 30 秒。',
+  applicationRead: '已读取应用及已登记 Callback，准备打开授权页。请在 Alibaba 页面自行确认授权。',
+  discoverPermission: '点击“自动读取应用并授权”，允许访问 Alibaba 应用中心后继续。',
+  allowCallbackPermission:
+    '允许访问此应用的 OAuth 与已登记 Callback 域名后，将自动打开授权页。不会修改 Callback。',
+  protectBundle: '设置本机授权包口令',
+  protectBundleHelp:
+    '应用信息已自动填好。请设置至少 6 个字符的本机加密口令（不是 Alibaba 密码），随后自动开始授权。已有锁定的授权包也可取消后先解锁。',
+  IOP_APP_READ_FAILED:
+    '未能在 30 秒内读取完整应用信息。请检查应用中心是否显示 App Name、AppKey 和已登记 Callback，然后重新读取；不会转到旧 TOP 页面。',
+  IOP_APP_SECRET_UNAVAILABLE:
+    '已打开“查看密钥”，但无法读取完整 App Secret。请在应用中心检查并完成必要的验证，再重新读取或手动填写。',
+  IOP_APP_SECURITY_CHECK:
+    'Alibaba 要求验证码或密钥安全验证，自动操作已停止。请在 Alibaba 页面手工完成后重新读取。',
+  IOP_APP_LOGIN_REQUIRED:
+    '请先在打开的 Alibaba 标签页登录，再点击“自动读取应用并授权”。插件不会收集网站密码。',
+  IOP_APP_PREREQUISITE_REQUIRED:
+    '请先在 Alibaba 完成开发者审核或准备可用应用，再重新读取。插件不会提交注册、创建应用或接受协议。',
+  confirmationTitle: '请确认本次操作',
+  confirmationCancel: '取消',
+  confirmationContinue: '确认继续',
+  protocolChoice: '选择授权类型',
+  protocolTop: 'TOP（旧版）',
+  protocolIop: 'IOP（新版，推荐）',
+  toolTitleTop: 'TOP 授权与续期',
+  toolTitleIop: 'IOP 授权与续期',
+  dualGuide:
+    '建议已有两类应用的商家分别授权，以覆盖更多能力。两套 AppKey、Secret、Token 和授权包独立保存，不可混用；只有一类也可使用。',
+  topGuide:
+    'TOP 使用旧版应用，不在新版应用中心切换。可手动填写整套旧应用信息，或导入已有 TOP JSON、解锁后点击“重新授权”。不需要额外 Node 服务。',
+  toolGuide:
+    '在插件内完成换 Token 和续期，再导出 credentialInfo.json，返回设置选择同一协议导入保存。保留已登记 Callback；不创建应用、不重置密钥、不自动接受协议。',
+  boundaryTop:
+    '仅处理旧 TOP 授权。不会打开已失效的 crosstrade 地址，不会把旧应用发送到 IOP，也不会自动覆盖工作台中的另一份授权。',
+  reauthorize: '重新授权',
+  confirmReauthorize:
+    '使用已保存的当前协议应用信息重新授权，保持 Callback 和权限范围。请在 Alibaba 页面亲自确认授权协议；成功后只更换本工具的授权包。',
+  switchProtocolConfirm: '切换授权类型会清空尚未提交的应用信息；已经保存的两份授权都不会删除。继续切换？',
+  returnSettings: '返回设置',
+  importTop: '导入已有 TOP 授权包',
+  clearTop: '清除本机 TOP 授权包',
+  confirmClearTop:
+    '只清除本工具中的 TOP 授权包，不删除 IOP、工作台配置、S3、模板或任务，也不撤销平台授权。确认清除？',
+  TOP_REQUIRED: '当前选择 TOP，只能导入 TOP 授权包。IOP 文件请切换到 IOP；未修改任何授权。',
+  TOP_TOKEN_REJECTED:
+    '旧 TOP 平台拒绝换取或续期 Token。请检查旧应用、Callback 和授权有效期；不代表新版 System API 缺失，原包未被覆盖。',
+  TOP_TOKEN_RESULT_UNKNOWN:
+    '旧 TOP 未返回可确认的 Token 结果。不要重复换取或续期；请重新授权，原包未被覆盖。',
   title: '连接 Alibaba 开放平台',
   subtitle: '使用你自己的应用 · 新版 IOP',
   language: 'EN',
@@ -29,7 +97,7 @@ export const zh = {
   lock: '锁定',
   clear: '清除本机 IOP 授权包',
   import: '导入已有 IOP 授权包',
-  importConfirm: '确认替换本机独立 IOP 授权包？不会修改 TOP 工作台。',
+  importConfirm: '确认替换本工具中当前所选协议的授权包？另一协议和工作台配置不会改变。',
   confirmExport: '文件包含明文 App Secret 和 Token，请勿公开或提交到 Git。确认导出？',
   confirmRefresh: '续期可能轮换 Token；将保存到本机，请同步更新使用此授权包的服务。确认续期？',
   confirmClear: '只清除本机独立 IOP 授权包，不撤销平台授权。确认清除？',
@@ -59,7 +127,7 @@ export const zh = {
   privacyLink: '隐私说明',
   rules: '平台规则',
   AUTH_ACTION_FAILED: '操作失败，请检查网络或本机存储；写入结果不明时不要重复续期。',
-  AUTH_INPUT_INVALID: '请检查应用信息和口令；只接受完整 IOP 授权包。',
+  AUTH_INPUT_INVALID: '请检查应用信息和口令，并使用当前所选协议的完整授权包。',
   CALLBACK_INVALID: 'Callback 必须是已登记的公共 HTTPS 地址，不含参数、片段或登录信息。',
   AUTH_PERMISSION_REQUIRED: '请允许本次所需的精确域名访问权限后重试。',
   AUTH_TASK_ACTIVE: '已有操作进行中，请等待完成或取消授权。',
@@ -74,10 +142,85 @@ export const zh = {
   AUTH_VAULT_LOCKED: '请先解锁授权包。',
   AUTH_UNLOCK_FAILED: '口令错误或授权包损坏。',
   AUTH_VAULT_INVALID: '本机授权包格式无效，请重新授权。',
-  IOP_REQUIRED: '仅支持明确标识为 IOP 的授权包；旧 TOP 文件请使用原工作台。',
+  IOP_REQUIRED: '当前选择 IOP，请使用明确标识为 IOP 的授权包；旧 TOP 文件请先切换到 TOP。',
   AUTH_ORIGIN_DENIED: '此页面无权访问授权工具。'
 } as const;
 export const en: Record<keyof typeof zh, string> = {
+  AUTH_PROTOCOL_CHANGED:
+    'The authorization type changed, so the previous action was cancelled. Start again with the selected protocol.',
+  IOP_APP_SELECTION_REQUIRED:
+    'More than one Application center tab is open. Keep the intended app tab, then retry reading.',
+  TOP_APP_NOT_AVAILABLE:
+    'Complete details could not be read from an open legacy TOP app page. The old entry may be retired or its Callback missing. IOP keys will never be substituted. Paste an existing TOP bundle in Advanced mode or enter the complete legacy app details.',
+  TOP_APP_SELECTION_REQUIRED:
+    'Multiple legacy TOP apps were found, so the intended app cannot be selected safely. Enter the target legacy app manually or paste its TOP bundle in Advanced mode.',
+  advancedJson: 'Advanced: paste authorization JSON',
+  jsonLabel: 'Complete JSON bundle for the selected protocol',
+  jsonHelp:
+    'Replace the entire example with your valid authorization bundle (maximum 64 KiB). The example only documents the format; placeholders cannot be imported. Content stays in page memory and is not autosaved.',
+  importJson: 'Validate and import JSON',
+  importPassphraseHelp:
+    'Encrypt this bundle with a local passphrase of at least 6 characters, not your Alibaba password. Only this tool’s selected bundle is replaced; the other protocol and workbench settings are unchanged.',
+  AUTH_JSON_INVALID:
+    'Invalid JSON or credential fields. Paste a complete valid bundle using the example format.',
+  AUTH_JSON_TOO_LARGE: 'Authorization JSON must not exceed 64 KiB. Remove unrelated content.',
+  AUTH_JSON_EXAMPLE: 'Replace all example placeholders with your own valid authorization details first.',
+  dismissNotification: 'Dismiss notification',
+  IOP_APP_CHANGED:
+    'The selected app or Callback changed while reading. Authorization stopped. Confirm the intended app and read again.',
+  discoverApplication: 'Read app and authorize',
+  discoveringApplication:
+    'Opening Application center and reading the current app. Follow the pointer; this takes at most 30 seconds.',
+  applicationRead:
+    'App details and the registered Callback were read. Preparing authorization; confirm the agreement yourself on Alibaba.',
+  discoverPermission: 'Choose Read app and authorize, then allow access to the Alibaba application center.',
+  allowCallbackPermission:
+    'Allow access to this app’s OAuth and registered Callback origins to open authorization automatically. The Callback will not change.',
+  protectBundle: 'Protect the local authorization bundle',
+  protectBundleHelp:
+    'App details are ready. Set a local encryption passphrase of at least 6 characters (not your Alibaba password) to start authorization. To reuse a locked bundle, cancel and unlock it first.',
+  IOP_APP_READ_FAILED:
+    'Complete app details could not be read within 30 seconds. Check that Application center shows App Name, AppKey and a registered Callback, then retry. No legacy TOP page will be opened.',
+  IOP_APP_SECRET_UNAVAILABLE:
+    'View secret was opened, but a complete App Secret could not be read. Check Application center and complete any verification, then retry or enter it manually.',
+  IOP_APP_SECURITY_CHECK:
+    'Alibaba requires a CAPTCHA or secret security check. Automation stopped. Complete it on Alibaba, then retry reading.',
+  IOP_APP_LOGIN_REQUIRED:
+    'Sign in on the opened Alibaba tab, then choose Read app and authorize again. The extension does not collect website passwords.',
+  IOP_APP_PREREQUISITE_REQUIRED:
+    'Complete developer review or prepare an available Alibaba app, then read again. The extension does not submit registration, create apps or accept agreements.',
+  confirmationTitle: 'Confirm this action',
+  confirmationCancel: 'Cancel',
+  confirmationContinue: 'Confirm and continue',
+  protocolChoice: 'Choose authorization type',
+  protocolTop: 'TOP (legacy)',
+  protocolIop: 'IOP (new, recommended)',
+  toolTitleTop: 'TOP authorization and renewal',
+  toolTitleIop: 'IOP authorization and renewal',
+  dualGuide:
+    'If you have both app types, authorize both for broader coverage. Each AppKey, secret, token and bundle is stored independently and cannot be mixed. A single app type is still supported.',
+  topGuide:
+    'TOP uses a legacy app, not another tab in the IOP console. Enter the complete legacy app details, or import existing TOP JSON, unlock it and choose Reauthorize. No additional Node service is needed.',
+  toolGuide:
+    'Exchange and refresh tokens inside the extension, then export credentialInfo.json and import it into the matching profile in Settings. Keep the registered Callback; no app creation, secret reset or automatic agreement acceptance.',
+  boundaryTop:
+    'Legacy TOP only. This tool never opens the retired crosstrade URL or sends the legacy app to IOP, and never automatically replaces the other workbench authorization.',
+  reauthorize: 'Reauthorize',
+  confirmReauthorize:
+    'Reauthorize with the saved app for this protocol, keeping its Callback and permission scope. Personally confirm the agreement on Alibaba. Only this tool’s selected bundle will be replaced on success.',
+  switchProtocolConfirm:
+    'Switching clears unsubmitted app details, but does not delete either saved authorization. Continue?',
+  returnSettings: 'Back to Settings',
+  importTop: 'Import existing TOP bundle',
+  clearTop: 'Clear local TOP bundle',
+  confirmClearTop:
+    'Clear only TOP in this tool? IOP, workbench settings, S3, templates and tasks are preserved. This does not revoke platform access.',
+  TOP_REQUIRED:
+    'TOP is selected. Import a TOP bundle, or switch to IOP for that file. Neither authorization was changed.',
+  TOP_TOKEN_REJECTED:
+    'Legacy TOP rejected token exchange or renewal. Check the legacy app, Callback and grant validity; this is not a missing new System API permission. The original bundle was preserved.',
+  TOP_TOKEN_RESULT_UNKNOWN:
+    'Legacy TOP returned no confirmed token result. Do not repeat exchange or renewal; reauthorize. The original bundle was preserved.',
   title: 'Connect Alibaba Open Platform',
   subtitle: 'Your own application · New IOP',
   language: '中',
@@ -111,7 +254,8 @@ export const en: Record<keyof typeof zh, string> = {
   lock: 'Lock',
   clear: 'Clear local IOP bundle',
   import: 'Import existing IOP bundle',
-  importConfirm: 'Replace the independent local IOP bundle? The TOP workbench will not change.',
+  importConfirm:
+    'Replace this tool’s selected protocol bundle? The other protocol and workbench settings stay unchanged.',
   confirmExport:
     'This file contains a plaintext App Secret and tokens. Do not publish it or commit it to Git. Export?',
   confirmRefresh:
@@ -146,7 +290,8 @@ export const en: Record<keyof typeof zh, string> = {
   rules: 'Platform rules',
   AUTH_ACTION_FAILED:
     'Operation failed. Check your network or local storage. Never repeat a renewal with an unknown result.',
-  AUTH_INPUT_INVALID: 'Check the application details and passphrase. A complete IOP bundle is required.',
+  AUTH_INPUT_INVALID:
+    'Check the app details and passphrase, and use a complete bundle for the selected protocol.',
   CALLBACK_INVALID:
     'Use a registered public HTTPS Callback without query parameters, fragments or credentials.',
   AUTH_PERMISSION_REQUIRED: 'Allow the exact required host permissions and try again.',
@@ -166,7 +311,8 @@ export const en: Record<keyof typeof zh, string> = {
   AUTH_VAULT_LOCKED: 'Unlock the bundle first.',
   AUTH_UNLOCK_FAILED: 'Incorrect passphrase or damaged bundle.',
   AUTH_VAULT_INVALID: 'Invalid local bundle. Authorize again.',
-  IOP_REQUIRED: 'An explicitly marked IOP bundle is required. Use the original workbench for TOP files.',
+  IOP_REQUIRED:
+    'IOP is selected. Use an explicitly marked IOP bundle, or switch to TOP before importing a legacy TOP file.',
   AUTH_ORIGIN_DENIED: 'This page cannot access the authorization tool.'
 };
 export type AuthorizationMessageKey = keyof typeof zh;

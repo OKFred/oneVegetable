@@ -1,0 +1,13 @@
+{
+  "application": {
+    "appName": "Merchant sample",
+    "appKey": "fixture-iop-key",
+    "callbackUrl": "https://merchant.example/callback",
+    "status": "Online",
+    "permissions": [],
+    "source": "application-center"
+  },
+  "appSecret": "fixture-application-secret-only",
+  "centerHtml": "<button id=\"center\">应用中心</button>",
+  "secretHtml": "<div class=\"cloud-form\"><div class=\"form-label\">App Secret</div><div class=\"form-item\"><a id=\"view\">View</a><a id=\"reset\">Reset</a></div></div>"
+}

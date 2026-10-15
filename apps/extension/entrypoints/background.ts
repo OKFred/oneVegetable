@@ -473,10 +473,17 @@ async function handleAlibabaCredentialAcquisitionRequest(
         await alibabaCredentialAcquisition.focusPrerequisitePage();
         data = null;
         break;
-      case 'open-iop-tool':
-        await browser.tabs.create({ url: browser.runtime.getURL('/authorization.html') });
+      case 'open-iop-tool': {
+        if (payload.protocol !== undefined && payload.protocol !== 'top' && payload.protocol !== 'iop')
+          throw new Error('Invalid authorization protocol');
+        const path =
+          payload.protocol === 'top'
+            ? '/authorization.html?protocol=top&discover=1'
+            : '/authorization.html?discover=1';
+        await browser.tabs.create({ url: browser.runtime.getURL(path) });
         data = null;
         break;
+      }
     }
     return { requestId: message.requestId, ok: true, data };
   } catch (error: unknown) {

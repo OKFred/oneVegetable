@@ -1,0 +1,21 @@
+{
+  "iop": {
+    "appName": "Alice offline IOP app",
+    "appKey": "alice-iop-fixture-key",
+    "appSecret": "alice-iop-fixture-secret-0123456789",
+    "callbackUrl": "https://one-vegetable-auth.pages.dev/callback"
+  },
+  "top": {
+    "appName": "Alice offline TOP app",
+    "appKey": "alice-top-fixture-key",
+    "appSecret": "alice-top-fixture-secret-0123456789",
+    "callbackUrl": "https://one-vegetable-auth.pages.dev/callback"
+  },
+  "guideOverflowText": "Offline guide layout sample: review the application, registered Callback and permissions before continuing authorization. 此离线说明仅用于验证向导内容溢出时的滚动与标题栏可见性。",
+  "topToken": {
+    "access_token": "fixture-top-access",
+    "refresh_token": "fixture-top-refresh",
+    "expires_in": 3600,
+    "refresh_expires_in": 7200
+  }
+}

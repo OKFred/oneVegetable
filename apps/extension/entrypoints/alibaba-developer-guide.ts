@@ -14,7 +14,11 @@ const HOST_ID = 'one-vegetable-alibaba-developer-guide';
 
 interface GuideUpdateMessage {
   kind: 'one-vegetable-alibaba-developer-guide-update';
-  state: AlibabaCredentialAcquisitionState;
+  state?: AlibabaCredentialAcquisitionState;
+  authorization?: {
+    protocol: 'top' | 'iop';
+    phase: 'opening' | 'application' | 'secret' | 'ready' | 'blocked';
+  };
   uiLocale?: UiLocale;
 }
 
@@ -43,6 +47,8 @@ interface GuideCopy {
   iopApplication: string;
   topUnavailable: string;
   openIop: string;
+  reading: Record<'opening' | 'application' | 'secret' | 'ready' | 'blocked', string>;
+  readingPrivacy: string;
 }
 
 const COPY: Record<UiLocale, GuideCopy> = {
@@ -80,11 +86,19 @@ const COPY: Record<UiLocale, GuideCopy> = {
     error: '检查失败，请稍后重试。',
     protocolTitle: 'TOP 与 IOP 是两套独立授权',
     protocolDescription:
-      '此应用中心展示新版 IOP 应用，旧 TOP 应用不是这里的另一个页签。已有两类应用时建议分别授权，再回设置确认同一商家；没有 TOP 应用不强制补齐。AppKey、Secret 和 Token 不可跨协议混用。',
+      '此应用中心展示新版 IOP 应用，旧 TOP 应用不是这里的另一个页签。已有两类应用时建议分别授权；两份配置齐全后默认按能力选路，请确保属于同一商家。没有 TOP 应用不强制补齐。AppKey、Secret 和 Token 不可跨协议混用。',
     iopApplication: '请使用新版 IOP 授权工具',
     topUnavailable:
       '旧版 TOP 向导未发现可用旧应用，不会再自动打开已失效的 crosstrade 页面。新版 IOP 请使用下方工具；已有 TOP 凭据请返回设置导入或手动填写。',
-    openIop: '打开 IOP 授权工具'
+    openIop: '打开 IOP 授权工具',
+    reading: {
+      opening: '正在检查开放平台，准备进入应用中心…',
+      application: '正在读取当前应用与已登记 Callback…',
+      secret: '正在读取 App Secret；需要安全验证时请手工完成。',
+      ready: '应用信息已填入授权工具，请返回工具继续。',
+      blocked: '自动读取已停止，请查看授权工具中的原因并检查当前页面。'
+    },
+    readingPrivacy: '仅在本次主动授权时读取应用信息，不修改应用、不重置密钥、不自动接受协议。'
   },
   'en-US': {
     product: 'oneVegetable Open Platform guide',
@@ -133,11 +147,20 @@ const COPY: Record<UiLocale, GuideCopy> = {
     error: 'The check failed. Try again later.',
     protocolTitle: 'TOP and IOP are separate authorizations',
     protocolDescription:
-      'This console shows the new IOP app, not a second tab for legacy TOP. If you have both app types, authorize each, then confirm the same merchant in Settings. TOP is optional. Never mix AppKeys, secrets, or tokens across protocols.',
+      'This console shows the new IOP app, not a second tab for legacy TOP. Authorize both if available: capability routing starts automatically once both are configured. Ensure they belong to the same merchant. TOP is optional. Never mix AppKeys, secrets, or tokens across protocols.',
     iopApplication: 'Use the new IOP authorization tool',
     topUnavailable:
       'The TOP assistant found no usable legacy app and will not open the retired crosstrade page. Use the IOP tool below for the new app, or return to Settings to import or enter existing TOP credentials.',
-    openIop: 'Open IOP authorization tool'
+    openIop: 'Open IOP authorization tool',
+    reading: {
+      opening: 'Checking Open Platform and preparing to enter Application center…',
+      application: 'Reading the current app and registered Callback…',
+      secret: 'Reading App Secret. Complete any security verification yourself.',
+      ready: 'App details are filled in. Return to the authorization tool to continue.',
+      blocked: 'Automatic reading stopped. Check the reason in the authorization tool and review this page.'
+    },
+    readingPrivacy:
+      'Reads app details only for this initiated flow. No app changes, secret reset or automatic agreement acceptance.'
   }
 };
 
@@ -152,7 +175,8 @@ function mountGuide(): void {
   let copy = COPY[locale];
   const host = document.createElement('div');
   host.id = HOST_ID;
-  host.style.cssText = 'all: initial; position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;';
+  host.style.cssText =
+    'all: initial; position: fixed; width: min(390px, calc(100% - max(16px, env(safe-area-inset-right)) - max(16px, env(safe-area-inset-left)))); right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 2147483647;';
   const shadow = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = guideStyles;
@@ -254,7 +278,24 @@ function mountGuide(): void {
       collapse.setAttribute('aria-label', collapsed ? copy.expand : copy.collapse);
       collapse.title = collapsed ? copy.expand : copy.collapse;
     }
-    render(update.state);
+    const authorization = update.authorization;
+    if (
+      authorization &&
+      ['top', 'iop'].includes(authorization.protocol) &&
+      ['opening', 'application', 'secret', 'ready', 'blocked'].includes(authorization.phase)
+    ) {
+      progress.hidden = false;
+      progress.textContent = `${copy.progress} · ${authorization.protocol.toUpperCase()}`;
+      steps.hidden = true;
+      title.textContent = copy.reading[authorization.phase];
+      description.textContent = copy.readingPrivacy;
+      privacy.hidden = true;
+      checklist.replaceChildren();
+      checkedAt.textContent = '';
+      locate.hidden = true;
+      recheck.hidden = true;
+      openIop.hidden = true;
+    } else if (update.state) render(update.state);
   };
   browser.runtime.onMessage.addListener(onMessage);
 
@@ -288,6 +329,8 @@ function mountGuide(): void {
   }
 
   function render(state: AlibabaCredentialAcquisitionState | null): void {
+    privacy.hidden = false;
+    openIop.hidden = false;
     const needsIop = state?.status === 'failed' && state.error.code === 'TOP_APPLICATION_REQUIRED';
     progress.hidden = needsIop;
     steps.hidden = needsIop;
@@ -382,10 +425,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 const guideStyles = `
   :host { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
   * { box-sizing: border-box; }
-  .panel { width: min(390px, calc(100vw - 32px)); overflow: hidden; border: 1px solid #d7dde7; border-radius: 14px; background: #fff; color: #172033; box-shadow: 0 18px 56px rgba(15, 23, 42, .22); }
-  .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #e7eaf0; background: #f7f9fc; }
+  .panel { display: flex; flex-direction: column; width: 100%; max-height: calc(100vh - 32px); max-height: calc(100dvh - max(16px, env(safe-area-inset-bottom)) - max(16px, env(safe-area-inset-top))); overflow: hidden; border: 1px solid #d7dde7; border-radius: 14px; background: #fff; color: #172033; font-family: Inter, ui-sans-serif, system-ui, sans-serif; box-shadow: 0 18px 56px rgba(15, 23, 42, .22); }
+  .header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #e7eaf0; background: #f7f9fc; }
   .product { font-size: 13px; line-height: 20px; }
-  .body { display: grid; gap: 12px; padding: 14px; }
+  .body { display: grid; min-height: 0; overflow-y: auto; overscroll-behavior: contain; gap: 12px; padding: 14px; }
   .eyebrow { margin: 0; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
   .steps li { border-radius: 7px; background: #f1f5f9; padding: 6px 8px; color: #64748b; font-size: 11px; line-height: 16px; }

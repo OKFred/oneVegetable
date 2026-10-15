@@ -1,5 +1,12 @@
 import { browser } from 'wxt/browser';
-import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from '../../lib/iop-authorization-storage';
+import {
+  IOP_VAULT_KEY,
+  IOP_RECEIPT_KEY,
+  TOP_VAULT_KEY,
+  TOP_RECEIPT_KEY,
+  IOP_APPLICATION_READER_ORIGINS,
+  TOP_APPLICATION_READER_ORIGINS
+} from '../../lib/iop-authorization-storage';
 import { IOP_API_ORIGIN } from '@one-vegetable/core/alibaba-iop';
 
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
@@ -267,9 +274,28 @@ const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionReposit
     await requestAcquisition('focus-prerequisite-page', undefined);
   },
   async openIopTool() {
+    await requestIopApplicationReadPermissions();
     await requestAcquisition('open-iop-tool', undefined);
+  },
+  async openTool(protocol) {
+    await requestIopApplicationReadPermissions(protocol);
+    await requestAcquisition('open-iop-tool', { protocol });
   }
 };
+
+async function requestIopApplicationReadPermissions(protocol: 'iop' | 'top' = 'iop'): Promise<void> {
+  // The caller is a user click. Request directly; don't await contains first.
+  if (
+    !(await browser.permissions.request({
+      origins: [...(protocol === 'iop' ? IOP_APPLICATION_READER_ORIGINS : TOP_APPLICATION_READER_ORIGINS)]
+    }))
+  )
+    throw new GatewayException({
+      code: 'AUTH_PERMISSION_REQUIRED',
+      message: 'AUTH_PERMISSION_REQUIRED',
+      retryable: false
+    });
+}
 
 interface AcquisitionOperationMap {
   start: { request: { callbackUrl: string | null }; response: AlibabaCredentialAcquisitionState };
@@ -287,7 +313,7 @@ interface AcquisitionOperationMap {
   };
   'locate-prerequisite-field': { request: undefined; response: string | null };
   'focus-prerequisite-page': { request: undefined; response: null };
-  'open-iop-tool': { request: undefined; response: null };
+  'open-iop-tool': { request: { protocol: 'top' | 'iop' } | undefined; response: null };
 }
 
 async function requestAcquisition<K extends ExtensionAlibabaCredentialAcquisitionOperation>(
@@ -432,7 +458,9 @@ const localData: LocalDataRepository = {
           key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY &&
           key !== EXTENSION_S3_STORAGE_KEY &&
           key !== IOP_VAULT_KEY &&
-          key !== IOP_RECEIPT_KEY
+          key !== IOP_RECEIPT_KEY &&
+          key !== TOP_VAULT_KEY &&
+          key !== TOP_RECEIPT_KEY
       ),
       ...localEntries.filter(
         ([key]) => key === APP_PREFERENCES_STORAGE_KEY || key === LEGACY_APP_PREFERENCES_STORAGE_KEY
@@ -461,11 +489,16 @@ const localData: LocalDataRepository = {
         id: 'credentials',
         label: translateUi('settings.extensionRuntime.localData.credentials.label'),
         storage: 'chrome.storage.local',
-        itemCount: Number(SETTINGS_STORAGE_KEY in local) + Number(IOP_VAULT_KEY in local),
+        itemCount:
+          Number(SETTINGS_STORAGE_KEY in local) +
+          Number(IOP_VAULT_KEY in local) +
+          Number(TOP_VAULT_KEY in local),
         approximateBytes: approximateStorageBytes({
           settings: local[SETTINGS_STORAGE_KEY],
           iop: local[IOP_VAULT_KEY],
-          receipt: local[IOP_RECEIPT_KEY]
+          receipt: local[IOP_RECEIPT_KEY],
+          top: local[TOP_VAULT_KEY],
+          topReceipt: local[TOP_RECEIPT_KEY]
         }),
         sensitive: true,
         retention: translateUi('settings.extensionRuntime.localData.credentials.retention')

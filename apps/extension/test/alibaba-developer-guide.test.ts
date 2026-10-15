@@ -69,6 +69,24 @@ afterEach(() => {
 });
 
 describe('Alibaba page guide storage isolation', () => {
+  it('shows safe progress before Application center has been clicked', () => {
+    mountGuide.main();
+    notify({
+      kind: 'one-vegetable-alibaba-developer-guide-update',
+      uiLocale: 'zh-CN',
+      authorization: { protocol: 'iop', phase: 'opening' }
+    });
+    expect(panel().querySelector('h2')?.textContent).toContain('准备进入应用中心');
+    expect(panel().textContent).toContain('IOP');
+    expect(control('打开 IOP 授权工具').hidden).toBe(true);
+    expect(mocks.get).not.toHaveBeenCalled();
+    notify({
+      kind: 'one-vegetable-alibaba-developer-guide-update',
+      uiLocale: 'en-US',
+      authorization: { protocol: 'iop', phase: 'secret' }
+    });
+    expect(panel().querySelector('h2')?.textContent).toContain('Reading App Secret');
+  });
   it('explains IOP versus legacy TOP and only opens the local IOP tool, never acquires credentials', async () => {
     mountGuide.main();
     notify({

@@ -113,18 +113,23 @@ export async function closeAlibabaTabs(tabIds: readonly (number | null | undefin
   await browser.tabs.remove(unique).catch(() => undefined);
 }
 
-export async function inspectAlibabaApplicationCenter(tabId: number): Promise<{
+export async function inspectAlibabaApplicationCenter(
+  tabId: number,
+  domOnly = false
+): Promise<{
   application: ExtensionAlibabaApplicationDetails | null;
   candidates: ExtensionAlibabaApplicationCandidate[];
+  frameId?: number;
 }> {
   const results = await browser.scripting.executeScript({
     target: { tabId, allFrames: true },
     world: 'MAIN',
-    func: inspectApplicationCenterFrame
+    func: inspectApplicationCenterFrame,
+    args: [!domOnly]
   });
   for (const result of results) {
     const snapshot = parseApplicationCenterSnapshot(result.result);
-    if (snapshot) return snapshot;
+    if (snapshot) return { ...snapshot, frameId: result.frameId };
   }
   return { application: null, candidates: [] };
 }
@@ -190,6 +195,25 @@ export async function showAlibabaDeveloperGuide(
   });
 }
 
+export type AlibabaAuthorizationGuidePhase = 'opening' | 'application' | 'secret' | 'ready' | 'blocked';
+/** Safe progress only: never include an AppKey, secret, callback code or DOM snapshot. */
+export async function showAlibabaAuthorizationGuide(
+  tabId: number,
+  protocol: 'top' | 'iop',
+  phase: AlibabaAuthorizationGuidePhase
+): Promise<void> {
+  const stored: Record<string, unknown> = await browser.storage.local
+    .get(APP_PREFERENCES_STORAGE_KEY)
+    .catch(() => ({}));
+  const { uiLocale } = parseAppPreferences(stored[APP_PREFERENCES_STORAGE_KEY]);
+  await browser.scripting.executeScript({ target: { tabId }, files: ['/alibaba-developer-guide.js'] });
+  await sendAlibabaDeveloperGuideMessage(tabId, {
+    kind: 'one-vegetable-alibaba-developer-guide-update',
+    uiLocale,
+    authorization: { protocol, phase }
+  });
+}
+
 async function sendAlibabaDeveloperGuideMessage(tabId: number, message: unknown): Promise<void> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -211,11 +235,17 @@ export async function hideAlibabaDeveloperGuide(tabId: number): Promise<void> {
     .catch(() => undefined);
 }
 
-export async function revealAlibabaApplicationSecret(tabId: number): Promise<ExtensionAlibabaSecretResult> {
+export async function revealAlibabaApplicationSecret(
+  tabId: number,
+  readOnly = false,
+  frameId?: number,
+  expectedAppKey?: string
+): Promise<ExtensionAlibabaSecretResult> {
   const results = await browser.scripting.executeScript({
-    target: { tabId, allFrames: true },
+    target: frameId === undefined ? { tabId, allFrames: true } : { tabId, frameIds: [frameId] },
     world: 'MAIN',
-    func: revealApplicationSecretInFrame
+    func: revealApplicationSecretInFrame,
+    args: [!readOnly, expectedAppKey ?? '']
   });
   for (const result of results) {
     const parsed = parseSecretResult(result.result);
@@ -443,7 +473,7 @@ function isRegistrationFieldId(value: unknown): value is AlibabaDeveloperRegistr
   );
 }
 
-async function inspectApplicationCenterFrame(): Promise<unknown> {
+async function inspectApplicationCenterFrame(readCandidates = true): Promise<unknown> {
   const forms = [...document.querySelectorAll('.cloud-form')].map((element) => ({
     label: element.querySelector('.form-label')?.textContent.trim() ?? '',
     value: element.querySelector('.form-item')?.textContent.trim() ?? ''
@@ -463,11 +493,13 @@ async function inspectApplicationCenterFrame(): Promise<unknown> {
 
   let response: unknown = null;
   try {
-    const result = await window.fetch('/handler/share/app/getAppList.json', {
-      credentials: 'include',
-      headers: { Accept: 'application/json' }
-    });
-    if (result.ok) response = (await result.json()) as unknown;
+    const result = readCandidates
+      ? await window.fetch('/handler/share/app/getAppList.json', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' }
+        })
+      : null;
+    if (result?.ok) response = (await result.json()) as unknown;
   } catch {
     response = null;
   }
@@ -617,7 +649,13 @@ async function updateCallbackInFrame(callbackUrl: string): Promise<boolean> {
   return false;
 }
 
-function revealApplicationSecretInFrame(): unknown {
+function revealApplicationSecretInFrame(allowClick = true, expectedAppKey?: string): unknown {
+  if (expectedAppKey) {
+    const keyField = [...document.querySelectorAll('.cloud-form')].find(
+      (form) => form.querySelector('.form-label')?.textContent.trim() === 'AppKey'
+    );
+    if (keyField?.querySelector('.form-item')?.textContent.trim() !== expectedAppKey) return null;
+  }
   const body = document.body.innerText;
   const challenge = /captcha|verification code|security verification|验证码|滑块|安全验证|二次验证/i.test(
     body
@@ -628,21 +666,27 @@ function revealApplicationSecretInFrame(): unknown {
   );
   if (!form) return challenge ? { status: 'waiting', reason: 'security-verification' } : null;
   const item = form.querySelector('.form-item');
-  const candidate = (item?.textContent ?? '')
+  const copy = item?.cloneNode(true);
+  if (copy instanceof Element) {
+    for (const control of copy.querySelectorAll('button, a, [role="button"], script, style'))
+      control.remove();
+  }
+  const candidate = (copy?.textContent ?? '')
     .split(/\s+/u)
     .map((value) => value.trim())
-    .find((value) => value !== '' && !/^(view|reset|hide)$/iu.test(value));
+    .find((value) => /^[\w-]{16,4096}$/u.test(value) && !/^[*•●]+$/u.test(value));
+  if (challenge) return { status: 'waiting', reason: 'security-verification' };
   if (candidate) return { status: 'available', appSecret: candidate };
   const view = [...form.querySelectorAll('button, a, [role="button"]')].find(
     (element) => element.textContent.trim() === 'View'
   );
-  if (view instanceof HTMLElement) {
+  if (view instanceof HTMLElement && allowClick) {
     view.click();
     return { status: 'waiting', reason: 'reveal' };
   }
   return {
     status: 'waiting',
-    reason: challenge ? 'security-verification' : 'layout'
+    reason: 'layout'
   };
 }
 

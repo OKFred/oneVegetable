@@ -72,10 +72,21 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked
   },
   {
-    files: ['mock/data/alibaba-auth/iop-approval.js'],
+    files: [
+      'mock/data/alibaba-auth/iop-approval.js',
+      'mock/data/alibaba-auth/application-center-shell.js',
+      'mock/data/alibaba-auth/application-center.js'
+    ],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
-      globals: { document: 'readonly', location: 'readonly', URL: 'readonly', URLSearchParams: 'readonly' }
+      globals: {
+        document: 'readonly',
+        location: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        fetch: 'readonly',
+        MutationObserver: 'readonly'
+      }
     }
   },
   {
