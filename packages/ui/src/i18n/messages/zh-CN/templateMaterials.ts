@@ -45,6 +45,8 @@ export const templateMaterials = {
   packing: '正在打包文件 {current}/{total}',
   verifying: '正在核对文件 {current}/{total}',
   codes: {
+    GALLERY_TASK_BUSY: '另一个素材传输任务正在执行。本次未开始写入，请等待该任务结束后再次确认。',
+    GALLERY_TASK_STORAGE: '无法保存本机传输记录，本次操作已停止。请检查浏览器存储空间后重试。',
     TEMPLATE_MATERIAL_PERMISSION_REQUIRED:
       '未获得图片校验所需的域名权限，未开始上传。请再次确认并允许所列图片域名，或取消复用已有图片。',
     TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP:

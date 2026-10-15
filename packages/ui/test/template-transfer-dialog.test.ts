@@ -13,6 +13,7 @@ import type { AppServices } from '../src/lib/services';
 import { templateMaterials as materialZh } from '../src/i18n/messages/zh-CN/templateMaterials';
 import { templateMaterials as materialEn } from '../src/i18n/messages/en-US/templateMaterials';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { GalleryTaskError } from '@one-vegetable/core/gallery-transfer-task';
 import TemplateTransferDialog from '../src/components/TemplateTransferDialog.vue';
 import { provideServices } from '../src/lib/services';
 import { provideListIdentityScope } from '../src/lib/list-identity-scope';
@@ -618,6 +619,38 @@ describe('template material UI without provider writes', () => {
     expect(mocks.executeImport).toHaveBeenCalledOnce();
     pending.resolve([]);
     await flushPromises();
+  });
+
+  it.each([
+    ['zh-CN', 'gateway'],
+    ['zh-CN', 'task'],
+    ['en-US', 'gateway'],
+    ['en-US', 'task']
+  ] as const)('keeps a preflight busy task editable in %s (%s)', async (locale, kind) => {
+    uiI18n.global.locale.value = locale;
+    const { chooseBytes, selectGroup, button, body, create } = await setup();
+    await chooseBytes();
+    await selectGroup();
+    const importLabel = locale === 'zh-CN' ? '导入' : 'Import';
+    const confirmLabel = locale === 'zh-CN' ? '确认' : 'Confirm';
+    await button(importLabel).trigger('click');
+    await flushPromises();
+    mocks.executeImport.mockRejectedValueOnce(
+      kind === 'gateway' ? templateError('GALLERY_TASK_BUSY') : new GalleryTaskError('GALLERY_TASK_BUSY')
+    );
+    await button(confirmLabel).trigger('click');
+    await flushPromises();
+    const messages = locale === 'zh-CN' ? materialZh : materialEn;
+    expect(body.text()).toContain(messages.codes.GALLERY_TASK_BUSY);
+    expect(body.text()).not.toContain(messages.unknownImport);
+    expect(button(importLabel).attributes('disabled')).toBeUndefined();
+    expect(body.get('[data-testid=template-reuse-existing-photos]').attributes('disabled')).toBeUndefined();
+    expect(create).not.toHaveBeenCalled();
+    await button(importLabel).trigger('click');
+    await flushPromises();
+    await button(confirmLabel).trigger('click');
+    await flushPromises();
+    expect(mocks.executeImport).toHaveBeenCalledTimes(2);
   });
 
   it('never repeats unknown image imports and points to persistent gallery tasks', async () => {

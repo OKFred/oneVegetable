@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
+import { GatewayException } from '@one-vegetable/core/errors';
+import { GalleryTaskError } from '@one-vegetable/core/gallery-transfer-task';
 import {
   encodeTemplateBundle,
   importTemplateBundle,
@@ -588,7 +590,17 @@ async function execute(): Promise<void> {
     }
     emit('update:open', false);
   } catch (cause: unknown) {
-    if (isCurrent()) error.value = cause;
+    if (isCurrent()) {
+      // A busy-task rejection happens before this attempt sends any write.
+      // Keep the dialog editable, but never unlock uncertain upload failures.
+      if (
+        props.mode === 'import' &&
+        ((cause instanceof GatewayException && cause.gatewayError.code === 'GALLERY_TASK_BUSY') ||
+          (cause instanceof GalleryTaskError && cause.code === 'GALLERY_TASK_BUSY'))
+      )
+        writeStarted.value = false;
+      error.value = cause instanceof GalleryTaskError ? templateError(cause.code) : cause;
+    }
   } finally {
     busy.value = false;
   }

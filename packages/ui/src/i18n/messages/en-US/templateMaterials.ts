@@ -52,6 +52,10 @@ export const templateMaterials = {
   packing: 'Packing files {current}/{total}',
   verifying: 'Verifying files {current}/{total}',
   codes: {
+    GALLERY_TASK_BUSY:
+      'Another asset transfer is running. This attempt has not started writing. Wait for that task to stop, then confirm again.',
+    GALLERY_TASK_STORAGE:
+      'Local transfer records could not be saved. This attempt was stopped. Check browser storage space, then try again.',
     TEMPLATE_MATERIAL_PERMISSION_REQUIRED:
       'Image verification host access was not granted. No upload started. Confirm again to allow the listed hosts, or disable existing-image reuse.',
     TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP:
