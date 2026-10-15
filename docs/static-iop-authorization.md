@@ -2,6 +2,21 @@
 
 公共站点只提供指引与回调，不需要 Worker、数据库、账号登录或服务端 Secret。商家使用自己的新版 IOP 应用，在插件内授权、续期和导出 `credentialInfo.json`。
 
+## 插件内一键读取（无需本机 Node 服务）
+
+- 在插件点击“获取开放平台凭据”，先选择新版 IOP 或旧版 TOP，再允许访问本次所需的精确 Alibaba 域名。IOP 工具会复用唯一的已打开应用中心，页面加载可用时立即展示向导，自动进入“应用中心”，读取当前应用的 App Name、AppKey、App Secret 和已登记 Callback，并填写到 `authorization.html`。多个应用中心标签页时不会猜选。
+- 页面上会显示蓝色指针移动、目标高亮和实际点击。只允许点击“应用中心”和“View/查看密钥”；绝不点击 Reset、不更改 Callback，也不自动接受 OAuth 协议。减少动态效果偏好会省略指针移动。
+- 首次使用只需设置至少 6 个字符的本机加密口令，之后自动打开 Alibaba 授权页；此口令不是 Alibaba 网站密码。已解锁的独立授权包可以复用加密密钥。已有锁定包可先解锁，再重新读取。
+- 登录失效、验证码、密钥安全验证、缺少应用/Callback 或 30 秒内读取不完整时明确停止并提示检查；不绕过验证、不打开失效的旧 TOP 地址。只读取当前选中的新版应用；需要其他应用请先在平台切换。
+- Alibaba 授权协议仍由用户确认。已登记的 Callback 不需要改成 example.com，也不依赖临时 localhost 授权服务。普通 HTTPS Callback 的同一授权标签页由插件监听；公共 Pages 只是可选的静态回调辅助。
+- TOP 与 IOP 在同一个工具分别保存。TOP 尝试从仍可用、已打开的旧应用页读取；没有可用页面、旧入口 404、多个应用或 Callback 缺失时明确提示，不反复打开失效入口。也可手工填写旧应用，或导入原 TOP JSON 后解锁并点击“重新授权”。不会把新版应用的 Key 发送到 TOP。
+- 高级模式支持粘贴完整授权 JSON，两类协议各有格式示例，默认选中示例便于替换，并提供本地语法高亮。占位值、协议不符、字段不完整或超过 64 KiB 时不导入；确认后才加密保存，成功后清空粘贴内容。不读取剪贴板、不持久保存编辑文本、不执行 JSON 中的代码。
+- 进度和错误通过临时通知展示，4 秒/6 秒自动消失，同一后台错误不因轮询重复弹出。Alibaba 侧向导限制在视口内，内容内部滚动；它的阶段状态不包含密钥。
+- 导出文件始终为 `credentialInfo.json`，包含明文密钥。请返回设置，选择匹配的 TOP/IOP 档案导入。两份工作台配置齐全后默认按能力路由；系统不验证两份授权是否属于同一商家，用户须自行核实。
+- App Secret、Token、口令及 OAuth code 不写入诊断、控制台或引导截图。完整包仅按用户选择加密保存到受信扩展存储，或明确导出到本机。
+
+This extension-only flow needs no additional Node, Worker or Pages deployment. It reuses the current Alibaba tab, visually clicks only Application center and View, and reads the current app into the local tool. Set a local encryption passphrase on first use, then personally approve OAuth on Alibaba. Existing registered Callbacks are preserved. TOP and IOP remain separate; configure both for automatic capability routing, only when they belong to the same merchant. No automatic agreement acceptance, secret reset, credential logging or CAPTCHA bypass. Not affiliated with alibaba.com; read platform rules before use.
+
 ## 使用方式
 
 1. 在 Alibaba 应用中心完成开发者注册，准备自己的 IOP 应用及所需权限。旧 TOP 与新版 IOP 不可混用。

@@ -170,11 +170,11 @@ describe('Node credential configuration UI', () => {
   });
   it('shows protocol-specific IOP renewal guidance in both languages, without TOP commands', async () => {
     const h = await harness('admin', { protocol: 'iop' });
-    expect(h.wrapper.text()).toContain('独立 IOP 授权工具');
+    expect(h.wrapper.text()).toContain('选择新版 IOP 重新授权');
     expect(h.wrapper.text()).not.toContain('pnpm openapi:auth');
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
-    expect(h.wrapper.text()).toContain('independent IOP tool');
+    expect(h.wrapper.text()).toContain('choose new IOP under Get credentials');
     expect(h.wrapper.text()).not.toContain('pnpm openapi:auth');
     expect(h.test).not.toHaveBeenCalled();
     expect(h.save).not.toHaveBeenCalled();
