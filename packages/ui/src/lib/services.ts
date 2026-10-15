@@ -31,7 +31,7 @@ export interface AppServices {
   settings: SettingsRepository;
   vault?: CredentialVaultRepository;
   alibabaCredentialAcquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
-  openCredentialAcquisition?: () => void;
+  openCredentialAcquisition?: (protocol?: 'top' | 'iop') => void;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
   onboarding?: OnboardingRepository;

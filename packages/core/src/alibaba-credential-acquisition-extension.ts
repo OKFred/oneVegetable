@@ -44,4 +44,5 @@ export interface ExtensionAlibabaCredentialAcquisitionRepository {
   locatePrerequisiteField(): Promise<string | null>;
   focusPrerequisitePage(): Promise<void>;
   openIopTool?(): Promise<void>;
+  openTool?(protocol: 'top' | 'iop'): Promise<void>;
 }

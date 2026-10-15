@@ -1,6 +1,19 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
   dualTitle: 'TOP + IOP authorizations',
+  acquireCredentials: 'Get credentials',
+  chooseAcquireProtocol: 'Choose an authorization to acquire',
+  chooseRenewProtocol: 'Choose an authorization to renew',
+  chooseProtocolDescription:
+    'IOP and legacy TOP are authorized and stored separately. Their credentials cannot be mixed. Choose one to begin.',
+  chooseProtocolIop: 'New IOP (recommended)',
+  chooseProtocolIopHelp: 'For new Open Platform applications, with authorization and renewal support.',
+  chooseProtocolTop: 'Legacy TOP',
+  chooseProtocolTopHelp:
+    'For existing legacy TOP applications. Your original authorization remains supported.',
+  protocolToolUnavailable:
+    'This version has no authorization tool for this protocol. Update the extension or import its credential bundle.',
+  authorizationToolFailed: 'Could not open the authorization tool. Please try again.',
   automaticRouting: 'Capability-based routing is enabled automatically',
   singleRouting: 'Using the {protocol} authorization',
   routingOwnership:
@@ -10,7 +23,7 @@ export const gatewayCredentials = {
   profileTop: 'TOP authorization (legacy)',
   profileIop: 'IOP authorization (new)',
   profileHelpTop:
-    'Use a complete legacy TOP credential set. Import an existing grant or enter it manually; a new IOP app cannot replace it.',
+    'Use a complete legacy TOP credential set. Get it with the authorization tool, import it, or enter it manually; a new IOP app cannot replace it.',
   profileHelpIop:
     'Apps at i.alibaba.com/explore/open-api use IOP. Authorize with the IOP tool, export JSON, then import it into this profile.',
   selectProfile: 'Select the authorization profile to configure',
@@ -49,9 +62,11 @@ export const gatewayCredentials = {
   acquireTop: 'Get TOP Open Platform credentials',
   acquireIop: 'Open independent IOP authorization tool',
   extensionGuideIop:
-    'Authorize in the independent IOP tool, then export, import and save JSON. TOP acquisition is not for IOP.',
+    'Choose new IOP under Get credentials. The tool tries the new Application Center and starts authorization; you can also paste a complete authorization JSON bundle in its advanced settings. Export JSON, then import and save it here. TOP is preserved.',
+  extensionGuideTop:
+    'Choose legacy TOP under Get credentials. The tool tries an already-open legacy app page and reports unreadable details without opening a retired URL. You can also paste a complete authorization JSON bundle in its advanced settings. IOP is preserved.',
   renewGuideIop:
-    'For the selected IOP profile, try Refresh Token first. If missing or refresh fails, reauthorize in the independent IOP tool, then export, import, save and test JSON. Keep the vault and session; do not replay operations.',
+    'Try refreshing the IOP token first. If unavailable or rejected, choose new IOP under Get credentials to reauthorize, then import and save the complete authorization JSON bundle. TOP credentials cannot renew IOP.',
   expiryunknown: 'Expiry unknown; this does not mean permanent access',
   expiryvalid: 'Within the recorded authorization period',
   expiryexpiring: 'Authorization expires within 7 days; prepare to renew',
@@ -64,7 +79,7 @@ export const gatewayCredentials = {
   expiryHelp:
     'Access may be revoked early. Try refreshing, or reauthorize and import. No workbench sign-out is needed.',
   extensionRenew:
-    'The extension does not auto-renew. Use “Get Open Platform credentials” and save again when expiry approaches or access fails. Keep your existing vault.',
+    'The extension does not auto-renew. Under Get credentials, choose the matching TOP or IOP authorization and save it again when expiry approaches or access fails. Keep your existing vault.',
   description:
     'All users of this server share these credentials. Use OpenAPI credentials, not your Alibaba website login.',
   adminOnly: 'Only administrators can manage Alibaba credentials.',
@@ -82,6 +97,7 @@ export const gatewayCredentials = {
   test: 'Test connection',
   refresh: 'Refresh Token',
   renew: 'Renew authorization',
+  renewProtocolTitle: 'Renew {protocol} authorization',
   authorizationRemaining: 'Authorization remaining',
   compactdays: '{count} days',
   compacthours: '{count} hr',
@@ -104,7 +120,7 @@ export const gatewayCredentials = {
   noRefresh: 'Refresh unavailable. Reauthorize and import.',
   renewTitle: 'How do I reconnect after authorization fails?',
   renewGuide:
-    'TOP: try refresh, or reauthorize, import and test. Keep configuration and sign-in. Local: pnpm openapi:auth.',
+    'Try refreshing the TOP token first. If unavailable or rejected, choose legacy TOP under Get credentials to reauthorize, then import and save the complete authorization JSON bundle. IOP credentials cannot renew TOP.',
   legacy:
     'Startup file/environment. Saving switches to encrypted configuration; clearing never restores the old account.',
   save: 'Save and activate',

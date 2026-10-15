@@ -1,6 +1,16 @@
 export const gatewayCredentials = {
   title: 'Alibaba 凭据配置',
   dualTitle: 'TOP + IOP 双授权',
+  acquireCredentials: '获取凭据',
+  chooseAcquireProtocol: '选择要获取的授权',
+  chooseRenewProtocol: '选择要续期的授权',
+  chooseProtocolDescription: '新版 IOP 与旧版 TOP 独立授权、分别保存，凭据不能混用。选择后开始对应流程。',
+  chooseProtocolIop: '新版 IOP（推荐）',
+  chooseProtocolIopHelp: '适用于新版开放平台应用，支持授权与续期。',
+  chooseProtocolTop: '旧版 TOP',
+  chooseProtocolTopHelp: '适用于已有旧版 TOP 应用，继续兼容原授权。',
+  protocolToolUnavailable: '当前版本未提供此协议的授权工具，请升级插件或导入对应授权包。',
+  authorizationToolFailed: '授权工具打开失败，请重试。',
   automaticRouting: '已默认启用按能力自动路由',
   singleRouting: '当前使用 {protocol} 授权',
   routingOwnership: '请确保两份授权属于同一商家；系统不会替你验证店铺归属。',
@@ -8,7 +18,8 @@ export const gatewayCredentials = {
     '建议拥有两类应用的商家分别完成 TOP 和 IOP 授权，以覆盖更多能力。两份独立保存，不互相覆盖；只有一类应用也可使用。',
   profileTop: 'TOP 授权（旧版）',
   profileIop: 'IOP 授权（新版）',
-  profileHelpTop: '使用旧 TOP 应用的整套凭据。可导入已有授权或手动填写，不能使用新版 IOP 应用替代。',
+  profileHelpTop:
+    '使用旧 TOP 应用的整套凭据。可通过授权工具获取、导入或手动填写，不能使用新版 IOP 应用替代。',
   profileHelpIop:
     'i.alibaba.com/explore/open-api 中的应用是新版 IOP。用 IOP 工具授权，导出 JSON 后导入此档案。',
   selectProfile: '选择要配置的授权档案',
@@ -38,9 +49,12 @@ export const gatewayCredentials = {
     'IOP 支持映射读取及已验收的 Schema 发布、存草稿、更新；其他方法逐项启用，IOP 调用失败后不会跨协议重试 TOP。',
   acquireTop: '获取 TOP 开放平台凭证',
   acquireIop: '打开独立 IOP 授权工具',
-  extensionGuideIop: '使用独立 IOP 工具授权，导出 JSON 后导入并保存；TOP 一键获取不适用于 IOP。',
+  extensionGuideTop:
+    '点击“获取凭据”选择旧版 TOP；工具尝试读取已打开的旧应用页面，失败会提示检查，不会打开失效地址。也可在工具高级设置粘贴完整授权 JSON；不会覆盖 IOP。',
+  extensionGuideIop:
+    '点击“获取凭据”选择新版 IOP；工具尝试读取新版应用中心并授权，也可在高级设置粘贴完整授权 JSON。完成后导出 JSON，在此导入并保存；不会覆盖 TOP。',
   renewGuideIop:
-    '当前 IOP 授权可先尝试刷新 Token；缺少 Refresh Token 或刷新失败时，用独立 IOP 授权工具重新授权，导出 JSON 后导入、保存并测试。保留保险库和登录，不重放操作。',
+    '当前 IOP 授权可先尝试刷新 Token；失败或无法刷新时，在“获取凭据”中选择新版 IOP 重新授权，再导入并保存完整授权 JSON。TOP 凭据不能用于 IOP 续期。',
   description: '当前服务的所有用户共用此配置。这里填写开放平台凭据，不是 Alibaba 网站登录账密。',
   adminOnly: '只有管理员可以管理 Alibaba 凭据。',
   unavailable: '当前后端尚未启用凭据管理。请配置服务端加密密钥并重启一次。',
@@ -57,6 +71,7 @@ export const gatewayCredentials = {
   test: '测试连接',
   refresh: '刷新 Token',
   renew: '授权续期',
+  renewProtocolTitle: '{protocol} 授权续期',
   authorizationRemaining: '剩余授权时间',
   compactdays: '{count} 天',
   compacthours: '{count} 小时',
@@ -87,9 +102,10 @@ export const gatewayCredentials = {
   refreshWindow: '仅表示可尝试续期，平台仍可能拒绝',
   expiryHelp: '授权可能提前撤销。可用时先刷新 Token，失败则重新授权并导入，无需退出工作台。',
   extensionRenew:
-    '插件不会自动续期。临近到期或接口提示失效时，点击“获取开放平台凭证”重新授权并保存；无需重建保险库。',
+    '插件不会自动续期。临近到期或接口提示失效时，点击“获取凭据”，选择对应的 TOP 或 IOP 重新授权并保存；无需重建保险库。',
   renewTitle: '授权失效了，怎么重新连接？',
-  renewGuide: 'TOP 先尝试刷新；失败则重新授权、导入并测试。保留配置和登录。本机：pnpm openapi:auth。',
+  renewGuide:
+    '当前 TOP 授权可先尝试刷新 Token；失败或无法刷新时，在“获取凭据”中选择旧版 TOP 重新授权，再导入并保存完整授权 JSON。IOP 凭据不能用于 TOP 续期。',
   legacy: '当前使用启动文件或环境变量。导入或保存后立即改用加密配置；清除后不会回退旧账号。',
   save: '保存并立即生效',
   cancel: '取消',

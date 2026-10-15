@@ -173,7 +173,7 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
-  it('makes independent IOP acquisition primary and disables the labelled TOP acquisition', async () => {
+  it('offers the IOP recommendation without opening a tool before the protocol choice', async () => {
     const openIopTool = vi.fn().mockResolvedValue(undefined);
     const acquisition = {
       openIopTool,
@@ -189,18 +189,118 @@ describe('SettingsView diagnostics', () => {
     };
     const wrapper = mountView('extension', 'empty', 'manual', 'node', { acquisition });
     await flushPromises();
-    const top = wrapper.findAll('button').find((button) => button.text() === '获取 TOP 开放平台凭证');
-    expect(top?.attributes('disabled')).toBeUndefined();
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
+      '读取已打开的旧应用页面'
+    );
     await wrapper.get('select[aria-label="网关协议"]').setValue('iop');
-    expect(top?.attributes('disabled')).toBeDefined();
-    const iop = wrapper.findAll('button').find((button) => button.text() === '打开独立 IOP 授权工具');
-    expect(iop?.classes()).toContain('bg-primary');
-    await iop?.trigger('click');
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
+      '读取新版应用中心'
+    );
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
+      '粘贴完整授权 JSON'
+    );
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).not.toContain(
+      '已打开的旧应用页面'
+    );
+    await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+    expect(openIopTool).not.toHaveBeenCalled();
+    expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+    expect(acquisition.start).not.toHaveBeenCalled();
+    const iop = document.body.querySelector<HTMLButtonElement>('[data-testid="choose-authorization-iop"]');
+    expect(iop?.textContent).toContain('新版 IOP（推荐）');
+    iop?.click();
+    await flushPromises();
     expect(openIopTool).toHaveBeenCalledOnce();
     expect(acquisition.start).not.toHaveBeenCalled();
     expect(createVault).not.toHaveBeenCalled();
     wrapper.unmount();
   });
+
+  it.each(['top', 'iop'] as const)(
+    'launches only the chosen %s tool directly from its click',
+    async (protocol) => {
+      let clicking = false;
+      const openTool = vi.fn(() => {
+        expect(clicking).toBe(true);
+        return Promise.resolve();
+      });
+      const acquisition = {
+        openTool,
+        openIopTool: vi.fn(),
+        start: vi.fn(),
+        continue: vi.fn(),
+        status: vi.fn(),
+        cancel: vi.fn(),
+        saveToVault: vi.fn(),
+        exportBundle: vi.fn(),
+        readPrerequisite: vi.fn(),
+        locatePrerequisiteField: vi.fn(),
+        focusPrerequisitePage: vi.fn()
+      };
+      const wrapper = mountView('extension', 'locked', 'manual', 'node', { acquisition });
+      await flushPromises();
+      await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+      expect(openTool).not.toHaveBeenCalled();
+      expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+      clicking = true;
+      document.body
+        .querySelector<HTMLButtonElement>(`[data-testid="choose-authorization-${protocol}"]`)
+        ?.click();
+      clicking = false;
+      expect(openTool.mock.calls).toEqual([[protocol]]);
+      expect(acquisition.openIopTool).not.toHaveBeenCalled();
+      expect(acquisition.start).not.toHaveBeenCalled();
+      expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
+  it.each(['cancel', 'iop-unavailable', 'bff'] as const)(
+    'does not acquire or read an app on %s',
+    async (scenario) => {
+      const acquisition = {
+        openTool: vi.fn(),
+        openIopTool: vi.fn(),
+        start: vi.fn(),
+        continue: vi.fn(),
+        status: vi.fn(),
+        cancel: vi.fn(),
+        saveToVault: vi.fn(),
+        exportBundle: vi.fn(),
+        readPrerequisite: vi.fn(),
+        locatePrerequisiteField: vi.fn(),
+        focusPrerequisitePage: vi.fn()
+      };
+      if (scenario === 'iop-unavailable') {
+        Object.defineProperty(acquisition, 'openTool', { value: undefined });
+        Object.defineProperty(acquisition, 'openIopTool', { value: undefined });
+      }
+      const wrapper = mountView(scenario === 'bff' ? 'bff' : 'extension', 'empty', 'manual', 'node', {
+        acquisition
+      });
+      await flushPromises();
+      if (scenario === 'bff') {
+        expect(wrapper.find('[data-testid="get-alibaba-credentials"]').exists()).toBe(false);
+      } else {
+        await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+        const action = scenario === 'cancel' ? 'cancel-authorization-protocol' : 'choose-authorization-iop';
+        document.body.querySelector<HTMLButtonElement>(`[data-testid="${action}"]`)?.click();
+      }
+      await flushPromises();
+      if (scenario === 'iop-unavailable') {
+        expect(toast.error).toHaveBeenCalledWith(
+          '当前版本未提供此协议的授权工具，请升级插件或导入对应授权包。'
+        );
+      } else {
+        expect(acquisition.openTool).not.toHaveBeenCalled();
+        expect(acquisition.openIopTool).not.toHaveBeenCalled();
+      }
+      expect(acquisition.start).not.toHaveBeenCalled();
+      expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+      expect(acquisition.status).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
   it('shows legacy TOP without changing or saving existing endpoint/signing', async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {

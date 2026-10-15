@@ -10,12 +10,16 @@ import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import Button from './ui/Button.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
+import AlibabaAuthorizationProtocolDialog from './AlibabaAuthorizationProtocolDialog.vue';
+import { openAlibabaAuthorizationTool } from '../lib/alibaba-authorization-tool';
 
-const props = defineProps<{ protocol?: 'top' | 'iop' | undefined }>();
-const { mode, control, settings, vault, runtime, openCredentialAcquisition } = useServices();
+defineProps<{ protocol?: 'top' | 'iop' | undefined }>();
+const { mode, control, settings, vault, runtime, alibabaCredentialAcquisition, openCredentialAcquisition } =
+  useServices();
 const { t } = useUiI18n();
 const credentialText = useGatewayCredentialsI18n();
 const open = ref(false);
+const protocolOpen = ref(false);
 const loading = ref(false);
 const refreshing = ref(false);
 const admin = ref(false);
@@ -27,75 +31,54 @@ const destination = computed(() =>
   runtime?.backendMeta?.runtime === 'cloudflare' ? '#/admin' : '#/settings'
 );
 
-async function begin(): Promise<void> {
+function requestBegin(): void {
   if (loading.value || refreshing.value) return;
-  targetProtocol.value = props.protocol;
-  if (mode === 'extension' && !props.protocol) {
-    // Keep the original TOP acquisition flow, but never open it for an IOP-only profile.
-    if (settings.authorizations) {
-      loading.value = true;
-      try {
-        const status = await vault?.status();
-        if (status && !['empty', 'unlocked', 'legacy'].includes(status.state)) {
-          globalThis.location.hash = '#/settings';
-          return;
-        }
-        const profiles = await settings.authorizations();
-        if (!profiles.top?.configured && profiles.iop?.configured) {
-          targetProtocol.value = 'iop';
-          summary.value = profiles.iop;
-          admin.value = true;
-          unlocked.value = true;
-          error.value = null;
-          open.value = true;
-          return;
-        }
-      } catch (cause) {
-        error.value = cause;
-        admin.value = true;
-        summary.value = null;
-        open.value = true;
-        return;
-      } finally {
-        loading.value = false;
-      }
-    }
-    if (openCredentialAcquisition) openCredentialAcquisition();
-    else globalThis.location.hash = '#/settings';
-    return;
-  }
+  protocolOpen.value = true;
+}
+
+async function begin(protocol: 'top' | 'iop'): Promise<void> {
+  protocolOpen.value = false;
+  if (loading.value || refreshing.value) return;
   if (mode === 'bff' && !control) return;
+  targetProtocol.value = protocol;
   error.value = null;
   summary.value = null;
   admin.value = false;
+  unlocked.value = true;
+  // Legacy extensions may not expose profile metadata. Start only the selected tool,
+  // directly on the click stack, never a BFF operation or the other protocol's controller.
+  if (mode === 'extension' && !settings.authorizations) {
+    try {
+      const pending = alibabaCredentialAcquisition
+        ? openAlibabaAuthorizationTool(alibabaCredentialAcquisition, protocol)
+        : undefined;
+      if (pending) await pending;
+      else if (protocol === 'top' && openCredentialAcquisition) openCredentialAcquisition(protocol);
+      else if (protocol === 'top') globalThis.location.hash = '#/settings';
+      else {
+        admin.value = true;
+        error.value = new Error(credentialText('protocolToolUnavailable'));
+        open.value = true;
+      }
+    } catch (cause) {
+      admin.value = true;
+      error.value = cause;
+      open.value = true;
+    }
+    return;
+  }
   open.value = true;
   loading.value = true;
   try {
-    if (mode === 'extension' && props.protocol && settings.authorizations) {
+    if (mode === 'extension' && settings.authorizations) {
       admin.value = true;
       const status = await vault?.status();
       unlocked.value = !status || status.state === 'unlocked' || status.state === 'legacy';
-      if (unlocked.value) summary.value = (await settings.authorizations())[props.protocol];
-    } else if (control) {
+      if (unlocked.value) summary.value = (await settings.authorizations())[protocol];
+    } else if (mode === 'bff' && control) {
       admin.value = (await control.session()).principal.role === 'admin';
       if (admin.value) {
-        if (!props.protocol && control.gatewayAuthorizations) {
-          try {
-            const profiles = await control.gatewayAuthorizations();
-            targetProtocol.value = profiles.top?.configured
-              ? profiles.iop?.configured
-                ? profiles.defaultProtocol
-                : 'top'
-              : profiles.iop?.configured
-                ? 'iop'
-                : undefined;
-          } catch {
-            // The optional endpoint may be absent on a legacy server.
-          }
-        }
-        summary.value = targetProtocol.value
-          ? await control.gatewayCredentialStatus(targetProtocol.value)
-          : await control.gatewayCredentialStatus();
+        summary.value = await control.gatewayCredentialStatus(protocol);
       }
     }
   } catch (cause) {
@@ -144,16 +127,17 @@ async function refresh(): Promise<void> {
     v-if="mode !== 'mock'"
     variant="outline"
     :data-testid="protocol ? `dashboard-renew-authorization-${protocol}` : 'dashboard-renew-authorization'"
-    @click="begin"
+    @click="requestBegin"
   >
     <RotateCw class="size-4" />{{ credentialText('renew') }}
   </Button>
+  <AlibabaAuthorizationProtocolDialog v-model:open="protocolOpen" purpose="renew" @select="begin" />
   <ModalDialog
     :open="open"
     :dismissible="!refreshing"
     :title="
       targetProtocol
-        ? `${targetProtocol.toUpperCase()} · ${credentialText('renew')}`
+        ? credentialText('renewProtocolTitle', { protocol: targetProtocol.toUpperCase() })
         : credentialText('renew')
     "
     :description="credentialText('renewDescription')"

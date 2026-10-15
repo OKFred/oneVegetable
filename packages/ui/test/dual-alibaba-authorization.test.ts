@@ -572,6 +572,18 @@ describe('protocol-targeted BFF credential actions', () => {
 });
 
 describe('extension settings profile isolation', () => {
+  it('cancels renewal protocol selection without loading or refreshing an authorization', async () => {
+    const view = await harness(SettingsView, { extension: true });
+    const reads = view.settingsSummary.mock.calls.length;
+    await view.wrapper.get('[data-testid="renew-authorization-top"]').trigger('click');
+    await view.wrapper.get('[data-testid="cancel-authorization-protocol"]').trigger('click');
+    await flushPromises();
+    expect(view.settingsSummary).toHaveBeenCalledTimes(reads);
+    expect(view.loadAuthorization).not.toHaveBeenCalled();
+    expect(view.refreshAuthorization).not.toHaveBeenCalled();
+    expect(view.confirmAuthorizations).not.toHaveBeenCalled();
+  });
+
   it('loads the selected IOP profile before editing and saving; the TOP profile remains intact', async () => {
     const view = await harness(SettingsView, { extension: true });
     await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
@@ -628,6 +640,9 @@ describe('extension settings profile isolation', () => {
     expect(view.current().binding.confirmed).toBe(false);
     await view.wrapper.get('[data-testid="renew-authorization-iop"]').trigger('click');
     await flushPromises();
+    expect(view.refreshAuthorization).not.toHaveBeenCalled();
+    await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
+    await flushPromises();
     expect(view.refreshAuthorization.mock.calls).toEqual([['iop']]);
     await view.wrapper.get('[data-testid="clear-authorization-iop"]').trigger('click');
     await flushPromises();
@@ -652,6 +667,7 @@ describe('extension settings profile isolation', () => {
     expect(view.loadAuthorization).not.toHaveBeenCalled();
     view.refreshAuthorization.mockRejectedValue(new Error('Renewal denied'));
     await view.wrapper.get('[data-testid="renew-authorization-iop"]').trigger('click');
+    await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
     view.editing.answer(false);
     await flushPromises();
     expect(view.refreshAuthorization).not.toHaveBeenCalled();
@@ -672,6 +688,7 @@ describe('extension settings profile isolation', () => {
     const view = await harness(SettingsView, { extension: true });
     view.refreshAuthorization.mockRejectedValue(new Error('IOP renewal refused'));
     await view.wrapper.get('[data-testid="renew-authorization-iop"]').trigger('click');
+    await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
     await flushPromises();
     expect(view.refreshAuthorization.mock.calls).toEqual([['iop']]);
     expect(view.wrapper.text()).toContain('IOP renewal refused');
@@ -732,8 +749,12 @@ describe('overview independent expiries and explicit renewal', () => {
       view.refresh.mockRejectedValue(new Error('Renewal refused'));
       view.refreshAuthorization.mockRejectedValue(new Error('Renewal refused'));
       await view.wrapper.get('[data-testid="dashboard-renew-authorization-iop"]').trigger('click');
+      expect(view.refresh).not.toHaveBeenCalled();
+      expect(view.refreshAuthorization).not.toHaveBeenCalled();
+      expect(view.status).not.toHaveBeenCalled();
+      await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
       await flushPromises();
-      expect(view.wrapper.text()).toContain('独立 IOP 授权工具');
+      expect(view.wrapper.text()).toContain('选择新版 IOP 重新授权');
       await button(view.wrapper, '刷新 Token').trigger('click');
       await flushPromises();
       expect(extension ? view.refreshAuthorization.mock.calls : view.refresh.mock.calls).toEqual([['iop']]);
@@ -813,8 +834,11 @@ describe('overview independent expiries and explicit renewal', () => {
       summary.top = null;
       const view = await harness(DashboardAuthorizationAction, { summary, extension });
       await view.wrapper.get('[data-testid="dashboard-renew-authorization"]').trigger('click');
+      expect(view.status).not.toHaveBeenCalled();
+      expect(view.refreshAuthorization).not.toHaveBeenCalled();
+      await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
       await flushPromises();
-      expect(view.wrapper.text()).toContain('独立 IOP 授权工具');
+      expect(view.wrapper.text()).toContain('选择新版 IOP 重新授权');
       await button(view.wrapper, '刷新 Token').trigger('click');
       await flushPromises();
       expect(extension ? view.refreshAuthorization.mock.calls : view.refresh.mock.calls).toEqual([['iop']]);

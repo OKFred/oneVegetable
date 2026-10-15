@@ -33,7 +33,7 @@ import {
 
 let context: BrowserContext | null = null;
 
-test('formal MV3 opens reauthorization from Overview without starting OAuth automatically', async () => {
+test('formal MV3 asks for a renewal protocol before any authorization flow', async () => {
   if (!context) throw new Error('Missing extension context');
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const page = await context.newPage();
@@ -43,9 +43,10 @@ test('formal MV3 opens reauthorization from Overview without starting OAuth auto
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
   const pagesBefore = context.pages().length;
   await page.getByTestId('dashboard-renew-authorization').click();
-  const authorization = page.getByRole('dialog', { name: '获取开放平台凭证', exact: true });
+  const authorization = page.getByRole('dialog', { name: '选择要续期的授权', exact: true });
   await expect(authorization).toBeVisible();
-  await expect(authorization.getByRole('button', { name: '打开 Alibaba 并开始', exact: true })).toBeVisible();
+  await expect(authorization.getByTestId('choose-authorization-iop')).toBeVisible();
+  await expect(authorization.getByTestId('choose-authorization-top')).toBeVisible();
   expect(context.pages()).toHaveLength(pagesBefore);
   await page.keyboard.press('Escape');
   await expect(authorization).toBeHidden();
@@ -1049,16 +1050,16 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     });
   });
   expect(diagnosticsBeforeConsent).toMatchObject({ ok: true, data: { entries: [] } });
+  const pagesBeforeAcquisition = browserContext.pages().length;
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '开始授权向导' }).click();
-  const acquisitionDialog = page.getByRole('dialog', { name: '获取开放平台凭证' });
+  const acquisitionDialog = page.getByRole('dialog', { name: '选择要获取的授权' });
   await expect(acquisitionDialog).toBeVisible();
-  await expect(acquisitionDialog.getByText('登录 → 授权 → 保存', { exact: true })).toBeVisible();
-  await expect(acquisitionDialog.getByText('1. 开发者注册', { exact: true })).toHaveCount(0);
-  await expect(acquisitionDialog.getByLabel('Callback URL（可选）')).not.toBeVisible();
-  await acquisitionDialog.getByText('高级设置（通常无需修改）', { exact: true }).click();
-  await expect(acquisitionDialog.getByLabel('Callback URL（可选）')).toBeVisible();
-  await acquisitionDialog.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(acquisitionDialog.getByTestId('choose-authorization-iop')).toBeVisible();
+  await expect(acquisitionDialog.getByTestId('choose-authorization-top')).toBeVisible();
+  await expect(acquisitionDialog).toContainText('凭据不能混用');
+  expect(browserContext.pages()).toHaveLength(pagesBeforeAcquisition);
+  await acquisitionDialog.getByTestId('cancel-authorization-protocol').click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
   await expect

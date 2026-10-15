@@ -31,6 +31,7 @@ import {
 } from '@one-vegetable/core';
 
 import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialAcquisitionDialog.vue';
+import AlibabaAuthorizationProtocolDialog from '../components/AlibabaAuthorizationProtocolDialog.vue';
 import AlibabaIndependentNotice from '../components/AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from '../components/CredentialExpiryNotice.vue';
 import AlibabaAuthorizationsPanel from '../components/AlibabaAuthorizationsPanel.vue';
@@ -50,6 +51,7 @@ import { useAppPreferences } from '../lib/preferences';
 import { useUnsavedEditing, VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
 import { useAlibabaAuthorizations } from '../lib/alibaba-authorizations';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
+import { openAlibabaAuthorizationTool } from '../lib/alibaba-authorization-tool';
 
 const {
   settings,
@@ -121,6 +123,7 @@ const vaultBusy = ref(false);
 const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
 const credentialAcquisitionOpen = ref(false);
+const protocolDialogPurpose = ref<'acquire' | 'renew' | null>(null);
 const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
 const settingsLoaded = ref(false);
 const credentialEditing = useUnsavedEditing(() => model.value, { enabled: () => settingsLoaded.value });
@@ -457,6 +460,29 @@ async function renewAuthorization(protocol: 'top' | 'iop'): Promise<void> {
   }
 }
 
+function selectAuthorizationProtocol(protocol: 'top' | 'iop'): void {
+  const purpose = protocolDialogPurpose.value;
+  protocolDialogPurpose.value = null;
+  if (mode !== 'extension' || !purpose) return;
+  if (purpose === 'renew') {
+    void renewAuthorization(protocol);
+    return;
+  }
+  if (!alibabaCredentialAcquisition) return;
+  try {
+    const pending = openAlibabaAuthorizationTool(alibabaCredentialAcquisition, protocol);
+    if (pending) {
+      void pending.catch(() => toast.error(credentialText('authorizationToolFailed')));
+    } else if (protocol === 'top') {
+      credentialAcquisitionOpen.value = true;
+    } else {
+      toast.error(credentialText('protocolToolUnavailable'));
+    }
+  } catch {
+    toast.error(credentialText('authorizationToolFailed'));
+  }
+}
+
 async function requestClearAuthorization(protocol: 'top' | 'iop'): Promise<void> {
   if (vaultBusy.value || saving.value || !(await credentialEditing.confirmLeave())) return;
   clearingAuthorization.value = protocol;
@@ -583,11 +609,12 @@ function confirmLanguagePreference(): void {
         :aria-label="t('settings.sections.credentials')"
       >
         <Button
-          v-if="mode === 'extension' && !settingsEditable && alibabaCredentialAcquisition?.openIopTool"
+          v-if="mode === 'extension' && !settingsEditable && alibabaCredentialAcquisition"
           size="sm"
           type="button"
-          @click="alibabaCredentialAcquisition.openIopTool()"
-          ><WandSparkles class="size-3.5" />{{ credentialText('acquireIop') }}</Button
+          data-testid="get-alibaba-credentials"
+          @click="protocolDialogPurpose = 'acquire'"
+          ><WandSparkles class="size-3.5" />{{ credentialText('acquireCredentials') }}</Button
         >
         <GatewayAuthorizationsPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
         <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
@@ -798,7 +825,7 @@ function confirmLanguagePreference(): void {
           extension
           @select="selectAuthorization"
           @confirm="confirmAuthorizations"
-          @renew="renewAuthorization"
+          @renew="protocolDialogPurpose = 'renew'"
           @clear="requestClearAuthorization"
         />
         <ErrorNotice
@@ -814,32 +841,22 @@ function confirmLanguagePreference(): void {
           <AlibabaIndependentNotice class="mb-4" />
           <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
             <p class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
-            <p class="mt-1 text-muted-foreground">
+            <p class="mt-1 text-muted-foreground" data-testid="alibaba-credential-acquisition-guide">
               {{
-                selectedProtocol === 'iop'
-                  ? credentialText('extensionGuideIop')
+                mode === 'extension'
+                  ? credentialText(selectedProtocol === 'iop' ? 'extensionGuideIop' : 'extensionGuideTop')
                   : t('settings.credentials.guideDescription')
               }}
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
               <Button
-                v-if="alibabaCredentialAcquisition?.openIopTool"
+                v-if="mode === 'extension' && alibabaCredentialAcquisition"
                 size="sm"
                 type="button"
-                :variant="selectedProtocol === 'iop' ? 'default' : 'outline'"
-                @click="alibabaCredentialAcquisition.openIopTool()"
+                data-testid="get-alibaba-credentials"
+                @click="protocolDialogPurpose = 'acquire'"
               >
-                <WandSparkles class="size-3.5" />{{ credentialText('acquireIop') }}
-              </Button>
-              <Button
-                v-if="alibabaCredentialAcquisition"
-                size="sm"
-                type="button"
-                :disabled="selectedProtocol === 'iop'"
-                :variant="selectedProtocol === 'iop' ? 'outline' : 'default'"
-                @click="credentialAcquisitionOpen = true"
-              >
-                <WandSparkles class="size-3.5" />{{ credentialText('acquireTop') }}
+                <WandSparkles class="size-3.5" />{{ credentialText('acquireCredentials') }}
               </Button>
               <a
                 href="https://i.alibaba.com/explore/open-api"
@@ -983,9 +1000,20 @@ function confirmLanguagePreference(): void {
           @confirm="clearAuthorization"
         />
         <AlibabaCredentialAcquisitionDialog
-          v-if="alibabaCredentialAcquisition"
+          v-if="mode === 'extension' && alibabaCredentialAcquisition"
           v-model:open="credentialAcquisitionOpen"
           @saved="handleAcquiredCredentialsSaved"
+        />
+        <AlibabaAuthorizationProtocolDialog
+          v-if="mode === 'extension'"
+          :open="protocolDialogPurpose !== null"
+          :purpose="protocolDialogPurpose ?? 'acquire'"
+          @update:open="
+            (value) => {
+              if (!value) protocolDialogPurpose = null;
+            }
+          "
+          @select="selectAuthorizationProtocol"
         />
         <Card class="flex items-start gap-3 p-5 text-muted-foreground"
           ><ShieldCheck class="mt-0.5 size-5 shrink-0" />
