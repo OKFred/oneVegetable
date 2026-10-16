@@ -33,6 +33,7 @@ export async function clickAlibabaGuidedTargetInFrame(
   }
   const visible = (element: Element): element is HTMLElement => {
     if (!(element instanceof HTMLElement)) return false;
+    if (element.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
     return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
@@ -48,13 +49,24 @@ export async function clickAlibabaGuidedTargetInFrame(
   if (!scope) return false;
   const pattern =
     action === 'application-center' ? /^(application\s*cent(?:er|re)|应用中心)$/iu : /^(view|查看)$/iu;
-  const target = [...scope.querySelectorAll('button, a, [role="button"], [role="tab"]')].find(
+  // The API configuration dialog uses plain UL > LI navigation, not ARIA tabs.
+  const controls = 'button, a, [role="button"], [role="tab"]';
+  const selector = action === 'application-center' ? `${controls}, ul > li` : controls;
+  const target = [...scope.querySelectorAll(selector)].find(
     (element) => visible(element) && pattern.test(element.textContent.trim())
   );
   if (!(target instanceof HTMLElement) || target.matches(':disabled, [aria-disabled="true"]')) return false;
+  // A list-item wrapper must not bypass an anchor's destination or a button's disabled state.
+  if (target.matches('li') && (target.closest(controls) || target.querySelector(controls))) return false;
   const originalHref = target instanceof HTMLAnchorElement ? target.href : null;
+  const inertSecretLink =
+    action === 'reveal-secret' &&
+    !!expectedAppKey &&
+    target instanceof HTMLAnchorElement &&
+    /^javascript:void\(0\);?$/u.test(target.getAttribute('href') ?? '');
   // Never disguise a link to a different/retired platform as an application-center click.
-  if (target instanceof HTMLAnchorElement && target.href) {
+  // The provider's View link is an exact no-op href. Match it as text, never evaluate it.
+  if (target instanceof HTMLAnchorElement && target.href && !inertSecretLink) {
     const destination = new URL(target.href, location.href);
     if (
       destination.protocol !== 'https:' ||
@@ -120,7 +132,14 @@ export async function clickAlibabaGuidedTargetInFrame(
     if (
       (expiresAtUtc > 0 && Date.now() >= expiresAtUtc) ||
       !pattern.test(target.textContent.trim()) ||
-      !scope.contains(target)
+      !scope.contains(target) ||
+      (action === 'reveal-secret' &&
+        scope instanceof Element &&
+        !/^(App\s*Secret|应用密钥)\s*[:：]?$/iu.test(
+          scope.querySelector('.form-label')?.textContent.trim() ?? ''
+        )) ||
+      (target.matches('li') &&
+        (!target.matches('ul > li') || !!target.closest(controls) || !!target.querySelector(controls)))
     )
       return false;
     if (target instanceof HTMLAnchorElement && target.href !== originalHref) return false;

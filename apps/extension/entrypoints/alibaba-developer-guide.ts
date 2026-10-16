@@ -1,5 +1,9 @@
 import { browser } from 'wxt/browser';
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
+import {
+  authorizationDiscoveryReason,
+  type AuthorizationDiscoveryReason
+} from '../lib/authorization-discovery-reason';
 
 import type {
   AlibabaCredentialAcquisitionState,
@@ -11,6 +15,9 @@ import type {
 } from '@one-vegetable/core';
 
 const HOST_ID = 'one-vegetable-alibaba-developer-guide';
+const guideScope = globalThis as typeof globalThis & {
+  __oneVegetableDeveloperGuide?: { host: HTMLElement; dispose: () => void };
+};
 
 interface GuideUpdateMessage {
   kind: 'one-vegetable-alibaba-developer-guide-update';
@@ -18,6 +25,7 @@ interface GuideUpdateMessage {
   authorization?: {
     protocol: 'top' | 'iop';
     phase: 'opening' | 'application' | 'secret' | 'ready' | 'blocked';
+    reasonCode?: AuthorizationDiscoveryReason;
   };
   uiLocale?: UiLocale;
 }
@@ -49,6 +57,7 @@ interface GuideCopy {
   openIop: string;
   reading: Record<'opening' | 'application' | 'secret' | 'ready' | 'blocked', string>;
   readingPrivacy: string;
+  readingErrors: Record<AuthorizationDiscoveryReason, string>;
 }
 
 const COPY: Record<UiLocale, GuideCopy> = {
@@ -98,7 +107,25 @@ const COPY: Record<UiLocale, GuideCopy> = {
       ready: '应用信息已填入授权工具，请返回工具继续。',
       blocked: '自动读取已停止，请查看授权工具中的原因并检查当前页面。'
     },
-    readingPrivacy: '仅在本次主动授权时读取应用信息，不修改应用、不重置密钥、不自动接受协议。'
+    readingPrivacy: '仅在本次主动授权时读取应用信息，不修改应用、不重置密钥、不自动接受协议。',
+    readingErrors: {
+      IOP_APP_READ_FAILED:
+        '应用详情未能完整加载。请打开“应用中心”，确认 App Name、AppKey 和 Callback 均已显示，再重新读取。',
+      IOP_APP_CENTER_UNAVAILABLE: '未能自动打开应用中心。请手动点击“应用中心”，待详情显示后重新读取。',
+      IOP_APP_PAGE_UNAVAILABLE:
+        '应用页面正在跳转或无法访问。请等待页面加载完成，并检查插件是否获准访问此站点，再重新读取。',
+      IOP_APP_SECRET_CONTROL_UNAVAILABLE:
+        '已找到应用，但未能点击查看密钥。请手动点击 App Secret 旁的 View 后重新读取。',
+      IOP_APP_SECRET_UNAVAILABLE: '已点击 View，但尚未读到密钥。请检查页面上的提示，完成验证后重新读取。',
+      IOP_APP_SECURITY_CHECK: 'Alibaba 要求安全验证。请在当前页面手工完成验证码或密钥验证，再重新读取。',
+      IOP_APP_LOGIN_REQUIRED: '请先在 Alibaba 页面完成登录，再返回授权工具重新读取。',
+      IOP_APP_PREREQUISITE_REQUIRED: '请先完成开发者审核，并确认应用已上线和登记 Callback，再重新读取。',
+      IOP_APP_SELECTION_REQUIRED: '打开了多个应用中心。请保留需要授权的那个，再重新读取。',
+      IOP_APP_CHANGED: '读取时应用或 Callback 发生变化。请确认目标应用后重新读取。',
+      CALLBACK_INVALID: '登记的 Callback 不完整或格式不支持。请检查它是否是无参数、无片段的公共 HTTPS 地址。',
+      TOP_APP_NOT_AVAILABLE: '未能读取旧版 TOP 应用。请返回授权工具，导入已有 TOP 授权包或填写旧应用信息。',
+      TOP_APP_SELECTION_REQUIRED: '发现多个旧版 TOP 应用。请在授权工具中指定目标应用信息。'
+    }
   },
   'en-US': {
     product: 'oneVegetable Open Platform guide',
@@ -160,7 +187,34 @@ const COPY: Record<UiLocale, GuideCopy> = {
       blocked: 'Automatic reading stopped. Check the reason in the authorization tool and review this page.'
     },
     readingPrivacy:
-      'Reads app details only for this initiated flow. No app changes, secret reset or automatic agreement acceptance.'
+      'Reads app details only for this initiated flow. No app changes, secret reset or automatic agreement acceptance.',
+    readingErrors: {
+      IOP_APP_READ_FAILED:
+        'App details did not finish loading. Open Application center and check App Name, AppKey and Callback, then read again.',
+      IOP_APP_CENTER_UNAVAILABLE:
+        'Application center could not be opened automatically. Open it yourself, wait for the details, then read again.',
+      IOP_APP_PAGE_UNAVAILABLE:
+        'The app page is navigating or inaccessible. Wait for it to load and check the extension’s site access, then read again.',
+      IOP_APP_SECRET_CONTROL_UNAVAILABLE:
+        'The app was found, but View secret could not be clicked. Click View beside App Secret, then read again.',
+      IOP_APP_SECRET_UNAVAILABLE:
+        'View was clicked, but the secret is not available yet. Check this page, complete any verification, then read again.',
+      IOP_APP_SECURITY_CHECK:
+        'Alibaba requires a security check. Complete the CAPTCHA or secret verification here, then read again.',
+      IOP_APP_LOGIN_REQUIRED: 'Sign in on Alibaba, then return to the authorization tool and read again.',
+      IOP_APP_PREREQUISITE_REQUIRED:
+        'Complete developer review and check that the app is Online with a registered Callback, then read again.',
+      IOP_APP_SELECTION_REQUIRED:
+        'Multiple Application center tabs are open. Keep the intended one and read again.',
+      IOP_APP_CHANGED:
+        'The app or Callback changed during reading. Confirm the intended app, then read again.',
+      CALLBACK_INVALID:
+        'The registered Callback is missing or unsupported. Check that it is a public HTTPS address without a query or fragment.',
+      TOP_APP_NOT_AVAILABLE:
+        'The legacy TOP app could not be read. Return to the tool to import an existing TOP bundle or enter the legacy app details.',
+      TOP_APP_SELECTION_REQUIRED:
+        'Multiple legacy TOP apps were found. Specify the intended app in the authorization tool.'
+    }
   }
 };
 
@@ -169,7 +223,12 @@ export default defineUnlistedScript(() => {
 });
 
 function mountGuide(): void {
-  if (document.getElementById(HOST_ID)) return;
+  const existingHost = document.getElementById(HOST_ID);
+  const existingInstance = guideScope.__oneVegetableDeveloperGuide;
+  if (existingInstance?.host === existingHost && existingHost.isConnected) return;
+  existingInstance?.dispose();
+  // Reload invalidates the isolated world's listeners, but may leave its DOM behind.
+  existingHost?.remove();
 
   let locale: UiLocale = navigator.language.toLowerCase().includes('zh') ? 'zh-CN' : 'en-US';
   let copy = COPY[locale];
@@ -251,8 +310,7 @@ function mountGuide(): void {
   const onMessage = (message: unknown): void => {
     if (!isRecord(message)) return;
     if (message.kind === 'one-vegetable-alibaba-developer-guide-remove') {
-      host.remove();
-      browser.runtime.onMessage.removeListener(onMessage);
+      dispose();
       return;
     }
     if (message.kind !== 'one-vegetable-alibaba-developer-guide-update') return;
@@ -287,7 +345,11 @@ function mountGuide(): void {
       progress.hidden = false;
       progress.textContent = `${copy.progress} · ${authorization.protocol.toUpperCase()}`;
       steps.hidden = true;
-      title.textContent = copy.reading[authorization.phase];
+      const reason = authorizationDiscoveryReason(authorization.reasonCode);
+      title.textContent =
+        authorization.phase === 'blocked' && reason
+          ? copy.readingErrors[reason]
+          : copy.reading[authorization.phase];
       description.textContent = copy.readingPrivacy;
       privacy.hidden = true;
       checklist.replaceChildren();
@@ -297,7 +359,17 @@ function mountGuide(): void {
       openIop.hidden = true;
     } else if (update.state) render(update.state);
   };
+  const instance = { host, dispose };
+  guideScope.__oneVegetableDeveloperGuide = instance;
   browser.runtime.onMessage.addListener(onMessage);
+
+  function dispose(): void {
+    host.remove();
+    browser.runtime.onMessage.removeListener(onMessage);
+    if (guideScope.__oneVegetableDeveloperGuide === instance) {
+      delete guideScope.__oneVegetableDeveloperGuide;
+    }
+  }
 
   async function locateNextField(): Promise<void> {
     setBusy(true);

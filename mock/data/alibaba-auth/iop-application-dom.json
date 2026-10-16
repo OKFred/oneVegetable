@@ -1,0 +1,16 @@
+{
+  "appKey": "fixture-iop-dom-key",
+  "otherAppKey": "fixture-other-app-key",
+  "navigationHtml": "<div role=\"dialog\" aria-label=\"API平台配置\"><ul class=\"tab-left--aEiWOO_0\"><li id=\"developer\" class=\"tab-active--rzooKvee\"><img alt=\"\">开发人员信息 </li><li id=\"center\" class=\"\"><img alt=\"\">应用中心 </li></ul></div>",
+  "secretHtml": "<div class=\"cloud-form\"><span class=\"form-label\">AppKey</span><span class=\"form-item\" id=\"key-value\">fixture-iop-dom-key</span></div><div class=\"cloud-form\" data-field=\"secret\"><span class=\"form-label\">App Secret</span><span class=\"form-item\"><a id=\"view\" href=\"javascript:void(0)\">View</a><a id=\"reset\" href=\"javascript:void(0)\">Reset</a></span></div>",
+  "inertHrefs": ["javascript:void(0)", "javascript:void(0);"],
+  "unsafeHrefs": [
+    "javascript:alert(1)",
+    "javascript:void(alert(1))",
+    "javascript:void(0);alert(1)",
+    "javascript:void(0)//",
+    "data:text/html,View",
+    "https://outside.example/",
+    "https://crosstrade.alibaba.com/ecology/index.htm"
+  ]
+}

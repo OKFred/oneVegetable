@@ -91,14 +91,48 @@ describe('bounded IOP app discovery', () => {
   it('bounds waiting and does not echo arbitrary DOM/provider errors', async () => {
     page.state.mockRejectedValue(new Error(fixtures.appSecret));
     await expect(new IopApplicationReader(page).read()).rejects.toMatchObject({
-      gatewayError: { code: 'IOP_APP_READ_FAILED', message: 'IOP_APP_READ_FAILED' }
+      gatewayError: { code: 'IOP_APP_PAGE_UNAVAILABLE', message: 'IOP_APP_PAGE_UNAVAILABLE' }
     });
     expect(page.wait).toHaveBeenCalledTimes(50);
     page.state.mockResolvedValue({ kind: 'ready' });
-    page.inspect.mockRejectedValueOnce(new Error(fixtures.appSecret));
+    page.inspect.mockRejectedValue(new Error(fixtures.appSecret));
     await expect(new IopApplicationReader(page).read()).rejects.toMatchObject({
-      gatewayError: { message: 'IOP_APP_READ_FAILED' }
+      gatewayError: { message: 'IOP_APP_PAGE_UNAVAILABLE' }
     });
+  });
+  it('continues reading after an application iframe is replaced during navigation', async () => {
+    page.inspect.mockRejectedValueOnce(new Error('Frame was removed'));
+    await expect(new IopApplicationReader(page).read()).resolves.toHaveProperty('appKey', application.appKey);
+    expect(page.wait).toHaveBeenCalledOnce();
+    expect(page.secret).toHaveBeenCalledOnce();
+  });
+  it.each([
+    ['center', 'IOP_APP_CENTER_UNAVAILABLE'],
+    ['secret', 'IOP_APP_SECRET_CONTROL_UNAVAILABLE']
+  ] as const)('explains an unclickable %s control directly in the Alibaba guide', async (target, code) => {
+    const guide = vi.fn().mockResolvedValue(undefined);
+    page.click.mockResolvedValue(false);
+    if (target === 'center') {
+      page.state.mockResolvedValue({ kind: 'navigation-ready' });
+      page.inspect.mockResolvedValue({ application: null });
+    } else page.secret.mockResolvedValue({ status: 'waiting', reason: 'layout' });
+    await expect(new IopApplicationReader({ ...page, guide }).read()).rejects.toMatchObject({
+      gatewayError: { code }
+    });
+    expect(guide).toHaveBeenLastCalledWith(7, 'blocked', code);
+  });
+  it('delivers a concrete guide error even after its discovery deadline expires', async () => {
+    vi.useFakeTimers();
+    const guide = vi.fn().mockResolvedValue(undefined);
+    page.secret.mockReturnValueOnce(new Promise(() => undefined));
+    const reading = new IopApplicationReader({ ...page, guide }).read();
+    const rejection = expect(reading).rejects.toMatchObject({
+      gatewayError: { code: 'IOP_APP_SECRET_CONTROL_UNAVAILABLE' }
+    });
+    await vi.advanceTimersByTimeAsync(30_000);
+    await rejection;
+    expect(guide).toHaveBeenLastCalledWith(7, 'blocked', 'IOP_APP_SECRET_CONTROL_UNAVAILABLE');
+    expect(vi.getTimerCount()).toBe(0);
   });
   it('does not click View again if the revealed secret still cannot be read', async () => {
     page.secret.mockResolvedValue({ status: 'waiting', reason: 'layout' });
@@ -150,9 +184,22 @@ describe('bounded IOP app discovery', () => {
         };
       });
       if (phase === 'click') page.secret.mockResolvedValueOnce({ status: 'waiting', reason: 'layout' });
+      if (phase === 'state' || phase === 'inspect') {
+        // A real wait stays pending, so it cannot win against an expired deadline.
+        page.wait.mockReturnValueOnce(new Promise(() => undefined));
+      }
       page[phase].mockReturnValueOnce(pending);
       const first = reader.read();
-      const rejected = expect(first).rejects.toMatchObject({ gatewayError: { code: 'IOP_APP_READ_FAILED' } });
+      const rejected = expect(first).rejects.toMatchObject({
+        gatewayError: {
+          code:
+            phase === 'secret' || phase === 'click'
+              ? 'IOP_APP_SECRET_CONTROL_UNAVAILABLE'
+              : phase === 'state' || phase === 'inspect'
+                ? 'IOP_APP_PAGE_UNAVAILABLE'
+                : 'IOP_APP_READ_FAILED'
+        }
+      });
       await vi.advanceTimersByTimeAsync(29_999);
       await expect(reader.read()).rejects.toMatchObject({ gatewayError: { code: 'AUTH_TASK_ACTIVE' } });
       await vi.advanceTimersByTimeAsync(1);

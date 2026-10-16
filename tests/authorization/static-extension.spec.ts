@@ -446,7 +446,15 @@ for (const language of ['en', 'zh'] as const) {
   test(`IOP discovery reads Alice's cross-origin app with visible guided clicks (${language})`, async () => {
     const alibaba = await context.newPage();
     await alibaba.goto(`https://i.alibaba.com/explore/open-api?language=${language}`);
+    // Extension Reload can leave its old guide DOM without a live listener.
+    await alibaba.evaluate(() => {
+      const orphan = document.createElement('div');
+      orphan.id = 'one-vegetable-alibaba-developer-guide';
+      orphan.dataset.orphanedGuide = '';
+      document.documentElement.append(orphan);
+    });
     const tool = await openTool('iop', true);
+    await expect(alibaba.locator('[data-orphaned-guide]')).toHaveCount(0);
     await expect(alibaba.locator('body')).toHaveAttribute('data-center-clicks', '1');
     await expect(alibaba.locator('body')).toHaveAttribute('data-center-pointer', 'true');
     // Captured inside the actual click handler, so a guide injected after navigation
@@ -606,7 +614,7 @@ test('the Open Platform guide stays inside mobile and desktop viewports with a f
 
 for (const [mode, expected] of [
   ['security-check', 'Alibaba 要求验证码或密钥安全验证'],
-  ['overlay', '未能在 30 秒内读取完整应用信息'],
+  ['overlay', '已找到应用，但未能点击“查看”密钥'],
   ['missing-callback', '未能在 30 秒内读取完整应用信息']
 ] as const) {
   test(`IOP discovery stops safely for ${mode}, without starting OAuth or opening legacy TOP`, async () => {
@@ -623,6 +631,9 @@ for (const [mode, expected] of [
     if (mode === 'overlay') {
       await expect(application.locator('#blocking-overlay')).toBeVisible();
       await expect(application.locator('body')).toHaveAttribute('data-view-clicks', '0');
+      await expect(alibaba.locator('#one-vegetable-alibaba-developer-guide .title')).toContainText(
+        '请手动点击 App Secret 旁的 View'
+      );
     }
     if (mode === 'security-check')
       await expect(application.locator('body')).toHaveAttribute('data-view-clicks', '1');

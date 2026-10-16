@@ -18,6 +18,12 @@ export const zh = {
   AUTH_JSON_EXAMPLE: '请先将示例占位值全部替换为自己的有效授权信息。',
   dismissNotification: '关闭通知',
   IOP_APP_CHANGED: '读取期间当前应用或 Callback 发生了变化，已停止授权。请确认目标应用后重新读取。',
+  IOP_APP_CENTER_UNAVAILABLE:
+    '未能自动打开“应用中心”。请在 Alibaba 页面手动点击“应用中心”，待应用详情出现后再重新读取。',
+  IOP_APP_PAGE_UNAVAILABLE:
+    '无法读取应用页面，页面可能正在跳转或访问权限已变化。请等应用中心加载完成后重新读取。',
+  IOP_APP_SECRET_CONTROL_UNAVAILABLE:
+    '已找到应用，但未能点击“查看”密钥。请在应用中心手动点击 App Secret 旁的 View，完成可能的验证后重新读取。',
   discoverApplication: '自动读取应用并授权',
   discoveringApplication: '正在打开应用中心并读取当前应用，请留意页面上的指针；最多等待 30 秒。',
   applicationRead: '已读取应用及已登记 Callback，准备打开授权页。请在 Alibaba 页面自行确认授权。',
@@ -168,6 +174,12 @@ export const en: Record<keyof typeof zh, string> = {
   dismissNotification: 'Dismiss notification',
   IOP_APP_CHANGED:
     'The selected app or Callback changed while reading. Authorization stopped. Confirm the intended app and read again.',
+  IOP_APP_CENTER_UNAVAILABLE:
+    'Application center could not be opened automatically. Open it on Alibaba, wait for the app details, then read again.',
+  IOP_APP_PAGE_UNAVAILABLE:
+    'The app page could not be read. It may be navigating or its access permission may have changed. Wait for Application center to load, then read again.',
+  IOP_APP_SECRET_CONTROL_UNAVAILABLE:
+    'The app was found, but View secret could not be clicked. Click View beside App Secret on Alibaba, complete any verification, then read again.',
   discoverApplication: 'Read app and authorize',
   discoveringApplication:
     'Opening Application center and reading the current app. Follow the pointer; this takes at most 30 seconds.',

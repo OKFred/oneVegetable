@@ -1,6 +1,10 @@
 import { browser } from 'wxt/browser';
 import { APP_PREFERENCES_STORAGE_KEY, parseAppPreferences } from '@one-vegetable/core/preferences';
 import { inspectAlibabaDeveloperPageDocument } from '@one-vegetable/core/alibaba-developer-page-inspection';
+import {
+  authorizationDiscoveryReason,
+  type AuthorizationDiscoveryReason
+} from './authorization-discovery-reason';
 
 export { inspectAlibabaDeveloperPageDocument as inspectApplicationPageStateInFrame };
 
@@ -200,7 +204,8 @@ export type AlibabaAuthorizationGuidePhase = 'opening' | 'application' | 'secret
 export async function showAlibabaAuthorizationGuide(
   tabId: number,
   protocol: 'top' | 'iop',
-  phase: AlibabaAuthorizationGuidePhase
+  phase: AlibabaAuthorizationGuidePhase,
+  reasonCode?: AuthorizationDiscoveryReason
 ): Promise<void> {
   const stored: Record<string, unknown> = await browser.storage.local
     .get(APP_PREFERENCES_STORAGE_KEY)
@@ -210,7 +215,11 @@ export async function showAlibabaAuthorizationGuide(
   await sendAlibabaDeveloperGuideMessage(tabId, {
     kind: 'one-vegetable-alibaba-developer-guide-update',
     uiLocale,
-    authorization: { protocol, phase }
+    authorization: {
+      protocol,
+      phase,
+      ...(phase === 'blocked' && authorizationDiscoveryReason(reasonCode) ? { reasonCode } : {})
+    }
   });
 }
 

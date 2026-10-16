@@ -7,6 +7,7 @@ import {
 } from './alibaba-credential-page-driver';
 import { failure, parseCallback } from './iop-authorization';
 import type { IopApplicationReadResult } from './iop-application-reader';
+import { authorizationDiscoveryReason } from './authorization-discovery-reason';
 
 /** Never synthesize a TOP app from the IOP console or reopen a retired 404 URL. */
 export async function readTopApplication(): Promise<IopApplicationReadResult> {
@@ -52,7 +53,15 @@ async function readTopApplicationCore(deadline: number): Promise<IopApplicationR
       callbackUrl
     };
   } catch (error) {
-    await showAlibabaAuthorizationGuide(tabId, 'top', 'blocked').catch(() => undefined);
+    const code =
+      error instanceof Error &&
+      'gatewayError' in error &&
+      typeof error.gatewayError === 'object' &&
+      error.gatewayError !== null &&
+      'code' in error.gatewayError
+        ? (authorizationDiscoveryReason(error.gatewayError.code) ?? 'TOP_APP_NOT_AVAILABLE')
+        : 'TOP_APP_NOT_AVAILABLE';
+    await showAlibabaAuthorizationGuide(tabId, 'top', 'blocked', code).catch(() => undefined);
     if (error instanceof Error && 'gatewayError' in error) throw error;
     throw failure('TOP_APP_NOT_AVAILABLE');
   }

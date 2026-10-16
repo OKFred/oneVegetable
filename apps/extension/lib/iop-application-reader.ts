@@ -12,6 +12,10 @@ import {
 } from './alibaba-credential-page-driver';
 import { clickAlibabaGuidedTarget, type AlibabaGuidedTarget } from './alibaba-guided-click';
 import { failure, parseCallback } from './iop-authorization';
+import {
+  authorizationDiscoveryReason,
+  type AuthorizationDiscoveryReason
+} from './authorization-discovery-reason';
 export { IOP_APPLICATION_READER_ORIGINS } from './iop-authorization-storage';
 
 export interface IopApplicationReadResult {
@@ -35,7 +39,11 @@ interface ReaderDriver {
   ): Promise<boolean>;
   secret(tabId: number, frameId?: number, expectedAppKey?: string): Promise<ExtensionAlibabaSecretResult>;
   wait(): Promise<void>;
-  guide?(tabId: number, phase: AlibabaAuthorizationGuidePhase): Promise<void>;
+  guide?(
+    tabId: number,
+    phase: AlibabaAuthorizationGuidePhase,
+    reasonCode?: AuthorizationDiscoveryReason
+  ): Promise<void>;
 }
 const driver: ReaderDriver = {
   async open() {
@@ -60,7 +68,7 @@ const driver: ReaderDriver = {
   click: clickAlibabaGuidedTarget,
   secret: (tabId, frameId, expectedAppKey) =>
     revealAlibabaApplicationSecret(tabId, true, frameId, expectedAppKey),
-  guide: (tabId, phase) => showAlibabaAuthorizationGuide(tabId, 'iop', phase),
+  guide: (tabId, phase, reasonCode) => showAlibabaAuthorizationGuide(tabId, 'iop', phase, reasonCode),
   wait: () => new Promise((resolve) => setTimeout(resolve, 500))
 };
 
@@ -80,11 +88,12 @@ export class IopApplicationReader {
     let guideShown = false;
     let activeTabId: number | undefined;
     let selectedApplication: string | undefined;
+    let waitingReason: AuthorizationDiscoveryReason = 'IOP_APP_READ_FAILED';
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
     const deadline = this.clock() + 30_000;
     const timeout = new Promise<never>((_resolve, reject) => {
       timeoutHandle = setTimeout(() => {
-        reject(failure('IOP_APP_READ_FAILED'));
+        reject(failure(waitingReason));
       }, 30_000);
     });
     const bounded = <T>(work: Promise<T>): Promise<T> => Promise.race([work, timeout]);
@@ -106,16 +115,30 @@ export class IopApplicationReader {
           continue;
         }
         let state: ExtensionAlibabaPageState;
+        // Set before awaiting: the deadline rejection captures the current phase,
+        // and cannot be corrected by changing waitingReason after it has rejected.
+        waitingReason = 'IOP_APP_PAGE_UNAVAILABLE';
         try {
           state = await bounded(this.page.state(tabId));
         } catch {
+          waitingReason = 'IOP_APP_PAGE_UNAVAILABLE';
           await bounded(this.page.wait());
           continue;
         }
         if (state.kind === 'challenge') throw failure('IOP_APP_SECURITY_CHECK');
         if (state.kind === 'login-required') throw failure('IOP_APP_LOGIN_REQUIRED');
         if (state.kind === 'prerequisite') throw failure('IOP_APP_PREREQUISITE_REQUIRED');
-        const { application, frameId } = await bounded(this.page.inspect(tabId));
+        let inspected: Awaited<ReturnType<ReaderDriver['inspect']>>;
+        try {
+          inspected = await bounded(this.page.inspect(tabId));
+        } catch {
+          // Entering Application center can replace its iframe while a read is
+          // in flight. Wait within the same deadline instead of failing at once.
+          waitingReason = 'IOP_APP_PAGE_UNAVAILABLE';
+          await bounded(this.page.wait());
+          continue;
+        }
+        const { application, frameId } = inspected;
         if (application?.source === 'application-center') {
           const identity = JSON.stringify([application.appKey, application.callbackUrl, frameId]);
           if (selectedApplication !== undefined && identity !== selectedApplication)
@@ -124,6 +147,7 @@ export class IopApplicationReader {
           if (this.page.guide && !secretClicked)
             await bounded(this.page.guide(tabId, 'application')).catch(() => undefined);
           const callbackUrl = parseCallback(application.callbackUrl).href;
+          waitingReason = secretClicked ? 'IOP_APP_SECRET_UNAVAILABLE' : 'IOP_APP_SECRET_CONTROL_UNAVAILABLE';
           const result = await bounded(this.page.secret(tabId, frameId, application.appKey));
           if (result.status === 'available') {
             if (this.page.guide) await bounded(this.page.guide(tabId, 'ready')).catch(() => undefined);
@@ -140,21 +164,48 @@ export class IopApplicationReader {
             secretClicked = await bounded(
               this.page.click(tabId, 'reveal-secret', frameId, application.appKey, deadline)
             );
+            if (secretClicked) waitingReason = 'IOP_APP_SECRET_UNAVAILABLE';
           }
         } else if (!centerClicked && ['navigation-ready', 'registration-approved'].includes(state.kind)) {
+          waitingReason = 'IOP_APP_CENTER_UNAVAILABLE';
           centerClicked = await bounded(
             this.page.click(tabId, 'application-center', undefined, undefined, deadline)
           );
+          if (centerClicked) waitingReason = 'IOP_APP_READ_FAILED';
+        } else {
+          waitingReason = 'IOP_APP_READ_FAILED';
         }
         await bounded(this.page.wait());
       }
-      throw failure(secretClicked ? 'IOP_APP_SECRET_UNAVAILABLE' : 'IOP_APP_READ_FAILED');
+      throw failure(waitingReason);
     } catch (error) {
-      if (activeTabId !== undefined && this.page.guide)
-        await bounded(this.page.guide(activeTabId, 'blocked')).catch(() => undefined);
       // No raw DOM, credential values or provider error text leave this boundary.
-      if (error instanceof Error && 'gatewayError' in error) throw error;
-      throw failure('IOP_APP_READ_FAILED');
+      const code =
+        error instanceof Error &&
+        'gatewayError' in error &&
+        typeof error.gatewayError === 'object' &&
+        error.gatewayError !== null &&
+        'code' in error.gatewayError
+          ? (authorizationDiscoveryReason(error.gatewayError.code) ?? waitingReason)
+          : waitingReason;
+      if (activeTabId !== undefined && this.page.guide) {
+        // The discovery deadline may already be rejected. Give its final safe
+        // status a separate bounded delivery so the guide does not stay spinning.
+        let guideTimeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            this.page.guide(activeTabId, 'blocked', code),
+            new Promise<void>((resolve) => {
+              guideTimeout = setTimeout(resolve, 1500);
+            })
+          ]);
+        } catch {
+          // The original bounded failure still reaches the authorization tool.
+        } finally {
+          clearTimeout(guideTimeout);
+        }
+      }
+      throw failure(code);
     } finally {
       this.running = false;
       clearTimeout(timeoutHandle);
