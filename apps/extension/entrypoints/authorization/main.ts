@@ -28,12 +28,16 @@ let protocol: Protocol = new URL(location.href).searchParams.get('protocol') ===
 el('#app').innerHTML =
   `<header><div><small id="protocolBadge"></small><h1 id="title"></h1><p class="muted" data-text="toolGuide"></p></div><button id="language" data-text="language"></button></header>
 <section><h2 data-text="protocolChoice"></h2><div class="protocol-choices"><button id="protocolIop" data-text="protocolIop"></button><button id="protocolTop" data-text="protocolTop"></button></div><p class="muted" data-text="dualGuide"></p><p id="protocolHelp"></p><a id="center" class="button" href="https://i.alibaba.com/explore/open-api" target="_blank" rel="noopener noreferrer" data-text="center"></a><a id="back" class="button" data-text="returnSettings"></a></section>
-<p class="warning" id="boundary"></p><div class="actions"><button id="discover" data-text="discoverApplication"></button></div><p id="notice" role="status"></p><p id="error" role="alert"></p>
+<p class="warning" id="boundary"></p><div class="actions"><button id="discover" data-text="discoverApplication"></button><button id="manualEntry" data-text="manualAuthorization"></button></div><p id="notice" role="status"></p><p id="error" role="alert"></p>
 <section><h2 id="status"></h2><dl><dt data-text="appName"></dt><dd id="name">—</dd><dt>App Key</dt><dd id="key">—</dd><dt data-text="expires"></dt><dd id="expires">—</dd><dt data-text="refreshExpires"></dt><dd id="refreshExpires">—</dd></dl><div class="actions"><button id="reauthorize" data-text="reauthorize"></button><button id="refresh" data-text="refresh"></button><button id="export" data-text="export"></button><button id="save" data-text="save" hidden></button><button id="lock" data-text="lock"></button><button id="cancel" data-text="cancel" hidden></button><button id="clear"></button></div></section>
 <section><form id="form"><fieldset id="fields"><div class="grid"><div><label for="appName" data-text="appName"></label><input id="appName" required maxlength="256"></div><div><label for="appKey" data-text="appKey"></label><input id="appKey" required maxlength="256" autocomplete="off"></div></div><label for="appSecret" data-text="appSecret"></label><input id="appSecret" type="password" autocomplete="off" required maxlength="4096" data-feedback-redact><label for="callback" data-text="callback"></label><input id="callback" type="url" required><label for="passphrase" data-text="passphrase"></label><input id="passphrase" type="password" autocomplete="off" minlength="6" maxlength="256" required data-feedback-redact><label><input id="registered" type="checkbox" required><span data-text="registered"></span></label><div class="actions"><button type="submit" id="start" class="primary" data-text="start"></button><button type="button" id="unlock" data-text="unlock"></button><button type="button" id="chooseFile"></button><input id="file" type="file" accept="application/json,.json" hidden></div></fieldset></form><div id="manual" hidden><label for="callbackPaste" data-text="paste"></label><input id="callbackPaste" type="password" autocomplete="off" data-feedback-redact><button id="receive" data-text="receive"></button></div></section>${footer}`;
 el('footer').insertAdjacentHTML(
   'beforebegin',
   `<section><details id="advancedJson"><summary data-text="advancedJson"></summary><p class="muted" data-text="jsonHelp"></p><label for="credentialJson" data-text="jsonLabel"></label><div class="authorization-json-editor" data-feedback-redact><pre aria-hidden="true"><code id="jsonHighlight"></code></pre><textarea id="credentialJson" maxlength="65536" spellcheck="false" autocomplete="off" autocapitalize="off" data-feedback-redact></textarea></div><div class="actions"><button type="button" id="importJson" data-text="importJson"></button></div></details></section>`
+);
+el('#form').insertAdjacentHTML(
+  'beforebegin',
+  `<h2 data-text="manualApplication"></h2><details id="topManualGuide" class="authorization-manual-guide" hidden><summary data-text="topManualTitle"></summary><ol><li data-text="topManualExisting"></li><li data-text="topManualPrepare"></li><li data-text="topManualApprove"></li><li data-text="topManualFinish"></li></ol><p class="warning" data-text="topManualUnavailable"></p><a href="https://developer.alibaba.com/docs/doc.htm?articleId=118846&amp;docType=1&amp;treeId=456" target="_blank" rel="noopener noreferrer" data-text="topManualDocumentation"></a></details>`
 );
 el<HTMLAnchorElement>('#back').href = browser.runtime.getURL('/options.html#/settings');
 el<HTMLInputElement>('#callback').value = protocol === 'iop' ? PUBLIC_AUTH_CALLBACK : '';
@@ -41,6 +45,7 @@ languageButton();
 let busy = false;
 let summary: IopAuthorizationSummary | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
+let importGeneration = 0;
 const value = (id: string): string => el<HTMLInputElement>(`#${id}`).value;
 const tokenOrigin = (): string => (protocol === 'iop' ? IOP_API_ORIGIN : 'https://oauth.alibaba.com');
 let jsonExample = '';
@@ -79,8 +84,10 @@ function render(): void {
   el('#protocolHelp').textContent = t(protocol === 'top' ? 'topGuide' : 'step1Text');
   el('#boundary').textContent = t(protocol === 'top' ? 'boundaryTop' : 'boundary');
   el('#center').hidden = protocol === 'top';
+  el('#topManualGuide').hidden = protocol !== 'top';
   el<HTMLButtonElement>('#discover').disabled =
     busy || summary?.state === 'waiting' || summary?.state === 'busy';
+  el<HTMLButtonElement>('#manualEntry').disabled = el<HTMLButtonElement>('#discover').disabled;
   el('#chooseFile').textContent = t(protocol === 'top' ? 'importTop' : 'import');
   el('#clear').textContent = t(protocol === 'top' ? 'clearTop' : 'clear');
   const waiting = summary?.state === 'waiting' || summary?.state === 'busy';
@@ -247,6 +254,7 @@ async function discoverApplication(): Promise<void> {
     if (summary?.canReauthorize) startDiscoveredApplication();
     else requestAuthorizationPassphrase(startDiscoveredApplication);
   } catch (error) {
+    if (protocol === 'top') el<HTMLDetailsElement>('#topManualGuide').open = true;
     showError(error);
   } finally {
     busy = false;
@@ -254,6 +262,11 @@ async function discoverApplication(): Promise<void> {
   }
 }
 
+el('#manualEntry').onclick = () => {
+  if (protocol === 'top') el<HTMLDetailsElement>('#topManualGuide').open = true;
+  el('#form').scrollIntoView({ block: 'center' });
+  el('#appName').focus({ preventScroll: true });
+};
 el('#discover').onclick = () => {
   const selected = protocol;
   void browser.permissions
@@ -370,12 +383,15 @@ el<HTMLDetailsElement>('#advancedJson').ontoggle = () => {
     jsonInput.select();
   }
 };
-el('#importJson').onclick = () => {
+function importBundleText(text: string, selected = protocol): void {
   if (busy) return;
-  const selected = protocol;
+  if (selected !== protocol) {
+    showError(new Error('AUTH_PROTOCOL_CHANGED'));
+    return;
+  }
   let bundle;
   try {
-    bundle = parseAuthorizationJson(jsonInput.value, protocol);
+    bundle = parseAuthorizationJson(text, selected);
   } catch (error) {
     showError(error);
     return;
@@ -394,10 +410,15 @@ el('#importJson').onclick = () => {
     };
     const passphrase = value('passphrase');
     if (passphrase) perform(passphrase);
-    else requestAuthorizationPassphrase(perform, t('importPassphraseHelp'));
+    else requestAuthorizationPassphrase(perform, t('importPassphraseHelp'), t('protectAndImport'));
   });
+}
+el('#importJson').onclick = () => {
+  importGeneration += 1;
+  importBundleText(jsonInput.value);
 };
 el<HTMLInputElement>('#file').onchange = (event) => {
+  const generation = ++importGeneration;
   const file = (event.target as HTMLInputElement).files?.[0];
   el<HTMLInputElement>('#file').value = '';
   if (!file || busy) return;
@@ -405,22 +426,22 @@ el<HTMLInputElement>('#file').onchange = (event) => {
     showError(new Error('AUTH_INPUT_INVALID'));
     return;
   }
-  confirmAction(t('importConfirm'), () => {
-    const passphrase = value('passphrase');
-    el<HTMLInputElement>('#passphrase').value = '';
-    void file
-      .text()
-      .then(async (text) => {
-        await run('import', { bundle: JSON.parse(text) as unknown, passphrase });
-      })
-      .catch(() => {
-        showError(new Error('AUTH_INPUT_INVALID'));
-      });
-  });
+  const selected = protocol;
+  void file
+    .text()
+    .then((text) => {
+      if (generation !== importGeneration) return;
+      importBundleText(text, selected);
+    })
+    .catch(() => {
+      if (generation !== importGeneration) return;
+      showError(new Error('AUTH_INPUT_INVALID'));
+    });
 };
 function switchProtocol(selected: Protocol): void {
   if (selected === protocol || busy || summary?.state === 'waiting' || summary?.state === 'busy') return;
   const apply = (): void => {
+    importGeneration += 1;
     clearTimeout(timer);
     protocol = selected;
     history.replaceState(null, '', location.pathname + (selected === 'top' ? '?protocol=top' : ''));
@@ -450,6 +471,7 @@ el('#protocolTop').onclick = () => {
 };
 el('#language').addEventListener('click', render);
 window.addEventListener('pagehide', () => {
+  importGeneration += 1;
   clearTimeout(timer);
   jsonInput.value = '';
   highlightAuthorizationJson(el('#jsonHighlight'), '');

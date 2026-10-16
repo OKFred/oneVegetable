@@ -13,6 +13,7 @@ export const zh = {
   importJson: '校验并导入 JSON',
   importPassphraseHelp:
     '请用至少 6 个字符的本机口令加密这份授权包；不是 Alibaba 网站密码。只替换本工具当前协议的包，另一协议和工作台配置不变。',
+  protectAndImport: '加密并导入',
   AUTH_JSON_INVALID: 'JSON 格式或授权包字段不正确，请按示例粘贴完整有效的授权包。',
   AUTH_JSON_TOO_LARGE: '授权 JSON 不能超过 64 KiB，请移除与授权无关的内容。',
   AUTH_JSON_EXAMPLE: '请先将示例占位值全部替换为自己的有效授权信息。',
@@ -55,6 +56,20 @@ export const zh = {
     '建议已有两类应用的商家分别授权，以覆盖更多能力。两套 AppKey、Secret、Token 和授权包独立保存，不可混用；只有一类也可使用。',
   topGuide:
     'TOP 使用旧版应用，不在新版应用中心切换。可手动填写整套旧应用信息，或导入已有 TOP JSON、解锁后点击“重新授权”。不需要额外 Node 服务。',
+  manualAuthorization: '手动填写并授权',
+  manualApplication: '应用信息与本机口令',
+  topManualTitle: '如何手动完成 TOP 授权？',
+  topManualExisting:
+    '已有完整 TOP 授权 JSON：点击下方“导入已有 TOP 授权包”，设置本机口令后导入，再点击“重新授权”。本工具已保存的包只需先解锁。',
+  topManualPrepare:
+    '没有授权包：向原应用管理员取得旧 TOP 应用的 App Name、App Key、App Secret 和已登记 Callback URL，填写下方表单。只有 Access Token 不够；不能使用新版 IOP 应用信息代替。',
+  topManualApprove:
+    '设置至少 6 个字符的本机口令，确认应用归属及 Callback 后点击“开始授权”。插件会生成官方 TOP 授权地址；请在 Alibaba 页面登录并亲自确认授权。',
+  topManualFinish:
+    '保留工具页和授权标签页打开。插件校验回调后换取 Token；显示“已安全保存”后导出 credentialInfo.json，再返回设置导入 TOP 档案。无需启动 Node 或另行部署服务。',
+  topManualUnavailable:
+    '自动读取失败不代表不能手动授权。但若没有旧 TOP 应用资料或授权包备份，请联系原应用管理员或 Alibaba 支持确认旧应用入口；插件无法从 IOP 应用生成 TOP 凭据。',
+  topManualDocumentation: 'TOP 官方授权说明',
   toolGuide:
     '在插件内完成换 Token 和续期，再导出 credentialInfo.json，返回设置选择同一协议导入保存。保留已登记 Callback；不创建应用、不重置密钥、不自动接受协议。',
   boundaryTop:
@@ -167,6 +182,7 @@ export const en: Record<keyof typeof zh, string> = {
   importJson: 'Validate and import JSON',
   importPassphraseHelp:
     'Encrypt this bundle with a local passphrase of at least 6 characters, not your Alibaba password. Only this tool’s selected bundle is replaced; the other protocol and workbench settings are unchanged.',
+  protectAndImport: 'Encrypt and import',
   AUTH_JSON_INVALID:
     'Invalid JSON or credential fields. Paste a complete valid bundle using the example format.',
   AUTH_JSON_TOO_LARGE: 'Authorization JSON must not exceed 64 KiB. Remove unrelated content.',
@@ -213,6 +229,20 @@ export const en: Record<keyof typeof zh, string> = {
     'If you have both app types, authorize both for broader coverage. Each AppKey, secret, token and bundle is stored independently and cannot be mixed. A single app type is still supported.',
   topGuide:
     'TOP uses a legacy app, not another tab in the IOP console. Enter the complete legacy app details, or import existing TOP JSON, unlock it and choose Reauthorize. No additional Node service is needed.',
+  manualAuthorization: 'Enter app details manually',
+  manualApplication: 'Application details and local passphrase',
+  topManualTitle: 'How do I authorize legacy TOP manually?',
+  topManualExisting:
+    'Have a complete TOP bundle? Choose Import existing TOP bundle below, set a local passphrase, then choose Reauthorize. If this tool already stores the bundle, unlock it first.',
+  topManualPrepare:
+    'No bundle? Obtain the legacy TOP App Name, App Key, App Secret and registered Callback URL from the original app administrator and fill in the form below. An Access Token alone is not enough. IOP app details cannot substitute for TOP.',
+  topManualApprove:
+    'Set a local passphrase of at least 6 characters, confirm ownership and the Callback, then choose Start authorization. The extension generates the official TOP authorization URL; sign in and personally approve on Alibaba.',
+  topManualFinish:
+    'Keep the tool and authorization tabs open. The extension validates the callback and exchanges the code for tokens. Once Saved securely appears, export credentialInfo.json and import it into the TOP profile in Settings. No Node process or extra service deployment is needed.',
+  topManualUnavailable:
+    'Automatic reading failure does not prevent manual authorization. Without legacy app details or a bundle backup, contact the original app administrator or Alibaba support about the legacy console. The extension cannot generate TOP credentials from an IOP app.',
+  topManualDocumentation: 'Official TOP authorization guide',
   toolGuide:
     'Exchange and refresh tokens inside the extension, then export credentialInfo.json and import it into the matching profile in Settings. Keep the registered Callback; no app creation, secret reset or automatic agreement acceptance.',
   boundaryTop:

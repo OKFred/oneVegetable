@@ -135,7 +135,8 @@ export function confirmAction(message: string, onConfirm: () => void): void {
 /** Local-only passphrase, never a website password; explicit click retains user activation. */
 export function requestAuthorizationPassphrase(
   onConfirm: (passphrase: string) => void,
-  help = t('protectBundleHelp')
+  help = t('protectBundleHelp'),
+  confirmLabel = t('start')
 ): void {
   if (activeConfirmation) return;
   const trigger = document.activeElement;
@@ -147,7 +148,9 @@ export function requestAuthorizationPassphrase(
   title.textContent = t('protectBundle');
   dialog.setAttribute('aria-labelledby', title.id);
   const description = document.createElement('p');
+  description.id = 'authorization-passphrase-description';
   description.textContent = help;
+  dialog.setAttribute('aria-describedby', description.id);
   const form = document.createElement('form');
   const input = document.createElement('input');
   input.type = 'password';
@@ -157,14 +160,14 @@ export function requestAuthorizationPassphrase(
   input.maxLength = 256;
   input.setAttribute('aria-label', t('passphrase'));
   const actions = document.createElement('div');
-  actions.className = 'actions';
+  actions.className = 'actions confirmation-actions';
   const cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.textContent = t('confirmationCancel');
   const proceed = document.createElement('button');
   proceed.type = 'submit';
   proceed.className = 'primary';
-  proceed.textContent = t('start');
+  proceed.textContent = confirmLabel;
   const close = (): void => {
     input.value = '';
     dialog.close();

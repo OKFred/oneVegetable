@@ -56,8 +56,8 @@ button,
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  line-height: 1.25;
   font: inherit;
+  line-height: 1.25;
   border: 1px solid #c5d2e3;
   border-radius: 8px;
   padding: 10px 16px;
@@ -96,6 +96,17 @@ button,
 .confirmation-actions {
   justify-content: flex-end;
   margin-top: 24px;
+  align-items: stretch;
+}
+.confirmation-actions > button {
+  min-width: 96px;
+}
+.authorization-manual-guide li {
+  margin: 12px 0;
+  line-height: 1.7;
+}
+.authorization-manual-guide a {
+  color: #155de9;
 }
 button.primary {
   background: #155de9;
@@ -312,6 +323,9 @@ footer {
   section {
     padding: 18px;
   }
+  .confirmation-actions > button {
+    flex: 1 1 120px;
+  }
 }
 @media (prefers-color-scheme: dark) {
   .authorization-json-editor {
@@ -354,6 +368,9 @@ footer {
     color: #a6b7ce;
   }
   #notice {
+    color: #89b4ff;
+  }
+  .authorization-manual-guide a {
     color: #89b4ff;
   }
   #error {

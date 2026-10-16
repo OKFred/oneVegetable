@@ -428,8 +428,8 @@ test('public pages cannot export; mismatched callback does not call the platform
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(credentials.oauthBundle))
   });
-  await confirmToolAction(tool);
   await expect(tool.locator('#error')).toContainText('旧 TOP');
+  await expect(tool.getByRole('dialog')).toHaveCount(0);
   const vault = await worker.evaluate(
     async ({ key, receipt }) => {
       const chrome = (
@@ -469,7 +469,8 @@ for (const language of ['en', 'zh'] as const) {
     await expect(tool.locator('#appSecret')).toHaveValue(standalone.iop.appSecret);
     await expect(tool.locator('#callback')).toHaveValue(standalone.iop.callbackUrl);
     const protection = tool.getByRole('dialog', { name: '设置本机授权包口令' });
-    await expect(protection).toBeVisible();
+    // Discovery has a 30-second bound, including iframe navigation and visible clicks.
+    await expect(protection).toBeVisible({ timeout: 35_000 });
     expect(creates + topCreates).toBe(0);
     const password = protection.locator('input[type="password"]');
     await expect(password).toHaveAttribute('minlength', '6');
@@ -519,7 +520,7 @@ test('the Open Platform guide stays inside mobile and desktop viewports with a f
   await alibaba.goto('https://i.alibaba.com/explore/open-api');
   const tool = await openTool('iop', true);
   const protection = tool.getByRole('dialog', { name: '设置本机授权包口令' });
-  await expect(protection).toBeVisible();
+  await expect(protection).toBeVisible({ timeout: 35_000 });
   await protection.getByRole('button', { name: '取消', exact: true }).click();
   const guide = alibaba.locator('#one-vegetable-alibaba-developer-guide');
   const panel = guide.locator('.panel');
@@ -682,6 +683,10 @@ for (const legacyPage of ['none', 'not-found'] as const) {
     await expect(tool.locator('#error')).toContainText('无法从已打开的旧 TOP 应用页读取完整信息');
     await expect(tool.locator('#discover')).toBeVisible();
     await expect(tool.locator('#discover')).toBeEnabled();
+    await expect(tool.locator('#topManualGuide')).toHaveAttribute('open', '');
+    await expect(tool.locator('#topManualGuide')).toContainText('自动读取失败不代表不能手动授权');
+    await tool.locator('#manualEntry').click();
+    await expect(tool.locator('#appName')).toBeFocused();
     await expect(tool.locator('#status')).toHaveText('尚未配置');
     for (const id of ['appName', 'appKey', 'appSecret', 'callback'])
       await expect(tool.locator(`#${id}`)).toHaveValue('');
@@ -724,6 +729,9 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
   await expect(top.locator('#status')).toHaveText('尚未配置');
   await expect(top.locator('#discover')).toBeVisible();
   await expect(top.locator('#center')).toBeHidden();
+  await top.locator('#manualEntry').click();
+  await expect(top.locator('#appName')).toBeFocused();
+  await expect(top.locator('#topManualGuide')).toContainText('无需启动 Node');
   for (const [id, value] of Object.entries({
     appName: standalone.top.appName,
     appKey: standalone.top.appKey,
@@ -802,9 +810,9 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
   }
   await tool.locator('#passphrase').fill('123456');
   await tool.locator('#file').setInputFiles({
-    name: 'wrong-protocol.json',
+    name: 'existing-iop.json',
     mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(credentials.oauthBundle))
+    buffer: Buffer.from(JSON.stringify(jsonImports.iop))
   });
   const dialog = tool.getByRole('dialog');
   await expect(dialog).toContainText('确认替换');
@@ -971,7 +979,7 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   await protection.getByLabel('本机授权包口令（至少 6 个字符）', { exact: true }).fill('123456');
   expect(await storage()).toEqual(iopStored);
   await assertPrivateMessages();
-  await protection.getByRole('button', { name: '开始授权', exact: true }).click();
+  await protection.getByRole('button', { name: '加密并导入', exact: true }).click();
   await expect(tool.locator('#status')).toHaveText('已安全保存');
   expect(await editor.inputValue()).not.toContain(jsonImports.top.oauth.accessToken);
   expect(await editor.inputValue()).not.toContain(jsonImports.top.application.appSecret);
@@ -1031,6 +1039,158 @@ test('authorization action buttons align in both languages and themes, with read
   await tool.setViewportSize({ width: 390, height: 844 });
   await expect(tool.locator('#chooseFile')).toBeVisible();
   expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('passphrase modal has spaced, aligned primary and secondary actions in both languages, themes and mobile', async () => {
+  const tool = await openTool();
+  await tool.locator('#advancedJson summary').click();
+  await tool.locator('#credentialJson').fill(JSON.stringify(jsonImports.iop));
+  for (const width of [1440, 390]) {
+    await tool.setViewportSize({ width, height: 900 });
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await tool.emulateMedia({ colorScheme });
+      for (const language of ['zh-CN', 'en-US'] as const) {
+        if ((await tool.locator('html').getAttribute('lang')) !== language)
+          await tool.locator('#language').click();
+        await tool.locator('#importJson').click();
+        await confirmToolAction(tool);
+        const dialog = tool.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('input')).toBeFocused();
+        const layout = await dialog.evaluate((element) => {
+          const input = element.querySelector('input');
+          const actions = element.querySelector('.actions');
+          if (!input || !actions) throw new Error('Missing passphrase controls');
+          const buttons = [...actions.querySelectorAll('button')];
+          const primary = buttons[1];
+          if (!primary) throw new Error('Missing primary action');
+          const rect = element.getBoundingClientRect();
+          return {
+            gap: actions.getBoundingClientRect().top - input.getBoundingClientRect().bottom,
+            heights: buttons.map((button) => button.getBoundingClientRect().height),
+            tops: buttons.map((button) => button.getBoundingClientRect().top),
+            align: getComputedStyle(actions).justifyContent,
+            background: getComputedStyle(primary).backgroundColor,
+            foreground: getComputedStyle(primary).color,
+            fits: rect.left >= 0 && rect.right <= innerWidth && element.scrollWidth <= element.clientWidth,
+            described: element.getAttribute('aria-describedby') === 'authorization-passphrase-description'
+          };
+        });
+        // Chromium can report fractional pixels just below the CSS value.
+        expect(Math.round(layout.gap)).toBeGreaterThanOrEqual(24);
+        expect(Math.round(Math.min(...layout.heights))).toBeGreaterThanOrEqual(44);
+        expect(Math.max(...layout.heights) - Math.min(...layout.heights)).toBeLessThanOrEqual(1);
+        expect(Math.max(...layout.tops) - Math.min(...layout.tops)).toBeLessThanOrEqual(1);
+        expect(layout.align).toBe('flex-end');
+        expect(layout.background).toBe('rgb(21, 93, 233)');
+        expect(layout.foreground).toBe('rgb(255, 255, 255)');
+        expect(layout.fits).toBe(true);
+        expect(layout.described).toBe(true);
+        await dialog.screenshot({
+          path: resolve(UI_SCREENSHOT_DIRECTORY, `passphrase-${language}-${colorScheme}-${width}.png`),
+          animations: 'disabled'
+        });
+        await tool.keyboard.press('Escape');
+        await expect(dialog).toHaveCount(0);
+      }
+    }
+  }
+  expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+});
+
+test('TOP bundle file import requests a passphrase and reauthorizes without the legacy console', async () => {
+  const tool = await openTool('top');
+  const bundle = {
+    ...jsonImports.top,
+    application: { ...jsonImports.top.application, ...standalone.top }
+  };
+  await tool.locator('#file').setInputFiles({
+    name: 'credentialInfo.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(bundle))
+  });
+  await confirmToolAction(tool);
+  const dialog = tool.getByRole('dialog', { name: '设置本机授权包口令' });
+  await expect(dialog).toBeVisible();
+  await dialog.locator('input').fill('123456');
+  await dialog.getByRole('button', { name: '加密并导入', exact: true }).click();
+  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  expect(creates + topCreates).toBe(0);
+  const oauthEvent = context.waitForEvent('page');
+  await tool.locator('#reauthorize').click();
+  expect(creates + topCreates).toBe(0);
+  await confirmToolAction(tool);
+  const oauth = await oauthEvent;
+  await oauth.waitForURL(`chrome-extension://${extensionId}/top-approval.html**`);
+  const query = new URL(oauth.url()).searchParams;
+  expect(query.get('client_id')).toBe(standalone.top.appKey);
+  expect(query.get('redirect_uri')).toBe(standalone.top.callbackUrl);
+  expect(query.get('sp')).toBe('ICBU');
+  await oauth.locator('#approve').click();
+  await expect(tool.locator('#status')).toHaveText('已安全保存', { timeout: 20_000 });
+  expect(topCreates).toBe(1);
+  expect(creates + refreshes + topRefreshes).toBe(0);
+  expect(await exportBundle(tool)).toMatchObject({
+    protocol: 'top',
+    application: standalone.top,
+    oauth: { accessToken: standalone.topToken.access_token }
+  });
+  expect(context.pages().some((page) => page.url().includes('crosstrade.alibaba.com'))).toBe(false);
+});
+
+test('a superseded file read cannot prompt for or replace the latest selected TOP bundle', async () => {
+  const tool = await openTool('top');
+  await tool.evaluate(() => {
+    // The wrapper below deliberately forwards its File receiver with .call(this).
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const original = File.prototype.text;
+    File.prototype.text = function () {
+      return new Promise<string>((resolve, reject) => {
+        // Fixture-only delayed reads, released in a controlled order below.
+        document.addEventListener(
+          `release-file:${this.name}`,
+          () => {
+            void original.call(this).then((text) => {
+              resolve(text);
+              queueMicrotask(() => {
+                document.documentElement.dataset.completedFileRead = this.name;
+              });
+            }, reject);
+          },
+          { once: true }
+        );
+      });
+    };
+  });
+  const latest = {
+    ...jsonImports.top,
+    application: { ...jsonImports.top.application, ...standalone.top }
+  };
+  for (const [name, bundle] of [
+    ['earlier.json', jsonImports.top],
+    ['latest.json', latest]
+  ] as const) {
+    await tool.locator('#file').setInputFiles({
+      name,
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(bundle))
+    });
+  }
+  await tool.evaluate(() => {
+    document.dispatchEvent(new Event('release-file:earlier.json'));
+  });
+  await expect(tool.locator('html')).toHaveAttribute('data-completed-file-read', 'earlier.json');
+  await expect(tool.getByRole('dialog')).toHaveCount(0);
+  await tool.evaluate(() => {
+    document.dispatchEvent(new Event('release-file:latest.json'));
+  });
+  await confirmToolAction(tool);
+  const dialog = tool.getByRole('dialog', { name: '设置本机授权包口令' });
+  await dialog.locator('input').fill('123456');
+  await dialog.getByRole('button', { name: '加密并导入', exact: true }).click();
+  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  expect(await exportBundle(tool)).toMatchObject(latest);
+  expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
 
 test('workbench persists explicit IOP and rejects unadapted methods without TOP fallback', async () => {
