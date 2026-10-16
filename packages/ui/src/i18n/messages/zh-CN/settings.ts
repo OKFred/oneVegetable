@@ -107,7 +107,7 @@ export const settings = {
       '新版应用请用 IOP 授权工具。TOP 使用旧应用的独立凭据，可导入或手填；不再自动打开已失效的旧地址。两份配置齐全后默认按能力选路；请确保都属于同一商家，系统不会验证店铺归属。',
     acquire: '获取旧版 TOP 凭据',
     openCenter: '打开新版 IOP 应用中心',
-    importBundle: '一键导入授权包 JSON',
+    importBundle: '导入授权文件',
     importLabel: '导入授权包 JSON',
     encryptedPlaceholder: '已加密保存，留空保持不变',
     gateway: 'HTTPS 网关',

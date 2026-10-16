@@ -297,9 +297,11 @@ async function authorize(): Promise<Page> {
   await expect(tool.locator('#language')).toBeVisible();
   if ((await tool.locator('html').getAttribute('lang')) === 'en-US') await tool.locator('#language').click();
   await expect(tool.locator('#status')).toHaveText('尚未配置');
+  await tool.locator('#manualEntry').click();
   await tool.locator('#appName').fill('Merchant fixture');
   await tool.locator('#appKey').fill(credentials.oauthBundle.application.appKey);
   await tool.locator('#appSecret').fill(credentials.oauthBundle.application.appSecret);
+  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
   await tool.locator('#passphrase').fill('123456');
   await tool.locator('#registered').check();
   const oauthEvent = context.waitForEvent('page');
@@ -310,7 +312,7 @@ async function authorize(): Promise<Page> {
   await oauth.locator('#approve').click();
   await expect(oauth).toHaveURL(PUBLIC_AUTH_CALLBACK);
   await expect(oauth.locator('body')).not.toContainText(tokens.success.access_token);
-  await expect(tool.locator('#status')).toHaveText('已安全保存', { timeout: 20_000 });
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
   return tool;
 }
 async function exportBundle(tool: Page): Promise<Record<string, unknown>> {
@@ -360,6 +362,8 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
   expect(first.protocol).toBe('iop');
   expect(first.oauth).toMatchObject({ accessToken: tokens.success.access_token });
   await expect(tool.locator('#notice')).toContainText('JSON 下载已发起');
+  await expect(tool.locator('#nextStep')).toContainText('下载文件不等于已连接工作台');
+  await expect(tool.locator('#useStep')).toHaveAttribute('aria-current', 'step');
   const statusWithNotice = await tool.locator('#status').boundingBox();
   await expect(tool.locator('#notice')).not.toBeVisible({ timeout: 6_000 });
   await expect(tool.locator('#notice')).toBeEmpty();
@@ -375,23 +379,54 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
   expect(refreshes).toBe(0);
   await confirmToolAction(tool);
   await expect.poll(() => refreshes).toBe(1);
-  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   expect((await exportBundle(tool)).oauth).toMatchObject({
     accessToken: 'fixture-rotated-access',
     refreshToken: 'fixture-rotated-refresh'
   });
+  await tool.locator('#connectionDetails summary').click();
   await tool.locator('#lock').click();
   await expect(tool.locator('#status')).toHaveText('授权包已锁定');
+  await expect(tool.locator('#unlockForm')).toBeVisible();
+  await expect(tool.locator('#discover')).toBeHidden();
+  await expect(tool.locator('#nextStep')).toContainText('不是 Alibaba 登录密码');
   await expect(tool.locator('#export')).toBeDisabled();
-  await tool.locator('#passphrase').fill('123456');
+  await expect(tool.locator('#manualSection')).toBeHidden();
+  await tool.locator('#unlockPassphrase').fill('123456');
   await tool.locator('#unlock').click();
-  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   await tool.locator('#language').click();
-  await expect(tool.locator('#export')).toHaveText('Export credentialInfo.json');
+  await expect(tool.locator('#export')).toHaveText('Download authorization file');
   await tool.emulateMedia({ colorScheme: 'dark' });
   await expect(tool.locator('#export')).toBeEnabled();
   expect(creates).toBe(1);
   expect(refreshes).toBe(1);
+});
+
+test('new users see a guided next action, not technical fields or disabled renewal controls', async () => {
+  const tool = await openTool();
+  await expect(tool.locator('#status')).toHaveText('尚未配置');
+  await expect(tool.locator('#connectStep')).toHaveAttribute('aria-current', 'step');
+  await expect(tool.locator('#discover')).toHaveText('前往 Alibaba 连接');
+  await expect(tool.locator('#appKey')).toBeHidden();
+  await expect(tool.locator('#appSecret')).toBeHidden();
+  await expect(tool.locator('#callback')).toBeHidden();
+  await expect(tool.locator('#unlockForm')).toBeHidden();
+  await expect(tool.locator('#refresh')).toBeHidden();
+  await expect(tool.locator('#export')).toBeHidden();
+  await expect(tool.locator('#protocolTop')).toBeHidden();
+  await expect(tool.locator('#chooseFile')).toBeVisible();
+  await expect(tool.locator('#nextStep')).toContainText('登录或验证');
+  await tool.screenshot({ path: resolve(UI_SCREENSHOT_DIRECTORY, 'guided-connect-zh.png'), fullPage: true });
+  await tool.locator('#manualEntry').click();
+  await expect(tool.locator('#appName')).toBeFocused();
+  await expect(tool.locator('#appKey')).toBeVisible();
+  await tool.locator('#appName').fill('Unsubmitted local form');
+  await tool.locator('#language').click();
+  await expect(tool.locator('#appName')).toHaveValue('Unsubmitted local form');
+  await expect(tool.locator('#discover')).toHaveText('Connect on Alibaba');
+  await expect(tool.locator('#nextStep')).toContainText('sign in or verify');
+  expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
 test('public pages cannot export; mismatched callback does not call the platform', async () => {
   const tool = await authorize();
@@ -422,6 +457,7 @@ test('public pages cannot export; mismatched callback does not call the platform
   expect(JSON.stringify(result)).not.toContain(tokens.success.access_token);
   expect(creates).toBe(1);
   // TOP imports stay rejected instead of silently changing this independent vault.
+  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
   await tool.locator('#passphrase').fill('123456');
   await tool.locator('#file').setInputFiles({
     name: 'credentials.json',
@@ -468,7 +504,7 @@ for (const language of ['en', 'zh'] as const) {
     await expect(tool.locator('#appKey')).toHaveValue(standalone.iop.appKey);
     await expect(tool.locator('#appSecret')).toHaveValue(standalone.iop.appSecret);
     await expect(tool.locator('#callback')).toHaveValue(standalone.iop.callbackUrl);
-    const protection = tool.getByRole('dialog', { name: '设置本机授权包口令' });
+    const protection = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
     // Discovery has a 30-second bound, including iframe navigation and visible clicks.
     await expect(protection).toBeVisible({ timeout: 35_000 });
     expect(creates + topCreates).toBe(0);
@@ -498,7 +534,7 @@ for (const language of ['en', 'zh'] as const) {
     await expect(oauth.locator('#approve')).toBeVisible();
     await expect(tool.locator('#appSecret')).toHaveValue('');
     await oauth.locator('#approve').click();
-    await expect(tool.locator('#status')).toHaveText('已安全保存', { timeout: 20_000 });
+    await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
     expect(creates).toBe(1);
     expect(topCreates + refreshes + topRefreshes).toBe(0);
     const exported = await exportBundle(tool);
@@ -509,7 +545,7 @@ for (const language of ['en', 'zh'] as const) {
     await expect(tool).not.toHaveURL(/discover=/u);
     // A normal reload cannot rerun discovery or start another OAuth exchange.
     await tool.reload();
-    await expect(tool.locator('#status')).toHaveText('已安全保存');
+    await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
     await expect(alibaba.locator('body')).toHaveAttribute('data-center-clicks', '1');
     expect(creates).toBe(1);
   });
@@ -519,7 +555,7 @@ test('the Open Platform guide stays inside mobile and desktop viewports with a f
   const alibaba = await context.newPage();
   await alibaba.goto('https://i.alibaba.com/explore/open-api');
   const tool = await openTool('iop', true);
-  const protection = tool.getByRole('dialog', { name: '设置本机授权包口令' });
+  const protection = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
   await expect(protection).toBeVisible({ timeout: 35_000 });
   await protection.getByRole('button', { name: '取消', exact: true }).click();
   const guide = alibaba.locator('#one-vegetable-alibaba-developer-guide');
@@ -725,7 +761,7 @@ for (const legacyPage of ['none', 'not-found'] as const) {
 test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, refresh and clear', async () => {
   const iop = await authorize();
   const top = await openTool('top');
-  await expect(top.locator('#title')).toHaveText('TOP 授权与续期');
+  await expect(top.locator('#title')).toHaveText('连接 Alibaba · 旧版应用');
   await expect(top.locator('#status')).toHaveText('尚未配置');
   await expect(top.locator('#discover')).toBeVisible();
   await expect(top.locator('#center')).toBeHidden();
@@ -750,7 +786,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
   expect(query.get('redirect_uri')).toBe(standalone.top.callbackUrl);
   expect(topCreates).toBe(0);
   await oauth.locator('#approve').click();
-  await expect(top.locator('#status')).toHaveText('已安全保存', { timeout: 20_000 });
+  await expect(top.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
   expect(creates).toBe(1);
   expect(topCreates).toBe(1);
   expect(await exportBundle(top)).toMatchObject({
@@ -762,7 +798,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
   expect(topRefreshes).toBe(0);
   await confirmToolAction(top);
   await expect.poll(() => topRefreshes).toBe(1);
-  await expect(top.locator('#status')).toHaveText('已安全保存');
+  await expect(top.locator('#status')).toHaveText('授权文件已安全保存');
   expect(refreshes).toBe(0);
   expect((await exportBundle(top)).oauth).toMatchObject({ accessToken: 'fixture-top-rotated-access' });
   const stored = await worker.evaluate(
@@ -782,6 +818,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
     standalone.top.appSecret
   ])
     expect(JSON.stringify(stored)).not.toContain(secret);
+  await top.locator('#connectionDetails summary').click();
   await top.locator('#clear').click();
   await confirmToolAction(top);
   await expect(top.locator('#status')).toHaveText('尚未配置');
@@ -796,6 +833,7 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
   const tool = await authorize();
   const downloads: string[] = [];
   tool.on('download', (download) => downloads.push(download.suggestedFilename()));
+  await tool.locator('#connectionDetails summary').click();
   for (const action of ['export', 'refresh', 'clear'] as const) {
     await tool.locator(`#${action}`).click();
     const dialog = tool.getByRole('dialog');
@@ -806,8 +844,9 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
     await tool.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
     await expect(tool.locator(`#${action}`)).toBeFocused();
-    await expect(tool.locator('#status')).toHaveText('已安全保存');
+    await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   }
+  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
   await tool.locator('#passphrase').fill('123456');
   await tool.locator('#file').setInputFiles({
     name: 'existing-iop.json',
@@ -820,6 +859,7 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
   await dialog.getByRole('button', { name: '取消', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(tool.locator('#error')).toBeEmpty();
+  await tool.locator('#protocolSettings summary').click();
   await tool.locator('#protocolTop').click();
   await expect(tool.getByRole('dialog')).toContainText('切换授权类型');
   await tool.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click();
@@ -841,7 +881,7 @@ test('a rejected refresh uses a temporary error toast and does not repeat on sta
   await tool.locator('#refresh').click();
   await confirmToolAction(tool);
   await expect(tool.locator('#error')).toContainText('Alibaba 拒绝换取或续期 Token');
-  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   expect(await tool.locator('#status').boundingBox()).toEqual(statusBefore);
   await expect(tool.locator('#error')).not.toBeVisible({ timeout: 9_000 });
   await expect(tool.locator('#error')).toBeEmpty();
@@ -930,6 +970,7 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
     await expect(tool.getByRole('dialog')).toHaveCount(0);
   }
   expect(await storage()).toEqual({});
+  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
   await tool.locator('#passphrase').fill('123456');
   await editor.fill(JSON.stringify(jsonImports.invalidIop));
   await importButton.click();
@@ -937,6 +978,7 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   await expect(tool.locator('#error')).toBeVisible();
   expect(await storage()).toEqual({});
   await assertPrivateMessages();
+  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
   await tool.locator('#passphrase').fill('123456');
   await editor.fill(JSON.stringify(jsonImports.iop, null, 2));
   await importButton.click();
@@ -944,7 +986,7 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   await assertPrivateMessages();
   expect(await storage()).toEqual({});
   await confirmToolAction(tool);
-  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   expect(await editor.inputValue()).not.toContain(jsonImports.iop.oauth.accessToken);
   expect(await editor.inputValue()).not.toContain(jsonImports.iop.application.appSecret);
   await expect(advanced.locator('pre')).not.toContainText(jsonImports.iop.oauth.accessToken);
@@ -955,11 +997,13 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   expect(iopStored).not.toHaveProperty(TOP_VAULT_KEY);
   expect(await exportBundle(tool)).toMatchObject(jsonImports.iop);
 
+  await tool.locator('#protocolSettings summary').click();
   await tool.locator('#protocolTop').click();
   if ((await tool.getByRole('dialog').count()) > 0) await confirmToolAction(tool);
   await expect(tool.locator('#protocolTop')).toHaveAttribute('aria-pressed', 'true');
   await expect(tool.locator('#status')).toHaveText('尚未配置');
   await openExample('top');
+  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
   await tool.locator('#passphrase').fill('123456');
   await editor.fill(JSON.stringify(jsonImports.iop));
   await importButton.click();
@@ -967,6 +1011,7 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   await expect(tool.locator('#error')).toContainText('TOP');
   await assertPrivateMessages();
   expect(await storage()).toEqual(iopStored);
+  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
   await tool.locator('#passphrase').fill('');
   await editor.fill(JSON.stringify(jsonImports.top, null, 2));
   await importButton.click();
@@ -974,13 +1019,15 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   expect(await storage()).toEqual(iopStored);
   await assertPrivateMessages();
   await confirmToolAction(tool);
-  const protection = tool.getByRole('dialog', { name: '设置本机授权包口令' });
+  const protection = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
   await expect(protection).toBeVisible();
-  await protection.getByLabel('本机授权包口令（至少 6 个字符）', { exact: true }).fill('123456');
+  await protection
+    .getByLabel('本机保护口令（至少 6 个字符，不是 Alibaba 密码）', { exact: true })
+    .fill('123456');
   expect(await storage()).toEqual(iopStored);
   await assertPrivateMessages();
   await protection.getByRole('button', { name: '加密并导入', exact: true }).click();
-  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   expect(await editor.inputValue()).not.toContain(jsonImports.top.oauth.accessToken);
   expect(await editor.inputValue()).not.toContain(jsonImports.top.application.appSecret);
   await expect(advanced.locator('pre')).not.toContainText(jsonImports.top.oauth.accessToken);
@@ -1006,7 +1053,7 @@ test('authorization action buttons align in both languages and themes, with read
       if ((await tool.locator('html').getAttribute('lang')) !== language)
         await tool.locator('#language').click();
       const boxes = await Promise.all(
-        ['start', 'unlock', 'chooseFile'].map((id) => tool.locator(`#${id}`).boundingBox())
+        ['manualEntry', 'chooseFile'].map((id) => tool.locator(`#${id}`).boundingBox())
       );
       expect(boxes.every((box) => box !== null)).toBe(true);
       const heights = boxes.map((box) => box?.height ?? 0);
@@ -1019,6 +1066,7 @@ test('authorization action buttons align in both languages and themes, with read
         fullPage: true,
         animations: 'disabled'
       });
+      await tool.locator('#connectionDetails summary').click();
       await tool.locator('#clear').click();
       const dialog = tool.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -1034,6 +1082,7 @@ test('authorization action buttons align in both languages and themes, with read
       });
       await tool.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
+      await tool.locator('#connectionDetails summary').click();
     }
   }
   await tool.setViewportSize({ width: 390, height: 844 });
@@ -1110,11 +1159,11 @@ test('TOP bundle file import requests a passphrase and reauthorizes without the 
     buffer: Buffer.from(JSON.stringify(bundle))
   });
   await confirmToolAction(tool);
-  const dialog = tool.getByRole('dialog', { name: '设置本机授权包口令' });
+  const dialog = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
   await expect(dialog).toBeVisible();
   await dialog.locator('input').fill('123456');
   await dialog.getByRole('button', { name: '加密并导入', exact: true }).click();
-  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   expect(creates + topCreates).toBe(0);
   const oauthEvent = context.waitForEvent('page');
   await tool.locator('#reauthorize').click();
@@ -1127,7 +1176,7 @@ test('TOP bundle file import requests a passphrase and reauthorizes without the 
   expect(query.get('redirect_uri')).toBe(standalone.top.callbackUrl);
   expect(query.get('sp')).toBe('ICBU');
   await oauth.locator('#approve').click();
-  await expect(tool.locator('#status')).toHaveText('已安全保存', { timeout: 20_000 });
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
   expect(topCreates).toBe(1);
   expect(creates + refreshes + topRefreshes).toBe(0);
   expect(await exportBundle(tool)).toMatchObject({
@@ -1185,10 +1234,10 @@ test('a superseded file read cannot prompt for or replace the latest selected TO
     document.dispatchEvent(new Event('release-file:latest.json'));
   });
   await confirmToolAction(tool);
-  const dialog = tool.getByRole('dialog', { name: '设置本机授权包口令' });
+  const dialog = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
   await dialog.locator('input').fill('123456');
   await dialog.getByRole('button', { name: '加密并导入', exact: true }).click();
-  await expect(tool.locator('#status')).toHaveText('已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   expect(await exportBundle(tool)).toMatchObject(latest);
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
@@ -1531,13 +1580,13 @@ for (const [body, code] of [
     );
     // Acquisition now starts with an explicit TOP/IOP choice instead of a
     // protocol-specific disabled button. The current saved IOP profile stays selected.
-    await expect(workbench.getByRole('button', { name: '获取凭据', exact: true })).toBeEnabled();
+    await expect(workbench.getByRole('button', { name: '连接 Alibaba 账号', exact: true })).toBeEnabled();
     const pagesBeforeChoice = context.pages().length;
-    await workbench.getByRole('button', { name: '获取凭据', exact: true }).click();
-    const choice = workbench.getByRole('dialog', { name: '选择要获取的授权', exact: true });
+    await workbench.getByRole('button', { name: '连接 Alibaba 账号', exact: true }).click();
+    const choice = workbench.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
     await expect(choice).toBeVisible();
-    await expect(choice.getByRole('button', { name: /新版 IOP/u })).toBeEnabled();
-    await expect(choice.getByRole('button', { name: /旧版 TOP/u })).toBeEnabled();
+    await expect(choice.getByRole('button', { name: /连接新版应用/u })).toBeEnabled();
+    await expect(choice.getByRole('button', { name: /连接已有旧版应用/u })).toBeEnabled();
     await choice.getByRole('button', { name: '取消', exact: true }).click();
     await expect(choice).toHaveCount(0);
     expect(context.pages()).toHaveLength(pagesBeforeChoice);

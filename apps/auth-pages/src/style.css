@@ -74,6 +74,36 @@ button,
   gap: 12px;
   flex-wrap: wrap;
 }
+.connection-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+  color: #526780;
+}
+.connection-steps li {
+  flex: 1 1 160px;
+  padding: 12px;
+  border-bottom: 3px solid #dce4ef;
+}
+.connection-steps [aria-current='step'] {
+  color: #155de9;
+  border-color: currentColor;
+  font-weight: 600;
+}
+#unlockForm {
+  max-width: 480px;
+  margin-bottom: 16px;
+}
+#unlockForm .actions,
+#protocolSettings .protocol-choices,
+#manual > label {
+  margin-top: 16px;
+}
+#nextStep {
+  max-width: 66ch;
+}
 .protocol-choices button[aria-pressed='true'] {
   border-color: #155de9;
   box-shadow: inset 0 0 0 1px #155de9;
@@ -363,11 +393,15 @@ footer {
   }
   small,
   .muted,
+  .connection-steps,
   dt,
   footer {
     color: #a6b7ce;
   }
   #notice {
+    color: #89b4ff;
+  }
+  .connection-steps [aria-current='step'] {
     color: #89b4ff;
   }
   .authorization-manual-guide a {

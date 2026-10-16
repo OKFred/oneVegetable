@@ -4,7 +4,20 @@
 
 ## 插件内一键读取（无需本机 Node 服务）
 
-- 在插件点击“获取开放平台凭据”，先选择新版 IOP 或旧版 TOP，再允许访问本次所需的精确 Alibaba 域名。IOP 工具会复用唯一的已打开应用中心，页面加载可用时立即展示向导，自动进入“应用中心”，读取当前应用的 App Name、AppKey、App Secret 和已登记 Callback，并填写到 `authorization.html`。多个应用中心标签页时不会猜选。
+### 给首次使用者
+
+1. 在设置点击“连接 Alibaba 账号”。首次使用优先选“连接新版应用”；以前使用旧应用或已有旧版授权文件的用户选“连接已有旧版应用”。两者不混用，不需要一开始就配齐两份。
+2. 点击“前往 Alibaba 连接”，按官网提示登录或完成验证。应用资料会尝试自动读取；需要手动填写时再展开表单。不要把 Alibaba 登录密码填作本机保护口令。
+3. 在 Alibaba 页面自行核对账号、权限并确认授权，保持工具页打开。
+4. 工具显示“授权文件已安全保存”后，点击“下载授权文件”，返回工作台设置导入并保存。**下载成功不代表工作台配置已经改变。** 导出的文件包含明文密钥，不要发到群聊或公开仓库。
+
+工具只突出当前步骤：未连接时连接、锁定时解锁、等待时提示官网确认、成功时下载并引导导入。手动填写与文件导入保留显式入口；协议切换、详情管理及 JSON 编辑默认折叠。续期是一次尝试，不保证平台允许；失败不反复重试，可使用原应用重新授权。读取本机状态失败时可点“重新检查”。
+
+Choose **Connect Alibaba account**, select a new or existing legacy app, then follow the next action shown. Sign in and approve on Alibaba itself. Once the file is saved, download it and import it into the matching workbench profile. Downloading does not apply the connection. Manual entry and file import remain available; technical details and JSON editing are collapsed. Renewal is only an attempt, never a guarantee or an automatic retry.
+
+### 自动读取与安全边界
+
+- 选择新版 IOP 或旧版 TOP 后，允许访问本次所需的精确 Alibaba 域名。IOP 工具会复用唯一的已打开应用中心，页面加载可用时立即展示向导，自动进入“应用中心”，读取当前应用的 App Name、AppKey、App Secret 和已登记 Callback，并填写到 `authorization.html`。多个应用中心标签页时不会猜选。
 - 页面上会显示蓝色指针移动、目标高亮和实际点击。只允许点击“应用中心”和“View/查看密钥”；绝不点击 Reset、不更改 Callback，也不自动接受 OAuth 协议。减少动态效果偏好会省略指针移动。
 - 首次使用只需设置至少 6 个字符的本机加密口令，之后自动打开 Alibaba 授权页；此口令不是 Alibaba 网站密码。已解锁的独立授权包可以复用加密密钥。已有锁定包可先解锁，再重新读取。
 - 登录失效、验证码、密钥安全验证、缺少应用/Callback 或 30 秒内读取不完整时明确停止并提示检查；不绕过验证、不打开失效的旧 TOP 地址。只读取当前选中的新版应用；需要其他应用请先在平台切换。
@@ -21,12 +34,12 @@ This extension-only flow needs no additional Node, Worker or Pages deployment. I
 
 1. 在 Alibaba 应用中心完成开发者注册，准备自己的 IOP 应用及所需权限。旧 TOP 与新版 IOP 不可混用。
 2. 将 `https://one-vegetable-auth.pages.dev/callback` 登记到应用 Callback。必须先部署静态站点；这是预定正式域名，不表示已上线。已有 Callback 也可保留，在插件工具填写其精确地址。
-3. 加载包含此功能的新版插件，在设置页点击“新版 IOP 授权 / 续期工具”，或从公共站点点击打开工具。旧商店版没有此功能时会提示更新，不尝试读取旧插件凭据。
-4. **在 `chrome-extension://…/authorization.html` 中**填写自己的 App Name、App Key、App Secret、已登记 Callback 和本机口令。网页不接收这些数据。
+3. 加载包含此功能的新版插件，在设置页点击“连接 Alibaba 账号”并选择新版应用，或从公共站点点击打开工具。旧商店版没有此功能时会提示更新，不尝试读取旧插件凭据。
+4. 工具尝试自动读取应用信息；需要手动处理时，点击“手动填写”，**仅在 `chrome-extension://…/authorization.html` 中**填写应用信息与本机口令。公共网页不接收这些数据。
 5. 允许所需精确域名权限，在 Alibaba 标签页亲自确认授权。注册、创建应用和接受平台协议均由商家完成；遇滑块等验证不绕过。
 6. 插件绑定本次 state、已知标签页和精确 Callback，收到 code 后立即交换 Token。代码不写入存储；任务 10 分钟后过期。
 7. 工具显示平台实际返回的 Access Token 到期及可续期截止时间；未返回时显示“平台未返回”，不猜固定授权天数。
-8. 点击“授权续期”并确认后只发送一次请求，成功保存后再导出 JSON。文件包含明文密钥，只应在自己的服务中使用，不要公开、截图或提交 Git。
+8. 有可用续期凭据时，点击“尝试延长有效期”并确认后只发送一次请求，成功保存后再下载并导入新文件。失败不自动重试。文件包含明文密钥，只应在自己的服务中使用，不要公开、截图或提交 Git。
 
 已有 Callback 无法自动接收时，可在工具页粘贴完整回调地址；仍检查原任务 state 和精确 origin/path，不修改应用 Callback，也不重用过去的授权码。
 

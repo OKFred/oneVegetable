@@ -27,10 +27,16 @@ type Protocol = 'top' | 'iop';
 let protocol: Protocol = new URL(location.href).searchParams.get('protocol') === 'top' ? 'top' : 'iop';
 el('#app').innerHTML =
   `<header><div><small id="protocolBadge"></small><h1 id="title"></h1><p class="muted" data-text="toolGuide"></p></div><button id="language" data-text="language"></button></header>
-<section><h2 data-text="protocolChoice"></h2><div class="protocol-choices"><button id="protocolIop" data-text="protocolIop"></button><button id="protocolTop" data-text="protocolTop"></button></div><p class="muted" data-text="dualGuide"></p><p id="protocolHelp"></p><a id="center" class="button" href="https://i.alibaba.com/explore/open-api" target="_blank" rel="noopener noreferrer" data-text="center"></a><a id="back" class="button" data-text="returnSettings"></a></section>
-<p class="warning" id="boundary"></p><div class="actions"><button id="discover" data-text="discoverApplication"></button><button id="manualEntry" data-text="manualAuthorization"></button></div><p id="notice" role="status"></p><p id="error" role="alert"></p>
-<section><h2 id="status"></h2><dl><dt data-text="appName"></dt><dd id="name">—</dd><dt>App Key</dt><dd id="key">—</dd><dt data-text="expires"></dt><dd id="expires">—</dd><dt data-text="refreshExpires"></dt><dd id="refreshExpires">—</dd></dl><div class="actions"><button id="reauthorize" data-text="reauthorize"></button><button id="refresh" data-text="refresh"></button><button id="export" data-text="export"></button><button id="save" data-text="save" hidden></button><button id="lock" data-text="lock"></button><button id="cancel" data-text="cancel" hidden></button><button id="clear"></button></div></section>
-<section><form id="form"><fieldset id="fields"><div class="grid"><div><label for="appName" data-text="appName"></label><input id="appName" required maxlength="256"></div><div><label for="appKey" data-text="appKey"></label><input id="appKey" required maxlength="256" autocomplete="off"></div></div><label for="appSecret" data-text="appSecret"></label><input id="appSecret" type="password" autocomplete="off" required maxlength="4096" data-feedback-redact><label for="callback" data-text="callback"></label><input id="callback" type="url" required><label for="passphrase" data-text="passphrase"></label><input id="passphrase" type="password" autocomplete="off" minlength="6" maxlength="256" required data-feedback-redact><label><input id="registered" type="checkbox" required><span data-text="registered"></span></label><div class="actions"><button type="submit" id="start" class="primary" data-text="start"></button><button type="button" id="unlock" data-text="unlock"></button><button type="button" id="chooseFile"></button><input id="file" type="file" accept="application/json,.json" hidden></div></fieldset></form><div id="manual" hidden><label for="callbackPaste" data-text="paste"></label><input id="callbackPaste" type="password" autocomplete="off" data-feedback-redact><button id="receive" data-text="receive"></button></div></section>${footer}`;
+<ol class="connection-steps" aria-label="${t('connectionSteps')}"><li id="connectStep" data-text="connectStep"></li><li id="approveStep" data-text="approveStep"></li><li id="useStep" data-text="useStep"></li></ol>
+<section aria-labelledby="status"><h2 id="status" role="status" data-text="busy"></h2><p id="nextStep" class="muted"></p>
+<form id="unlockForm" hidden><label for="unlockPassphrase" data-text="passphrase"></label><input id="unlockPassphrase" type="password" autocomplete="current-password" required maxlength="256" data-feedback-redact><div class="actions"><button id="unlock" type="submit" class="primary" data-text="unlock"></button></div></form>
+<div class="actions"><button id="retryStatus" data-text="retryStatus" hidden></button><button id="discover" class="primary" data-text="discoverApplication" disabled></button><button id="export" class="primary" data-text="export" hidden></button><button id="save" class="primary" data-text="save" hidden></button><button id="reauthorize" data-text="reauthorize" hidden></button><button id="refresh" data-text="refresh" hidden></button><button id="cancel" data-text="cancel" hidden></button><a id="back" class="button" data-text="returnSettings"></a></div>
+<details id="manual" hidden><summary data-text="callbackFallback"></summary><label for="callbackPaste" data-text="paste"></label><input id="callbackPaste" type="password" autocomplete="off" data-feedback-redact><button id="receive" data-text="receive"></button></details>
+</section><p id="notice" role="status"></p><p id="error" role="alert"></p>
+<section id="alternatives"><h2 data-text="otherWays"></h2><div class="actions"><button id="manualEntry" data-text="manualAuthorization" disabled></button><button type="button" id="chooseFile" disabled></button><input id="file" type="file" accept="application/json,.json" hidden></div></section>
+<section id="manualSection" hidden><form id="form"><fieldset id="fields"><div class="grid"><div><label for="appName" data-text="appName"></label><input id="appName" required maxlength="256"></div><div><label for="appKey" data-text="appKey"></label><input id="appKey" required maxlength="256" autocomplete="off"></div></div><label for="appSecret" data-text="appSecret"></label><input id="appSecret" type="password" autocomplete="off" required maxlength="4096" data-feedback-redact><label for="callback" data-text="callback"></label><input id="callback" type="url" required><label for="passphrase" data-text="passphrase"></label><input id="passphrase" type="password" autocomplete="off" minlength="6" maxlength="256" required data-feedback-redact><label><input id="registered" type="checkbox" required><span data-text="registered"></span></label><div class="actions"><button type="submit" id="start" class="primary" data-text="start"></button></div></fieldset></form></section>
+<section><details id="connectionDetails"><summary data-text="connectionDetails"></summary><dl><dt data-text="appName"></dt><dd id="name">—</dd><dt>App Key</dt><dd id="key">—</dd><dt data-text="expires"></dt><dd id="expires">—</dd><dt data-text="refreshExpires"></dt><dd id="refreshExpires">—</dd></dl><p id="boundary" class="muted"></p><div class="actions"><button id="lock" data-text="lock" disabled></button><button id="clear" disabled></button></div></details></section>
+<section><details id="protocolSettings"><summary data-text="protocolChoice"></summary><div class="protocol-choices"><button id="protocolIop" data-text="protocolIop"></button><button id="protocolTop" data-text="protocolTop"></button></div><p class="muted" data-text="dualGuide"></p><p id="protocolHelp"></p><a id="center" class="button" href="https://i.alibaba.com/explore/open-api" target="_blank" rel="noopener noreferrer" data-text="center"></a></details></section>${footer}`;
 el('footer').insertAdjacentHTML(
   'beforebegin',
   `<section><details id="advancedJson"><summary data-text="advancedJson"></summary><p class="muted" data-text="jsonHelp"></p><label for="credentialJson" data-text="jsonLabel"></label><div class="authorization-json-editor" data-feedback-redact><pre aria-hidden="true"><code id="jsonHighlight"></code></pre><textarea id="credentialJson" maxlength="65536" spellcheck="false" autocomplete="off" autocapitalize="off" data-feedback-redact></textarea></div><div class="actions"><button type="button" id="importJson" data-text="importJson"></button></div></details></section>`
@@ -49,6 +55,8 @@ let importGeneration = 0;
 const value = (id: string): string => el<HTMLInputElement>(`#${id}`).value;
 const tokenOrigin = (): string => (protocol === 'iop' ? IOP_API_ORIGIN : 'https://oauth.alibaba.com');
 let jsonExample = '';
+let exported = false;
+let statusUnavailable = false;
 function resetJsonEditor(): void {
   jsonExample = authorizationJsonExample(protocol);
   el<HTMLTextAreaElement>('#credentialJson').value = jsonExample;
@@ -56,6 +64,10 @@ function resetJsonEditor(): void {
 }
 function showError(error: unknown): void {
   transientMessage(errorText(error instanceof Error ? error.message : 'AUTH_ACTION_FAILED'), true);
+  if (!summary) {
+    statusUnavailable = true;
+    render();
+  }
 }
 async function request(action: string, payload: unknown = {}, selected = protocol): Promise<unknown> {
   const result: unknown = await browser.runtime.sendMessage({
@@ -80,6 +92,7 @@ function render(): void {
   for (const close of document.querySelectorAll('.authorization-toast-close'))
     close.setAttribute('aria-label', t('dismissNotification'));
   el('#protocolBadge').textContent = `oneVegetable · ${protocol.toUpperCase()}`;
+  el('.connection-steps').setAttribute('aria-label', t('connectionSteps'));
   el('#title').textContent = t(protocol === 'top' ? 'toolTitleTop' : 'toolTitleIop');
   el('#protocolHelp').textContent = t(protocol === 'top' ? 'topGuide' : 'step1Text');
   el('#boundary').textContent = t(protocol === 'top' ? 'boundaryTop' : 'boundary');
@@ -88,16 +101,59 @@ function render(): void {
   el<HTMLButtonElement>('#discover').disabled =
     busy || summary?.state === 'waiting' || summary?.state === 'busy';
   el<HTMLButtonElement>('#manualEntry').disabled = el<HTMLButtonElement>('#discover').disabled;
+  el<HTMLButtonElement>('#chooseFile').disabled = !summary || el<HTMLButtonElement>('#discover').disabled;
   el('#chooseFile').textContent = t(protocol === 'top' ? 'importTop' : 'import');
   el('#clear').textContent = t(protocol === 'top' ? 'clearTop' : 'clear');
   const waiting = summary?.state === 'waiting' || summary?.state === 'busy';
+  el('#retryStatus').hidden = !statusUnavailable;
+  el<HTMLFieldSetElement>('#fields').disabled = !summary || busy || waiting;
+  el<HTMLTextAreaElement>('#credentialJson').disabled = !summary || busy || waiting;
+  el<HTMLButtonElement>('#importJson').disabled = !summary || busy || waiting;
   for (const selected of ['top', 'iop'] as const) {
     const button = el<HTMLButtonElement>(selected === 'top' ? '#protocolTop' : '#protocolIop');
     button.setAttribute('aria-pressed', String(selected === protocol));
     button.disabled = busy || waiting;
   }
-  if (!summary) return;
+  if (!summary) {
+    el('#status').textContent = t(statusUnavailable ? 'statusUnavailable' : 'busy');
+    el('#nextStep').textContent = '';
+    for (const id of ['refresh', 'reauthorize', 'export', 'lock', 'clear', 'save', 'unlock'])
+      el<HTMLButtonElement>(`#${id}`).disabled = true;
+    for (const id of ['refresh', 'reauthorize', 'export', 'save', 'unlockForm', 'manual', 'cancel'])
+      el(`#${id}`).hidden = true;
+    el<HTMLButtonElement>('#discover').disabled = true;
+    el<HTMLButtonElement>('#manualEntry').disabled = true;
+    return;
+  }
   el('#status').textContent = t(busy ? 'busy' : summary.state);
+  el('#nextStep').textContent = t(
+    summary.state === 'ready'
+      ? exported
+        ? 'nextImported'
+        : 'nextReady'
+      : summary.state === 'locked'
+        ? 'nextLocked'
+        : summary.state === 'waiting' || summary.state === 'busy'
+          ? 'nextWaiting'
+          : summary.state === 'unknown'
+            ? 'nextUnknown'
+            : protocol === 'top'
+              ? 'nextEmptyTop'
+              : 'nextEmptyIop'
+  );
+  const step = summary.state === 'ready' ? 'useStep' : waiting ? 'approveStep' : 'connectStep';
+  for (const id of ['connectStep', 'approveStep', 'useStep']) {
+    if (id === step) el(`#${id}`).setAttribute('aria-current', 'step');
+    else el(`#${id}`).removeAttribute('aria-current');
+  }
+  el('#discover').hidden = !['empty', 'unknown'].includes(summary.state);
+  el('#unlockForm').hidden = summary.state !== 'locked';
+  el<HTMLButtonElement>('#unlock').disabled = busy;
+  el<HTMLInputElement>('#unlockPassphrase').disabled = busy;
+  el('#export').hidden = summary.state !== 'ready';
+  el('#reauthorize').hidden = !summary.canReauthorize;
+  el('#refresh').hidden = summary.state !== 'ready' || !summary.canRefresh;
+  el('#alternatives').hidden = waiting;
   el('#name').textContent = summary.appName ?? '—';
   el('#key').textContent = summary.appKeySuffix ? `…${summary.appKeySuffix}` : '—';
   const date = (text: string | null): string =>
@@ -109,10 +165,9 @@ function render(): void {
   el<HTMLButtonElement>('#export').disabled = busy || summary.state !== 'ready';
   el<HTMLButtonElement>('#lock').disabled = busy || !['ready', 'unknown'].includes(summary.state);
   el<HTMLButtonElement>('#clear').disabled = busy || waiting;
-  el<HTMLFieldSetElement>('#fields').disabled = busy || waiting;
-  el<HTMLTextAreaElement>('#credentialJson').disabled = busy || waiting;
-  el<HTMLButtonElement>('#importJson').disabled = busy || waiting;
+  el<HTMLButtonElement>('#save').disabled = busy;
   el('#manual').hidden = summary.state !== 'waiting';
+  if (waiting || summary.state === 'locked') el('#manualSection').hidden = true;
   el('#cancel').hidden = summary.state !== 'waiting';
   el('#save').hidden = !summary.canSave;
 }
@@ -127,6 +182,8 @@ async function update(): Promise<void> {
   )
     throw new Error('AUTH_ACTION_FAILED');
   const previousError = summary?.errorCode;
+  statusUnavailable = false;
+  if (summary?.state !== data.state || data.expiresAtUtc !== summary.expiresAtUtc) exported = false;
   summary = data as unknown as IopAuthorizationSummary;
   if (summary.errorCode && summary.errorCode !== previousError) showError(new Error(summary.errorCode));
   render();
@@ -263,9 +320,15 @@ async function discoverApplication(): Promise<void> {
 }
 
 el('#manualEntry').onclick = () => {
+  el('#manualSection').hidden = false;
   if (protocol === 'top') el<HTMLDetailsElement>('#topManualGuide').open = true;
   el('#form').scrollIntoView({ block: 'center' });
   el('#appName').focus({ preventScroll: true });
+};
+el('#retryStatus').onclick = () => {
+  statusUnavailable = false;
+  render();
+  void update().catch(showError);
 };
 el('#discover').onclick = () => {
   const selected = protocol;
@@ -296,9 +359,10 @@ el<HTMLFormElement>('#form').onsubmit = (event) => {
   el<HTMLInputElement>('#passphrase').value = '';
   withHostPermission('start', payload, payload.callbackUrl);
 };
-el('#unlock').onclick = () => {
-  const passphrase = value('passphrase');
-  el<HTMLInputElement>('#passphrase').value = '';
+el<HTMLFormElement>('#unlockForm').onsubmit = (event) => {
+  event.preventDefault();
+  const passphrase = value('unlockPassphrase');
+  el<HTMLInputElement>('#unlockPassphrase').value = '';
   void run('unlock', { passphrase });
 };
 el('#receive').onclick = () => {
@@ -345,6 +409,7 @@ el('#export').onclick = () => {
         anchor.href = url;
         anchor.download = 'credentialInfo.json';
         anchor.click();
+        exported = true;
         setTimeout(() => {
           URL.revokeObjectURL(url);
         }, 1000);
@@ -446,7 +511,12 @@ function switchProtocol(selected: Protocol): void {
     protocol = selected;
     history.replaceState(null, '', location.pathname + (selected === 'top' ? '?protocol=top' : ''));
     summary = null;
-    for (const id of ['appName', 'appKey', 'appSecret', 'passphrase', 'callbackPaste'])
+    statusUnavailable = false;
+    exported = false;
+    el('#manualSection').hidden = true;
+    el<HTMLDetailsElement>('#advancedJson').open = false;
+    el<HTMLDetailsElement>('#connectionDetails').open = false;
+    for (const id of ['appName', 'appKey', 'appSecret', 'passphrase', 'unlockPassphrase', 'callbackPaste'])
       el<HTMLInputElement>(`#${id}`).value = '';
     el<HTMLInputElement>('#registered').checked = false;
     el<HTMLInputElement>('#callback').value = selected === 'iop' ? PUBLIC_AUTH_CALLBACK : '';
@@ -475,7 +545,8 @@ window.addEventListener('pagehide', () => {
   clearTimeout(timer);
   jsonInput.value = '';
   highlightAuthorizationJson(el('#jsonHighlight'), '');
-  for (const id of ['appSecret', 'passphrase', 'callbackPaste']) el<HTMLInputElement>(`#${id}`).value = '';
+  for (const id of ['appSecret', 'passphrase', 'unlockPassphrase', 'callbackPaste'])
+    el<HTMLInputElement>(`#${id}`).value = '';
 });
 transientMessage('');
 transientMessage('', true);

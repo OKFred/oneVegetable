@@ -334,7 +334,7 @@ describe('independent authorization metadata and automatic capability routing', 
 
   it('shows automatic routing without a same-merchant confirmation or ownership-verification claim', async () => {
     const view = await harness(GatewayAuthorizationsPanel);
-    expect(view.wrapper.text()).toContain('建议拥有两类应用的商家分别完成 TOP 和 IOP 授权');
+    expect(view.wrapper.text()).toContain('先连接你已有的应用即可');
     expect(view.wrapper.text()).toContain('TOP 授权（旧版）');
     expect(view.wrapper.text()).toContain('IOP 授权（新版）');
     expect(view.wrapper.text()).toContain('不能使用新版 IOP 应用替代');
@@ -754,7 +754,7 @@ describe('overview independent expiries and explicit renewal', () => {
       expect(view.status).not.toHaveBeenCalled();
       await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
       await flushPromises();
-      expect(view.wrapper.text()).toContain('选择新版 IOP 重新授权');
+      expect(view.wrapper.text()).toContain('选择新版应用，重新授权后导入新文件');
       await button(view.wrapper, '刷新 Token').trigger('click');
       await flushPromises();
       expect(extension ? view.refreshAuthorization.mock.calls : view.refresh.mock.calls).toEqual([['iop']]);
@@ -838,7 +838,7 @@ describe('overview independent expiries and explicit renewal', () => {
       expect(view.refreshAuthorization).not.toHaveBeenCalled();
       await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
       await flushPromises();
-      expect(view.wrapper.text()).toContain('选择新版 IOP 重新授权');
+      expect(view.wrapper.text()).toContain('选择新版应用，重新授权后导入新文件');
       await button(view.wrapper, '刷新 Token').trigger('click');
       await flushPromises();
       expect(extension ? view.refreshAuthorization.mock.calls : view.refresh.mock.calls).toEqual([['iop']]);

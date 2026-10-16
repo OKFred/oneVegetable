@@ -190,14 +190,14 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension', 'empty', 'manual', 'node', { acquisition });
     await flushPromises();
     expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
-      '读取已打开的旧应用页面'
+      '选择已有旧版应用'
     );
     await wrapper.get('select[aria-label="网关协议"]').setValue('iop');
     expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
-      '读取新版应用中心'
+      '选择新版应用'
     );
     expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
-      '粘贴完整授权 JSON'
+      '下载文件并在这里导入保存'
     );
     expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).not.toContain(
       '已打开的旧应用页面'
@@ -207,7 +207,7 @@ describe('SettingsView diagnostics', () => {
     expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
     expect(acquisition.start).not.toHaveBeenCalled();
     const iop = document.body.querySelector<HTMLButtonElement>('[data-testid="choose-authorization-iop"]');
-    expect(iop?.textContent).toContain('新版 IOP（推荐）');
+    expect(iop?.textContent).toContain('连接新版应用（推荐）');
     iop?.click();
     await flushPromises();
     expect(openIopTool).toHaveBeenCalledOnce();

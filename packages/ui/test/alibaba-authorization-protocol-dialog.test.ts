@@ -30,9 +30,9 @@ async function dialog(purpose: 'acquire' | 'renew' = 'acquire') {
 describe('Alibaba authorization protocol selection', () => {
   it.each(['iop', 'top'] as const)('only starts %s on the direct choice click stack', async (protocol) => {
     const view = await dialog();
-    expect(view.body.text()).toContain('新版 IOP（推荐）');
-    expect(view.body.text()).toContain('旧版 TOP');
-    expect(view.body.text()).toContain('凭据不能混用');
+    expect(view.body.text()).toContain('连接新版应用（推荐）');
+    expect(view.body.text()).toContain('连接已有旧版应用');
+    expect(view.body.text()).toContain('不会互相覆盖');
     expect(view.select).not.toHaveBeenCalled();
     let clicking = false;
     view.select.mockImplementation(() => {
@@ -51,7 +51,7 @@ describe('Alibaba authorization protocol selection', () => {
       const view = await dialog();
       if (action === 'cancel')
         await view.body.get('[data-testid="cancel-authorization-protocol"]').trigger('click');
-      if (action === 'close') await view.body.get('[aria-label="关闭选择要获取的授权"]').trigger('click');
+      if (action === 'close') await view.body.get('[aria-label="关闭连接 Alibaba 账号"]').trigger('click');
       if (action === 'overlay') await view.body.get('.ov-dialog-overlay').trigger('click');
       if (action === 'escape') await view.body.get('[role="dialog"]').trigger('keydown', { key: 'Escape' });
       await flushPromises();
@@ -64,10 +64,10 @@ describe('Alibaba authorization protocol selection', () => {
     uiI18n.global.locale.value = 'en-US';
     document.documentElement.classList.add('dark');
     const view = await dialog('renew');
-    expect(view.body.get('[role="dialog"]').text()).toContain('Choose an authorization to renew');
-    expect(view.body.text()).toContain('New IOP (recommended)');
-    expect(view.body.text()).toContain('Legacy TOP');
-    expect(view.body.text()).toContain('credentials cannot be mixed');
+    expect(view.body.get('[role="dialog"]').text()).toContain('Which authorization do you want to renew?');
+    expect(view.body.text()).toContain('Connect a new app (recommended)');
+    expect(view.body.text()).toContain('Connect an existing legacy app');
+    expect(view.body.text()).toContain('never replace each other');
     expect(view.select).not.toHaveBeenCalled();
   });
 });

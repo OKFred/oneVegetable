@@ -1,16 +1,17 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
   dualTitle: 'TOP + IOP authorizations',
-  acquireCredentials: 'Get credentials',
-  chooseAcquireProtocol: 'Choose an authorization to acquire',
-  chooseRenewProtocol: 'Choose an authorization to renew',
+  acquireCredentials: 'Connect Alibaba account',
+  chooseAcquireProtocol: 'Connect your Alibaba account',
+  chooseRenewProtocol: 'Which authorization do you want to renew?',
   chooseProtocolDescription:
-    'IOP and legacy TOP are authorized and stored separately. Their credentials cannot be mixed. Choose one to begin.',
-  chooseProtocolIop: 'New IOP (recommended)',
-  chooseProtocolIopHelp: 'For new Open Platform applications, with authorization and renewal support.',
-  chooseProtocolTop: 'Legacy TOP',
+    'New here? Start with a new app. Have a legacy app or authorization file? Choose legacy. Both are saved separately and never replace each other.',
+  chooseProtocolIop: 'Connect a new app (recommended)',
+  chooseProtocolIopHelp:
+    'New apps in Alibaba Application Center use IOP. We will guide you through sign-in and approval.',
+  chooseProtocolTop: 'Connect an existing legacy app',
   chooseProtocolTopHelp:
-    'For existing legacy TOP applications. Your original authorization remains supported.',
+    'Use your existing TOP app or authorization file. New app details cannot replace missing legacy details.',
   protocolToolUnavailable:
     'This version has no authorization tool for this protocol. Update the extension or import its credential bundle.',
   authorizationToolFailed: 'Could not open the authorization tool. Please try again.',
@@ -19,7 +20,7 @@ export const gatewayCredentials = {
   routingOwnership:
     'Both grants should belong to the same merchant; the system does not verify store ownership for you.',
   dualDescription:
-    'Merchants with both app types should authorize TOP and IOP for broader capability coverage. Each grant is stored separately and never replaces the other; a single app type is still supported.',
+    'Start with the app you already have. If the same merchant has both new and legacy apps, connect both to access more features.',
   profileTop: 'TOP authorization (legacy)',
   profileIop: 'IOP authorization (new)',
   profileHelpTop:
@@ -62,11 +63,11 @@ export const gatewayCredentials = {
   acquireTop: 'Get TOP Open Platform credentials',
   acquireIop: 'Open independent IOP authorization tool',
   extensionGuideIop:
-    'Choose new IOP under Get credentials. The tool tries the new Application Center and starts authorization; you can also paste a complete authorization JSON bundle in its advanced settings. Export JSON, then import and save it here. TOP is preserved.',
+    'Choose Connect Alibaba account, then a new app. Approve on Alibaba, download the authorization file, then import and save it here.',
   extensionGuideTop:
-    'Choose legacy TOP under Get credentials. The tool tries an already-open legacy app page and reports unreadable details without opening a retired URL. You can also paste a complete authorization JSON bundle in its advanced settings. IOP is preserved.',
+    'Choose Connect Alibaba account, then an existing legacy app. Follow the steps, download the file, then import and save it here. You can also import an existing legacy file.',
   renewGuideIop:
-    'Try refreshing the IOP token first. If unavailable or rejected, choose new IOP under Get credentials to reauthorize, then import and save the complete authorization JSON bundle. TOP credentials cannot renew IOP.',
+    'If renewal fails, choose Connect Alibaba account and a new app, authorize again and import the new file. Legacy access is preserved.',
   expiryunknown: 'Expiry unknown; this does not mean permanent access',
   expiryvalid: 'Within the recorded authorization period',
   expiryexpiring: 'Authorization expires within 7 days; prepare to renew',
@@ -79,7 +80,7 @@ export const gatewayCredentials = {
   expiryHelp:
     'Access may be revoked early. Try refreshing, or reauthorize and import. No workbench sign-out is needed.',
   extensionRenew:
-    'The extension does not auto-renew. Under Get credentials, choose the matching TOP or IOP authorization and save it again when expiry approaches or access fails. Keep your existing vault.',
+    'The extension does not auto-renew. When access expires or fails, choose Connect Alibaba account and your original new or legacy app, authorize again, then import and save. Keep your existing vault.',
   description:
     'All users of this server share these credentials. Use OpenAPI credentials, not your Alibaba website login.',
   adminOnly: 'Only administrators can manage Alibaba credentials.',
@@ -113,14 +114,16 @@ export const gatewayCredentials = {
   unlockForExpiry: 'Unlock to view expiry',
   expiryReadFailed: 'Cannot read authorization; check settings',
   renewDescription: 'Renew API access without signing out or replaying product operations.',
-  refreshAvailable: 'Try Refresh Token; if rejected, reconnect in settings.',
+  refreshAvailable:
+    'Try extending access. If Alibaba declines, authorize again; no automatic retry will be made.',
   renewSettings: 'Credential settings',
   clear: 'Clear configuration',
   reload: 'Refresh status',
-  noRefresh: 'Refresh unavailable. Reauthorize and import.',
+  noRefresh:
+    'This authorization cannot be renewed directly right now. Approve again on Alibaba and import the new file.',
   renewTitle: 'How do I reconnect after authorization fails?',
   renewGuide:
-    'Try refreshing the TOP token first. If unavailable or rejected, choose legacy TOP under Get credentials to reauthorize, then import and save the complete authorization JSON bundle. IOP credentials cannot renew TOP.',
+    'A legacy app may not support direct renewal. If rejected, choose Connect Alibaba account and your existing legacy app, authorize again and import the new file. New app access cannot replace it.',
   legacy:
     'Startup file/environment. Saving switches to encrypted configuration; clearing never restores the old account.',
   save: 'Save and activate',
