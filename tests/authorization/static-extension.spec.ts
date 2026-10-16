@@ -631,8 +631,9 @@ for (const [mode, expected] of [
     if (mode === 'overlay') {
       await expect(application.locator('#blocking-overlay')).toBeVisible();
       await expect(application.locator('body')).toHaveAttribute('data-view-clicks', '0');
+      // This fresh vault has no workbench preference; the guide uses its en-US default.
       await expect(alibaba.locator('#one-vegetable-alibaba-developer-guide .title')).toContainText(
-        '请手动点击 App Secret 旁的 View'
+        'Click View beside App Secret, then read again.'
       );
     }
     if (mode === 'security-check')
