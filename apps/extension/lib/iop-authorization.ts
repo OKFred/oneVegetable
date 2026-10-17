@@ -93,13 +93,13 @@ export class IopAuthorizationController {
         ? 'busy'
         : this.job
           ? 'waiting'
-          : pending
-            ? 'unknown'
-            : !this.unlocked
-              ? exists
-                ? 'locked'
-                : 'empty'
-              : 'ready',
+          : !this.unlocked && exists
+            ? 'locked'
+            : pending
+              ? 'unknown'
+              : this.unlocked
+                ? 'ready'
+                : 'empty',
       appName: bundle?.application.appName ?? null,
       appKeySuffix: bundle?.application.appKey.slice(-4) ?? null,
       expiresAtUtc: bundle?.oauth.expiresAtUtc ?? null,
@@ -359,6 +359,7 @@ export class IopAuthorizationController {
   async export(): Promise<AlibabaOpenApiCredentialBundle> {
     if (this.busy || this.job) throw failure('AUTH_TASK_ACTIVE');
     const status = await this.status();
+    if (status.state === 'locked' || status.state === 'empty') throw failure('AUTH_VAULT_LOCKED');
     if (status.state !== 'ready') throw failure('AUTH_REFRESH_RESULT_UNKNOWN');
     return structuredClone(this.requireUnlocked().bundle);
   }

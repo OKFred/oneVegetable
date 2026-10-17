@@ -12,6 +12,7 @@ import {
   t
 } from '../../../auth-pages/src/dom';
 import type { IopAuthorizationSummary } from '../../lib/iop-authorization';
+import { authorizationStatusPollDelay } from '../../lib/authorization-status';
 import {
   IOP_APPLICATION_READER_ORIGINS,
   TOP_APPLICATION_READER_ORIGINS
@@ -51,6 +52,8 @@ languageButton();
 let busy = false;
 let summary: IopAuthorizationSummary | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
+let statusSequence = 0;
+let pageClosed = false;
 let importGeneration = 0;
 const value = (id: string): string => el<HTMLInputElement>(`#${id}`).value;
 const tokenOrigin = (): string => (protocol === 'iop' ? IOP_API_ORIGIN : 'https://oauth.alibaba.com');
@@ -172,9 +175,11 @@ function render(): void {
   el('#save').hidden = !summary.canSave;
 }
 async function update(): Promise<void> {
+  const sequence = ++statusSequence;
+  clearTimeout(timer);
   const selected = protocol;
   const data = await request('status', {}, selected);
-  if (selected !== protocol) return;
+  if (selected !== protocol || sequence !== statusSequence || pageClosed) return;
   if (
     !isRecord(data) ||
     typeof data.state !== 'string' ||
@@ -187,11 +192,15 @@ async function update(): Promise<void> {
   summary = data as unknown as IopAuthorizationSummary;
   if (summary.errorCode && summary.errorCode !== previousError) showError(new Error(summary.errorCode));
   render();
+  scheduleStatusUpdate();
+}
+function scheduleStatusUpdate(): void {
   clearTimeout(timer);
-  if (summary.state === 'waiting' || summary.state === 'busy')
+  const delay = authorizationStatusPollDelay(summary?.state, document.visibilityState === 'visible');
+  if (!pageClosed && delay !== null)
     timer = setTimeout(() => {
       void update().catch(showError);
-    }, 5000);
+    }, delay);
 }
 async function run(action: string, payload: unknown = {}): Promise<boolean> {
   if (busy) return false;
@@ -418,7 +427,7 @@ el('#export').onclick = () => {
       .catch(showError)
       .finally(() => {
         busy = false;
-        render();
+        void update().catch(showError);
       });
   });
 };
@@ -540,7 +549,21 @@ el('#protocolTop').onclick = () => {
   switchProtocol('top');
 };
 el('#language').addEventListener('click', render);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void update().catch(showError);
+  else scheduleStatusUpdate();
+});
+window.addEventListener('focus', () => {
+  if (!pageClosed && document.visibilityState === 'visible') void update().catch(showError);
+});
+window.addEventListener('pageshow', () => {
+  if (!pageClosed) return;
+  pageClosed = false;
+  void update().catch(showError);
+});
 window.addEventListener('pagehide', () => {
+  pageClosed = true;
+  statusSequence += 1;
   importGeneration += 1;
   clearTimeout(timer);
   jsonInput.value = '';

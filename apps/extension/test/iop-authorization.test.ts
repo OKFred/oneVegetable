@@ -149,6 +149,40 @@ describe('independent IOP authorization', () => {
 });
 
 describe('standalone TOP/IOP protocol isolation and reauthorization', () => {
+  it.each(['top', 'iop'] as const)(
+    'reports a locked %s export without inventing an uncertain exchange',
+    async (protocol) => {
+      const test = setup(protocol);
+      await expect(test.controller.export()).rejects.toThrow('AUTH_VAULT_LOCKED');
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      const restarted = test.create();
+      await expect(restarted.export()).rejects.toThrow('AUTH_VAULT_LOCKED');
+      expect((await restarted.status()).state).toBe('locked');
+      expect(test.client.request).not.toHaveBeenCalled();
+      expect(test.data[protocol === 'top' ? TOP_RECEIPT_KEY : IOP_RECEIPT_KEY]).toBeNull();
+    }
+  );
+
+  it.each(['top', 'iop'] as const)(
+    'allows unlocking %s after an uncertain exchange without clearing its receipt',
+    async (protocol) => {
+      const test = setup(protocol);
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      test.client.request.mockRejectedValueOnce(failure('NETWORK_TIMEOUT'));
+      await expect(test.controller.refresh()).rejects.toThrow('NETWORK_TIMEOUT');
+      const receiptKey = protocol === 'top' ? TOP_RECEIPT_KEY : IOP_RECEIPT_KEY;
+      const receipt = structuredClone(test.data[receiptKey]);
+      const restarted = test.create();
+      expect((await restarted.status()).state).toBe('locked');
+      await restarted.unlock('123456');
+      expect((await restarted.status()).state).toBe('unknown');
+      await expect(restarted.export()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
+      await expect(restarted.refresh()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
+      expect(test.data[receiptKey]).toEqual(receipt);
+      expect(test.client.request).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it.each([
     ['origin', null],
     ['path', null],
