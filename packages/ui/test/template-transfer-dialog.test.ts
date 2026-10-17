@@ -394,8 +394,11 @@ describe('template material UI without provider writes', () => {
     await body.get('[data-testid="template-reuse-existing-photos"]').setValue(true);
     await button('Import').trigger('click');
     await flushPromises();
+    // Package hashing runs outside the promise queue; wait for confirmation, not just one flush.
+    await vi.waitFor(() => {
+      expect(body.text()).toContain('Confirming requests extension access');
+    });
     expect(request).not.toHaveBeenCalled();
-    expect(body.text()).toContain('Confirming requests extension access');
     await button('Confirm').trigger('click');
     await flushPromises();
     expect(request).toHaveBeenCalledOnce();
