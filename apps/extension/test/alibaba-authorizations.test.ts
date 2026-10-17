@@ -8,6 +8,7 @@ import {
   initializeAuthorizationIdentities,
   resolveAuthorization,
   saveAuthorizationPatch,
+  setDefaultAuthorization,
   summarizeAuthorizations,
   runtimeAuthorization
 } from '../lib/alibaba-authorizations';
@@ -41,6 +42,30 @@ function pair() {
   return settings;
 }
 describe('extension encrypted protocol profiles', () => {
+  it('changes the persisted default without changing credentials, binding or pinned routing', async () => {
+    const original = pair();
+    const profiles = authorizationProfiles(original);
+    const topId = profiles.top?.configurationId;
+    const iopId = profiles.iop?.configurationId;
+    if (!topId || !iopId) throw new Error('Missing fixture identities');
+    const next = setDefaultAuthorization(original, 'iop', iopId);
+    expect(next.protocol).toBe('iop');
+    expect(authorizationProfiles(next).iop).toEqual(profiles.iop);
+    expect(authorizationProfiles(next).top).toEqual(profiles.top);
+    expect(next.authorizationBinding).toEqual(original.authorizationBinding);
+    expect(original.protocol).toBeUndefined();
+    expect(await resolveAuthorization(next)).toMatchObject(iop);
+    expect(await resolveAuthorization(next, 'listPhotos', {})).toMatchObject(top);
+    const restored = setDefaultAuthorization(next, 'top', topId);
+    expect(restored.protocol).toBe('top');
+    expect(restored.protocolCredentials?.iop).toEqual(profiles.iop);
+  });
+  it('rejects missing and stale profiles without changing the saved default', () => {
+    const original = initializeAuthorizationIdentities(top);
+    expect(() => setDefaultAuthorization(original, 'iop', 'missing')).toThrow();
+    expect(() => setDefaultAuthorization(original, 'top', 'stale')).toThrow('ENTITY_VERSION_CONFLICT');
+    expect(original.protocol).toBeUndefined();
+  });
   it('preserves the original TOP profile and issues a new identity for every import', () => {
     const original = initializeAuthorizationIdentities(top);
     const settings = saveAuthorizationPatch(original, iop);

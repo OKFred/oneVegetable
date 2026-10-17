@@ -187,6 +187,8 @@ const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
   authorizations: () => requestVault('authorizations', undefined),
   loadAuthorization: (protocol) => requestVault('get-authorization', { protocol }),
+  setDefaultAuthorization: (protocol, configurationId) =>
+    requestVault('set-default-authorization', { protocol, configurationId }),
   confirmAuthorizations: (topConfigurationId, iopConfigurationId) =>
     requestVault('confirm-authorizations', { topConfigurationId, iopConfigurationId }),
   async clearAuthorization(protocol) {
@@ -346,6 +348,10 @@ function rememberAcquisitionState(
 }
 
 interface VaultOperationMap {
+  'set-default-authorization': {
+    request: { protocol: 'top' | 'iop'; configurationId: string };
+    response: AlibabaAuthorizationsSummary;
+  };
   authorizations: { request: undefined; response: AlibabaAuthorizationsSummary };
   'get-authorization': { request: { protocol: 'top' | 'iop' }; response: GatewaySettings };
   'confirm-authorizations': {

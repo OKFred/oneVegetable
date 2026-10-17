@@ -208,6 +208,55 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('persists the chosen default through lock/unlock without exposing secrets or making network calls', async () => {
+    const original = await createPair();
+    const result = await send('credential-vault-request', 'set-default-authorization', {
+      protocol: 'iop',
+      configurationId: original.iop?.configurationId
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      data: { defaultProtocol: 'iop', binding: { confirmed: true } }
+    });
+    expect(JSON.stringify(result)).not.toContain(settings.appSecret);
+    expect(JSON.stringify(result)).not.toContain(settings.accessToken);
+    await send('credential-vault-request', 'lock');
+    expect(
+      await send('credential-vault-request', 'set-default-authorization', {
+        protocol: 'top',
+        configurationId: original.top?.configurationId
+      })
+    ).toMatchObject({ ok: false });
+    await send('credential-vault-request', 'unlock', { passphrase: '123456' });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { defaultProtocol: 'iop', top: { configurationId: original.top?.configurationId } }
+    });
+    expect(
+      await send('credential-vault-request', 'set-default-authorization', {
+        protocol: 'top',
+        configurationId: 'stale'
+      })
+    ).toMatchObject({ ok: false, error: { code: 'ENTITY_VERSION_CONFLICT' } });
+    expect(
+      await send('credential-vault-request', 'set-default-authorization', {
+        protocol: 'top',
+        configurationId: original.top?.configurationId,
+        appSecret: 'injection'
+      })
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_CREDENTIAL_VAULT_REQUEST' } });
+    expect(
+      await sendEnvelope(
+        {
+          kind: 'credential-vault-request',
+          operation: 'set-default-authorization',
+          payload: { protocol: 'top', configurationId: original.top?.configurationId }
+        },
+        { ...sender, url: 'https://i.alibaba.com/explore/open-api' }
+      )
+    ).toMatchObject({ ok: false });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
   it('returns a safe empty profile for first-time import without requiring an existing vault', async () => {
     for (const protocol of ['top', 'iop'] as const) {
       expect(await send('credential-vault-request', 'get-authorization', { protocol })).toMatchObject({

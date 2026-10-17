@@ -120,6 +120,35 @@ export function clearAuthorizationProfile(
   };
 }
 
+/** Promote a saved profile without re-importing it or changing either account identity. */
+export function setDefaultAuthorization(
+  settings: GatewaySettings,
+  protocol: AuthorizationProtocol,
+  configurationId: string
+): GatewaySettings {
+  const profiles = authorizationProfiles(settings);
+  const selected = profiles[protocol];
+  if (!selected || !configuredAuthorization(selected))
+    throw new GatewayException({
+      code: 'CREDENTIAL_VAULT_EMPTY',
+      message: 'CREDENTIAL_VAULT_EMPTY',
+      retryable: false
+    });
+  if (!selected.configurationId || selected.configurationId !== configurationId)
+    throw new GatewayException({
+      code: 'ENTITY_VERSION_CONFLICT',
+      message: 'ENTITY_VERSION_CONFLICT',
+      retryable: false
+    });
+  const other = protocol === 'top' ? 'iop' : 'top';
+  return {
+    ...selected,
+    protocol,
+    protocolCredentials: profiles[other] ? { [other]: profiles[other] } : {},
+    ...(settings.authorizationBinding ? { authorizationBinding: settings.authorizationBinding } : {})
+  };
+}
+
 export function summarizeAuthorizations(settings?: GatewaySettings): AlibabaAuthorizationsSummary {
   const profiles = settings ? authorizationProfiles(settings) : {};
   const summary = (protocol: AuthorizationProtocol): AlibabaAuthorizationsSummary['top'] => {

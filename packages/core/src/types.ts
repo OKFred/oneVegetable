@@ -415,6 +415,10 @@ export interface SettingsRepository {
   save(settings: GatewaySettings): Promise<void>;
   authorizations?(): Promise<AlibabaAuthorizationsSummary>;
   loadAuthorization?(protocol: AlibabaProtocol): Promise<GatewaySettings>;
+  setDefaultAuthorization?(
+    protocol: AlibabaProtocol,
+    configurationId: string
+  ): Promise<AlibabaAuthorizationsSummary>;
   confirmAuthorizations?(
     topConfigurationId: string,
     iopConfigurationId: string
@@ -467,6 +471,7 @@ export type CredentialVaultOperation =
   | 'update-policy'
   | 'authorizations'
   | 'get-authorization'
+  | 'set-default-authorization'
   | 'confirm-authorizations'
   | 'clear-authorization'
   | 'refresh-authorization';

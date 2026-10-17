@@ -101,6 +101,7 @@ import {
   replaceAuthorization,
   resolveAuthorization,
   saveAuthorizationPatch,
+  setDefaultAuthorization,
   summarizeAuthorizations
 } from '../lib/alibaba-authorizations';
 import {
@@ -609,6 +610,17 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
           confirmedAtUtc: Date.now()
         }
       };
+      await persistUnlockedSettings(current, settings);
+      return readAuthorizationsSummary(settings);
+    }
+    case 'set-default-authorization': {
+      const current = await getUnlockedVault(state);
+      const input = asRecord(payload);
+      const settings = setDefaultAuthorization(
+        current.settings,
+        requiredAuthorizationProtocol(input.protocol),
+        requiredString(input, 'configurationId')
+      );
       await persistUnlockedSettings(current, settings);
       return readAuthorizationsSummary(settings);
     }
@@ -1441,6 +1453,7 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     value.operation !== 'authorizations' &&
     value.operation !== 'get-authorization' &&
     value.operation !== 'confirm-authorizations' &&
+    value.operation !== 'set-default-authorization' &&
     value.operation !== 'clear-authorization' &&
     value.operation !== 'refresh-authorization'
   ) {
@@ -1544,6 +1557,13 @@ function validateCredentialVaultPayload(
   }
   if (['get-authorization', 'clear-authorization', 'refresh-authorization'].includes(operation)) {
     requiredAuthorizationProtocol(requireOnlyKeys(payload, ['protocol']).protocol);
+    return;
+  }
+  if (operation === 'set-default-authorization') {
+    const input = requireOnlyKeys(payload, ['protocol', 'configurationId']);
+    requiredAuthorizationProtocol(input.protocol);
+    if (!/^[\w.-]{1,128}$/u.test(requiredString(input, 'configurationId')))
+      throw gatewayFailure('INVALID_CREDENTIAL_VAULT_REQUEST', 'INVALID_CREDENTIAL_VAULT_REQUEST');
     return;
   }
   if (operation === 'confirm-authorizations') {
