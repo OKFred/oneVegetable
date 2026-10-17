@@ -20,12 +20,12 @@ export const shell = {
   startup: {
     unlockTitle: 'Unlock Open Platform credentials',
     unlockDescription:
-      'Enter your credential vault passphrase, not your Alibaba website password. You can unlock later and still view Settings, help and release notes.',
+      'Use your vault passphrase, not your Alibaba password. Unlock once; restarts and updates stay unlocked until manual locking. Skip for Settings and help.',
     passphrase: 'Credential vault passphrase',
     later: 'Unlock later',
     unlock: 'Unlock',
     unlocking: 'Unlocking…',
-    unlocked: 'Credentials unlocked. Resuming queries for the current page.',
+    unlocked: 'Unlocked on this device. Resuming queries.',
     unlockFailed: 'Unable to unlock. Check your vault passphrase, or inspect credential status in Settings.'
   },
   identity: {
@@ -71,6 +71,16 @@ export const shell = {
     todo: {
       title: 'To-do',
       description: 'Stored only in this browser and never synchronized to the backend.',
+      syncDescription: 'To-dos use Chrome Sync when available. Never enter passwords or credentials.',
+      loading: 'Loading to-dos…',
+      syncStored: 'Saved to Chrome sync storage; other devices may not have received it yet.',
+      syncPending: 'Saved locally; sync pending. Retry when available.',
+      syncUnavailable: 'Sync unavailable; showing a possibly incomplete local copy.',
+      syncQuota: 'Sync quota reached; changes remain local. Free space or retry later.',
+      invalidData: 'Invalid to-dos skipped; original data preserved.',
+      migrationConflict: 'Sync conflict: import stopped. Both copies kept; review before retrying.',
+      migrationDescription: 'Import {count} local to-dos? Originals stay until saving succeeds.',
+      migrate: 'Import local to-dos',
       placeholder: 'Add a to-do item…',
       add: 'Add',
       empty: 'No to-do items yet',

@@ -16,7 +16,7 @@ import { useServices } from '../lib/services';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
 import type { DataColumn } from '../lib/table';
 
-const { gateway, permissions, localData, mode } = useServices();
+const { gateway, permissions, localData, todos, mode } = useServices();
 const galleryTransfers = useGalleryTransfers();
 const { t } = useUiI18n();
 const feedback = ref('');
@@ -398,6 +398,9 @@ function formatBytes(bytes: number): string {
               <p class="text-sm font-medium">{{ t('settings.localData.dangerTitle') }}</p>
               <p class="mt-1 text-xs leading-5">
                 {{ t('settings.localData.dangerDescription', { phrase: clearPhrase }) }}
+              </p>
+              <p v-if="todos?.mode === 'sync'" class="mt-2 text-sm text-muted-foreground">
+                {{ t('common.todoSync.clearNotice') }}
               </p>
             </div>
           </div>

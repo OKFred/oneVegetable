@@ -107,9 +107,9 @@ export const errors = {
     CREDENTIAL_VAULT_EMPTY: 'Configure Open Platform credentials in Settings first.',
     CREDENTIAL_VAULT_LOCKED: 'Open Platform credentials are locked. Unlock them in Settings first.',
     CREDENTIAL_VAULT_IDLE_TIMEOUT:
-      'Open Platform credentials were locked after being idle. Unlock them again.',
+      'Previously locked credentials still need one unlock with the original passphrase. This device then remembers unlocking until you lock manually.',
     CREDENTIAL_VAULT_SESSION_ENDED:
-      'The Chrome session ended or the extension was updated. Unlock credentials again.',
+      'Existing credentials still need one unlock with the original passphrase. Browser restarts and extension updates will then keep them unlocked.',
     CREDENTIAL_VAULT_INVALID: 'Credential storage is invalid. Clear local data and configure it again.',
     CREDENTIAL_VAULT_MIGRATION_REQUIRED: 'Legacy plaintext credentials must be encrypted locally first.',
     CREDENTIAL_VAULT_PASSPHRASE_REQUIRED:

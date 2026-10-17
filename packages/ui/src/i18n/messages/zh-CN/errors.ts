@@ -84,8 +84,10 @@ export const errors = {
     MISSING_CREDENTIALS: '请先在设置中配置 App Key、App Secret 和 Access Token。',
     CREDENTIAL_VAULT_EMPTY: '请先在设置中配置开放平台凭证。',
     CREDENTIAL_VAULT_LOCKED: '开放平台凭证已锁定，请先在设置中解锁。',
-    CREDENTIAL_VAULT_IDLE_TIMEOUT: '开放平台凭证因空闲超时已锁定，请重新解锁。',
-    CREDENTIAL_VAULT_SESSION_ENDED: 'Chrome 会话已结束或扩展已更新，请重新解锁凭证。',
+    CREDENTIAL_VAULT_IDLE_TIMEOUT:
+      '旧凭证仍处于锁定状态，请输入原口令解锁一次；之后本机会记住解锁状态，直到手动锁定。',
+    CREDENTIAL_VAULT_SESSION_ENDED:
+      '现有凭证尚未解锁，请输入原口令解锁一次；之后浏览器重启或扩展更新不再锁定。',
     CREDENTIAL_VAULT_INVALID: '凭证存储格式无效，请清除本地数据后重新配置。',
     CREDENTIAL_VAULT_MIGRATION_REQUIRED: '旧版明文凭证必须先完成本机加密。',
     CREDENTIAL_VAULT_PASSPHRASE_REQUIRED: '首次保存到插件时需要设置本机保护口令。',

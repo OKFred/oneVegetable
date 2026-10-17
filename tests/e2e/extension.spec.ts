@@ -1053,11 +1053,11 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   const pagesBeforeAcquisition = browserContext.pages().length;
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '开始授权向导' }).click();
-  const acquisitionDialog = page.getByRole('dialog', { name: '选择要获取的授权' });
+  const acquisitionDialog = page.getByRole('dialog', { name: '连接 Alibaba 账号' });
   await expect(acquisitionDialog).toBeVisible();
   await expect(acquisitionDialog.getByTestId('choose-authorization-iop')).toBeVisible();
   await expect(acquisitionDialog.getByTestId('choose-authorization-top')).toBeVisible();
-  await expect(acquisitionDialog).toContainText('凭据不能混用');
+  await expect(acquisitionDialog).toContainText('两份授权分别保存，不会互相覆盖');
   expect(browserContext.pages()).toHaveLength(pagesBeforeAcquisition);
   await acquisitionDialog.getByTestId('cancel-authorization-protocol').click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
@@ -1311,9 +1311,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
 
-  await page.getByLabel('空闲自动锁定时间').selectOption('5');
-  await page.getByRole('button', { name: '保存锁定策略' }).click();
-  await expect(page.getByText(/连续 5 分钟未使用后自动锁定/)).toBeVisible();
+  await expect(page.getByLabel('空闲自动锁定时间')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '保存锁定策略' })).toHaveCount(0);
   const encryptedPolicySettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -1337,7 +1336,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
-  await expect(page.getByLabel('空闲自动锁定时间')).toHaveValue('5');
+  await expect(page.getByLabel('空闲自动锁定时间')).toHaveCount(0);
 
   await page.getByRole('link', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(10);

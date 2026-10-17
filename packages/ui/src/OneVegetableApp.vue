@@ -84,6 +84,11 @@ import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
 import type { RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
+import {
+  createLocalTodoRepository,
+  provideDashboardTodos,
+  type DashboardTodoRepository
+} from './lib/todo-repository';
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
 import { provideListIdentityScope } from './lib/list-identity-scope';
@@ -97,6 +102,7 @@ const props = defineProps<{
   alibabaCredentialAcquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
+  todos?: DashboardTodoRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
   s3Storage?: S3StorageControl;
@@ -113,6 +119,11 @@ const props = defineProps<{
 const runtime = reactive<RuntimeState>({
   backendMeta: null,
   metaStatus: props.mode === 'bff' ? 'loading' : 'ready'
+});
+const todos = props.todos ?? createLocalTodoRepository();
+provideDashboardTodos(todos);
+onBeforeUnmount(() => {
+  if (!props.todos) todos.dispose();
 });
 const queryClient = useQueryClient();
 const editing = new UnsavedEditingService();
@@ -169,6 +180,7 @@ provideServices({
   openCredentialAcquisition: requestCredentialAcquisition,
   ...(props.permissions ? { permissions: props.permissions } : {}),
   ...(props.localData ? { localData: props.localData } : {}),
+  todos,
   ...(props.onboarding ? { onboarding: props.onboarding } : {}),
   ...(props.vault ? { vault: props.vault } : {}),
   ...(props.alibabaCredentialAcquisition

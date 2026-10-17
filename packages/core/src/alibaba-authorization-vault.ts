@@ -23,6 +23,8 @@ export interface AlibabaAuthorizationVault {
 export interface OpenAlibabaAuthorizationVault {
   record: AlibabaAuthorizationVault;
   key: CryptoKey;
+  // Sensitive raw derived key bytes, never a passphrase or a public summary field.
+  sessionKeyMaterial: string;
   bundle: AlibabaOpenApiCredentialBundle;
 }
 
@@ -33,9 +35,9 @@ export async function sealAlibabaAuthorization(
 ): Promise<OpenAlibabaAuthorizationVault> {
   validateVaultPassphrase(passphrase);
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await derive(passphrase, salt);
+  const { key, sessionKeyMaterial } = await derive(passphrase, salt);
   const record = await resealAlibabaAuthorization(bundle, key, encode(salt), protocol);
-  return { record, key, bundle };
+  return { record, key, sessionKeyMaterial, bundle };
 }
 
 export async function openAlibabaAuthorization(
@@ -45,8 +47,22 @@ export async function openAlibabaAuthorization(
 ): Promise<OpenAlibabaAuthorizationVault> {
   validateVaultPassphrase(passphrase);
   const record = parseAlibabaAuthorizationVault(value);
-  const key = await derive(passphrase, decode(record.salt));
+  const { sessionKeyMaterial } = await derive(passphrase, decode(record.salt));
+  return restoreAlibabaAuthorization(record, sessionKeyMaterial, protocol);
+}
+
+/** Restore only from protected extension-local storage, never sync or page input. */
+export async function restoreAlibabaAuthorization(
+  value: unknown,
+  sessionKeyMaterial: string,
+  protocol: AuthorizationProtocol = 'iop'
+): Promise<OpenAlibabaAuthorizationVault> {
+  const record = parseAlibabaAuthorizationVault(value);
   try {
+    if (!/^[A-Za-z0-9+/]{43}=$/u.test(sessionKeyMaterial)) throw new Error('AUTH_UNLOCK_FAILED');
+    const bytes = decode(sessionKeyMaterial);
+    if (bytes.length !== 32 || encode(bytes) !== sessionKeyMaterial) throw new Error('AUTH_UNLOCK_FAILED');
+    const key = await crypto.subtle.importKey('raw', bytes, 'AES-GCM', false, ['encrypt', 'decrypt']);
     const plaintext = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: decode(record.iv), additionalData: additionalData(protocol) },
       key,
@@ -56,7 +72,7 @@ export async function openAlibabaAuthorization(
       JSON.parse(new TextDecoder().decode(plaintext)) as unknown
     );
     if ((bundle.protocol ?? 'top') !== protocol) throw new Error('AUTH_PROTOCOL_MISMATCH');
-    return { record, key, bundle };
+    return { record, key, sessionKeyMaterial, bundle };
   } catch {
     throw new Error('AUTH_UNLOCK_FAILED');
   }
@@ -103,21 +119,24 @@ export function parseAlibabaAuthorizationVault(value: unknown): AlibabaAuthoriza
   return { version: 1, salt: value.salt, iv: value.iv, ciphertext: value.ciphertext };
 }
 
-async function derive(passphrase: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
+async function derive(
+  passphrase: string,
+  salt: Uint8Array<ArrayBuffer>
+): Promise<{ key: CryptoKey; sessionKeyMaterial: string }> {
   const material = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(passphrase),
     'PBKDF2',
     false,
-    ['deriveKey']
+    ['deriveBits']
   );
-  return crypto.subtle.deriveKey(
+  const bits = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', hash: 'SHA-256', iterations: CREDENTIAL_VAULT_ITERATIONS, salt },
     material,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
+    256
   );
+  const key = await crypto.subtle.importKey('raw', bits, 'AES-GCM', false, ['encrypt', 'decrypt']);
+  return { key, sessionKeyMaterial: encode(new Uint8Array(bits)) };
 }
 function encode(bytes: Uint8Array): string {
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''));

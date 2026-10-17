@@ -43,7 +43,7 @@ export const settings = {
   vault: {
     title: 'Open Platform credential protection',
     description:
-      'Encrypted locally. Page refresh or MV3 suspension does not lock; browser restart, extension update, manual lock or selected idle timeout does.',
+      'Unlocking survives browser restarts and extension updates. No idle lock. Existing locked credentials need the original passphrase once; only manual locking requires it again.',
     status: {
       loading: 'Loading',
       unlocked: 'Unlocked',
@@ -52,19 +52,16 @@ export const settings = {
       invalid: 'Invalid format',
       locked: 'Locked'
     },
-    activity: 'Activity: {time}; snapshot: about {minutes} minutes left.',
     legacyTitle: 'Legacy plaintext credentials found',
     legacyDescription:
       'Plaintext reads stopped. Set a passphrase for background encryption; old secrets and tokens never reach the page.',
     lockReason: {
-      idle: 'Open Platform credentials were locked after the idle timeout',
-      sessionEnded: 'The Chrome session ended — unlock again',
+      existing: 'Existing Open Platform credentials are still locked',
       manual: 'Open Platform credentials were locked manually'
     },
     lockDescription: {
-      sessionEnded:
-        'Browser restart or extension update/reload clears memory-only unlock material. Encrypted credentials remain.',
-      other: 'Page and background are locked. Enter the passphrase to resume queries.'
+      existing: 'Enter the original passphrase once to unlock existing credentials.',
+      other: 'Manually locked. Enter the passphrase to resume.'
     },
     passphrase: 'Protection passphrase',
     unlock: 'Unlock',
@@ -72,13 +69,6 @@ export const settings = {
     invalidDescription:
       'No automatic repair: it could overwrite data. Back up the browser profile, then use full clear in Logs → Diagnostics & data to rebuild.',
     lockNow: 'Lock now',
-    idleTitle: 'Automatic idle lock',
-    idleDescription:
-      'Off by default; choose a duration to enable. MV3 suspension keeps the session unlocked.',
-    idleLabel: 'Automatic idle lock duration',
-    neverLock: 'Do not lock automatically (default)',
-    minutes: '{minutes} minutes',
-    savePolicy: 'Save lock policy',
     rotateTitle: 'Change the local protection passphrase',
     rotateDescription: 'Re-encrypt with a new salt and key; no old passphrase needed.',
     newPassphrase: 'New protection passphrase',
@@ -92,20 +82,17 @@ export const settings = {
     enterAgain: 'Enter again',
     rotate: 'Change passphrase',
     migrate: 'Encrypt and migrate legacy credentials',
-    saveEncrypted: 'Credentials and settings encrypted; available in this session.',
+    saveEncrypted: 'Credentials saved; this device stays unlocked.',
     savedToast: 'Credentials and settings saved',
-    unlockedFeedback: 'Unlocked; refresh or background suspension needs no passphrase.',
-    migratedFeedback: 'Legacy credentials encrypted in place; available in this session.',
-    lockedFeedback: 'Locked; session unlock state cleared.',
+    unlockedFeedback: 'Unlocked and remembered on this device.',
+    migratedFeedback: 'Legacy credentials encrypted; this device stays unlocked.',
+    lockedFeedback: 'Locked; remembered unlocking cleared.',
     rotatedFeedback: 'Re-encrypted with a new salt and passphrase.',
-    idleDisabledFeedback: 'Idle lock off; available in this session.',
-    idleEnabledFeedback: 'Credentials lock after {minutes} consecutive idle minutes.',
     statusError: 'Unable to read credential protection status',
     unlockError: 'Unable to unlock credentials',
     migrateError: 'Unable to encrypt legacy credentials',
     lockError: 'Unable to lock credentials',
     rotateError: 'Unable to change the protection passphrase',
-    policyError: 'Unable to save the idle lock policy',
     mismatchError: 'The two local protection passphrases do not match'
   },
   credentials: {
@@ -130,14 +117,14 @@ export const settings = {
     bundleTooLarge: 'Credential bundle JSON cannot exceed 256 KiB',
     bundleLoaded: 'Bundle loaded, not saved. Set a protection passphrase and confirm save.',
     bundleImportError: 'Unable to import credential bundle',
-    acquired: 'Credentials acquired and encrypted; available in this session.',
+    acquired: 'Credentials acquired and saved; this device stays unlocked.',
     bundleMissing: 'The credential bundle is missing an App Key, App Secret, or Access Token',
     iopTool: 'IOP authorization and renewal'
   },
   security: {
     title: 'Security boundary',
     description:
-      'Encryption protects storage only; unlocking or malicious extensions may expose secrets. For higher security, use a BFF you control.'
+      'This profile stores the unlock key: anyone copying it may decrypt credentials. Lock before sharing this device. For stronger protection, use your own BFF.'
   },
   socialBackend: {
     title: 'Social publishing backend',

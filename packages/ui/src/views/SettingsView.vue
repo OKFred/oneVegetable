@@ -21,8 +21,6 @@ import {
   ALIBABA_GATEWAY,
   alibabaAuthorizationMetadata,
   alibabaAccessTokenCapturedTime,
-  CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES,
-  CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS,
   CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS,
   validateVaultPassphrase,
   type CredentialVaultStatus,
@@ -45,7 +43,6 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import { useUiI18n } from '../i18n';
 import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
-import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { useUnsavedEditing, VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
@@ -124,12 +121,10 @@ const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
 const credentialAcquisitionOpen = ref(false);
 const protocolDialogPurpose = ref<'acquire' | 'renew' | null>(null);
-const idleTimeoutMinutes = ref(CREDENTIAL_VAULT_DEFAULT_IDLE_TIMEOUT_MINUTES);
 const settingsLoaded = ref(false);
 const credentialEditing = useUnsavedEditing(() => model.value, { enabled: () => settingsLoaded.value });
-const policyEditing = useUnsavedEditing(
+const passphraseEditing = useUnsavedEditing(
   () => ({
-    idleTimeoutMinutes: idleTimeoutMinutes.value,
     newPassphrase: newVaultPassphrase.value,
     confirmation: newVaultPassphraseConfirmation.value
   }),
@@ -141,13 +136,6 @@ const settingsEditable = computed(
     settingsLoaded.value &&
     (mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked')
 );
-const vaultActivitySummary = computed(() => {
-  const status = vaultStatus.value;
-  if (!status?.lastActivityAt || status.idleRemainingSeconds === null) return '';
-  const lastActivity = formatDateTime(status.lastActivityAt);
-  const remainingMinutes = Math.max(1, Math.ceil(status.idleRemainingSeconds / 60));
-  return t('settings.vault.activity', { time: lastActivity, minutes: remainingMinutes });
-});
 onMounted(async () => {
   settingsInitialization = initializeView();
   await settingsInitialization;
@@ -157,7 +145,7 @@ async function initializeView(): Promise<void> {
   const storedSettings = await initializeSettings();
   if (storedSettings) model.value = storedSettings;
   credentialEditing.markClean();
-  policyEditing.markClean();
+  passphraseEditing.markClean();
   settingsLoaded.value = true;
   if (mode === 'extension' && settingsEditable.value) await authorizations.reload();
 }
@@ -363,7 +351,7 @@ async function unlockVault(): Promise<void> {
     await authorizations.reload();
     clearVaultPassphrases();
     credentialEditing.markClean();
-    policyEditing.markClean();
+    passphraseEditing.markClean();
     feedback.value = t('settings.vault.unlockedFeedback');
     toast.success(t('settings.vault.unlockedFeedback'));
     globalThis.dispatchEvent(new Event(VAULT_UNLOCKED_EVENT));
@@ -385,7 +373,7 @@ async function migrateVault(): Promise<void> {
     await authorizations.reload();
     clearVaultPassphrases();
     credentialEditing.markClean();
-    policyEditing.markClean();
+    passphraseEditing.markClean();
     feedback.value = t('settings.vault.migratedFeedback');
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, t('settings.vault.migrateError'));
@@ -563,7 +551,7 @@ async function rotateVaultPassphrase(): Promise<void> {
     assertMatchingPassphrases(newVaultPassphrase.value, newVaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
-    policyEditing.markClean();
+    passphraseEditing.markClean();
     feedback.value = t('settings.vault.rotatedFeedback');
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, t('settings.vault.rotateError'));
@@ -572,27 +560,8 @@ async function rotateVaultPassphrase(): Promise<void> {
   }
 }
 
-async function updateVaultPolicy(): Promise<void> {
-  if (!vault) return;
-  vaultBusy.value = true;
-  vaultError.value = null;
-  try {
-    applyVaultStatus(await vault.updatePolicy(idleTimeoutMinutes.value));
-    policyEditing.markClean();
-    feedback.value =
-      idleTimeoutMinutes.value === 0
-        ? t('settings.vault.idleDisabledFeedback')
-        : t('settings.vault.idleEnabledFeedback', { minutes: idleTimeoutMinutes.value });
-  } catch (error: unknown) {
-    vaultError.value = userVisibleCause(error, t('settings.vault.policyError'));
-  } finally {
-    vaultBusy.value = false;
-  }
-}
-
 function applyVaultStatus(status: CredentialVaultStatus): void {
   vaultStatus.value = status;
-  if (status.idleTimeoutMinutes !== null) idleTimeoutMinutes.value = status.idleTimeoutMinutes;
 }
 
 function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
@@ -715,17 +684,15 @@ function confirmLanguagePreference(): void {
           <div v-else-if="vaultStatus?.state === 'locked'" class="mt-4 rounded-lg border p-4">
             <p class="text-sm font-medium">
               {{
-                vaultStatus.lockReason === 'idle'
-                  ? t('settings.vault.lockReason.idle')
-                  : vaultStatus.lockReason === 'session-ended'
-                    ? t('settings.vault.lockReason.sessionEnded')
-                    : t('settings.vault.lockReason.manual')
+                vaultStatus.lockReason === 'manual'
+                  ? t('settings.vault.lockReason.manual')
+                  : t('settings.vault.lockReason.existing')
               }}
             </p>
             <p class="mt-1 text-xs text-muted-foreground">
               {{
-                vaultStatus.lockReason === 'session-ended'
-                  ? t('settings.vault.lockDescription.sessionEnded')
+                vaultStatus.lockReason !== 'manual'
+                  ? t('settings.vault.lockDescription.existing')
                   : t('settings.vault.lockDescription.other')
               }}
             </p>
@@ -756,35 +723,6 @@ function confirmLanguagePreference(): void {
               <Button variant="outline" :disabled="vaultBusy" @click="lockVault">
                 <LockKeyhole class="size-4" />{{ t('settings.vault.lockNow') }}
               </Button>
-            </div>
-            <div class="rounded-lg border p-4">
-              <p class="text-sm font-medium">{{ t('settings.vault.idleTitle') }}</p>
-              <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                {{ t('settings.vault.idleDescription') }}
-              </p>
-              <p v-if="vaultActivitySummary" class="mt-2 text-xs text-muted-foreground">
-                {{ vaultActivitySummary }}
-              </p>
-              <div class="mt-3 flex flex-wrap items-center gap-2">
-                <select
-                  v-model.number="idleTimeoutMinutes"
-                  class="h-9 rounded-md border bg-background px-3 text-sm"
-                  :aria-label="t('settings.vault.idleLabel')"
-                >
-                  <option
-                    v-for="minutes in CREDENTIAL_VAULT_IDLE_TIMEOUT_OPTIONS"
-                    :key="minutes"
-                    :value="minutes"
-                  >
-                    {{
-                      minutes === 0 ? t('settings.vault.neverLock') : t('settings.vault.minutes', { minutes })
-                    }}
-                  </option>
-                </select>
-                <Button variant="outline" :disabled="vaultBusy" @click="updateVaultPolicy">{{
-                  t('settings.vault.savePolicy')
-                }}</Button>
-              </div>
             </div>
             <div class="rounded-lg border p-4">
               <p class="text-sm font-medium">{{ t('settings.vault.rotateTitle') }}</p>

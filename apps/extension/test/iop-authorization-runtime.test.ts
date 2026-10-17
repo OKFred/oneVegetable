@@ -4,12 +4,23 @@ import { IOP_API_ORIGIN, PUBLIC_AUTH_CALLBACK, PUBLIC_AUTH_ORIGIN } from '@one-v
 import type * as IopModule from '@one-vegetable/core/alibaba-iop';
 import tokens from '../../../mock/data/alibaba-auth/iop-token-responses.json';
 import credential from '../../../mock/data/node-gateway-credentials.json';
-import { IOP_VAULT_KEY, TOP_VAULT_KEY, TOP_RECEIPT_KEY } from '../lib/iop-authorization-storage';
+import {
+  IOP_VAULT_KEY,
+  TOP_VAULT_KEY,
+  TOP_RECEIPT_KEY,
+  IOP_SESSION_KEY,
+  TOP_SESSION_KEY
+} from '../lib/iop-authorization-storage';
 
 const mocks = vi.hoisted(() => {
   const data: Record<string, unknown> = {};
   return {
     data,
+    access: vi.fn(() => Promise.resolve()),
+    remove: vi.fn((keys: string[]) => {
+      for (const key of keys) Reflect.deleteProperty(data, key);
+      return Promise.resolve();
+    }),
     open: vi.fn((_options: { url: string }) => Promise.resolve({ id: 42 })),
     permission: vi.fn(() => Promise.resolve(true)),
     token: vi.fn(),
@@ -45,15 +56,13 @@ vi.mock('wxt/browser', () => ({
     permissions: { contains: mocks.permission },
     storage: {
       local: {
+        setAccessLevel: mocks.access,
         get: (key: string) => Promise.resolve({ [key]: mocks.data[key] }),
         set: (values: Record<string, unknown>) => {
           Object.assign(mocks.data, values);
           return Promise.resolve();
         },
-        remove: (keys: string[]) => {
-          for (const key of keys) Reflect.deleteProperty(mocks.data, key);
-          return Promise.resolve();
-        }
+        remove: mocks.remove
       }
     }
   }
@@ -70,6 +79,7 @@ vi.mock('@one-vegetable/core/alibaba-iop', async (original) => {
 import {
   handleAuthorization,
   handlePublicAuthorization,
+  lockAllAlibabaAuthorizations,
   resetIopAuthorization
 } from '../lib/iop-authorization-runtime';
 
@@ -231,6 +241,53 @@ describe('narrow public authorization bridge', () => {
 });
 
 describe('explicit standalone protocol selection', () => {
+  it('locks both protocols for the workbench and only the selected protocol for the tool', async () => {
+    for (const protocol of ['top', 'iop'] as const)
+      expect(
+        await handleAuthorization(
+          command(
+            'import',
+            { bundle: { ...credential.oauthBundle, protocol }, passphrase: '123456' },
+            protocol
+          ),
+          trusted
+        )
+      ).toMatchObject({ ok: true });
+    await handleAuthorization(command('lock', {}, 'top'), trusted);
+    expect(mocks.data[TOP_SESSION_KEY]).toBeUndefined();
+    expect(mocks.data[IOP_SESSION_KEY]).toBeDefined();
+    expect(await handleAuthorization(command('export', {}, 'top'), trusted)).toMatchObject({ ok: false });
+    expect(await handleAuthorization(command('export', {}, 'iop'), trusted)).toMatchObject({ ok: true });
+    await handleAuthorization(command('unlock', { passphrase: '123456' }, 'top'), trusted);
+    mocks.remove.mockRejectedValueOnce(new Error('disk failure'));
+    await expect(lockAllAlibabaAuthorizations()).rejects.toThrow('AUTH_ACTION_FAILED');
+    expect(mocks.data[TOP_SESSION_KEY]).toBeUndefined();
+    expect(mocks.data[IOP_SESSION_KEY]).toBeDefined();
+    for (const protocol of ['top', 'iop'] as const)
+      expect(await handleAuthorization(command('export', {}, protocol), trusted)).toMatchObject({
+        ok: false
+      });
+    await lockAllAlibabaAuthorizations();
+    expect(mocks.data[TOP_SESSION_KEY]).toBeUndefined();
+    expect(mocks.data[IOP_SESSION_KEY]).toBeUndefined();
+    expect(mocks.data[TOP_VAULT_KEY]).toBeDefined();
+    expect(mocks.data[IOP_VAULT_KEY]).toBeDefined();
+  });
+
+  it('fails closed if trusted storage isolation fails and retries enforcement before access', async () => {
+    vi.resetModules();
+    const isolated = await import('../lib/iop-authorization-runtime');
+    mocks.access.mockRejectedValueOnce(new Error('access denied'));
+    expect(await isolated.handleAuthorization(command('status'), trusted)).toMatchObject({ ok: false });
+    expect(mocks.data[IOP_SESSION_KEY]).toBeUndefined();
+    expect(await isolated.handleAuthorization(command('status'), trusted)).toMatchObject({
+      ok: true,
+      data: { state: 'empty' }
+    });
+    expect(mocks.access).toHaveBeenCalledWith({ accessLevel: 'TRUSTED_CONTEXTS' });
+    await isolated.resetIopAuthorization();
+  });
+
   it('keeps a legacy protocol-omitted request on IOP and never invokes TOP', async () => {
     await handleAuthorization(
       command('import', {
@@ -401,9 +458,13 @@ describe('explicit standalone protocol selection', () => {
       );
     expect(mocks.data[TOP_VAULT_KEY]).toBeDefined();
     expect(mocks.data[IOP_VAULT_KEY]).toBeDefined();
+    expect(mocks.data[TOP_SESSION_KEY]).toBeDefined();
+    expect(mocks.data[IOP_SESSION_KEY]).toBeDefined();
     await resetIopAuthorization();
     expect(mocks.data[TOP_VAULT_KEY]).toBeUndefined();
     expect(mocks.data[IOP_VAULT_KEY]).toBeUndefined();
+    expect(mocks.data[TOP_SESSION_KEY]).toBeUndefined();
+    expect(mocks.data[IOP_SESSION_KEY]).toBeUndefined();
     for (const protocol of ['top', 'iop'] as const)
       expect(await handleAuthorization(command('status', {}, protocol), trusted)).toMatchObject({
         ok: true,

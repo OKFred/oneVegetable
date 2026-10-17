@@ -42,7 +42,7 @@ export const settings = {
   vault: {
     title: '开放平台凭证保护',
     description:
-      '凭证本机加密。页面刷新或 MV3 休眠不锁定；浏览器重启、扩展更新、手动锁定或所选空闲时限到期才锁定。',
+      '本机记住解锁，重启浏览器或更新扩展不锁定，也不因空闲锁定。旧凭证需原口令解锁一次；之后仅手动锁定需再输入。',
     status: {
       loading: '读取中',
       unlocked: '已解锁',
@@ -51,29 +51,21 @@ export const settings = {
       invalid: '格式无效',
       locked: '已锁定'
     },
-    activity: '活动：{time}；快照剩余约 {minutes} 分钟。',
     legacyTitle: '发现旧版明文凭证',
     legacyDescription: '已停止读取明文。设口令后由后台加密迁移，页面不接收旧密钥或 Token。',
     lockReason: {
-      idle: '开放平台凭证已因空闲超时自动锁定',
-      sessionEnded: 'Chrome 会话已结束，需要重新解锁',
+      existing: '现有开放平台凭证仍处于锁定状态',
       manual: '开放平台凭证已手动锁定'
     },
     lockDescription: {
-      sessionEnded: '浏览器重启、扩展更新或重载会清除内存解锁材料；加密凭据仍保留。',
-      other: '页面及后台已锁定，请输入口令后继续查询。'
+      existing: '旧凭证仍锁定，请用原口令解锁一次。',
+      other: '已手动锁定，请输入口令恢复使用。'
     },
     passphrase: '保护口令',
     unlock: '解锁',
     invalidTitle: '本机凭证记录无效',
     invalidDescription: '不自动修复，以免覆盖数据。先备份浏览器配置，再到日志 → 诊断与数据彻底清除重建。',
     lockNow: '立即锁定',
-    idleTitle: '空闲自动锁定',
-    idleDescription: '默认不自动锁定；选时长后启用。MV3 休眠不清除会话解锁状态。',
-    idleLabel: '空闲自动锁定时间',
-    neverLock: '不自动锁定（默认）',
-    minutes: '{minutes} 分钟',
-    savePolicy: '保存锁定策略',
     rotateTitle: '更换本机保护口令',
     rotateDescription: '用新 salt、密钥重新加密，无需旧口令。',
     newPassphrase: '新保护口令',
@@ -86,20 +78,17 @@ export const settings = {
     enterAgain: '再次输入',
     rotate: '更换口令',
     migrate: '加密并迁移旧凭证',
-    saveEncrypted: '凭证与设置已加密保存，会话内可用。',
+    saveEncrypted: '凭证与设置已保存，本机保持解锁。',
     savedToast: '凭证与设置已保存',
-    unlockedFeedback: '凭证已解锁；刷新或后台休眠无需再输口令。',
-    migratedFeedback: '旧凭证已原位加密，会话内可用。',
-    lockedFeedback: '凭证已锁定，会话解锁状态已清除。',
+    unlockedFeedback: '已解锁，本机已记住状态。',
+    migratedFeedback: '旧凭证已加密，本机保持解锁。',
+    lockedFeedback: '已锁定，并清除记住的解锁状态。',
     rotatedFeedback: '已用新 salt 和口令重新加密。',
-    idleDisabledFeedback: '已关闭空闲自动锁定，会话内可用。',
-    idleEnabledFeedback: '开放平台凭证将在连续 {minutes} 分钟未使用后自动锁定。',
     statusError: '凭证保护状态读取失败',
     unlockError: '凭证解锁失败',
     migrateError: '旧凭证加密失败',
     lockError: '凭证锁定失败',
     rotateError: '保护口令更换失败',
-    policyError: '空闲锁定策略保存失败',
     mismatchError: '两次输入的本机保护口令不一致'
   },
   credentials: {
@@ -124,13 +113,14 @@ export const settings = {
     bundleTooLarge: '授权包 JSON 不能超过 256 KiB',
     bundleLoaded: '授权包已读入，尚未保存；设置保护口令并确认保存。',
     bundleImportError: '授权包导入失败',
-    acquired: '凭据已获取并加密保存，会话内可用。',
+    acquired: '凭据已获取并保存，本机保持解锁。',
     bundleMissing: '授权包缺少 App Key、App Secret 或 Access Token',
     iopTool: '新版 IOP 授权与续期'
   },
   security: {
     title: '安全边界',
-    description: '加密仅保护静态存储；解锁或恶意扩展仍可能泄露密钥。高安全场景请用自控 BFF。'
+    description:
+      '本机保存解锁密钥，复制浏览器配置可能解密凭证。共享设备前请手动锁定；高安全场景请用自控 BFF。'
   },
   socialBackend: {
     title: '社交发布后端',

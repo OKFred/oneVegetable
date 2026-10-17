@@ -88,12 +88,12 @@ export function clearCompletedDashboardTodos(items: readonly DashboardTodo[]): D
   return items.filter((item) => !item.completed);
 }
 
-function createDashboardTodoId(): string {
+export function createDashboardTodoId(): string {
   if (typeof globalThis.crypto.randomUUID === 'function') return globalThis.crypto.randomUUID();
   return `todo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function isDashboardTodo(value: unknown): value is DashboardTodo {
+export function isDashboardTodo(value: unknown): value is DashboardTodo {
   if (!isRecord(value)) return false;
   return (
     typeof value.id === 'string' &&

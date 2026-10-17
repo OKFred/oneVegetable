@@ -3,7 +3,14 @@ import { GatewayException } from '@one-vegetable/core/errors';
 import { AlibabaIopTokenClient, IOP_API_ORIGIN, PUBLIC_AUTH_ORIGIN } from '@one-vegetable/core/alibaba-iop';
 import { isRequestId } from '@one-vegetable/core/network';
 import { isTrustedExtensionPageSender, type ExtensionRuntimeSenderIdentity } from './trusted-runtime-sender';
-import { failure, IopAuthorizationController, isRecord, required, parseCallback } from './iop-authorization';
+import {
+  failure,
+  IopAuthorizationController,
+  isRecord,
+  required,
+  parseCallback,
+  type AuthorizationStorage
+} from './iop-authorization';
 import { TopAuthorizationTokenClient } from './top-authorization-token-client';
 import { IopApplicationReader, IOP_APPLICATION_READER_ORIGINS } from './iop-application-reader';
 import { TOP_APPLICATION_READER_ORIGINS } from './iop-authorization-storage';
@@ -11,8 +18,33 @@ import { readTopApplication } from './top-application-reader';
 
 const applicationReader = new IopApplicationReader();
 
+let storageAccessReady: Promise<void> | undefined;
+function restrictLocalStorage(): Promise<void> {
+  return (storageAccessReady ??= browser.storage.local
+    .setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
+    .catch((error: unknown) => {
+      storageAccessReady = undefined;
+      throw error;
+    }));
+}
+// Includes tab navigation and public callbacks, not only trusted page messages.
+const trustedLocalStorage: AuthorizationStorage = {
+  async get(key) {
+    await restrictLocalStorage();
+    return browser.storage.local.get(key);
+  },
+  async set(items) {
+    await restrictLocalStorage();
+    await browser.storage.local.set(items);
+  },
+  async remove(keys) {
+    await restrictLocalStorage();
+    await browser.storage.local.remove(keys);
+  }
+};
+
 const controller = new IopAuthorizationController(
-  browser.storage.local,
+  trustedLocalStorage,
   new AlibabaIopTokenClient(),
   async (url) => {
     const tab = await browser.tabs.create({ url });
@@ -21,7 +53,7 @@ const controller = new IopAuthorizationController(
   }
 );
 const topController = new IopAuthorizationController(
-  browser.storage.local,
+  trustedLocalStorage,
   new TopAuthorizationTokenClient(),
   async (url) => {
     const tab = await browser.tabs.create({ url });
@@ -36,6 +68,13 @@ browser.tabs.onUpdated.addListener((tabId, change) => {
   if (change.url) void controller.acceptCallback(change.url, tabId).catch(() => undefined);
   if (change.url) void topController.acceptCallback(change.url, tabId).catch(() => undefined);
 });
+
+/** Shared workbench manual lock; standalone lock affects only its chosen protocol. */
+export async function lockAllAlibabaAuthorizations(): Promise<void> {
+  const results = await Promise.allSettled([controller.lock(), topController.lock()]);
+  const failed = results.find((result) => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
+}
 
 /** Called only by the trusted workbench's explicit clear-all-data workflow. */
 export async function resetIopAuthorization(): Promise<void> {
@@ -90,6 +129,7 @@ export async function handleAuthorization(
         break;
       }
       case 'reauthorize':
+        await selected.status();
         await requirePermissions(protocol, selected.callbackUrl());
         await selected.reauthorize();
         data = await selected.status();
@@ -119,7 +159,7 @@ export async function handleAuthorization(
         data = await selected.export();
         break;
       case 'lock':
-        selected.lock();
+        await selected.lock();
         data = await selected.status();
         break;
       case 'cancel':

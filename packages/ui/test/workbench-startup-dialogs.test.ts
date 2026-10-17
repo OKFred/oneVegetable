@@ -72,7 +72,10 @@ describe('workbench startup dialogs', () => {
       attachTo: document.body
     });
     await flushPromises();
-    expect(document.body.textContent).toContain('not your Alibaba website password');
+    expect(document.body.textContent).toContain('not your Alibaba password');
+    expect(document.body.textContent).toContain('Unlock once');
+    expect(document.body.textContent).toContain('restarts and updates stay unlocked');
+    expect(document.body.textContent).toContain('until manual locking');
     expect(document.querySelector('[role="dialog"]')?.classList.contains('bg-background')).toBe(true);
     button('Unlock later').click();
     await flushPromises();
@@ -110,7 +113,10 @@ describe('workbench startup dialogs', () => {
       attachTo: document.body
     });
     await flushPromises();
-    expect(document.body.textContent).toContain('不是 Alibaba 网站密码');
+    expect(document.body.textContent).toContain('而非 Alibaba 密码');
+    expect(document.body.textContent).toContain('旧凭据需解锁一次');
+    expect(document.body.textContent).toContain('重启或更新不锁定');
+    expect(document.body.textContent).toContain('仅手动锁定后需再输入');
     expect(document.body.textContent).not.toContain('清理旧版本地编辑草稿');
     button('稍后解锁').click();
     await flushPromises();

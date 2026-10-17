@@ -19,6 +19,7 @@ import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 
 import SettingsView from '../src/views/SettingsView.vue';
+import { uiI18n } from '../src/i18n';
 import LocalDiagnosticsPanel from '../src/components/LocalDiagnosticsPanel.vue';
 import { provideServices } from '../src/lib/services';
 import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
@@ -36,11 +37,12 @@ const migrateVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus(
 const createVault = vi.fn((_passphrase: string, _settings: GatewaySettings) =>
   Promise.resolve(vaultStatus('unlocked'))
 );
-const updateVaultPolicy = vi.fn((idleTimeoutMinutes: number) =>
-  Promise.resolve(vaultStatus('unlocked', idleTimeoutMinutes))
-);
+const updateVaultPolicy = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
+const rotateVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus('unlocked')));
+const manualLockVault = vi.fn(() => Promise.resolve(vaultStatus('locked')));
 
 beforeEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   localStorage.clear();
   document.documentElement.classList.remove('dark');
   delete document.documentElement.dataset.theme;
@@ -56,6 +58,7 @@ function mountView(
     beforeInspect?: () => Promise<void>;
     logs?: boolean;
     initialSettings?: Partial<GatewaySettings>;
+    initialVaultStatus?: CredentialVaultStatus;
     save?: (settings: GatewaySettings) => Promise<void>;
     acquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
   } = {}
@@ -112,7 +115,10 @@ function mountView(
           ? {
               vault: {
                 status: () =>
-                  Promise.resolve(vaultStatus(currentVaultState ?? 'empty', 0, initialLockReason)),
+                  Promise.resolve(
+                    options.initialVaultStatus ??
+                      vaultStatus(currentVaultState ?? 'empty', 0, initialLockReason)
+                  ),
                 create: createVault,
                 migrate: migrateVault,
                 unlock: async (passphrase) => {
@@ -121,9 +127,9 @@ function mountView(
                 },
                 lock: () => {
                   currentVaultState = 'locked';
-                  return Promise.resolve(vaultStatus('locked'));
+                  return manualLockVault();
                 },
-                rotate: () => Promise.resolve(vaultStatus('unlocked')),
+                rotate: rotateVault,
                 updatePolicy: updateVaultPolicy
               }
             }
@@ -161,6 +167,7 @@ async function confirmSettingsAction(title: string): Promise<void> {
 }
 
 afterEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   vi.restoreAllMocks();
   anchorClick.mockClear();
   createObjectUrl.mockClear();
@@ -170,6 +177,8 @@ afterEach(() => {
   migrateVault.mockClear();
   createVault.mockClear();
   updateVaultPolicy.mockClear();
+  rotateVault.mockClear();
+  manualLockVault.mockClear();
 });
 
 describe('SettingsView diagnostics', () => {
@@ -471,27 +480,74 @@ describe('SettingsView diagnostics', () => {
     expect(guide.text()).not.toContain('artifacts/openapi-auth/credentials.json');
     wrapper.unmount();
   });
-  it('shows no idle auto-lock as the default and explains the six-character minimum', async () => {
-    const wrapper = mountView('extension', 'unlocked');
+  it('removes idle controls and countdowns even from an old timed status, while retaining passphrase setup', async () => {
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      initialVaultStatus: vaultStatus('unlocked', 30)
+    });
     await flushPromises();
 
-    expect((wrapper.get('select[aria-label="空闲自动锁定时间"]').element as HTMLSelectElement).value).toBe(
-      '0'
-    );
-    expect(wrapper.get('select[aria-label="空闲自动锁定时间"]').text()).toContain('不自动锁定（默认）');
+    expect(wrapper.find('select[aria-label="空闲自动锁定时间"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('保存锁定策略');
+    expect(wrapper.text()).not.toContain('快照剩余');
+    expect(wrapper.text()).toContain('本机记住解锁');
+    expect(wrapper.text()).toContain('重启浏览器或更新扩展不锁定');
+    expect(wrapper.text()).toContain('之后仅手动锁定需再输入');
     expect(wrapper.get('input[aria-label="新保护口令"]').attributes('placeholder')).toBe('至少 6 位');
     expect(wrapper.text()).not.toContain('UTF-8 字节');
-
-    const policyButton = wrapper
-      .findAll('button')
-      .find((candidate) => candidate.text().includes('保存锁定策略'));
-    if (!policyButton) throw new Error('Missing idle-lock policy button');
-    await policyButton.trigger('click');
-    await vi.waitFor(() => {
-      expect(updateVaultPolicy).toHaveBeenCalledWith(0);
-      expect(wrapper.text()).toContain('已关闭空闲自动锁定');
-    });
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(wrapper.text()).toContain('Unlocking survives browser restarts and extension updates');
+    expect(wrapper.text()).toContain('only manual locking requires it again');
+    expect(wrapper.text()).toContain('No idle lock');
+    expect(wrapper.text()).toContain('Lock now');
+    expect(wrapper.find('select[aria-label="Automatic idle lock duration"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Save lock policy');
+    expect(wrapper.text()).not.toContain('minutes left');
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
     wrapper.unmount();
+  });
+
+  it('keeps manual locking and requires the passphrase before unlocking again', async () => {
+    const wrapper = mountView('extension', 'unlocked');
+    await flushPromises();
+    const lockButton = wrapper.findAll('button').find((candidate) => candidate.text() === '立即锁定');
+    if (!lockButton) throw new Error('Missing manual lock button');
+    await lockButton.trigger('click');
+    await flushPromises();
+    expect(manualLockVault).toHaveBeenCalledOnce();
+    expect(wrapper.text()).toContain('已手动锁定');
+    expect(wrapper.text()).toContain('请输入口令恢复使用');
+    expect(wrapper.find('input[aria-label="App Key"]').exists()).toBe(false);
+    expect(unlockVault).not.toHaveBeenCalled();
+    await wrapper.get('input[aria-label="保护口令"]').setValue('test-only-passphrase');
+    const unlockButton = wrapper.findAll('button').find((candidate) => candidate.text() === '解锁');
+    if (!unlockButton) throw new Error('Missing unlock button');
+    await unlockButton.trigger('click');
+    await flushPromises();
+    expect(unlockVault).toHaveBeenCalledWith('test-only-passphrase');
+    expect(wrapper.text()).toContain('本机已记住状态');
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('retains unsaved passphrase protection and rotation without a lock policy', async () => {
+    const editing = new UnsavedEditingService();
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { editing });
+    await flushPromises();
+    expect(editing.dirty.value).toBe(false);
+    await wrapper.get('input[aria-label="新保护口令"]').setValue('rotated-test-only');
+    await wrapper.get('input[aria-label="确认新保护口令"]').setValue('rotated-test-only');
+    expect(editing.dirty.value).toBe(true);
+    const rotateButton = wrapper.findAll('button').find((candidate) => candidate.text() === '更换口令');
+    if (!rotateButton) throw new Error('Missing passphrase rotation button');
+    await rotateButton.trigger('click');
+    await flushPromises();
+    expect(rotateVault).toHaveBeenCalledWith('rotated-test-only');
+    expect(editing.dirty.value).toBe(false);
+    expect((wrapper.get('input[aria-label="新保护口令"]').element as HTMLInputElement).value).toBe('');
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
+    wrapper.unmount();
+    editing.dispose();
   });
 
   it('saves credentials and settings in one action when creating the extension vault', async () => {
@@ -509,7 +565,7 @@ describe('SettingsView diagnostics', () => {
       '123456',
       expect.objectContaining({ endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' })
     );
-    expect(wrapper.text()).toContain('凭证与设置已加密保存');
+    expect(wrapper.text()).toContain('凭证与设置已保存');
     expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
     expect(wrapper.text()).not.toContain('加密保存凭证');
     wrapper.unmount();
@@ -538,7 +594,7 @@ describe('SettingsView diagnostics', () => {
     if (!save) throw new Error('Missing settings save button');
     await save.trigger('click');
     await flushPromises();
-    expect(wrapper.text()).toContain('凭证与设置已加密保存');
+    expect(wrapper.text()).toContain('凭证与设置已保存');
     expect(finishInspect).toBeUndefined();
     expect(inspections).toBe(0);
     expect(editing.dirty.value).toBe(false);
@@ -803,7 +859,7 @@ describe('SettingsView diagnostics', () => {
     await wrapper.get('input[aria-label="保护口令"]').setValue('correct-vault-password');
     await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('凭证已解锁');
+      expect(wrapper.text()).toContain('已解锁，本机已记住状态');
     });
     expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
       'configured-key'
@@ -811,28 +867,25 @@ describe('SettingsView diagnostics', () => {
     expect(unlockVault).toHaveBeenCalledWith('correct-vault-password');
     expect(wrapper.get('input[aria-label="App Secret"]').attributes('placeholder')).toContain('留空保持不变');
 
-    await wrapper.get('select[aria-label="空闲自动锁定时间"]').setValue('30');
-    const policyButton = wrapper
-      .findAll('button')
-      .find((candidate) => candidate.text().includes('保存锁定策略'));
-    if (!policyButton) throw new Error('Missing idle-lock policy button');
-    await policyButton.trigger('click');
-    await vi.waitFor(() => {
-      expect(updateVaultPolicy).toHaveBeenCalledWith(30);
-      expect(wrapper.text()).toContain('连续 30 分钟未使用后自动锁定');
-    });
+    expect(wrapper.find('select[aria-label="空闲自动锁定时间"]').exists()).toBe(false);
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 
-  it('explains that ending the Chrome session cleared only the in-memory unlock material', async () => {
-    const wrapper = mountView('extension', 'locked', 'session-ended');
-    await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Chrome 会话已结束，需要重新解锁');
-    });
-    expect(wrapper.text()).toContain('会清除内存解锁材料');
-    expect(wrapper.text()).toContain('加密凭据仍保留');
-    wrapper.unmount();
-  });
+  it.each(['session-ended', 'idle'] as const)(
+    'requires one unlock for an existing %s record without claiming new auto-lock behavior',
+    async (reason) => {
+      const wrapper = mountView('extension', 'locked', reason);
+      await vi.waitFor(() => {
+        expect(wrapper.text()).toContain('现有开放平台凭证仍处于锁定状态');
+      });
+      expect(wrapper.text()).toContain('旧凭证仍锁定');
+      expect(wrapper.text()).toContain('请用原口令解锁一次');
+      expect(unlockVault).not.toHaveBeenCalled();
+      expect(wrapper.text()).not.toContain('会清除内存解锁材料');
+      wrapper.unmount();
+    }
+  );
 
   it('requires matching passphrases before migrating legacy plaintext credentials', async () => {
     const wrapper = mountView('extension', 'legacy');
@@ -851,7 +904,7 @@ describe('SettingsView diagnostics', () => {
     await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
       expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');
-      expect(wrapper.text()).toContain('旧凭证已原位加密，会话内可用');
+      expect(wrapper.text()).toContain('旧凭证已加密，本机保持解锁');
     });
     wrapper.unmount();
   });

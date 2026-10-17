@@ -23,6 +23,10 @@ import credentialFixtures from '../../../mock/data/node-gateway-credentials.json
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
+import { s3LocalStore } from '../lib/s3-local-store';
+import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
+
+const setSyncAccessLevel = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 const state = vi.hoisted<{
   local: Record<string, unknown>;
@@ -49,11 +53,19 @@ vi.mock('wxt/browser', () => {
       Reflect.deleteProperty(state[name], key);
       return Promise.resolve();
     },
+    clear: () => {
+      state[name] = {};
+      return Promise.resolve();
+    },
     setAccessLevel: () => Promise.resolve()
   });
   return {
     browser: {
-      storage: { local: area('local'), session: area('session') },
+      storage: {
+        local: area('local'),
+        session: area('session'),
+        sync: { setAccessLevel: setSyncAccessLevel }
+      },
       tabs: { onUpdated: { addListener: vi.fn() }, create: vi.fn() },
       permissions: { contains: () => Promise.resolve(true) },
       runtime: {
@@ -171,6 +183,42 @@ afterEach(() => {
 });
 
 describe('extension background protocol persistence and dispatch', () => {
+  it('waits for an in-flight passphrase rotation before clearing persistent credentials', async () => {
+    await create();
+    vi.spyOn(ExtensionVideoUploadRepository.prototype, 'clearAll').mockResolvedValue();
+    vi.spyOn(s3LocalStore, 'remove').mockResolvedValue();
+    vi.spyOn(s3LocalStore, 'removeKey').mockResolvedValue();
+    let release: (() => void) | undefined;
+    let entered: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const original = crypto.subtle.deriveBits.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, 'deriveBits').mockImplementation(async (...args) => {
+      entered?.();
+      await blocked;
+      return original(...args);
+    });
+    const rotating = send('credential-vault-request', 'rotate', { newPassphrase: '654321' });
+    await started;
+    const resetting = sendEnvelope({ kind: 's3-storage-request', operation: 'reset', payload: {} });
+    release?.();
+    expect(await rotating).toMatchObject({ ok: true });
+    expect(await resetting).toMatchObject({ ok: true });
+    expect(state.local).toEqual({});
+    expect(state.session).toEqual({});
+    expect(await send('credential-vault-request', 'status')).toMatchObject({
+      ok: true,
+      data: { state: 'empty' }
+    });
+  });
+  it('restricts dashboard sync storage to trusted extension contexts', () => {
+    expect(setSyncAccessLevel).toHaveBeenCalledWith({ accessLevel: 'TRUSTED_CONTEXTS' });
+  });
+
   it('allows a bound guide to recheck and open the local IOP tool, never to acquire, export or save credentials', async () => {
     vi.spyOn(ExtensionAlibabaCredentialAcquisitionController.prototype, 'isGuideSender').mockReturnValue(
       true
@@ -1005,13 +1053,13 @@ describe('extension background protocol persistence and dispatch', () => {
     expect((await sendEnvelope({ kind: 'gallery-transfer-context' })).data).toEqual(galleryBefore.data);
     const record = state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord;
     const session = new ExtensionCredentialVaultSession({
-      get: (key) => Promise.resolve({ [key]: state.session[key] }),
+      get: (key) => Promise.resolve({ [key]: state.local[key] }),
       set: (items) => {
-        Object.assign(state.session, items);
+        Object.assign(state.local, items);
         return Promise.resolve();
       },
       remove: (key) => {
-        Reflect.deleteProperty(state.session, key);
+        Reflect.deleteProperty(state.local, key);
         return Promise.resolve();
       }
     });

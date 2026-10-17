@@ -2,12 +2,15 @@ import { browser } from 'wxt/browser';
 import {
   IOP_VAULT_KEY,
   IOP_RECEIPT_KEY,
+  IOP_SESSION_KEY,
   TOP_VAULT_KEY,
   TOP_RECEIPT_KEY,
+  TOP_SESSION_KEY,
   IOP_APPLICATION_READER_ORIGINS,
   TOP_APPLICATION_READER_ORIGINS
 } from '../../lib/iop-authorization-storage';
 import { IOP_API_ORIGIN } from '@one-vegetable/core/alibaba-iop';
+import { CREDENTIAL_VAULT_SESSION_STORAGE_KEY } from '../../lib/credential-vault-storage';
 
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
@@ -62,6 +65,20 @@ import {
 } from '@one-vegetable/core/runtime';
 import type { AlibabaAuthorizationsSummary } from '@one-vegetable/core';
 import '@one-vegetable/ui/styles.css';
+import type { DashboardTodoRepository } from '@one-vegetable/ui';
+
+let dashboardTodosPromise: Promise<DashboardTodoRepository> | undefined;
+function getDashboardTodos(): Promise<DashboardTodoRepository> {
+  return (dashboardTodosPromise ??= import('@one-vegetable/ui').then((ui) => {
+    const local = ui.browserTodoStorage();
+    return ui.createSyncTodoRepository({
+      sync: browser.storage.sync,
+      changes: browser.storage.onChanged,
+      ...(local ? { local } : {}),
+      prepare: () => browser.storage.sync.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
+    });
+  }));
+}
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import {
   createExtensionOperationAvailabilityClient,
@@ -461,13 +478,16 @@ const localData: LocalDataRepository = {
       ...Object.entries(local).filter(
         ([key]) =>
           key !== SETTINGS_STORAGE_KEY &&
+          key !== CREDENTIAL_VAULT_SESSION_STORAGE_KEY &&
           key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
           key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY &&
           key !== EXTENSION_S3_STORAGE_KEY &&
           key !== IOP_VAULT_KEY &&
           key !== IOP_RECEIPT_KEY &&
+          key !== IOP_SESSION_KEY &&
           key !== TOP_VAULT_KEY &&
-          key !== TOP_RECEIPT_KEY
+          key !== TOP_RECEIPT_KEY &&
+          key !== TOP_SESSION_KEY
       ),
       ...localEntries.filter(
         ([key]) => key === APP_PREFERENCES_STORAGE_KEY || key === LEGACY_APP_PREFERENCES_STORAGE_KEY
@@ -502,9 +522,12 @@ const localData: LocalDataRepository = {
           Number(TOP_VAULT_KEY in local),
         approximateBytes: approximateStorageBytes({
           settings: local[SETTINGS_STORAGE_KEY],
+          recovery: local[CREDENTIAL_VAULT_SESSION_STORAGE_KEY],
           iop: local[IOP_VAULT_KEY],
+          iopRecovery: local[IOP_SESSION_KEY],
           receipt: local[IOP_RECEIPT_KEY],
           top: local[TOP_VAULT_KEY],
+          topRecovery: local[TOP_SESSION_KEY],
           topReceipt: local[TOP_RECEIPT_KEY]
         }),
         sensitive: true,
@@ -559,14 +582,13 @@ const localData: LocalDataRepository = {
     return createLocalDataInventory(categories);
   },
   async clearAll() {
+    // Fail closed before deleting local data if synchronized todo cleanup is incomplete.
+    await (await getDashboardTodos()).clearAll();
     await resetLocalTemplates();
     await requestS3('reset', {});
     const granted = await permissions.list();
-    await Promise.all([
-      browser.storage.local.clear(),
-      browser.storage.session.clear(),
-      ...granted.map((origin) => browser.permissions.remove({ origins: [origin] }))
-    ]);
+    // The trusted reset operation clears extension storage in its vault queue.
+    await Promise.all(granted.map((origin) => browser.permissions.remove({ origins: [origin] })));
     globalThis.localStorage.clear();
   }
 };
@@ -894,6 +916,7 @@ async function mountOptionsApp(): Promise<void> {
     videoUploads: { videoUpload: requestVideoUpload },
     permissions,
     localData,
+    todos: await getDashboardTodos(),
     onboarding,
     reviewPrompt,
     vault,

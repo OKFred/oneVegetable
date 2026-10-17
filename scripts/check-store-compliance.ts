@@ -95,6 +95,18 @@ if ((listing.permissions ?? []).some((permission) => !permission.justification?.
   errors.push('every store permission declaration needs a justification');
 }
 if (listing.permissions?.length !== 4) errors.push('store permission inventory must contain four entries');
+const storageDisclosure =
+  listing.permissions?.find((entry) => entry.permission === 'storage')?.justification ?? '';
+for (const phrase of [
+  'Derived unlock keys persist in trusted chrome.storage.local',
+  'no idle auto-lock',
+  'Manual locking removes recovery keys',
+  'Copying the full browser profile may decrypt credentials',
+  'Only to-dos use chrome.storage.sync',
+  'credentials and recovery keys never sync'
+]) {
+  if (!storageDisclosure.includes(phrase)) errors.push('storage permission disclosure is missing: ' + phrase);
+}
 const enabledRealMutations = listing.submissionStatus?.enabledRealMutations ?? [];
 if (
   JSON.stringify(enabledRealMutations) !==
@@ -208,7 +220,10 @@ for (const [file, content] of [
     'AES-256-GCM',
     'TRUSTED_CONTEXTS',
     '口令不保存',
-    '自动锁定',
+    '不再提供空闲自动锁定选项',
+    '派生密钥材料持久写入',
+    '复制完整浏览器配置文件',
+    '工作台手动锁定',
     '当前 Chrome 会话',
     '浏览器重启',
     '平台草稿',
@@ -233,7 +248,10 @@ for (const [file, content] of [
     'passphrase is not stored',
     'current Chrome session',
     'browser restarts',
-    'selected idle timeout expires',
+    'no idle auto-lock option',
+    'derived key material is persisted',
+    'copying the full browser profile',
+    'Manual workbench lock',
     'Platform drafts',
     'new-product publishing',
     'not validated'

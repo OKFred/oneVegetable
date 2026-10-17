@@ -3,6 +3,8 @@ import {
   IopAuthorizationController,
   IOP_VAULT_KEY,
   IOP_RECEIPT_KEY,
+  IOP_SESSION_KEY,
+  TOP_SESSION_KEY,
   failure,
   parseCallback
 } from '../lib/iop-authorization';
@@ -14,6 +16,7 @@ import {
   parseAlibabaTokenResponse
 } from '@one-vegetable/core/credential-bundle';
 import tokens from '../../../mock/data/alibaba-auth/iop-token-responses.json';
+import { sealAlibabaAuthorization } from '@one-vegetable/core/alibaba-authorization-vault';
 
 const bundle = parseAlibabaOpenApiCredentialBundle({
   ...credential.oauthBundle,
@@ -64,6 +67,135 @@ function setup(protocol: 'top' | 'iop' = 'iop') {
     }
   };
 }
+describe('durable standalone authorization sessions', () => {
+  it.each(['top', 'iop'] as const)(
+    'restores %s without idle expiry and stays locked after manual lock and restart',
+    async (protocol) => {
+      const test = setup(protocol);
+      const key = protocol === 'top' ? TOP_SESSION_KEY : IOP_SESSION_KEY;
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      expect(test.data[key]).toBeDefined();
+      for (const secret of [
+        '123456',
+        bundle.application.appSecret,
+        bundle.oauth.accessToken,
+        tokens.success.refresh_token
+      ])
+        expect(JSON.stringify(test.data)).not.toContain(secret);
+      test.advance();
+      const restarted = test.create();
+      expect((await restarted.export()).protocol).toBe(protocol);
+      expect(JSON.stringify(await restarted.status())).not.toContain('sessionKeyMaterial');
+      await restarted.lock();
+      expect(test.data[key]).toBeUndefined();
+      await expect(test.controller.export()).rejects.toThrow('AUTH_VAULT_LOCKED');
+      expect((await test.create().status()).state).toBe('locked');
+      await restarted.unlock('123456');
+      expect((await test.create().status()).state).toBe('ready');
+      await restarted.clear();
+      expect(test.data[key]).toBeUndefined();
+      expect((await test.create().status()).state).toBe('empty');
+    }
+  );
+
+  it.each(['top', 'iop'] as const)(
+    'migrates old %s records only after the original passphrase unlocks successfully',
+    async (protocol) => {
+      const test = setup(protocol);
+      const key = protocol === 'top' ? TOP_SESSION_KEY : IOP_SESSION_KEY;
+      const vaultKey = protocol === 'top' ? TOP_VAULT_KEY : IOP_VAULT_KEY;
+      const old = await sealAlibabaAuthorization({ ...bundle, protocol }, 'old-password', protocol);
+      test.data[vaultKey] = old.record;
+      expect((await test.controller.status()).state).toBe('locked');
+      await expect(test.controller.unlock('wrong-password')).rejects.toThrow('AUTH_UNLOCK_FAILED');
+      expect(test.data[key]).toBeUndefined();
+      test.write.mockRejectedValueOnce(new Error('quota'));
+      await expect(test.controller.unlock('old-password')).rejects.toThrow('AUTH_ACTION_FAILED');
+      expect((await test.controller.status()).state).toBe('locked');
+      expect(test.data[vaultKey]).toEqual(old.record);
+      expect(test.data[key]).toBeUndefined();
+      await test.controller.unlock('old-password');
+      expect(test.data[vaultKey]).toEqual(old.record);
+      expect((await test.create().status()).state).toBe('ready');
+    }
+  );
+});
+
+describe('restoration races and storage failures', () => {
+  it.each(['lock', 'clear'] as const)('cannot revive a delayed status after %s', async (action) => {
+    const test = setup();
+    await test.controller.import(bundle, '123456');
+    const restarted = test.create();
+    const saved = structuredClone(test.data[IOP_SESSION_KEY]);
+    let release!: () => void;
+    let reached!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reading = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    let delayed = false;
+    vi.spyOn(test.storage, 'get').mockImplementation(async (key) => {
+      if (key === IOP_SESSION_KEY && !delayed) {
+        delayed = true;
+        reached();
+        await gate;
+        return { [key]: saved };
+      }
+      return { [key]: test.data[key] };
+    });
+    const status = restarted.status();
+    await reading;
+    await restarted[action]();
+    release();
+    expect((await status).state).toBe(action === 'lock' ? 'locked' : 'empty');
+    await expect(restarted.export()).rejects.toThrow('AUTH_VAULT_LOCKED');
+    expect(test.data[IOP_SESSION_KEY]).toBeUndefined();
+  });
+
+  it.each(['top', 'iop'] as const)(
+    'surfaces %s lock/clear deletion failures and retries without restoring memory',
+    async (protocol) => {
+      const test = setup(protocol);
+      const key = protocol === 'top' ? TOP_SESSION_KEY : IOP_SESSION_KEY;
+      await test.controller.import({ ...bundle, protocol }, '123456');
+      const remove = vi.spyOn(test.storage, 'remove');
+      remove.mockRejectedValueOnce(new Error('disk failure'));
+      await expect(test.controller.lock()).rejects.toThrow('AUTH_ACTION_FAILED');
+      expect(test.data[key]).toBeDefined();
+      expect((await test.controller.status()).state).toBe('locked');
+      await test.controller.lock();
+      expect((await test.create().status()).state).toBe('locked');
+      await test.controller.unlock('123456');
+      remove.mockRejectedValueOnce(new Error('disk failure'));
+      await expect(test.controller.clear()).rejects.toThrow('AUTH_ACTION_FAILED');
+      expect((await test.controller.status()).state).toBe('locked');
+      await test.controller.clear();
+      expect(test.data[key]).toBeUndefined();
+    }
+  );
+
+  it('rejects mismatched or corrupt recovery material without overwriting ciphertext', async () => {
+    const test = setup();
+    await test.controller.import(bundle, '123456');
+    const record = structuredClone(test.data[IOP_VAULT_KEY]);
+    const saved = test.data[IOP_SESSION_KEY] as Record<string, unknown>;
+    for (const invalid of [
+      { ...saved, protocol: 'top' },
+      { ...saved, iv: 'wrong' },
+      { ...saved, sessionKeyMaterial: 'invalid' }
+    ]) {
+      test.data[IOP_SESSION_KEY] = invalid;
+      expect((await test.controller.status()).state).toBe('locked');
+      expect(test.data[IOP_VAULT_KEY]).toEqual(record);
+      await expect(test.controller.export()).rejects.toThrow('AUTH_VAULT_LOCKED');
+    }
+    await test.controller.unlock('123456');
+    expect((await test.controller.status()).state).toBe('ready');
+  });
+});
+
 describe('independent IOP authorization', () => {
   it('binds state, exact callback and tab, consuming a code once without storing it', async () => {
     const s = setup();
@@ -93,15 +225,14 @@ describe('independent IOP authorization', () => {
     expect((await s.controller.status()).errorCode).toBe('AUTH_TASK_EXPIRED');
     expect(s.client.request).not.toHaveBeenCalled();
   });
-  it('persists rotated tokens encrypted, and requires unlock after worker restart', async () => {
+  it('persists rotated tokens encrypted and restores them after worker restart', async () => {
     const s = setup();
     await s.controller.import(bundle, '123456');
     await s.controller.refresh();
     expect((await s.controller.export()).oauth.accessToken).toBe(token.accessToken);
     expect(JSON.stringify(s.data)).not.toContain(token.accessToken);
     const restarted = s.create();
-    expect((await restarted.status()).state).toBe('locked');
-    await restarted.unlock('123456');
+    expect((await restarted.status()).state).toBe('ready');
     expect((await restarted.export()).oauth.accessToken).toBe(token.accessToken);
   });
   it('retains old tokens after an explicit rejection; unknown results cannot retry or export', async () => {
@@ -155,6 +286,7 @@ describe('standalone TOP/IOP protocol isolation and reauthorization', () => {
       const test = setup(protocol);
       await expect(test.controller.export()).rejects.toThrow('AUTH_VAULT_LOCKED');
       await test.controller.import({ ...bundle, protocol }, '123456');
+      await test.controller.lock();
       const restarted = test.create();
       await expect(restarted.export()).rejects.toThrow('AUTH_VAULT_LOCKED');
       expect((await restarted.status()).state).toBe('locked');
@@ -173,8 +305,6 @@ describe('standalone TOP/IOP protocol isolation and reauthorization', () => {
       const receiptKey = protocol === 'top' ? TOP_RECEIPT_KEY : IOP_RECEIPT_KEY;
       const receipt = structuredClone(test.data[receiptKey]);
       const restarted = test.create();
-      expect((await restarted.status()).state).toBe('locked');
-      await restarted.unlock('123456');
       expect((await restarted.status()).state).toBe('unknown');
       await expect(restarted.export()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
       await expect(restarted.refresh()).rejects.toThrow('AUTH_REFRESH_RESULT_UNKNOWN');
@@ -300,9 +430,7 @@ describe('standalone TOP/IOP protocol isolation and reauthorization', () => {
       expect((test.data[vaultKey] as { iv: string }).iv).not.toBe(original.iv);
       expect((await test.controller.status()).canReauthorize).toBe(true);
       const restarted = test.create();
-      expect((await restarted.status()).canReauthorize).toBe(false);
-      await expect(restarted.reauthorize()).rejects.toThrow('AUTH_VAULT_LOCKED');
-      await restarted.unlock('123456');
+      expect((await restarted.status()).canReauthorize).toBe(true);
       expect((await restarted.export()).oauth.accessToken).toBe(token.accessToken);
     }
   );
@@ -326,7 +454,7 @@ describe('standalone TOP/IOP protocol isolation and reauthorization', () => {
       }).toString();
       await test.controller.acceptCallback(callback.href, 42);
       expect(test.data[vaultKey]).toMatchObject({ salt: original.salt });
-      test.controller.lock();
+      await test.controller.lock();
       expect((await test.controller.status()).canReauthorize).toBe(false);
       await expect(test.controller.start(input)).rejects.toThrow();
       await test.controller.unlock('123456');

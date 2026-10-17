@@ -3,6 +3,7 @@ import fixture from '../../../mock/data/node-gateway-credentials.json';
 import { parseAlibabaOpenApiCredentialBundle } from '../src/alibaba-credential-bundle';
 import {
   openAlibabaAuthorization,
+  restoreAlibabaAuthorization,
   resealAlibabaAuthorization,
   sealAlibabaAuthorization
 } from '../src/alibaba-authorization-vault';
@@ -27,6 +28,54 @@ describe('independent encrypted IOP authorization store', () => {
 });
 
 describe('protocol-isolated authorization encryption', () => {
+  it.each(['top', 'iop'] as const)(
+    'restores %s from derived material, keeping the runtime key non-exportable',
+    async (protocol) => {
+      const bundle = parseAlibabaOpenApiCredentialBundle({ ...fixture.oauthBundle, protocol });
+      const sealed = await sealAlibabaAuthorization(bundle, '123456', protocol);
+      const restored = await restoreAlibabaAuthorization(sealed.record, sealed.sessionKeyMaterial, protocol);
+      expect(restored.bundle).toEqual(bundle);
+      expect(restored.key.extractable).toBe(false);
+      expect(atob(restored.sessionKeyMaterial)).toHaveLength(32);
+      await expect(crypto.subtle.exportKey('raw', restored.key)).rejects.toThrow();
+      await expect(
+        restoreAlibabaAuthorization(
+          sealed.record,
+          sealed.sessionKeyMaterial,
+          protocol === 'top' ? 'iop' : 'top'
+        )
+      ).rejects.toThrow('AUTH_UNLOCK_FAILED');
+      for (const material of ['', 'invalid', btoa('0'.repeat(32))])
+        await expect(restoreAlibabaAuthorization(sealed.record, material, protocol)).rejects.toThrow(
+          'AUTH_UNLOCK_FAILED'
+        );
+    }
+  );
+
+  it('keeps the original PBKDF2 deriveKey ciphertext decryptable with its old passphrase', async () => {
+    const bundle = parseAlibabaOpenApiCredentialBundle({ ...fixture.oauthBundle, protocol: 'iop' });
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const encode = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+    const material = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode('123456'),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    const oldKey = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', hash: 'SHA-256', iterations: 600_000, salt },
+      material,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+    const record = await resealAlibabaAuthorization(bundle, oldKey, encode(salt));
+    const opened = await openAlibabaAuthorization(record, '123456');
+    expect(opened.record).toEqual(record);
+    expect((await restoreAlibabaAuthorization(record, opened.sessionKeyMaterial)).bundle).toEqual(bundle);
+  });
+
   it('round trips a legacy TOP bundle only with explicit TOP AAD, including resealing', async () => {
     const bundle = parseAlibabaOpenApiCredentialBundle(fixture.oauthBundle);
     const sealed = await sealAlibabaAuthorization(bundle, '123456', 'top');

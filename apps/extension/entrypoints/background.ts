@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import {
   handleAuthorization,
   handlePublicAuthorization,
+  lockAllAlibabaAuthorizations,
   resetIopAuthorization
 } from '../lib/iop-authorization-runtime';
 import { defineBackground } from 'wxt/utils/define-background';
@@ -201,10 +202,16 @@ export default defineBackground({
       s3LocalStore,
       (origins) => browser.permissions.contains({ origins }),
       undefined,
-      async () => {
-        await resetIopAuthorization();
-        await new ExtensionVideoUploadRepository().clearAll();
-      }
+      () =>
+        serializeVaultOperation(async () => {
+          // Wait for in-flight create/unlock/rotation, then clear inside the same
+          // boundary. A late passphrase derivation cannot restore deleted credentials.
+          await vaultSession.lock('manual');
+          await resetIopAuthorization();
+          await new ExtensionVideoUploadRepository().clearAll();
+          await browser.storage.local.clear();
+          await browser.storage.session.clear();
+        })
     );
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -326,11 +333,12 @@ export default defineBackground({
 async function restrictStorageToTrustedContexts(): Promise<void> {
   await Promise.all([
     browser.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
+    browser.storage.sync.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
     browser.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
   ]);
 }
 
-const vaultSession = new ExtensionCredentialVaultSession({
+const vaultSession = new ExtensionCredentialVaultSession(browser.storage.local, Date.now, {
   get: (key) => browser.storage.session.get(key),
   set: (items) => browser.storage.session.set(items),
   remove: (key) => browser.storage.session.remove(key)
@@ -662,6 +670,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     }
     case 'lock':
       await vaultSession.lock('manual');
+      await lockAllAlibabaAuthorizations();
       return credentialVaultStatus(state);
     case 'create': {
       if (state.kind !== 'empty') {
@@ -717,7 +726,8 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     }
     case 'update-policy': {
       const current = await getUnlockedVault(state);
-      const policy = { idleTimeoutMinutes: requiredNumber(asRecord(payload), 'idleTimeoutMinutes') };
+      // Kept for older clients; automatic idle locking is no longer supported.
+      const policy = { idleTimeoutMinutes: 0 };
       const record = await resealCredentialVault(current.record, current.settings, current.key, policy);
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
       await vaultSession.update({ ...current, record, policy });
