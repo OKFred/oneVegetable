@@ -284,6 +284,21 @@ async function openTool(protocol: 'top' | 'iop' = 'iop', discover = false): Prom
   return page;
 }
 
+async function prepareProtection(tool: Page, passphrase = '123456'): Promise<void> {
+  const protection = tool.locator('#protectionSection');
+  await expect
+    .poll(async () => (await protection.isVisible()) || (await tool.locator('#discover').isEnabled()))
+    .toBe(true);
+  if (await protection.isVisible()) {
+    await tool.locator('#sharedPassphrase').fill(passphrase);
+    await tool.locator('#protectionForm button[type="submit"]').click();
+    await expect(protection).toBeHidden();
+  }
+  await expect(tool.locator('#sharedPassphrase')).toHaveValue('');
+  await expect(tool.locator('#passphrase')).toBeHidden();
+  await expect(tool.getByRole('dialog')).toHaveCount(0);
+}
+
 async function authorize(): Promise<Page> {
   const site = await context.newPage();
   await site.goto(PUBLIC_AUTH_ORIGIN);
@@ -297,12 +312,12 @@ async function authorize(): Promise<Page> {
   await expect(tool.locator('#language')).toBeVisible();
   if ((await tool.locator('html').getAttribute('lang')) === 'en-US') await tool.locator('#language').click();
   await expect(tool.locator('#status')).toHaveText('尚未配置');
+  await prepareProtection(tool);
   await tool.locator('#manualEntry').click();
   await tool.locator('#appName').fill('Merchant fixture');
   await tool.locator('#appKey').fill(credentials.oauthBundle.application.appKey);
   await tool.locator('#appSecret').fill(credentials.oauthBundle.application.appSecret);
   if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
-  await tool.locator('#passphrase').fill('123456');
   await tool.locator('#registered').check();
   const oauthEvent = context.waitForEvent('page');
   await tool.locator('#start').click();
@@ -406,6 +421,13 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
 test('new users see a guided next action, not technical fields or disabled renewal controls', async () => {
   const tool = await openTool();
   await expect(tool.locator('#status')).toHaveText('尚未配置');
+  await expect(tool.locator('#protectionForm')).toBeVisible();
+  await expect(tool.locator('#sharedPassphrase')).not.toHaveAttribute('required', '');
+  await expect(tool.locator('#discover')).toBeDisabled();
+  await expect(tool.locator('#manualEntry')).toBeDisabled();
+  await expect(tool.locator('#chooseFile')).toBeDisabled();
+  expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+  await prepareProtection(tool);
   await expect(tool.locator('#connectStep')).toHaveAttribute('aria-current', 'step');
   await expect(tool.locator('#discover')).toHaveText('前往 Alibaba 连接');
   await expect(tool.locator('#appKey')).toBeHidden();
@@ -458,7 +480,6 @@ test('public pages cannot export; mismatched callback does not call the platform
   expect(creates).toBe(1);
   // TOP imports stay rejected instead of silently changing this independent vault.
   if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
-  await tool.locator('#passphrase').fill('123456');
   await tool.locator('#file').setInputFiles({
     name: 'credentials.json',
     mimeType: 'application/json',
@@ -490,6 +511,18 @@ for (const language of ['en', 'zh'] as const) {
       document.documentElement.append(orphan);
     });
     const tool = await openTool('iop', true);
+    const protection = tool.locator('#protectionSection');
+    await expect(protection).toBeVisible();
+    await expect(alibaba.locator('body')).toHaveAttribute('data-center-clicks', '0');
+    const password = tool.locator('#sharedPassphrase');
+    await expect(password).toHaveAttribute('minlength', '6');
+    await password.fill('12345');
+    await tool.locator('#protectionForm button[type="submit"]').click();
+    await expect(protection).toBeVisible();
+    await expect(alibaba.locator('body')).toHaveAttribute('data-center-clicks', '0');
+    expect(creates + topCreates).toBe(0);
+    const oauthEvent = context.waitForEvent('page');
+    await prepareProtection(tool);
     await expect(alibaba.locator('[data-orphaned-guide]')).toHaveCount(0);
     await expect(alibaba.locator('body')).toHaveAttribute('data-center-clicks', '1');
     await expect(alibaba.locator('body')).toHaveAttribute('data-center-pointer', 'true');
@@ -502,21 +535,7 @@ for (const language of ['en', 'zh'] as const) {
     await expect(application.locator('body')).toHaveAttribute('data-reset-clicks', '0');
     await expect(tool.locator('#appName')).toHaveValue(standalone.iop.appName);
     await expect(tool.locator('#appKey')).toHaveValue(standalone.iop.appKey);
-    await expect(tool.locator('#appSecret')).toHaveValue(standalone.iop.appSecret);
     await expect(tool.locator('#callback')).toHaveValue(standalone.iop.callbackUrl);
-    const protection = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
-    // Discovery has a 30-second bound, including iframe navigation and visible clicks.
-    await expect(protection).toBeVisible({ timeout: 35_000 });
-    expect(creates + topCreates).toBe(0);
-    const password = protection.locator('input[type="password"]');
-    await expect(password).toHaveAttribute('minlength', '6');
-    await password.fill('12345');
-    await protection.getByRole('button', { name: '开始授权', exact: true }).click();
-    await expect(protection).toBeVisible();
-    expect(creates).toBe(0);
-    await password.fill('123456');
-    const oauthEvent = context.waitForEvent('page');
-    await protection.getByRole('button', { name: '开始授权', exact: true }).click();
     const oauth = await oauthEvent;
     await oauth.waitForURL(`chrome-extension://${extensionId}/iop-approval.html**`);
     const query = new URL(oauth.url()).searchParams;
@@ -555,9 +574,13 @@ test('the Open Platform guide stays inside mobile and desktop viewports with a f
   const alibaba = await context.newPage();
   await alibaba.goto('https://i.alibaba.com/explore/open-api');
   const tool = await openTool('iop', true);
-  const protection = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
-  await expect(protection).toBeVisible({ timeout: 35_000 });
-  await protection.getByRole('button', { name: '取消', exact: true }).click();
+  const oauthEvent = context.waitForEvent('page');
+  await prepareProtection(tool);
+  const oauth = await oauthEvent;
+  await oauth.waitForURL(`chrome-extension://${extensionId}/iop-approval.html**`);
+  await expect(oauth.locator('#approve')).toBeVisible();
+  // Shared protection is already prepared; no second password prompt or automatic approval.
+  await expect(tool.getByRole('dialog')).toHaveCount(0);
   const guide = alibaba.locator('#one-vegetable-alibaba-developer-guide');
   const panel = guide.locator('.panel');
   const header = guide.locator('.header');
@@ -658,6 +681,7 @@ for (const [mode, expected] of [
     const alibaba = await context.newPage();
     await alibaba.goto(`https://i.alibaba.com/explore/open-api?mode=${mode}`);
     const tool = await openTool('iop', true);
+    await prepareProtection(tool);
     await expect(tool.locator('#error')).toContainText(expected, { timeout: 40_000 });
     const statusWithError = await tool.locator('#status').boundingBox();
     await expect(tool.getByRole('dialog')).toHaveCount(0);
@@ -716,6 +740,7 @@ for (const legacyPage of ['none', 'not-found'] as const) {
       await expect(legacy).toHaveTitle(/404 Not Found/u);
     }
     const tool = await openTool('top', true);
+    await prepareProtection(tool);
     await expect(tool.locator('#error')).toContainText('无法从已打开的旧 TOP 应用页读取完整信息');
     await expect(tool.locator('#discover')).toBeVisible();
     await expect(tool.locator('#discover')).toBeEnabled();
@@ -761,6 +786,7 @@ for (const legacyPage of ['none', 'not-found'] as const) {
 test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, refresh and clear', async () => {
   const iop = await authorize();
   const top = await openTool('top');
+  await prepareProtection(top);
   await expect(top.locator('#title')).toHaveText('连接 Alibaba · 旧版应用');
   await expect(top.locator('#status')).toHaveText('尚未配置');
   await expect(top.locator('#discover')).toBeVisible();
@@ -772,8 +798,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
     appName: standalone.top.appName,
     appKey: standalone.top.appKey,
     appSecret: standalone.top.appSecret,
-    callback: standalone.top.callbackUrl,
-    passphrase: '123456'
+    callback: standalone.top.callbackUrl
   }))
     await top.locator(`#${id}`).fill(value);
   await top.locator('#registered').check();
@@ -847,7 +872,6 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
     await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   }
   if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
-  await tool.locator('#passphrase').fill('123456');
   await tool.locator('#file').setInputFiles({
     name: 'existing-iop.json',
     mimeType: 'application/json',
@@ -898,6 +922,8 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   const advanced = tool.locator('#advancedJson');
   const editor = advanced.locator('#credentialJson');
   const importButton = advanced.locator('#importJson');
+  await expect(importButton).toBeDisabled();
+  await prepareProtection(tool);
   const storage = async (): Promise<Record<string, unknown>> =>
     worker.evaluate(
       async (keys) => {
@@ -970,16 +996,12 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
     await expect(tool.getByRole('dialog')).toHaveCount(0);
   }
   expect(await storage()).toEqual({});
-  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
-  await tool.locator('#passphrase').fill('123456');
   await editor.fill(JSON.stringify(jsonImports.invalidIop));
   await importButton.click();
   if ((await tool.getByRole('dialog').count()) > 0) await confirmToolAction(tool);
   await expect(tool.locator('#error')).toBeVisible();
   expect(await storage()).toEqual({});
   await assertPrivateMessages();
-  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
-  await tool.locator('#passphrase').fill('123456');
   await editor.fill(JSON.stringify(jsonImports.iop, null, 2));
   await importButton.click();
   await expect(tool.getByRole('dialog')).toBeVisible();
@@ -1003,31 +1025,22 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   await expect(tool.locator('#protocolTop')).toHaveAttribute('aria-pressed', 'true');
   await expect(tool.locator('#status')).toHaveText('尚未配置');
   await openExample('top');
-  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
-  await tool.locator('#passphrase').fill('123456');
+  await expect(tool.locator('#protectionSection')).toBeHidden();
   await editor.fill(JSON.stringify(jsonImports.iop));
   await importButton.click();
   if ((await tool.getByRole('dialog').count()) > 0) await confirmToolAction(tool);
   await expect(tool.locator('#error')).toContainText('TOP');
   await assertPrivateMessages();
   expect(await storage()).toEqual(iopStored);
-  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
-  await tool.locator('#passphrase').fill('');
   await editor.fill(JSON.stringify(jsonImports.top, null, 2));
   await importButton.click();
   await expect(tool.getByRole('dialog')).toBeVisible();
   expect(await storage()).toEqual(iopStored);
   await assertPrivateMessages();
   await confirmToolAction(tool);
-  const protection = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
-  await expect(protection).toBeVisible();
-  await protection
-    .getByLabel('本机保护口令（至少 6 个字符，不是 Alibaba 密码）', { exact: true })
-    .fill('123456');
-  expect(await storage()).toEqual(iopStored);
-  await assertPrivateMessages();
-  await protection.getByRole('button', { name: '加密并导入', exact: true }).click();
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
+  await expect(tool.locator('#protectionSection')).toBeHidden();
+  await expect(tool.getByRole('dialog')).toHaveCount(0);
   expect(await editor.inputValue()).not.toContain(jsonImports.top.oauth.accessToken);
   expect(await editor.inputValue()).not.toContain(jsonImports.top.application.appSecret);
   await expect(advanced.locator('pre')).not.toContainText(jsonImports.top.oauth.accessToken);
@@ -1090,10 +1103,10 @@ test('authorization action buttons align in both languages and themes, with read
   expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
-test('passphrase modal has spaced, aligned primary and secondary actions in both languages, themes and mobile', async () => {
+test('shared protection preflight has readable optional controls in both languages, themes and mobile', async () => {
   const tool = await openTool();
-  await tool.locator('#advancedJson summary').click();
-  await tool.locator('#credentialJson').fill(JSON.stringify(jsonImports.iop));
+  const protection = tool.locator('#protectionSection');
+  await expect(protection).toBeVisible();
   for (const width of [1440, 390]) {
     await tool.setViewportSize({ width, height: 900 });
     for (const colorScheme of ['light', 'dark'] as const) {
@@ -1101,17 +1114,18 @@ test('passphrase modal has spaced, aligned primary and secondary actions in both
       for (const language of ['zh-CN', 'en-US'] as const) {
         if ((await tool.locator('html').getAttribute('lang')) !== language)
           await tool.locator('#language').click();
-        await tool.locator('#importJson').click();
-        await confirmToolAction(tool);
-        const dialog = tool.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(dialog.locator('input')).toBeFocused();
-        const layout = await dialog.evaluate((element) => {
+        await expect(protection).toBeVisible();
+        await protection.locator('label').click();
+        await expect(tool.locator('#sharedPassphrase')).toBeFocused();
+        await expect(tool.locator('#sharedPassphrase')).not.toHaveAttribute('required', '');
+        await expect(tool.locator('#discover')).toBeDisabled();
+        await expect(tool.getByRole('dialog')).toHaveCount(0);
+        const layout = await protection.evaluate((element) => {
           const input = element.querySelector('input');
           const actions = element.querySelector('.actions');
           if (!input || !actions) throw new Error('Missing passphrase controls');
           const buttons = [...actions.querySelectorAll('button')];
-          const primary = buttons[1];
+          const primary = buttons[0];
           if (!primary) throw new Error('Missing primary action');
           const rect = element.getBoundingClientRect();
           return {
@@ -1122,33 +1136,34 @@ test('passphrase modal has spaced, aligned primary and secondary actions in both
             background: getComputedStyle(primary).backgroundColor,
             foreground: getComputedStyle(primary).color,
             fits: rect.left >= 0 && rect.right <= innerWidth && element.scrollWidth <= element.clientWidth,
-            described: element.getAttribute('aria-describedby') === 'authorization-passphrase-description'
+            described: Boolean(element.querySelector('p.muted')?.textContent.trim()),
+            labelled: element.querySelector('label')?.getAttribute('for') === input.id
           };
         });
         // Chromium can report fractional pixels just below the CSS value.
-        expect(Math.round(layout.gap)).toBeGreaterThanOrEqual(24);
+        expect(Math.round(layout.gap)).toBeGreaterThanOrEqual(0);
         expect(Math.round(Math.min(...layout.heights))).toBeGreaterThanOrEqual(44);
         expect(Math.max(...layout.heights) - Math.min(...layout.heights)).toBeLessThanOrEqual(1);
         expect(Math.max(...layout.tops) - Math.min(...layout.tops)).toBeLessThanOrEqual(1);
-        expect(layout.align).toBe('flex-end');
+        expect(layout.align).toBe('normal');
         expect(layout.background).toBe('rgb(21, 93, 233)');
         expect(layout.foreground).toBe('rgb(255, 255, 255)');
         expect(layout.fits).toBe(true);
         expect(layout.described).toBe(true);
-        await dialog.screenshot({
+        expect(layout.labelled).toBe(true);
+        await protection.screenshot({
           path: resolve(UI_SCREENSHOT_DIRECTORY, `passphrase-${language}-${colorScheme}-${width}.png`),
           animations: 'disabled'
         });
-        await tool.keyboard.press('Escape');
-        await expect(dialog).toHaveCount(0);
       }
     }
   }
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
 
-test('TOP bundle file import requests a passphrase and reauthorizes without the legacy console', async () => {
+test('TOP bundle file import reuses prepared protection and reauthorizes without the legacy console', async () => {
   const tool = await openTool('top');
+  await prepareProtection(tool);
   const bundle = {
     ...jsonImports.top,
     application: { ...jsonImports.top.application, ...standalone.top }
@@ -1159,11 +1174,9 @@ test('TOP bundle file import requests a passphrase and reauthorizes without the 
     buffer: Buffer.from(JSON.stringify(bundle))
   });
   await confirmToolAction(tool);
-  const dialog = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
-  await expect(dialog).toBeVisible();
-  await dialog.locator('input').fill('123456');
-  await dialog.getByRole('button', { name: '加密并导入', exact: true }).click();
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
+  await expect(tool.getByRole('dialog')).toHaveCount(0);
+  await expect(tool.locator('#protectionSection')).toBeHidden();
   expect(creates + topCreates).toBe(0);
   const oauthEvent = context.waitForEvent('page');
   await tool.locator('#reauthorize').click();
@@ -1189,6 +1202,7 @@ test('TOP bundle file import requests a passphrase and reauthorizes without the 
 
 test('a superseded file read cannot prompt for or replace the latest selected TOP bundle', async () => {
   const tool = await openTool('top');
+  await prepareProtection(tool);
   await tool.evaluate(() => {
     // The wrapper below deliberately forwards its File receiver with .call(this).
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -1234,10 +1248,8 @@ test('a superseded file read cannot prompt for or replace the latest selected TO
     document.dispatchEvent(new Event('release-file:latest.json'));
   });
   await confirmToolAction(tool);
-  const dialog = tool.getByRole('dialog', { name: '为授权文件设置保护口令' });
-  await dialog.locator('input').fill('123456');
-  await dialog.getByRole('button', { name: '加密并导入', exact: true }).click();
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
+  await expect(tool.getByRole('dialog')).toHaveCount(0);
   expect(await exportBundle(tool)).toMatchObject(latest);
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
@@ -1514,14 +1526,14 @@ test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session s
     });
   });
   const workbench = await openWorkbenchSettings();
-  await expect(workbench.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
+  await expect(workbench.getByTestId('authorization-profile-editor')).toHaveValue('top');
   await workbench.getByLabel('导入授权包 JSON').setInputFiles({
     name: 'legacy-top.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(credentials.oauthBundle))
   });
   await expect(workbench.getByLabel('App Key')).toHaveValue(credentials.manual.appKey);
-  await expect(workbench.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
+  await expect(workbench.getByTestId('authorization-profile-editor')).toHaveValue('top');
   await expect(workbench.getByTestId('iop-protocol-notice')).toHaveCount(0);
   expect(await sendWorkbench(workbench, 'credential-vault-request', 'status')).toMatchObject({
     data: { state: 'empty' }
@@ -1532,7 +1544,7 @@ test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session s
   await workbench.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(workbench.getByLabel('Access Token')).toHaveValue('');
   await workbench.reload();
-  await expect(workbench.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
+  await expect(workbench.getByTestId('authorization-profile-editor')).toHaveValue('top');
   expect(await sendWorkbench(workbench, 'credential-vault-request', 'get-settings')).toMatchObject({
     data: { protocol: 'top', endpoint: 'https://eco.taobao.com/router/rest', appSecret: '', accessToken: '' }
   });
@@ -1571,10 +1583,10 @@ for (const [body, code] of [
       })
     ).toMatchObject({ ok: true });
     await workbench.reload();
-    const iopProfile = workbench.getByTestId('select-authorization-iop');
+    const iopProfile = workbench.getByTestId('authorization-profile-editor');
     await expect(iopProfile).toBeEnabled();
-    await iopProfile.click();
-    await expect(iopProfile).toHaveAttribute('aria-pressed', 'true');
+    await iopProfile.selectOption('iop');
+    await expect(iopProfile).toHaveValue('iop');
     await expect(workbench.getByTestId('iop-protocol-notice')).toContainText(
       '已验收的 Schema 发布、存草稿、更新'
     );
@@ -1591,7 +1603,7 @@ for (const [body, code] of [
     await expect(choice).toHaveCount(0);
     expect(context.pages()).toHaveLength(pagesBeforeChoice);
     expect(reads + topCalls + creates + refreshes).toBe(0);
-    await expect(iopProfile).toHaveAttribute('aria-pressed', 'true');
+    await expect(iopProfile).toHaveValue('iop');
     expect(await sendWorkbench(workbench, 'credential-vault-request', 'get-settings')).toMatchObject({
       data: { protocol: 'iop', appKey: credentials.manual.appKey }
     });

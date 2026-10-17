@@ -28,7 +28,7 @@ Choose **Connect Alibaba account**, select a new or existing legacy app, then fo
 - 导出文件始终为 `credentialInfo.json`，包含明文密钥。请返回设置，选择匹配的 TOP/IOP 档案导入。两份工作台配置齐全后默认按能力路由；系统不验证两份授权是否属于同一商家，用户须自行核实。
 - App Secret、Token、口令及 OAuth code 不写入诊断、控制台或引导截图。完整包仅按用户选择加密保存到受信扩展存储，或明确导出到本机。
 
-This extension-only flow needs no additional Node, Worker or Pages deployment. It reuses the current Alibaba tab, visually clicks only Application center and View, and reads the current app into the local tool. Set a local encryption passphrase on first use, then personally approve OAuth on Alibaba. Existing registered Callbacks are preserved. TOP and IOP remain separate; configure both for automatic capability routing, only when they belong to the same merchant. No automatic agreement acceptance, secret reset, credential logging or CAPTCHA bypass. Not affiliated with alibaba.com; read platform rules before use.
+This extension-only flow needs no additional Node, Worker or Pages deployment. It reuses the current Alibaba tab, visually clicks only Application center and View, and reads the current app into the local tool. Optionally set a local protection passphrase before choosing TOP/IOP, then personally approve OAuth on Alibaba. Leave it blank for device protection; Settings reuses the same protection. Existing registered Callbacks are preserved. TOP and IOP remain separate; configure both for automatic capability routing, only when they belong to the same merchant. No automatic agreement acceptance, secret reset, credential logging or CAPTCHA bypass. Not affiliated with alibaba.com; read platform rules before use.
 
 ## 使用方式
 
@@ -46,7 +46,7 @@ This extension-only flow needs no additional Node, Worker or Pages deployment. I
 ## 存储与协议边界
 
 - `protocol: "iop"` 明确标识导出包。没有标识的历史包仍按 TOP 兼容，不能仅凭 AppKey 或 Token 推断 IOP。
-- 独立 IOP 授权包使用 PBKDF2 + AES-256-GCM 保存在受信扩展本地存储；口令和解密密钥不持久化，后台重启后需要解锁该工具。它与工作台的 TOP 保险库无关。
+- TOP/IOP 授权包分别加密保存在受信扩展本地存储，与工作台复用本机保护。先可选设置口令，再选择新版/旧版；留空使用随机本机密钥。解锁后保存本机恢复材料，浏览器重启无需重复输入。手动锁定仍需显式解锁；复制完整浏览器配置可能读取凭据。旧独立保险库不被覆盖，原口令保持兼容。
 - 工作台新增双协议兼容：历史包及未指定协议的设置仍使用 TOP；新版 IOP 包可以显式导入，但不会自动替换旧用户配置。两种应用的 AppKey、Secret、Token 不可混用。当前 IOP 仅开放已适配的商品、分组、Schema 渲染和指定图片分组查询；其他能力及真实写入明确禁用，详见 [双协议兼容](alibaba-gateway-protocols.md)。
 - Token 续期可能轮换 Refresh Token，需同步替换其他使用该授权包的服务。后台不静默续期、重试或重放商品任务。
 - 发出交换/续期前先保存脱敏执行意图。结果不明时禁止再次续期和导出旧包；重新授权。仅本机保存失败且新凭据仍在内存时，可“再次保存”，不会再调用平台。

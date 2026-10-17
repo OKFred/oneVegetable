@@ -3,7 +3,6 @@ import { IOP_API_ORIGIN, PUBLIC_AUTH_CALLBACK } from '@one-vegetable/core/alibab
 import { parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
 import {
   confirmAction,
-  requestAuthorizationPassphrase,
   transientMessage,
   el,
   errorText,
@@ -35,9 +34,13 @@ el('#app').innerHTML =
 <details id="manual" hidden><summary data-text="callbackFallback"></summary><label for="callbackPaste" data-text="paste"></label><input id="callbackPaste" type="password" autocomplete="off" data-feedback-redact><button id="receive" data-text="receive"></button></details>
 </section><p id="notice" role="status"></p><p id="error" role="alert"></p>
 <section id="alternatives"><h2 data-text="otherWays"></h2><div class="actions"><button id="manualEntry" data-text="manualAuthorization" disabled></button><button type="button" id="chooseFile" disabled></button><input id="file" type="file" accept="application/json,.json" hidden></div></section>
-<section id="manualSection" hidden><form id="form"><fieldset id="fields"><div class="grid"><div><label for="appName" data-text="appName"></label><input id="appName" required maxlength="256"></div><div><label for="appKey" data-text="appKey"></label><input id="appKey" required maxlength="256" autocomplete="off"></div></div><label for="appSecret" data-text="appSecret"></label><input id="appSecret" type="password" autocomplete="off" required maxlength="4096" data-feedback-redact><label for="callback" data-text="callback"></label><input id="callback" type="url" required><label for="passphrase" data-text="passphrase"></label><input id="passphrase" type="password" autocomplete="off" minlength="6" maxlength="256" required data-feedback-redact><label><input id="registered" type="checkbox" required><span data-text="registered"></span></label><div class="actions"><button type="submit" id="start" class="primary" data-text="start"></button></div></fieldset></form></section>
+<section id="manualSection" hidden><form id="form"><fieldset id="fields"><div class="grid"><div><label for="appName" data-text="appName"></label><input id="appName" required maxlength="256"></div><div><label for="appKey" data-text="appKey"></label><input id="appKey" required maxlength="256" autocomplete="off"></div></div><label for="appSecret" data-text="appSecret"></label><input id="appSecret" type="password" autocomplete="off" required maxlength="4096" data-feedback-redact><label for="callback" data-text="callback"></label><input id="callback" type="url" required><input id="passphrase" type="hidden" value=""><label><input id="registered" type="checkbox" required><span data-text="registered"></span></label><div class="actions"><button type="submit" id="start" class="primary" data-text="start"></button></div></fieldset></form></section>
 <section><details id="connectionDetails"><summary data-text="connectionDetails"></summary><dl><dt data-text="appName"></dt><dd id="name">—</dd><dt>App Key</dt><dd id="key">—</dd><dt data-text="expires"></dt><dd id="expires">—</dd><dt data-text="refreshExpires"></dt><dd id="refreshExpires">—</dd></dl><p id="boundary" class="muted"></p><div class="actions"><button id="lock" data-text="lock" disabled></button><button id="clear" disabled></button></div></details></section>
 <section><details id="protocolSettings"><summary data-text="protocolChoice"></summary><div class="protocol-choices"><button id="protocolIop" data-text="protocolIop"></button><button id="protocolTop" data-text="protocolTop"></button></div><p class="muted" data-text="dualGuide"></p><p id="protocolHelp"></p><a id="center" class="button" href="https://i.alibaba.com/explore/open-api" target="_blank" rel="noopener noreferrer" data-text="center"></a></details></section>${footer}`;
+el('.connection-steps').insertAdjacentHTML(
+  'beforebegin',
+  '<section id="protectionSection" hidden><h2 data-text="localProtection"></h2><p class="muted" data-text="optionalProtectionHelp"></p><form id="protectionForm"><label for="sharedPassphrase" id="sharedPassphraseLabel"></label><input id="sharedPassphrase" type="password" autocomplete="current-password" maxlength="256" data-feedback-redact><div class="actions"><button type="submit" class="primary" data-text="continueAuthorization"></button></div></form></section>'
+);
 el('footer').insertAdjacentHTML(
   'beforebegin',
   `<section><details id="advancedJson"><summary data-text="advancedJson"></summary><p class="muted" data-text="jsonHelp"></p><label for="credentialJson" data-text="jsonLabel"></label><div class="authorization-json-editor" data-feedback-redact><pre aria-hidden="true"><code id="jsonHighlight"></code></pre><textarea id="credentialJson" maxlength="65536" spellcheck="false" autocomplete="off" autocapitalize="off" data-feedback-redact></textarea></div><div class="actions"><button type="button" id="importJson" data-text="importJson"></button></div></details></section>`
@@ -60,6 +63,10 @@ const tokenOrigin = (): string => (protocol === 'iop' ? IOP_API_ORIGIN : 'https:
 let jsonExample = '';
 let exported = false;
 let statusUnavailable = false;
+let protectionState = '';
+let deviceProtected = false;
+let protectionReady = false;
+let discoverAfterProtection = false;
 function resetJsonEditor(): void {
   jsonExample = authorizationJsonExample(protocol);
   el<HTMLTextAreaElement>('#credentialJson').value = jsonExample;
@@ -92,6 +99,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 function render(): void {
+  el('#protectionSection').hidden = protectionReady || protectionState === '';
+  el('#sharedPassphraseLabel').textContent = t(
+    protectionState === 'locked' && !deviceProtected ? 'passphrase' : 'optionalPassphrase'
+  );
+  const protectionInput = el<HTMLInputElement>('#sharedPassphrase');
+  protectionInput.hidden = protectionState === 'locked' && deviceProtected;
+  protectionInput.required = protectionState === 'locked' && !deviceProtected;
+  protectionInput.minLength = 6;
+  protectionInput.disabled = busy;
   for (const close of document.querySelectorAll('.authorization-toast-close'))
     close.setAttribute('aria-label', t('dismissNotification'));
   el('#protocolBadge').textContent = `oneVegetable · ${protocol.toUpperCase()}`;
@@ -102,16 +118,16 @@ function render(): void {
   el('#center').hidden = protocol === 'top';
   el('#topManualGuide').hidden = protocol !== 'top';
   el<HTMLButtonElement>('#discover').disabled =
-    busy || summary?.state === 'waiting' || summary?.state === 'busy';
+    !protectionReady || busy || summary?.state === 'waiting' || summary?.state === 'busy';
   el<HTMLButtonElement>('#manualEntry').disabled = el<HTMLButtonElement>('#discover').disabled;
   el<HTMLButtonElement>('#chooseFile').disabled = !summary || el<HTMLButtonElement>('#discover').disabled;
   el('#chooseFile').textContent = t(protocol === 'top' ? 'importTop' : 'import');
   el('#clear').textContent = t(protocol === 'top' ? 'clearTop' : 'clear');
   const waiting = summary?.state === 'waiting' || summary?.state === 'busy';
   el('#retryStatus').hidden = !statusUnavailable;
-  el<HTMLFieldSetElement>('#fields').disabled = !summary || busy || waiting;
+  el<HTMLFieldSetElement>('#fields').disabled = !protectionReady || !summary || busy || waiting;
   el<HTMLTextAreaElement>('#credentialJson').disabled = !summary || busy || waiting;
-  el<HTMLButtonElement>('#importJson').disabled = !summary || busy || waiting;
+  el<HTMLButtonElement>('#importJson').disabled = !protectionReady || !summary || busy || waiting;
   for (const selected of ['top', 'iop'] as const) {
     const button = el<HTMLButtonElement>(selected === 'top' ? '#protocolTop' : '#protocolIop');
     button.setAttribute('aria-pressed', String(selected === protocol));
@@ -151,6 +167,8 @@ function render(): void {
   }
   el('#discover').hidden = !['empty', 'unknown'].includes(summary.state);
   el('#unlockForm').hidden = summary.state !== 'locked';
+  el<HTMLInputElement>('#unlockPassphrase').hidden = deviceProtected;
+  el<HTMLInputElement>('#unlockPassphrase').required = !deviceProtected;
   el<HTMLButtonElement>('#unlock').disabled = busy;
   el<HTMLInputElement>('#unlockPassphrase').disabled = busy;
   el('#export').hidden = summary.state !== 'ready';
@@ -178,8 +196,15 @@ async function update(): Promise<void> {
   const sequence = ++statusSequence;
   clearTimeout(timer);
   const selected = protocol;
-  const data = await request('status', {}, selected);
+  const protection = await request('protection-status', {}, selected);
   if (selected !== protocol || sequence !== statusSequence || pageClosed) return;
+  if (!isRecord(protection) || typeof protection.state !== 'string') throw new Error('AUTH_ACTION_FAILED');
+  protectionState = protection.state;
+  deviceProtected = protection.deviceProtected === true;
+  protectionReady = protection.state === 'unlocked';
+  const data = await request('status', {}, selected);
+  // pagehide also advances statusSequence, invalidating this second awaited read.
+  if (selected !== protocol || sequence !== statusSequence) return;
   if (
     !isRecord(data) ||
     typeof data.state !== 'string' ||
@@ -290,7 +315,7 @@ function startDiscoveredApplication(passphrase = ''): void {
 }
 
 async function discoverApplication(): Promise<void> {
-  if (busy || summary?.state === 'waiting' || summary?.state === 'busy') return;
+  if (!protectionReady || busy || summary?.state === 'waiting' || summary?.state === 'busy') return;
   busy = true;
   transientMessage('', true);
   transientMessage(t('discoveringApplication'));
@@ -317,8 +342,7 @@ async function discoverApplication(): Promise<void> {
     transientMessage(t('applicationRead'));
     busy = false;
     await update();
-    if (summary?.canReauthorize) startDiscoveredApplication();
-    else requestAuthorizationPassphrase(startDiscoveredApplication);
+    startDiscoveredApplication();
   } catch (error) {
     if (protocol === 'top') el<HTMLDetailsElement>('#topManualGuide').open = true;
     showError(error);
@@ -328,6 +352,18 @@ async function discoverApplication(): Promise<void> {
   }
 }
 
+el<HTMLFormElement>('#protectionForm').onsubmit = (event) => {
+  event.preventDefault();
+  const input = el<HTMLInputElement>('#sharedPassphrase');
+  const passphrase = input.value;
+  input.value = '';
+  void run('prepare-protection', { passphrase }).then((saved) => {
+    if (saved && protectionReady && discoverAfterProtection) {
+      discoverAfterProtection = false;
+      void discoverApplication();
+    }
+  });
+};
 el('#manualEntry').onclick = () => {
   el('#manualSection').hidden = false;
   if (protocol === 'top') el<HTMLDetailsElement>('#topManualGuide').open = true;
@@ -483,8 +519,7 @@ function importBundleText(text: string, selected = protocol): void {
       });
     };
     const passphrase = value('passphrase');
-    if (passphrase) perform(passphrase);
-    else requestAuthorizationPassphrase(perform, t('importPassphraseHelp'), t('protectAndImport'));
+    perform(passphrase);
   });
 }
 el('#importJson').onclick = () => {
@@ -568,7 +603,7 @@ window.addEventListener('pagehide', () => {
   clearTimeout(timer);
   jsonInput.value = '';
   highlightAuthorizationJson(el('#jsonHighlight'), '');
-  for (const id of ['appSecret', 'passphrase', 'unlockPassphrase', 'callbackPaste'])
+  for (const id of ['appSecret', 'passphrase', 'unlockPassphrase', 'sharedPassphrase', 'callbackPaste'])
     el<HTMLInputElement>(`#${id}`).value = '';
 });
 transientMessage('');
@@ -586,7 +621,9 @@ if (new URL(location.href).searchParams.get('discover') === '1') {
     })
     .then(async (allowed) => {
       if (selected !== protocol) return;
-      if (allowed) await discoverApplication();
+      await update();
+      if (allowed && protectionReady) await discoverApplication();
+      else if (allowed) discoverAfterProtection = true;
       else transientMessage(t('discoverPermission'));
     })
     .catch(showError);

@@ -25,6 +25,8 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   document.body.innerHTML = '<main id="app"></main>';
   let state: IopAuthorizationSummary['state'] = 'ready';
   mocks.send.mockImplementation((message: { action: string }) => {
+    if (message.action === 'protection-status')
+      return Promise.resolve({ ok: true, data: { state: 'unlocked', deviceProtected: false } });
     if (message.action === 'unlock') state = 'ready';
     return Promise.resolve({
       ok: true,
@@ -60,7 +62,9 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   expect(input.disabled).toBe(false);
   expect(input.value).toBe('test-only-passphrase');
   expect(document.activeElement).toBe(input);
-  expect(mocks.send.mock.calls.every(([message]) => message.action === 'status')).toBe(true);
+  expect(
+    mocks.send.mock.calls.every(([message]) => ['status', 'protection-status'].includes(message.action))
+  ).toBe(true);
   form.dispatchEvent(new Event('submit', { cancelable: true }));
   await vi.advanceTimersByTimeAsync(0);
   expect(mocks.send).toHaveBeenCalledWith(

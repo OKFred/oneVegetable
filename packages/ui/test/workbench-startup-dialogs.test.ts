@@ -49,6 +49,25 @@ function button(label: string): HTMLButtonElement {
 }
 
 describe('workbench startup dialogs', () => {
+  it('offers explicit blank unlock for locked device protection without auto-unlocking on status or focus', async () => {
+    const repository = vault('locked');
+    repository.status.mockResolvedValue({ ...status('locked'), deviceProtected: true });
+    const wrapper = mount(WorkbenchStartupDialogs, {
+      props: { vault: repository, extension: true },
+      attachTo: document.body
+    });
+    await flushPromises();
+    expect(document.querySelector('input[type="password"]')).toBeNull();
+    expect(document.body.textContent).toContain('本机密钥');
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(repository.unlock).not.toHaveBeenCalled();
+    button('解锁').click();
+    await flushPromises();
+    expect(repository.unlock).toHaveBeenCalledExactlyOnceWith('');
+    expect(wrapper.emitted('ready')).toHaveLength(1);
+    wrapper.unmount();
+  });
   it('notices another tab unlocking on focus without collecting a passphrase', async () => {
     const repository = vault('locked');
     const wrapper = mount(WorkbenchStartupDialogs, {

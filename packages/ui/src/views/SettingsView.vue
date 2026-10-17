@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   Database,
   ExternalLink,
@@ -49,6 +49,7 @@ import { useUnsavedEditing, VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing'
 import { parseAuthorizationSummary, useAlibabaAuthorizations } from '../lib/alibaba-authorizations';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import { openAlibabaAuthorizationTool } from '../lib/alibaba-authorization-tool';
+import { CREDENTIAL_VAULT_CHANGED_EVENT } from '../lib/credential-vault-events';
 
 const {
   settings,
@@ -137,9 +138,94 @@ const settingsEditable = computed(
     (mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked')
 );
 onMounted(async () => {
+  if (mode === 'extension' && vault) {
+    globalThis.addEventListener(CREDENTIAL_VAULT_CHANGED_EVENT, scheduleVaultReload);
+    globalThis.document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
   settingsInitialization = initializeView();
   await settingsInitialization;
 });
+let vaultReloadTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+let vaultReloading = false;
+let viewAlive = true;
+onBeforeUnmount(() => {
+  viewAlive = false;
+  globalThis.clearTimeout(vaultReloadTimer);
+  globalThis.removeEventListener(CREDENTIAL_VAULT_CHANGED_EVENT, scheduleVaultReload);
+  globalThis.document.removeEventListener('visibilitychange', handleVisibilityChange);
+});
+
+function handleVisibilityChange(): void {
+  if (globalThis.document.visibilityState === 'visible') scheduleVaultReload();
+}
+
+function scheduleVaultReload(): void {
+  if (!viewAlive || mode !== 'extension' || !vault) return;
+  globalThis.clearTimeout(vaultReloadTimer);
+  vaultReloadTimer = globalThis.setTimeout(() => {
+    void reloadExternalVault();
+  }, 50);
+}
+
+async function reloadExternalVault(): Promise<void> {
+  if (!viewAlive || !vault) return;
+  if (
+    !settingsLoaded.value ||
+    vaultReloading ||
+    vaultBusy.value ||
+    saving.value ||
+    switchingAuthorization.value
+  ) {
+    scheduleVaultReload();
+    return;
+  }
+  vaultReloading = true;
+  try {
+    const next = await vault.status();
+    if (!isViewAlive()) return;
+    applyVaultStatus(next);
+    if (next.state === 'locked' || next.state === 'invalid') {
+      authorizations.reset();
+      // Do not discard drafts: the locked view hides them until explicit unlock.
+      return;
+    }
+    if (hasVaultEdits()) return;
+    const protocol = selectedProtocol.value;
+    const nextSettings = await loadSelectedAuthorization();
+    if (!isViewAlive() || hasVaultEdits() || vaultOperationPending() || selectedProtocol.value !== protocol)
+      return;
+    model.value = nextSettings;
+    clearVaultPassphrases();
+    credentialEditing.markClean();
+    passphraseEditing.markClean();
+    await authorizations.reload();
+  } catch {
+    if (isViewAlive()) vaultError.value = new Error(t('settings.vault.statusError'));
+  } finally {
+    vaultReloading = false;
+  }
+}
+
+// Read mutable reactive state afresh after async operations rather than relying on TS narrowing.
+function isViewAlive(): boolean {
+  return viewAlive;
+}
+function hasVaultEdits(): boolean {
+  return Boolean(
+    credentialEditing.dirty.value ||
+    passphraseEditing.dirty.value ||
+    vaultPassphrase.value ||
+    vaultPassphraseConfirmation.value
+  );
+}
+function vaultOperationPending(): boolean {
+  return vaultBusy.value || saving.value || switchingAuthorization.value;
+}
+
+function handleProtectionPrepared(status: CredentialVaultStatus): void {
+  applyVaultStatus(status);
+  scheduleVaultReload();
+}
 
 async function initializeView(): Promise<void> {
   const storedSettings = await initializeSettings();
@@ -164,15 +250,19 @@ async function save(): Promise<void> {
   vaultError.value = null;
   try {
     if (mode === 'extension' && vault && vaultStatus.value?.state === 'empty') {
-      assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
+      assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value, true);
+      const hadPassphrase = Boolean(vaultPassphrase.value);
       const created = await vault.create(vaultPassphrase.value, model.value);
       applyVaultStatus(created);
       clearVaultPassphrases();
       model.value = await loadSelectedAuthorization();
       credentialEditing.markClean();
       const configured = created.hasAppKey && created.hasAppSecret && created.hasAccessToken;
-      feedback.value = t(configured ? 'settings.vault.saveEncrypted' : 'settings.vault.passphraseSaved');
-      toast.success(t(configured ? 'settings.vault.savedToast' : 'settings.vault.passphraseSaved'));
+      const protectionSaved = hadPassphrase
+        ? t('settings.vault.passphraseSaved')
+        : credentialText('protectionSaved');
+      feedback.value = configured ? t('settings.vault.saveEncrypted') : protectionSaved;
+      toast.success(configured ? t('settings.vault.savedToast') : protectionSaved);
     } else {
       await settings.save(model.value);
       model.value = await loadSelectedAuthorization();
@@ -215,7 +305,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
       const target = await settings.loadAuthorization(imported.protocol ?? 'top');
       model.value = { ...target, ...readImportedCredentials(parsed, target) };
     } else model.value = { ...model.value, ...imported };
-    feedback.value = t('settings.credentials.bundleLoaded');
+    feedback.value = credentialText('protectionBundleLoaded');
   } catch (error: unknown) {
     credentialImportError.value = userVisibleCause(error, t('settings.credentials.bundleImportError'));
   } finally {
@@ -346,7 +436,7 @@ async function unlockVault(): Promise<void> {
   vaultBusy.value = true;
   vaultError.value = null;
   try {
-    applyVaultStatus(await vault.unlock(vaultPassphrase.value));
+    applyVaultStatus(await vault.unlock(vaultStatus.value?.deviceProtected ? '' : vaultPassphrase.value));
     model.value = await settings.load();
     await authorizations.reload();
     clearVaultPassphrases();
@@ -564,8 +654,8 @@ function applyVaultStatus(status: CredentialVaultStatus): void {
   vaultStatus.value = status;
 }
 
-function assertMatchingPassphrases(passphrase: string, confirmation: string): void {
-  validateVaultPassphrase(passphrase);
+function assertMatchingPassphrases(passphrase: string, confirmation: string, optional = false): void {
+  if (!optional || passphrase) validateVaultPassphrase(passphrase);
   if (passphrase !== confirmation) throw new Error(t('settings.vault.mismatchError'));
 }
 
@@ -655,7 +745,11 @@ function confirmLanguagePreference(): void {
                 <h2 class="font-semibold">{{ t('settings.vault.title') }}</h2>
               </div>
               <p class="mt-2 text-sm text-muted-foreground">
-                {{ t('settings.vault.description') }}
+                {{
+                  vaultStatus?.deviceProtected
+                    ? credentialText('protectionDeviceHelp')
+                    : t('settings.vault.description')
+                }}
               </p>
             </div>
             <span class="rounded-full bg-muted px-3 py-1 text-xs">
@@ -674,6 +768,13 @@ function confirmLanguagePreference(): void {
               }}
             </span>
           </div>
+          <p
+            v-if="vaultStatus?.deviceProtected"
+            class="mt-2 text-sm font-medium"
+            data-testid="vault-device-protected"
+          >
+            {{ credentialText('protectionDeviceStatus') }}
+          </p>
 
           <div v-if="vaultStatus?.state === 'legacy'" class="mt-4 rounded-lg bg-amber-50 p-4 text-amber-900">
             <p class="text-sm font-medium">{{ t('settings.vault.legacyTitle') }}</p>
@@ -691,20 +792,26 @@ function confirmLanguagePreference(): void {
             </p>
             <p class="mt-1 text-xs text-muted-foreground">
               {{
-                vaultStatus.lockReason !== 'manual'
-                  ? t('settings.vault.lockDescription.existing')
-                  : t('settings.vault.lockDescription.other')
+                vaultStatus.deviceProtected
+                  ? credentialText('protectionDeviceHelp')
+                  : vaultStatus.lockReason !== 'manual'
+                    ? t('settings.vault.lockDescription.existing')
+                    : t('settings.vault.lockDescription.other')
               }}
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
               <Input
+                v-if="!vaultStatus.deviceProtected"
                 v-model="vaultPassphrase"
                 class="max-w-sm"
                 type="password"
                 :aria-label="t('settings.vault.passphrase')"
                 autocomplete="current-password"
               />
-              <Button :disabled="vaultBusy || !vaultPassphrase" @click="unlockVault">
+              <Button
+                :disabled="vaultBusy || (!vaultStatus.deviceProtected && !vaultPassphrase)"
+                @click="unlockVault"
+              >
                 <UnlockKeyhole class="size-4" />{{ t('settings.vault.unlock') }}
               </Button>
             </div>
@@ -765,15 +872,24 @@ function confirmLanguagePreference(): void {
             class="mt-4 grid items-start gap-2 lg:grid-cols-[1fr_1fr_auto]"
             data-testid="vault-passphrase-setup"
           >
+            <p
+              v-if="vaultStatus?.state === 'empty'"
+              class="text-sm lg:col-span-3"
+              data-testid="vault-optional-protection"
+            >
+              {{ credentialText('protectionOptional') }} — {{ credentialText('protectionDeviceHelp') }}
+            </p>
             <Input
               v-model="vaultPassphrase"
               type="password"
               :aria-label="t('settings.vault.setPassphrase')"
               autocomplete="new-password"
               :placeholder="
-                t('settings.vault.minimumCharacters', {
-                  count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS
-                })
+                vaultStatus?.state === 'empty'
+                  ? credentialText('protectionPlaceholder')
+                  : t('settings.vault.minimumCharacters', {
+                      count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS
+                    })
               "
             />
             <Input
@@ -787,9 +903,7 @@ function confirmLanguagePreference(): void {
               v-if="vaultStatus?.state === 'empty'"
               type="button"
               data-testid="save-vault-near-passphrase"
-              :disabled="
-                saving || vaultBusy || !settingsLoaded || !vaultPassphrase || !vaultPassphraseConfirmation
-              "
+              :disabled="saving || vaultBusy || !settingsLoaded"
               @click="save"
             >
               <LoaderCircle v-if="saving" class="size-4 animate-spin" />
@@ -965,15 +1079,7 @@ function confirmLanguagePreference(): void {
           </div>
           <Button
             class="mt-4"
-            :disabled="
-              saving ||
-              switchingAuthorization ||
-              authorizationBusy ||
-              vaultBusy ||
-              (mode === 'extension' &&
-                vaultStatus?.state === 'empty' &&
-                (!vaultPassphrase || !vaultPassphraseConfirmation))
-            "
+            :disabled="saving || switchingAuthorization || authorizationBusy || vaultBusy"
             @click="save"
           >
             <LoaderCircle v-if="saving" class="size-4 animate-spin" />
@@ -1005,6 +1111,8 @@ function confirmLanguagePreference(): void {
           v-if="mode === 'extension'"
           :open="protocolDialogPurpose !== null"
           :purpose="protocolDialogPurpose ?? 'acquire'"
+          :vault="vault"
+          @prepared="handleProtectionPrepared"
           @update:open="
             (value) => {
               if (!value) protocolDialogPurpose = null;

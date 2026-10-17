@@ -550,6 +550,7 @@ function avatarInitials(name: string): string {
     <AlibabaAuthorizationProtocolDialog
       v-if="mode === 'extension' && alibabaCredentialAcquisition"
       v-model:open="authorizationProtocolOpen"
+      :vault="vault"
       @select="selectAcquisitionProtocol"
     />
     <AlibabaCloudCredentialAcquisitionDialog

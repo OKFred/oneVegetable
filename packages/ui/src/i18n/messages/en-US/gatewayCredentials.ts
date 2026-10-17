@@ -15,6 +15,21 @@ export const gatewayCredentials = {
   protocolToolUnavailable:
     'This version has no authorization tool for this protocol. Update the extension or import its credential bundle.',
   authorizationToolFailed: 'Could not open the authorization tool. Please try again.',
+  protectionDescription: 'Prepare local credential protection before choosing a new or legacy app.',
+  protectionOptional: 'Local protection passphrase (optional)',
+  protectionPlaceholder: 'Leave blank, or enter at least 6 characters',
+  protectionDeviceHelp:
+    'Leaving it blank uses a key stored in this browser profile. Anyone with this profile may unlock it; this does not protect a compromised or shared device. You can set a passphrase later in Settings.',
+  protectionOriginal: 'Original protection passphrase',
+  protectionOriginalHelp:
+    'This vault is locked. Enter its original passphrase; existing credentials will not be replaced.',
+  protectionContinue: 'Continue',
+  protectionFailed:
+    'Could not prepare local protection. Check the original passphrase if locked, then try again. Nothing was replaced.',
+  protectionSaved: 'Local protection saved. You can now import or enter authorization credentials.',
+  protectionDeviceStatus: 'Device-local protection (no passphrase)',
+  protectionBundleLoaded:
+    'Bundle loaded, not saved. Confirm save; a local protection passphrase is optional for a new vault.',
   automaticRouting: 'Capability-based routing is enabled automatically',
   singleRouting: 'Using the {protocol} authorization',
   routingOwnership:

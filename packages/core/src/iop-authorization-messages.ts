@@ -52,6 +52,15 @@ export const zh = {
   discoverPermission: '点击“前往 Alibaba 连接”，允许访问应用中心后继续。',
   allowCallbackPermission:
     '允许访问此应用的 OAuth 与已登记 Callback 域名后，将自动打开授权页。不会修改 Callback。',
+  localProtection: '本机保护',
+  optionalPassphrase: '本机保护口令（可选）',
+  optionalProtectionHelp:
+    '留空使用本机保护；填写至少 6 个字符。授权页和设置页共用，不是 Alibaba 网站密码。复制整个浏览器配置仍可能读取凭据。',
+  continueAuthorization: '继续',
+  CREDENTIAL_VAULT_LOCKED: '请先使用原本机保护口令解锁，再继续授权。',
+  CREDENTIAL_VAULT_INVALID: '本机保护数据已损坏，请在设置中检查，不会覆盖已有授权。',
+  PASSPHRASE_TOO_SHORT: '口令至少需要 6 个字符，也可以留空。',
+  PASSPHRASE_TOO_LONG: '口令不能超过 256 个字符。',
   protectBundle: '为授权文件设置保护口令',
   protectBundleHelp:
     '应用信息已自动填好。请设置至少 6 个字符的本机加密口令（不是 Alibaba 密码），随后自动开始授权。已有锁定的授权包也可取消后先解锁。',
@@ -247,6 +256,16 @@ export const en: Record<keyof typeof zh, string> = {
   discoverPermission: 'Choose Connect on Alibaba, then allow access to the application center.',
   allowCallbackPermission:
     'Allow access to this app’s OAuth and registered Callback origins to open authorization automatically. The Callback will not change.',
+  localProtection: 'Local protection',
+  optionalPassphrase: 'Local passphrase (optional)',
+  optionalProtectionHelp:
+    'Leave blank for device protection, or enter 6+ characters. Shared by authorization and Settings, not your Alibaba password. A copied browser profile may still expose credentials.',
+  continueAuthorization: 'Continue',
+  CREDENTIAL_VAULT_LOCKED: 'Unlock with your existing local passphrase before continuing.',
+  CREDENTIAL_VAULT_INVALID:
+    'Local protection data is damaged. Check Settings; existing authorization will not be replaced.',
+  PASSPHRASE_TOO_SHORT: 'Use at least 6 characters, or leave the field blank.',
+  PASSPHRASE_TOO_LONG: 'Use at most 256 characters.',
   protectBundle: 'Protect your authorization file',
   protectBundleHelp:
     'App details are ready. Set a local encryption passphrase of at least 6 characters (not your Alibaba password) to start authorization. To reuse a locked bundle, cancel and unlock it first.',

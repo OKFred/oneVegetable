@@ -23,6 +23,7 @@ import { uiI18n } from '../src/i18n';
 import LocalDiagnosticsPanel from '../src/components/LocalDiagnosticsPanel.vue';
 import { provideServices } from '../src/lib/services';
 import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
+import { notifyCredentialVaultChanged } from '../src/lib/credential-vault-events';
 
 vi.mock('vue-sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() }
@@ -61,6 +62,8 @@ function mountView(
     initialVaultStatus?: CredentialVaultStatus;
     save?: (settings: GatewaySettings) => Promise<void>;
     acquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
+    status?: () => Promise<CredentialVaultStatus>;
+    loadSettings?: () => Promise<GatewaySettings>;
   } = {}
 ) {
   let grantedHosts = ['https://images.example.com/*'];
@@ -71,15 +74,17 @@ function mountView(
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: {
-          load: () =>
-            Promise.resolve({
-              appKey: currentVaultState === 'unlocked' ? 'configured-key' : '',
-              appSecret: '',
-              accessToken: '',
-              endpoint: ALIBABA_GATEWAY,
-              signMethod: 'hmac' as const,
-              ...options.initialSettings
-            }),
+          load:
+            options.loadSettings ??
+            (() =>
+              Promise.resolve({
+                appKey: currentVaultState === 'unlocked' ? 'configured-key' : '',
+                appSecret: '',
+                accessToken: '',
+                endpoint: ALIBABA_GATEWAY,
+                signMethod: 'hmac' as const,
+                ...options.initialSettings
+              })),
           save: options.save ?? (() => Promise.resolve())
         },
         permissions: {
@@ -114,11 +119,13 @@ function mountView(
         ...(initialVaultState
           ? {
               vault: {
-                status: () =>
-                  Promise.resolve(
-                    options.initialVaultStatus ??
-                      vaultStatus(currentVaultState ?? 'empty', 0, initialLockReason)
-                  ),
+                status:
+                  options.status ??
+                  (() =>
+                    Promise.resolve(
+                      options.initialVaultStatus ??
+                        vaultStatus(currentVaultState ?? 'empty', 0, initialLockReason)
+                    )),
                 create: createVault,
                 migrate: migrateVault,
                 unlock: async (passphrase) => {
@@ -182,6 +189,101 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('saves a new vault with blank optional protection', async () => {
+    const wrapper = mountView('extension', 'empty');
+    await flushPromises();
+    const save = wrapper.get('[data-testid="save-vault-near-passphrase"]');
+    expect(save.attributes('disabled')).toBeUndefined();
+    await save.trigger('click');
+    await flushPromises();
+    expect(createVault).toHaveBeenCalledWith('', expect.objectContaining({ endpoint: ALIBABA_GATEWAY }));
+    wrapper.unmount();
+  });
+
+  it('explicitly unlocks device-protected settings without a password and keeps rotation available', async () => {
+    const wrapper = mountView('extension', 'locked', 'manual', 'node', {
+      initialVaultStatus: { ...vaultStatus('locked'), deviceProtected: true }
+    });
+    await flushPromises();
+    expect(wrapper.find('input[aria-label="保护口令"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="vault-device-protected"]').exists()).toBe(true);
+    expect(unlockVault).not.toHaveBeenCalled();
+    const unlock = wrapper.findAll('button').find((button) => button.text() === '解锁');
+    expect(unlock?.attributes('disabled')).toBeUndefined();
+    await unlock?.trigger('click');
+    await flushPromises();
+    expect(unlockVault).toHaveBeenCalledExactlyOnceWith('');
+    expect(wrapper.find('input[aria-label="新保护口令"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('coalesces vault notifications and adopts returning authorization state without creating or unlocking again', async () => {
+    let currentStatus = vaultStatus('empty');
+    const status = vi.fn(() => Promise.resolve(currentStatus));
+    const loadSettings = vi.fn(() =>
+      Promise.resolve({
+        appKey: currentStatus.state === 'unlocked' ? 'returned-key' : '',
+        appSecret: '',
+        accessToken: '',
+        endpoint: ALIBABA_GATEWAY,
+        signMethod: 'hmac' as const
+      })
+    );
+    const wrapper = mountView('extension', 'empty', 'manual', 'node', { status, loadSettings });
+    await flushPromises();
+    window.dispatchEvent(new Event('storage'));
+    expect(status).toHaveBeenCalledTimes(1);
+    currentStatus = { ...vaultStatus('unlocked'), deviceProtected: true };
+    notifyCredentialVaultChanged();
+    notifyCredentialVaultChanged();
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="vault-device-protected"]').exists()).toBe(true);
+    });
+    await flushPromises();
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(loadSettings).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('[data-testid="vault-passphrase-setup"]').exists()).toBe(false);
+    expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+      'returned-key'
+    );
+    expect(createVault).not.toHaveBeenCalled();
+    expect(unlockVault).not.toHaveBeenCalled();
+    wrapper.unmount();
+    notifyCredentialVaultChanged();
+    await flushPromises();
+    expect(status).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['credentials', 'passphrase'] as const)(
+    'does not overwrite unsaved %s after vault storage notifications',
+    async (field) => {
+      const editing = new UnsavedEditingService();
+      const status = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
+      const loadSettings = vi.fn(() =>
+        Promise.resolve({
+          appKey: 'initial',
+          appSecret: '',
+          accessToken: '',
+          endpoint: ALIBABA_GATEWAY,
+          signMethod: 'hmac' as const
+        })
+      );
+      const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { editing, status, loadSettings });
+      await flushPromises();
+      const selector =
+        field === 'credentials' ? 'input[aria-label="App Key"]' : 'input[aria-label="新保护口令"]';
+      await wrapper.get(selector).setValue('unsaved-draft');
+      notifyCredentialVaultChanged();
+      await vi.waitFor(() => {
+        expect(status).toHaveBeenCalledTimes(2);
+      });
+      expect(loadSettings).toHaveBeenCalledTimes(1);
+      expect((wrapper.get(selector).element as HTMLInputElement).value).toBe('unsaved-draft');
+      expect(editing.dirty.value).toBe(true);
+      wrapper.unmount();
+      editing.dispose();
+    }
+  );
   it('offers the IOP recommendation without opening a tool before the protocol choice', async () => {
     const openIopTool = vi.fn().mockResolvedValue(undefined);
     const acquisition = {

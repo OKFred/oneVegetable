@@ -10,7 +10,10 @@ import {
   TOP_APPLICATION_READER_ORIGINS
 } from '../../lib/iop-authorization-storage';
 import { IOP_API_ORIGIN } from '@one-vegetable/core/alibaba-iop';
-import { CREDENTIAL_VAULT_SESSION_STORAGE_KEY } from '../../lib/credential-vault-storage';
+import {
+  CREDENTIAL_VAULT_SESSION_STORAGE_KEY,
+  DEVICE_PROTECTION_KEY
+} from '../../lib/credential-vault-storage';
 
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
@@ -229,6 +232,7 @@ const settings: SettingsRepository = {
 
 const vault: CredentialVaultRepository = {
   status: () => requestVault('status', undefined),
+  prepareAuthorization: (passphrase) => requestVault('prepare-authorization', { passphrase }),
   create: async (passphrase, value) => {
     if (value.appKey && value.appSecret && value.accessToken)
       await ensureOptionalHostPermission(
@@ -379,6 +383,7 @@ interface VaultOperationMap {
   'clear-authorization': { request: { protocol: 'top' | 'iop' }; response: null };
   'refresh-authorization': { request: { protocol: 'top' | 'iop' }; response: AlibabaAuthorizationsSummary };
   status: { request: undefined; response: CredentialVaultStatus & AuthorizationStatus };
+  'prepare-authorization': { request: { passphrase: string }; response: CredentialVaultStatus };
   'get-settings': { request: undefined; response: GatewaySettings };
   create: {
     request: { passphrase: string; settings: GatewaySettings };
@@ -479,6 +484,7 @@ const localData: LocalDataRepository = {
         ([key]) =>
           key !== SETTINGS_STORAGE_KEY &&
           key !== CREDENTIAL_VAULT_SESSION_STORAGE_KEY &&
+          key !== DEVICE_PROTECTION_KEY &&
           key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
           key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY &&
           key !== EXTENSION_S3_STORAGE_KEY &&
@@ -523,6 +529,7 @@ const localData: LocalDataRepository = {
         approximateBytes: approximateStorageBytes({
           settings: local[SETTINGS_STORAGE_KEY],
           recovery: local[CREDENTIAL_VAULT_SESSION_STORAGE_KEY],
+          deviceRecovery: local[DEVICE_PROTECTION_KEY],
           iop: local[IOP_VAULT_KEY],
           iopRecovery: local[IOP_SESSION_KEY],
           receipt: local[IOP_RECEIPT_KEY],
@@ -884,6 +891,29 @@ async function mountOptionsApp(): Promise<void> {
   ]);
   const { OneVegetableApp, uiI18n } = uiModule;
   activeRuntimeTranslator = uiModule.translateUi;
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (
+      (areaName === 'local' || areaName === 'session') &&
+      [
+        SETTINGS_STORAGE_KEY,
+        CREDENTIAL_VAULT_SESSION_STORAGE_KEY,
+        TOP_VAULT_KEY,
+        IOP_VAULT_KEY,
+        TOP_SESSION_KEY,
+        IOP_SESSION_KEY,
+        TOP_RECEIPT_KEY,
+        IOP_RECEIPT_KEY
+      ].some((key) => {
+        const change = changes[key];
+        return (
+          change !== undefined &&
+          (![CREDENTIAL_VAULT_SESSION_STORAGE_KEY, TOP_SESSION_KEY, IOP_SESSION_KEY].includes(key) ||
+            uiModule.isMaterialVaultSessionChange(change))
+        );
+      })
+    )
+      uiModule.notifyCredentialVaultChanged();
+  });
   const gateway = new ExtensionGatewayClient();
   const productMutationJobs = new ExtensionProductMutationJobClient(
     { send: (message) => browser.runtime.sendMessage(message) },

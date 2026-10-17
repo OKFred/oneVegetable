@@ -7,6 +7,7 @@ export { default as LanguageToggle } from './components/LanguageToggle.vue';
 export { hasUiTranslation, translateUi, uiI18n, useUiI18n } from './i18n';
 export type { ImagePreviewItem } from './components/ImagePreview.vue';
 export type { AppServices } from './lib/services';
+export { notifyCredentialVaultChanged, isMaterialVaultSessionChange } from './lib/credential-vault-events';
 export { createSyncTodoRepository } from './lib/sync-todos';
 export { createLocalTodoRepository, browserTodoStorage } from './lib/todo-repository';
 export type { DashboardTodoRepository, TodoSnapshot } from './lib/todo-repository';

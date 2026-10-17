@@ -63,7 +63,7 @@ it('puts save next to passphrases and saves credentials in the same action', asy
   const view = await harness(SettingsView, { extension: true, empty: true });
   const setup = view.wrapper.get('[data-testid="vault-passphrase-setup"]');
   const save = setup.get('[data-testid="save-vault-near-passphrase"]');
-  expect(save.attributes('disabled')).toBeDefined();
+  expect(save.attributes('disabled')).toBeUndefined();
   const inputs = setup.findAll('input');
   if (!inputs[0] || !inputs[1]) throw new Error('Missing passphrase inputs');
   await inputs[0].setValue('fixture-passphrase');

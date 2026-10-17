@@ -131,7 +131,12 @@ async function refresh(): Promise<void> {
   >
     <RotateCw class="size-4" />{{ credentialText('renew') }}
   </Button>
-  <AlibabaAuthorizationProtocolDialog v-model:open="protocolOpen" purpose="renew" @select="begin" />
+  <AlibabaAuthorizationProtocolDialog
+    v-model:open="protocolOpen"
+    :vault="vault"
+    purpose="renew"
+    @select="begin"
+  />
   <ModalDialog
     :open="open"
     :dismissible="!refreshing"

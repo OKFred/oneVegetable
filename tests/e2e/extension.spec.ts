@@ -43,8 +43,11 @@ test('formal MV3 asks for a renewal protocol before any authorization flow', asy
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
   const pagesBefore = context.pages().length;
   await page.getByTestId('dashboard-renew-authorization').click();
-  const authorization = page.getByRole('dialog', { name: '选择要续期的授权', exact: true });
+  const authorization = page.getByRole('dialog', { name: '要续期哪一份授权？', exact: true });
   await expect(authorization).toBeVisible();
+  await expect(authorization.getByTestId('authorization-protection')).toBeVisible();
+  await expect(authorization.getByTestId('choose-authorization-iop')).toHaveCount(0);
+  await authorization.getByTestId('continue-authorization-protection').click();
   await expect(authorization.getByTestId('choose-authorization-iop')).toBeVisible();
   await expect(authorization.getByTestId('choose-authorization-top')).toBeVisible();
   expect(context.pages()).toHaveLength(pagesBefore);
@@ -76,7 +79,7 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
     )
   });
   await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
-  await page.getByLabel('设置保护口令').fill('123456');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('123456');
   await page.getByLabel('确认保护口令').fill('123456');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -234,7 +237,7 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(topBundle))
   });
-  await page.getByLabel('设置保护口令').fill('e2e-dual-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-dual-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-dual-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -385,7 +388,7 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -577,7 +580,7 @@ test('formal MV3 showcase uses the actual worker with isolated TOP responses', a
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -786,7 +789,7 @@ test('formal MV3 dedicated inventory survives worker restart with no writes', as
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -868,7 +871,7 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -1158,7 +1161,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(feedbackDialog).toBeVisible();
   await feedbackDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(feedbackDialog).toHaveCount(0);
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -1667,7 +1670,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByText('待迁移', { exact: true })).toBeVisible();
   await expect(page.getByText(settingsZh.vault.legacyDescription)).toBeVisible();
-  await page.getByLabel('设置保护口令').fill('migrated-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('migrated-vault-password');
   await page.getByLabel('确认保护口令').fill('migrated-vault-password');
   await page.getByRole('button', { name: '加密并迁移旧凭证' }).click();
   await expect(page.getByText(settingsZh.vault.migratedFeedback).first()).toBeVisible();

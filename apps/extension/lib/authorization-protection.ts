@@ -12,7 +12,8 @@ import {
 import type { OpenAlibabaAuthorizationVault } from '@one-vegetable/core/alibaba-authorization-vault';
 import type { ExtensionCredentialVaultSession } from './credential-vault-session';
 
-export const DEVICE_PROTECTION_KEY = 'one-vegetable-device-protection-v1';
+import { DEVICE_PROTECTION_KEY } from './credential-vault-storage';
+export { DEVICE_PROTECTION_KEY } from './credential-vault-storage';
 export interface AuthorizationProtectionKey {
   key: CryptoKey;
   sessionKeyMaterial: string;
