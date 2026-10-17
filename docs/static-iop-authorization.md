@@ -6,7 +6,9 @@
 
 ### 给首次使用者
 
-1. 在设置点击“连接 Alibaba 账号”。首次使用优先选“连接新版应用”；以前使用旧应用或已有旧版授权文件的用户选“连接已有旧版应用”。两者不混用，不需要一开始就配齐两份。
+1. 在设置点击“连接 Alibaba 账号”。首次先准备可选的本机保护口令（可留空），已解锁时不再重复询问。接着选择“导入已有授权文件”或“在线获取新授权”，不会默认打开线上流程。
+   - 已有文件：选择完整授权 JSON，预览文件名、应用名及自动识别的 TOP/IOP；点击“导入并保存”才替换对应档案，另一份保持不变。无需打开平台或申请域名权限。文件格式通过不等于平台权限或有效期通过，首次只读调用仍可能要求重新授权。文件限 256 KiB，历史未声明 protocol 的文件按 TOP 处理。到此已完成，不必执行下面的在线获取步骤。
+   - 在线获取：首次优先选“连接新版应用”；以前使用旧应用的用户选“连接已有旧版应用”。两者不混用，不需要一开始就配齐两份。
 2. 点击“前往 Alibaba 连接”，按官网提示登录或完成验证。应用资料会尝试自动读取；需要手动填写时再展开表单。不要把 Alibaba 登录密码填作本机保护口令。
 3. 在 Alibaba 页面自行核对账号、权限并确认授权，保持工具页打开。
 4. 工具显示“授权文件已安全保存”后，点击“下载授权文件”，返回工作台设置导入并保存。**下载成功不代表工作台配置已经改变。** 导出的文件包含明文密钥，不要发到群聊或公开仓库。
@@ -15,11 +17,13 @@
 
 Choose **Connect Alibaba account**, select a new or existing legacy app, then follow the next action shown. Sign in and approve on Alibaba itself. Once the file is saved, download it and import it into the matching workbench profile. Downloading does not apply the connection. Manual entry and file import remain available; technical details and JSON editing are collapsed. Renewal is only an attempt, never a guarantee or an automatic retry.
 
+**Existing file:** after optional local protection, choose **Import an existing authorization file**. Preview the detected TOP/IOP profile, then **Import and save**. Only that profile is replaced; no provider page, token exchange, or host permission is requested. Legacy files without a protocol remain TOP. Local validation cannot prove provider permissions or token validity. The online instructions above apply only when explicitly choosing **Get a new authorization online**.
+
 ### 自动读取与安全边界
 
 - 选择新版 IOP 或旧版 TOP 后，允许访问本次所需的精确 Alibaba 域名。IOP 工具会复用唯一的已打开应用中心，页面加载可用时立即展示向导，自动进入“应用中心”，读取当前应用的 App Name、AppKey、App Secret 和已登记 Callback，并填写到 `authorization.html`。多个应用中心标签页时不会猜选。
 - 页面上会显示蓝色指针移动、目标高亮和实际点击。只允许点击“应用中心”和“View/查看密钥”；绝不点击 Reset、不更改 Callback，也不自动接受 OAuth 协议。减少动态效果偏好会省略指针移动。
-- 首次使用只需设置至少 6 个字符的本机加密口令，之后自动打开 Alibaba 授权页；此口令不是 Alibaba 网站密码。已解锁的独立授权包可以复用加密密钥。已有锁定包可先解锁，再重新读取。
+- 首次使用可设置至少 6 个字符的本机保护口令，也可留空使用随机本机密钥；之后仍需显式选择在线获取，才会打开 Alibaba。此口令不是 Alibaba 网站密码。已解锁的独立授权包可以复用加密密钥。已有锁定包可先解锁，再重新读取。
 - 登录失效、验证码、密钥安全验证、缺少应用/Callback 或 30 秒内读取不完整时明确停止并提示检查；不绕过验证、不打开失效的旧 TOP 地址。只读取当前选中的新版应用；需要其他应用请先在平台切换。
 - Alibaba 授权协议仍由用户确认。已登记的 Callback 不需要改成 example.com，也不依赖临时 localhost 授权服务。普通 HTTPS Callback 的同一授权标签页由插件监听；公共 Pages 只是可选的静态回调辅助。
 - TOP 与 IOP 在同一个工具分别保存。TOP 尝试从仍可用、已打开的旧应用页读取；没有可用页面、旧入口 404、多个应用或 Callback 缺失时明确提示，不反复打开失效入口。也可手工填写旧应用，或导入原 TOP JSON 后解锁并点击“重新授权”。不会把新版应用的 Key 发送到 TOP。

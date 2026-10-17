@@ -7,11 +7,13 @@ import {
   type CredentialVaultRepository,
   type CredentialVaultStatus
 } from '@one-vegetable/core';
+import type { ExtensionAlibabaCredentialAcquisitionRepository } from '@one-vegetable/core';
+import fixture from '../../../mock/data/node-gateway-credentials.json';
 import AlibabaAuthorizationProtocolDialog from '../src/components/AlibabaAuthorizationProtocolDialog.vue';
 import { uiI18n } from '../src/i18n';
 
 const unmount: (() => void)[] = [];
-vi.mock('vue-sonner', () => ({ toast: { error: vi.fn() } }));
+vi.mock('vue-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 afterEach(() => {
   unmount.splice(0).forEach((dispose) => {
     dispose();
@@ -21,10 +23,20 @@ afterEach(() => {
   uiI18n.global.locale.value = 'zh-CN';
 });
 
-async function dialog(purpose: 'acquire' | 'renew' = 'acquire', vault?: CredentialVaultRepository) {
+async function dialog(
+  purpose: 'acquire' | 'renew' = 'acquire',
+  vault?: CredentialVaultRepository,
+  acquisition?: ExtensionAlibabaCredentialAcquisitionRepository
+) {
   const select = vi.fn();
   const wrapper = mount(AlibabaAuthorizationProtocolDialog, {
-    props: { open: true, purpose, onSelect: select, ...(vault ? { vault } : {}) },
+    props: {
+      open: true,
+      purpose,
+      onSelect: select,
+      ...(vault ? { vault } : {}),
+      ...(acquisition ? { acquisition } : {})
+    },
     attachTo: document.body
   });
   unmount.push(() => {
@@ -35,6 +47,103 @@ async function dialog(purpose: 'acquire' | 'renew' = 'acquire', vault?: Credenti
 }
 
 describe('Alibaba authorization protocol selection', () => {
+  it('offers file import and online acquisition without automatically opening either', async () => {
+    const acquisition = testAcquisition();
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    expect(view.body.find('[data-testid="authorization-method-choices"]').exists()).toBe(true);
+    expect(view.body.find('[data-testid="choose-authorization-iop"]').exists()).toBe(false);
+    expect(acquisition.openTool).not.toHaveBeenCalled();
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+    await view.body.get('[data-testid="authorization-method-online"]').trigger('click');
+    expect(acquisition.openTool).not.toHaveBeenCalled();
+    await view.body.get('[data-testid="choose-authorization-top"]').trigger('click');
+    expect(view.select).toHaveBeenCalledExactlyOnceWith('top');
+  });
+
+  it.each(['top', 'iop', undefined] as const)(
+    // Historical bundles without protocol must remain TOP; never infer from an AppKey.
+    'imports %s locally only after explicit save',
+    async (protocol) => {
+      const acquisition = testAcquisition();
+      const view = await dialog('acquire', testVault('unlocked'), acquisition);
+      await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+      const bundle = { ...fixture.oauthBundle, ...(protocol ? { protocol } : {}) };
+      await selectFile(view.body, JSON.stringify(bundle));
+      expect(view.body.get('[data-testid="authorization-file-preview"]').text()).toContain(
+        (protocol ?? 'top').toUpperCase()
+      );
+      expect(view.body.text()).not.toContain(bundle.oauth.accessToken);
+      expect(view.body.text()).not.toContain(bundle.application.appSecret);
+      expect(acquisition.importBundle).not.toHaveBeenCalled();
+      await view.body.get('[data-testid="confirm-authorization-file-import"]').trigger('click');
+      await flushPromises();
+      expect(acquisition.importBundle).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ oauth: bundle.oauth })
+      );
+      expect(acquisition.openTool).not.toHaveBeenCalled();
+      expect(view.wrapper.emitted('imported')).toHaveLength(1);
+      expect(view.wrapper.emitted('update:open')).toEqual([[false]]);
+    }
+  );
+
+  it('keeps a failed import local and allows retry without opening online authorization', async () => {
+    const acquisition = testAcquisition();
+    acquisition.importBundle.mockRejectedValueOnce(new Error('private failure'));
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    await selectFile(view.body, JSON.stringify(fixture.oauthBundle));
+    await view.body.get('[data-testid="confirm-authorization-file-import"]').trigger('click');
+    await flushPromises();
+    expect(view.wrapper.emitted('update:open')).toBeUndefined();
+    expect(view.body.find('[data-testid="authorization-file-preview"]').exists()).toBe(true);
+    expect(view.body.text()).not.toContain('private failure');
+    expect(acquisition.openTool).not.toHaveBeenCalled();
+    await view.body.get('[data-testid="confirm-authorization-file-import"]').trigger('click');
+    await flushPromises();
+    expect(view.wrapper.emitted('imported')).toHaveLength(1);
+  });
+
+  it('honors unsaved-edit cancellation before importing', async () => {
+    const acquisition = testAcquisition();
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    const beforeImport = vi.fn(() => Promise.resolve(false));
+    await view.wrapper.setProps({ beforeImport });
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    await selectFile(view.body, JSON.stringify(fixture.oauthBundle));
+    await view.body.get('[data-testid="confirm-authorization-file-import"]').trigger('click');
+    await flushPromises();
+    expect(beforeImport).toHaveBeenCalledOnce();
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+    expect(view.wrapper.emitted('update:open')).toBeUndefined();
+  });
+
+  it('keeps the choice neutral in English and dark mode', async () => {
+    uiI18n.global.locale.value = 'en-US';
+    document.documentElement.classList.add('dark');
+    const acquisition = testAcquisition();
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    expect(view.body.text()).toContain('Import an existing authorization file');
+    expect(view.body.text()).toContain('Get a new authorization online');
+    expect(view.select).not.toHaveBeenCalled();
+    expect(acquisition.openTool).not.toHaveBeenCalled();
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+  });
+
+  it('blocks invalid/oversized files and cancels without saving', async () => {
+    const acquisition = testAcquisition();
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    for (const text of ['bad-json', '{}', ' '.repeat(256 * 1024 + 1)]) {
+      await selectFile(view.body, text);
+      expect(
+        view.body.get('[data-testid="confirm-authorization-file-import"]').attributes('disabled')
+      ).toBeDefined();
+    }
+    await selectFile(view.body, JSON.stringify(fixture.oauthBundle));
+    await view.body.get('[data-testid="cancel-authorization-protocol"]').trigger('click');
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+    expect(view.wrapper.emitted('imported')).toBeUndefined();
+  });
   it.each(['iop', 'top'] as const)('only starts %s on the direct choice click stack', async (protocol) => {
     const view = await dialog();
     expect(view.body.text()).toContain('连接新版应用（推荐）');
@@ -178,6 +287,31 @@ describe('Alibaba authorization protocol selection', () => {
     expect(view.select).not.toHaveBeenCalled();
   });
 });
+
+async function selectFile(body: DOMWrapper<Element>, text: string): Promise<void> {
+  const file = new File([text], 'credentialInfo.json', { type: 'application/json' });
+  Object.defineProperty(file, 'text', { value: () => Promise.resolve(text) });
+  const input = body.get('input[type="file"]');
+  Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
+  await input.trigger('change');
+  await flushPromises();
+}
+
+function testAcquisition() {
+  return {
+    start: vi.fn(),
+    continue: vi.fn(),
+    status: vi.fn(),
+    cancel: vi.fn(),
+    saveToVault: vi.fn(),
+    exportBundle: vi.fn(),
+    readPrerequisite: vi.fn(),
+    locatePrerequisiteField: vi.fn(),
+    focusPrerequisitePage: vi.fn(),
+    openTool: vi.fn(),
+    importBundle: vi.fn(() => Promise.resolve(testStatus('unlocked')))
+  } satisfies ExtensionAlibabaCredentialAcquisitionRepository;
+}
 
 function testStatus(state: CredentialVaultStatus['state'], deviceProtected = false): CredentialVaultStatus {
   return {

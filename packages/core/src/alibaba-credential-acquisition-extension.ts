@@ -11,6 +11,7 @@ export type ExtensionAlibabaCredentialAcquisitionOperation =
   | 'status'
   | 'cancel'
   | 'save-to-vault'
+  | 'import-bundle'
   | 'export-bundle'
   | 'read-prerequisite'
   | 'locate-prerequisite-field'
@@ -45,4 +46,6 @@ export interface ExtensionAlibabaCredentialAcquisitionRepository {
   focusPrerequisitePage(): Promise<void>;
   openIopTool?(): Promise<void>;
   openTool?(protocol: 'top' | 'iop'): Promise<void>;
+  /** Explicit local JSON import; no provider request or optional host permission. */
+  importBundle?(bundle: AlibabaOpenApiCredentialBundle): Promise<CredentialVaultStatus>;
 }

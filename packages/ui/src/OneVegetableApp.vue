@@ -55,6 +55,7 @@ import { createGatewayConfigurationScope } from './lib/gateway-configuration-sco
 import { useQueryClient } from '@tanstack/vue-query';
 import {
   GATEWAY_CONFIGURATION_EVENT,
+  notifyGatewayConfigurationChanged,
   isExternalGatewayConfigurationChange
 } from './lib/gateway-configuration-events';
 
@@ -281,10 +282,9 @@ const credentialAcquisitionOpen = ref(false);
 const authorizationProtocolOpen = ref(false);
 const credentialText = useGatewayCredentialsI18n();
 
-function requestCredentialAcquisition(protocol?: 'top' | 'iop'): void {
+function requestCredentialAcquisition(): void {
   if (props.mode === 'extension' && props.alibabaCredentialAcquisition) {
-    if (protocol) selectAcquisitionProtocol(protocol);
-    else authorizationProtocolOpen.value = true;
+    authorizationProtocolOpen.value = true;
   } else if (props.mode === 'bff' && props.control) {
     credentialAcquisitionOpen.value = true;
   }
@@ -551,6 +551,8 @@ function avatarInitials(name: string): string {
       v-if="mode === 'extension' && alibabaCredentialAcquisition"
       v-model:open="authorizationProtocolOpen"
       :vault="vault"
+      :acquisition="alibabaCredentialAcquisition"
+      @imported="notifyGatewayConfigurationChanged()"
       @select="selectAcquisitionProtocol"
     />
     <AlibabaCloudCredentialAcquisitionDialog

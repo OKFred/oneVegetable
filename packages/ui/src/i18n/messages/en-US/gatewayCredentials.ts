@@ -3,6 +3,22 @@ export const gatewayCredentials = {
   dualTitle: 'TOP + IOP authorizations',
   acquireCredentials: 'Connect Alibaba account',
   chooseAcquireProtocol: 'Connect your Alibaba account',
+  chooseMethodDescription:
+    'Choose how to connect. File import opens no Alibaba page and requests no host permission.',
+  offlineMethod: 'Import an existing authorization file',
+  offlineMethodHelp:
+    'Choose credentialInfo.json or another complete authorization JSON. TOP / IOP is detected automatically.',
+  onlineMethod: 'Get a new authorization online',
+  onlineMethodHelp: 'Choose a modern or legacy app, then sign in and approve on Alibaba.',
+  offlineChooseFile: 'Choose an authorization JSON file',
+  offlineReplaceHelp:
+    'Confirm to save locally and replace only the file’s protocol profile; the other stays unchanged. This validates the file, not provider expiry or permissions.',
+  offlineImportSave: 'Import and save',
+  offlineInvalid: 'Invalid authorization file. Choose a complete authorization JSON no larger than 256 KiB.',
+  offlineFailed:
+    'Import did not complete. Check local protection and try again. Online authorization was not started.',
+  offlineSaved: 'Authorization file imported and saved.',
+  methodBack: 'Back to connection methods',
   chooseRenewProtocol: 'Which authorization do you want to renew?',
   chooseProtocolDescription:
     'New here? Start with a new app. Have a legacy app or authorization file? Choose legacy. Both are saved separately and never replace each other.',

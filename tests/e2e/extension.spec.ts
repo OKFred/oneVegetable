@@ -1061,6 +1061,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(acquisitionDialog.getByTestId('authorization-protection')).toBeVisible();
   await acquisitionDialog.getByTestId('authorization-protection-passphrase').fill('e2e-vault-password');
   await acquisitionDialog.getByTestId('continue-authorization-protection').click();
+  await expect(acquisitionDialog.getByTestId('authorization-method-file')).toBeVisible();
+  await acquisitionDialog.getByTestId('authorization-method-online').click();
   await expect(acquisitionDialog.getByTestId('choose-authorization-iop')).toBeVisible();
   await expect(acquisitionDialog.getByTestId('choose-authorization-top')).toBeVisible();
   await expect(acquisitionDialog).toContainText('两份授权分别保存，不会互相覆盖');

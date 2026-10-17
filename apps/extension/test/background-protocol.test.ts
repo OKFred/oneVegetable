@@ -239,7 +239,15 @@ describe('extension background protocol persistence and dispatch', () => {
         source
       )
     ).toMatchObject({ ok: true, data: null });
-    for (const operation of ['start', 'status', 'continue', 'cancel', 'export-bundle', 'save-to-vault']) {
+    for (const operation of [
+      'start',
+      'status',
+      'continue',
+      'cancel',
+      'export-bundle',
+      'save-to-vault',
+      'import-bundle'
+    ]) {
       expect(
         await sendEnvelope({ kind: 'alibaba-credential-acquisition-request', operation }, source)
       ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
@@ -962,6 +970,50 @@ describe('extension background protocol persistence and dispatch', () => {
       expect(fetch).not.toHaveBeenCalled();
     }
   );
+  it.each(['top', 'iop'] as const)(
+    'imports a %s file locally and preserves the other authorization',
+    async (protocol) => {
+      await create(protocol === 'top' ? settings : topSettings);
+      const before = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      const bundle = { ...credentialFixtures.oauthBundle, protocol };
+      const result = await send('alibaba-credential-acquisition-request', 'import-bundle', { bundle });
+      expect(result).toMatchObject({ ok: true, data: { protocol, hasAccessToken: true } });
+      expect(JSON.stringify(result)).not.toContain(bundle.application.appSecret);
+      expect(JSON.stringify(result)).not.toContain(bundle.oauth.accessToken);
+      const after = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      const { protocolCredentials, ...primary } = after.settings;
+      expect(primary).toEqual(before.settings);
+      expect(protocolCredentials?.[protocol]).toMatchObject({
+        appKey: bundle.application.appKey,
+        accessToken: bundle.oauth.accessToken
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('does not import invalid files or bypass a manual vault lock', async () => {
+    await create();
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    expect(
+      await send('alibaba-credential-acquisition-request', 'import-bundle', { bundle: {} })
+    ).toMatchObject({ ok: false });
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    await send('credential-vault-request', 'lock');
+    expect(
+      await send('alibaba-credential-acquisition-request', 'import-bundle', {
+        bundle: credentialFixtures.oauthBundle
+      })
+    ).toMatchObject({ ok: false });
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('reports an unknown refresh only for the matching configuration ID without leaking intent values', async () => {
     await createPair();
     const before = (await send('credential-vault-request', 'authorizations'))

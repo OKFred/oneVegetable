@@ -1112,7 +1112,10 @@ function confirmLanguagePreference(): void {
           :open="protocolDialogPurpose !== null"
           :purpose="protocolDialogPurpose ?? 'acquire'"
           :vault="vault"
+          :acquisition="alibabaCredentialAcquisition"
+          :before-import="credentialEditing.confirmLeave"
           @prepared="handleProtectionPrepared"
+          @imported="handleAcquiredCredentialsSaved"
           @update:open="
             (value) => {
               if (!value) protocolDialogPurpose = null;

@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
 import {
   handleAuthorization,
   handlePublicAuthorization,
@@ -477,6 +478,12 @@ async function handleAlibabaCredentialAcquisitionRequest(
         data = await serializeVaultOperation(() =>
           saveAcquiredCredentialsToVault(bundle, optionalVaultString(payload.passphrase))
         );
+        break;
+      }
+      case 'import-bundle': {
+        const input = requireOnlyKeys(message.payload, ['bundle']);
+        const bundle = parseAlibabaOpenApiCredentialBundle(input.bundle);
+        data = await serializeVaultOperation(() => saveAcquiredCredentialsToVault(bundle, undefined));
         break;
       }
       case 'export-bundle':
@@ -1652,6 +1659,7 @@ function asAlibabaCredentialAcquisitionRequest(
     value.operation !== 'status' &&
     value.operation !== 'cancel' &&
     value.operation !== 'save-to-vault' &&
+    value.operation !== 'import-bundle' &&
     value.operation !== 'export-bundle' &&
     value.operation !== 'read-prerequisite' &&
     value.operation !== 'locate-prerequisite-field' &&
