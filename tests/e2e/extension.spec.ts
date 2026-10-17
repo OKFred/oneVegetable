@@ -1058,6 +1058,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '开始授权向导' }).click();
   const acquisitionDialog = page.getByRole('dialog', { name: '连接 Alibaba 账号' });
   await expect(acquisitionDialog).toBeVisible();
+  await expect(acquisitionDialog.getByTestId('authorization-protection')).toBeVisible();
+  await acquisitionDialog.getByTestId('authorization-protection-passphrase').fill('e2e-vault-password');
+  await acquisitionDialog.getByTestId('continue-authorization-protection').click();
   await expect(acquisitionDialog.getByTestId('choose-authorization-iop')).toBeVisible();
   await expect(acquisitionDialog.getByTestId('choose-authorization-top')).toBeVisible();
   await expect(acquisitionDialog).toContainText('两份授权分别保存，不会互相覆盖');
@@ -1141,7 +1144,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '开放平台凭证保护' })).toBeVisible();
-  await expect(page.getByText('未创建', { exact: true })).toBeVisible();
+  await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await expect(page.getByText('未创建', { exact: true })).toHaveCount(0);
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
@@ -1161,10 +1165,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(feedbackDialog).toBeVisible();
   await feedbackDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(feedbackDialog).toHaveCount(0);
-  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
-  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
+  await expect(page.getByTestId('vault-passphrase-setup')).toHaveCount(0);
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
   const encryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {

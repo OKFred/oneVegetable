@@ -58,6 +58,13 @@ for (const passphrase of ['', fixture.workbench.password]) {
         );
         const screenshots = resolve(import.meta.dirname, '../../artifacts/authorization-protection');
         await mkdir(screenshots, { recursive: true });
+        await settings.getByRole('dialog').evaluate(async (element) => {
+          await Promise.all(
+            element
+              .getAnimations({ subtree: true })
+              .map((animation) => animation.finished.catch(() => undefined))
+          );
+        });
         await settings.screenshot({
           path: resolve(
             screenshots,
