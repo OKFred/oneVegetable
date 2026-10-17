@@ -29,6 +29,11 @@ export const gatewayCredentials = {
     'Apps at i.alibaba.com/explore/open-api use IOP. Authorize with the IOP tool, export JSON, then import it into this profile.',
   selectProfile: 'Select the authorization profile to configure',
   configureProfile: 'Configure {protocol}',
+  setDefault: 'Set as default',
+  defaultSelected: 'Selected',
+  defaultSaved:
+    '{protocol} is now the saved default. Both authorizations still use capability-based routing.',
+  defaultAlreadySelected: '{protocol} is already the default authorization.',
   selectedProfile: 'Editing {protocol} authorization',
   profileSelected:
     'Switched to {protocol} settings. Import or enter credentials below; the default protocol is unchanged.',

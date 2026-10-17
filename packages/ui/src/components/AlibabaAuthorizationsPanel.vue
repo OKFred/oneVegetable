@@ -15,9 +15,11 @@ const props = defineProps<{
   extension?: boolean;
   canRenew?: boolean;
   canClear?: boolean;
+  canSetDefault?: boolean;
 }>();
 const emit = defineEmits<{
   select: [protocol: 'top' | 'iop'];
+  setDefault: [protocol: 'top' | 'iop'];
   confirm: [];
   renew: [protocol: 'top' | 'iop'];
   clear: [protocol: 'top' | 'iop'];
@@ -42,6 +44,29 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
       >
         <div class="flex flex-wrap gap-2">
           <Button
+            v-if="canSetDefault"
+            variant="outline"
+            :disabled="busy || !summary[protocol]?.configured || !summary[protocol]?.configurationId"
+            :aria-pressed="summary.defaultProtocol === protocol && !!summary[protocol]?.configured"
+            :data-testid="`default-authorization-${protocol}`"
+            @click="emit('setDefault', protocol)"
+          >
+            <Check
+              v-if="summary.defaultProtocol === protocol && summary[protocol]?.configured"
+              class="size-4"
+              aria-hidden="true"
+            />
+            <Link2 v-else class="size-4" aria-hidden="true" />
+            {{
+              t(
+                summary.defaultProtocol === protocol && summary[protocol]?.configured
+                  ? 'defaultSelected'
+                  : 'setDefault'
+              )
+            }}
+          </Button>
+          <Button
+            v-else
             variant="outline"
             :disabled="busy"
             :aria-pressed="selectedProtocol === protocol"

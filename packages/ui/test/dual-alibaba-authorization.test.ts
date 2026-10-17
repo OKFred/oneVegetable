@@ -29,6 +29,63 @@ import { GATEWAY_CONFIGURATION_EVENT } from '../src/lib/gateway-configuration-ev
 
 vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 const wrappers: VueWrapper[] = [];
+it('saves the extension default and keeps form editing separate from the saved choice', async () => {
+  const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
+  expect(view.wrapper.get('[data-testid="default-authorization-top"]').text()).toContain('已选择');
+  await view.wrapper.get('[data-testid="default-authorization-iop"]').trigger('click');
+  await flushPromises();
+  expect(view.setDefaultAuthorization).toHaveBeenCalledExactlyOnceWith('iop', 'iop-opaque-configuration');
+  expect(view.current().defaultProtocol).toBe('iop');
+  expect(view.wrapper.get('[data-testid="default-authorization-iop"]').attributes('aria-pressed')).toBe(
+    'true'
+  );
+  expect(view.saveSettings).not.toHaveBeenCalled();
+  await view.wrapper.get('[data-testid="authorization-profile-editor"]').setValue('top');
+  await flushPromises();
+  expect(view.current().defaultProtocol).toBe('iop');
+  expect(view.setDefaultAuthorization).toHaveBeenCalledTimes(1);
+});
+
+it('does not claim a new default on save failure or allow an unconfigured profile', async () => {
+  const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
+  view.setDefaultAuthorization.mockRejectedValue(new Error('Cannot save default'));
+  await view.wrapper.get('[data-testid="default-authorization-iop"]').trigger('click');
+  await flushPromises();
+  expect(view.current().defaultProtocol).toBe('top');
+  expect(toast.error).toHaveBeenCalledWith('Cannot save default');
+  const summary = dualSummary();
+  summary.iop = null;
+  const empty = await harness(SettingsView, { extension: true, defaultSwitch: true, summary });
+  expect(empty.wrapper.get('[data-testid="default-authorization-iop"]').attributes('disabled')).toBeDefined();
+});
+
+it('puts save next to passphrases, explains missing credentials and saves once after completion', async () => {
+  const view = await harness(SettingsView, { extension: true, empty: true });
+  const setup = view.wrapper.get('[data-testid="vault-passphrase-setup"]');
+  const save = setup.get('[data-testid="save-vault-near-passphrase"]');
+  expect(save.attributes('disabled')).toBeDefined();
+  const inputs = setup.findAll('input');
+  if (!inputs[0] || !inputs[1]) throw new Error('Missing passphrase inputs');
+  await inputs[0].setValue('fixture-passphrase');
+  await inputs[1].setValue('fixture-passphrase');
+  await save.trigger('click');
+  await flushPromises();
+  expect(view.createVault).not.toHaveBeenCalled();
+  expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('请先在下方导入'));
+  await view.wrapper.get('input[aria-label="App Secret"]').setValue('fixture-secret');
+  await view.wrapper.get('input[aria-label="Access Token"]').setValue('fixture-token');
+  await save.trigger('click');
+  await flushPromises();
+  expect(view.createVault).toHaveBeenCalledExactlyOnceWith(
+    'fixture-passphrase',
+    expect.objectContaining({
+      appSecret: 'fixture-secret',
+      accessToken: 'fixture-token'
+    })
+  );
+  expect(view.wrapper.find('[data-testid="save-vault-near-passphrase"]').exists()).toBe(false);
+  expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
+});
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => {
     wrapper.unmount();
@@ -80,6 +137,8 @@ async function harness(
     role?: 'admin' | 'user';
     summary?: AlibabaAuthorizationsSummary;
     locked?: boolean;
+    empty?: boolean;
+    defaultSwitch?: boolean;
   } = {}
 ) {
   let current = options.summary ?? dualSummary();
@@ -147,6 +206,18 @@ async function harness(
   const load = vi.fn(() => Promise.resolve(settingsFor('top')));
   const loadAuthorization = vi.fn((protocol: 'top' | 'iop') => Promise.resolve(settingsFor(protocol)));
   const settingsSummary = vi.fn(() => Promise.resolve(current));
+  const setDefaultAuthorization = vi.fn((protocol: 'top' | 'iop', _configurationId: string) => {
+    current = { ...current, defaultProtocol: protocol };
+    return Promise.resolve(current);
+  });
+  const createVault = vi.fn().mockResolvedValue({
+    state: 'unlocked',
+    hasAccessToken: true,
+    hasAppSecret: true,
+    idleTimeoutMinutes: 0,
+    lastActivityAt: null,
+    idleRemainingSeconds: null
+  });
   const saveSettings = vi.fn((settings: GatewaySettings) => {
     const protocol = settings.protocol ?? 'top';
     current = {
@@ -184,6 +255,7 @@ async function harness(
         settings: {
           load,
           save: saveSettings,
+          ...(options.defaultSwitch ? { setDefaultAuthorization } : {}),
           ...(!options.legacy
             ? {
                 authorizations: settingsSummary,
@@ -198,14 +270,14 @@ async function harness(
           ? {
               vault: {
                 status: vi.fn().mockResolvedValue({
-                  state: options.locked ? 'locked' : 'unlocked',
+                  state: options.empty ? 'empty' : options.locked ? 'locked' : 'unlocked',
                   hasAccessToken: true,
                   hasAppSecret: true,
                   policy: { idleTimeoutMinutes: 0 },
                   lastActivityAt: null,
                   idleRemainingSeconds: null
                 }),
-                create: vi.fn(),
+                create: createVault,
                 migrate: vi.fn(),
                 unlock: vi.fn(),
                 lock: vi.fn(),
@@ -263,6 +335,8 @@ async function harness(
     loadAuthorization,
     settingsSummary,
     saveSettings,
+    setDefaultAuthorization,
+    createVault,
     clearAuthorization,
     refreshAuthorization,
     confirmAuthorizations,

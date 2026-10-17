@@ -49,7 +49,7 @@ import { formatDateTime } from '../lib/date-time';
 import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import { useUnsavedEditing, VAULT_UNLOCKED_EVENT } from '../lib/unsaved-editing';
-import { useAlibabaAuthorizations } from '../lib/alibaba-authorizations';
+import { parseAuthorizationSummary, useAlibabaAuthorizations } from '../lib/alibaba-authorizations';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import { openAlibabaAuthorizationTool } from '../lib/alibaba-authorization-tool';
 
@@ -170,12 +170,15 @@ async function initializeSettings(): Promise<GatewaySettings | undefined> {
 }
 
 async function save(): Promise<void> {
+  if (saving.value || vaultBusy.value) return;
   saving.value = true;
   feedback.value = '';
   vaultError.value = null;
   try {
     if (mode === 'extension' && vault && vaultStatus.value?.state === 'empty') {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
+      if (!model.value.appKey.trim() || !model.value.appSecret.trim() || !model.value.accessToken.trim())
+        throw new Error(t('settings.vault.credentialsRequired'));
       applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
       clearVaultPassphrases();
       model.value = await loadSelectedAuthorization();
@@ -436,6 +439,45 @@ async function selectAuthorization(protocol: 'top' | 'iop'): Promise<void> {
     toast.info(credentialText('profileSelected', { protocol: protocol.toUpperCase() }));
   } catch (cause) {
     credentialImportError.value = userVisibleCause(cause, credentialText('error'));
+  } finally {
+    switchingAuthorization.value = false;
+  }
+}
+
+async function chooseDefaultAuthorization(protocol: 'top' | 'iop'): Promise<void> {
+  const summary = authorizationSummary.value;
+  const configurationId = summary?.[protocol]?.configurationId;
+  if (
+    !settings.setDefaultAuthorization ||
+    !settings.loadAuthorization ||
+    !configurationId ||
+    switchingAuthorization.value ||
+    authorizationBusy.value ||
+    saving.value ||
+    vaultBusy.value
+  )
+    return;
+  if (summary.defaultProtocol === protocol) {
+    toast.info(credentialText('defaultAlreadySelected', { protocol: protocol.toUpperCase() }));
+    return;
+  }
+  if (!(await credentialEditing.confirmLeave())) return;
+  switchingAuthorization.value = true;
+  credentialImportError.value = null;
+  try {
+    authorizationSummary.value = await parseAuthorizationSummary(
+      await settings.setDefaultAuthorization(protocol, configurationId)
+    );
+    notifyGatewayConfigurationChanged();
+    model.value = await settings.loadAuthorization(protocol);
+    credentialEditing.markClean();
+    feedback.value = '';
+    toast.success(credentialText('defaultSaved', { protocol: protocol.toUpperCase() }));
+  } catch (cause) {
+    await authorizations.reload();
+    const error = userVisibleCause(cause, credentialText('error'));
+    credentialImportError.value = error;
+    toast.error(error.message);
   } finally {
     switchingAuthorization.value = false;
   }
@@ -782,7 +824,8 @@ function confirmLanguagePreference(): void {
 
           <div
             v-if="vaultStatus?.state === 'empty' || vaultStatus?.state === 'legacy'"
-            class="mt-4 grid gap-2 sm:grid-cols-2"
+            class="mt-4 grid items-start gap-2 lg:grid-cols-[1fr_1fr_auto]"
+            data-testid="vault-passphrase-setup"
           >
             <Input
               v-model="vaultPassphrase"
@@ -803,8 +846,19 @@ function confirmLanguagePreference(): void {
               :placeholder="t('settings.vault.enterAgain')"
             />
             <Button
+              v-if="vaultStatus?.state === 'empty'"
+              type="button"
+              data-testid="save-vault-near-passphrase"
+              :disabled="
+                saving || vaultBusy || !settingsLoaded || !vaultPassphrase || !vaultPassphraseConfirmation
+              "
+              @click="save"
+            >
+              <LoaderCircle v-if="saving" class="size-4 animate-spin" />
+              <Save v-else class="size-4" />{{ t('settings.vault.saveHere') }}
+            </Button>
+            <Button
               v-if="vaultStatus?.state === 'legacy'"
-              class="sm:col-span-2"
               :disabled="vaultBusy || !vaultPassphrase || !vaultPassphraseConfirmation"
               @click="migrateVault"
             >
@@ -822,8 +876,10 @@ function confirmLanguagePreference(): void {
           :can-confirm="canConfirm"
           :can-renew="Boolean(settings.refreshAuthorization)"
           :can-clear="Boolean(settings.clearAuthorization)"
+          :can-set-default="Boolean(settings.setDefaultAuthorization)"
           extension
           @select="selectAuthorization"
+          @set-default="chooseDefaultAuthorization"
           @confirm="confirmAuthorizations"
           @renew="protocolDialogPurpose = 'renew'"
           @clear="requestClearAuthorization"
@@ -889,10 +945,11 @@ function confirmLanguagePreference(): void {
           <p v-if="dualSettings" class="my-3 text-sm font-medium">
             {{ credentialText('selectedProfile', { protocol: selectedProtocol.toUpperCase() }) }}
           </p>
-          <label v-else class="mt-4 block text-sm font-medium">
+          <label class="mt-4 block text-sm font-medium">
             {{ credentialText('protocol') }}
             <select
               v-model="selectedProtocol"
+              data-testid="authorization-profile-editor"
               :aria-label="credentialText('protocol')"
               class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
             >
