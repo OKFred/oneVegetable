@@ -15,6 +15,12 @@ import {
 } from '@one-vegetable/core/credential-bundle';
 import { GatewayException } from '@one-vegetable/core/errors';
 import { validateVaultPassphrase } from '@one-vegetable/core/credential-vault';
+import type { AuthorizationProtectionKey } from './authorization-protection';
+
+export interface AuthorizationProtectionBridge {
+  prepare(passphrase: string): Promise<AuthorizationProtectionKey>;
+  adopt(vault: OpenAlibabaAuthorizationVault): Promise<void>;
+}
 
 import {
   IOP_VAULT_KEY,
@@ -64,7 +70,10 @@ interface AuthorizationJob {
   state: string;
   tabId: number;
   deadline: number;
-  protection: { passphrase: string } | { vault: OpenAlibabaAuthorizationVault };
+  protection:
+    | { passphrase: string }
+    | { vault: OpenAlibabaAuthorizationVault }
+    | { shared: AuthorizationProtectionKey };
 }
 
 /** Protocol is explicit; no website passwords, automatic approval or cross-protocol fallback. */
@@ -77,13 +86,15 @@ export class IopAuthorizationController {
   private expiryTimer: ReturnType<typeof setTimeout> | null = null;
   private revision = 0;
   private manuallyLocked = false;
+  private protectionChanging = false;
 
   constructor(
     private readonly storage: AuthorizationStorage,
     private readonly client: AuthorizationTokenClient,
     private readonly openTab: (url: string) => Promise<number>,
     private readonly clock: () => number = Date.now,
-    private readonly protocol: 'iop' | 'top' = 'iop'
+    private readonly protocol: 'iop' | 'top' = 'iop',
+    private readonly protection?: AuthorizationProtectionBridge
   ) {}
 
   private get vaultKey(): string {
@@ -153,6 +164,7 @@ export class IopAuthorizationController {
     const pending = receipt !== null && receipt !== undefined;
     const exists = (await this.storage.get(this.vaultKey))[this.vaultKey] !== undefined;
     if (!exists && !this.pendingSave) this.unlocked = null;
+    if (this.unlocked) await this.protection?.adopt(this.unlocked);
     const bundle = this.unlocked?.bundle;
     return {
       state: this.busy
@@ -195,6 +207,12 @@ export class IopAuthorizationController {
       if (this.job) throw failure('AUTH_TASK_ACTIVE');
       await this.restore(true);
       const callback = parseCallback(input.callbackUrl);
+      if (
+        this.protection &&
+        !this.unlocked &&
+        (await this.storage.get(this.vaultKey))[this.vaultKey] !== undefined
+      )
+        throw failure('AUTH_VAULT_LOCKED');
       const application = {
         appName: required(input.appName),
         appKey: required(input.appKey),
@@ -204,7 +222,9 @@ export class IopAuthorizationController {
         permissions: []
       };
       // Validate the passphrase and application before opening any remote page.
-      if (input.passphrase === '' && this.unlocked) {
+      if (this.protection) {
+        await this.beginJob(application, { shared: await this.protection.prepare(input.passphrase) });
+      } else if (input.passphrase === '' && this.unlocked) {
         await this.beginJob(application, { vault: this.unlocked });
       } else {
         validateVaultPassphrase(input.passphrase);
@@ -323,18 +343,20 @@ export class IopAuthorizationController {
         protocol: this.protocol
       };
       this.unlocked =
-        'passphrase' in job.protection
-          ? await sealAlibabaAuthorization(bundle, job.protection.passphrase, this.protocol)
-          : {
-              ...job.protection.vault,
-              bundle,
-              record: await resealAlibabaAuthorization(
+        'shared' in job.protection
+          ? await this.sealWithProtection(bundle, job.protection.shared)
+          : 'passphrase' in job.protection
+            ? await sealAlibabaAuthorization(bundle, job.protection.passphrase, this.protocol)
+            : {
+                ...job.protection.vault,
                 bundle,
-                job.protection.vault.key,
-                job.protection.vault.record.salt,
-                this.protocol
-              )
-            };
+                record: await resealAlibabaAuthorization(
+                  bundle,
+                  job.protection.vault.key,
+                  job.protection.vault.record.salt,
+                  this.protocol
+                )
+              };
       this.pendingSave = true;
       await this.persist(this.unlocked);
       this.pendingSave = false;
@@ -346,7 +368,16 @@ export class IopAuthorizationController {
   async unlock(passphrase: string): Promise<void> {
     await this.exclusive(async () => {
       const value = (await this.storage.get(this.vaultKey))[this.vaultKey];
-      const unlocked = await openAlibabaAuthorization(value, passphrase, this.protocol);
+      const unlocked =
+        passphrase === '' && this.protection
+          ? await restoreAlibabaAuthorization(
+              value,
+              (await this.protection.prepare('')).sessionKeyMaterial,
+              this.protocol
+            )
+          : await openAlibabaAuthorization(value, passphrase, this.protocol);
+      await this.protection?.adopt(unlocked);
+      await this.protection?.prepare(passphrase);
       // Old records stay untouched; recovery becomes available only after the old passphrase succeeds.
       await this.storage.set({ [this.sessionKey]: this.recoveryRecord(unlocked) });
       this.unlocked = unlocked;
@@ -361,11 +392,12 @@ export class IopAuthorizationController {
       const checked = parseAlibabaOpenApiCredentialBundle(bundle);
       if ((checked.protocol ?? 'top') !== this.protocol)
         throw failure(this.protocol === 'iop' ? 'IOP_REQUIRED' : 'TOP_REQUIRED');
-      const unlocked = await sealAlibabaAuthorization(
-        { ...checked, protocol: this.protocol },
-        passphrase,
-        this.protocol
-      );
+      const unlocked = this.protection
+        ? await this.sealWithProtection(
+            { ...checked, protocol: this.protocol },
+            await this.protection.prepare(passphrase)
+          )
+        : await sealAlibabaAuthorization({ ...checked, protocol: this.protocol }, passphrase, this.protocol);
       await this.persist(unlocked);
       this.unlocked = unlocked;
       this.pendingSave = false;
@@ -457,8 +489,41 @@ export class IopAuthorizationController {
       this.errorCode = null;
     });
   }
+  /** Return an atomic storage patch for shared-key rotation; preserve receipts and explicit locks. */
+  async protectionUpdates(
+    previousKey: string,
+    next: AuthorizationProtectionKey
+  ): Promise<Record<string, unknown>> {
+    if (this.busy || this.job || this.pendingSave) throw failure('AUTH_TASK_ACTIVE');
+    const value = (await this.storage.get(this.vaultKey))[this.vaultKey];
+    if (value === undefined) return {};
+    let opened: OpenAlibabaAuthorizationVault;
+    try {
+      opened = await restoreAlibabaAuthorization(value, previousKey, this.protocol);
+    } catch {
+      return {}; // Older independently protected vaults retain their original protection.
+    }
+    const saved = (await this.storage.get(this.sessionKey))[this.sessionKey];
+    const unlocked =
+      isRecord(saved) &&
+      saved.sessionKeyMaterial === previousKey &&
+      saved.ciphertext === opened.record.ciphertext;
+    const changed = await this.sealWithProtection(opened.bundle, next);
+    return {
+      [this.vaultKey]: changed.record,
+      [this.sessionKey]: unlocked ? this.recoveryRecord(changed) : null
+    };
+  }
+  holdProtection(): () => void {
+    if (this.busy || this.job || this.pendingSave || this.protectionChanging)
+      throw failure('AUTH_TASK_ACTIVE');
+    this.protectionChanging = true;
+    return () => {
+      this.protectionChanging = false;
+    };
+  }
   cancel(): void {
-    if (this.busy) throw failure('AUTH_TASK_ACTIVE');
+    if (this.busy || this.protectionChanging) throw failure('AUTH_TASK_ACTIVE');
     this.endJob();
   }
   async clear(): Promise<void> {
@@ -471,6 +536,18 @@ export class IopAuthorizationController {
       this.errorCode = null;
     });
   }
+  private async sealWithProtection(
+    bundle: AlibabaOpenApiCredentialBundle,
+    protection: AuthorizationProtectionKey
+  ): Promise<OpenAlibabaAuthorizationVault> {
+    return {
+      bundle,
+      key: protection.key,
+      sessionKeyMaterial: protection.sessionKeyMaterial,
+      record: await resealAlibabaAuthorization(bundle, protection.key, protection.salt, this.protocol)
+    };
+  }
+
   private requireUnlocked(): OpenAlibabaAuthorizationVault {
     if (!this.unlocked) throw failure('AUTH_VAULT_LOCKED');
     return this.unlocked;
@@ -481,7 +558,7 @@ export class IopAuthorizationController {
     this.expiryTimer = null;
   }
   private async exclusive(action: () => Promise<void>): Promise<void> {
-    if (this.busy) throw failure('AUTH_TASK_ACTIVE');
+    if (this.busy || this.protectionChanging) throw failure('AUTH_TASK_ACTIVE');
     this.revision += 1;
     this.busy = true;
     try {

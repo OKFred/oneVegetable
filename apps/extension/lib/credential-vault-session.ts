@@ -46,24 +46,29 @@ export class ExtensionCredentialVaultSession {
   activate(
     value: CredentialVaultSessionValue,
     sessionKeyMaterial: string,
-    now = this.clock()
+    now = this.clock(),
+    additionalItems: Record<string, unknown> = {}
   ): Promise<void> {
     return this.#serial(async () => {
       // Commit before reporting success; a failed save must never appear remembered.
-      await this.#persist(value.record, sessionKeyMaterial, now);
+      await this.#persist(value.record, sessionKeyMaterial, now, additionalItems);
       await this.legacySessionStorage?.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
       this.#activate(value, sessionKeyMaterial, now);
     });
   }
 
-  update(value: CredentialVaultSessionValue, now = this.clock()): Promise<void> {
+  update(
+    value: CredentialVaultSessionValue,
+    now = this.clock(),
+    additionalItems: Record<string, unknown> = {}
+  ): Promise<void> {
     return this.#serial(async () => {
       const stored = await this.#readStored();
       const keyMaterial = this.#sessionKeyMaterial;
       // A concurrent clear/lock must not be undone by a late settings response.
       if (!keyMaterial || !isStoredSession(stored) || stored.sessionKeyMaterial !== keyMaterial)
         throw new Error('CREDENTIAL_VAULT_LOCKED');
-      await this.#persist(value.record, keyMaterial, now);
+      await this.#persist(value.record, keyMaterial, now, additionalItems);
       this.#activate(value, keyMaterial, now);
     });
   }
@@ -130,6 +135,13 @@ export class ExtensionCredentialVaultSession {
     });
   }
 
+  /** Background-only bridge. Never include this result in runtime/page responses. */
+  async protection(record: CredentialVaultRecord) {
+    const active = await this.read(record);
+    if (!active || !this.#sessionKeyMaterial) throw new Error('CREDENTIAL_VAULT_LOCKED');
+    return { key: active.value.key, sessionKeyMaterial: this.#sessionKeyMaterial, salt: record.kdf.salt };
+  }
+
   #activate(value: CredentialVaultSessionValue, key: string, now: number): void {
     // Old encrypted idle policies remain readable but are no longer enforced.
     this.#session.activate({ ...value, policy: { idleTimeoutMinutes: 0 } }, now);
@@ -153,7 +165,12 @@ export class ExtensionCredentialVaultSession {
     ];
   }
 
-  #persist(record: CredentialVaultRecord, sessionKeyMaterial: string, lastActivityAt: number): Promise<void> {
+  #persist(
+    record: CredentialVaultRecord,
+    sessionKeyMaterial: string,
+    lastActivityAt: number,
+    additionalItems: Record<string, unknown> = {}
+  ): Promise<void> {
     const value: StoredCredentialVaultSession = {
       schemaVersion: 1,
       recordSalt: record.kdf.salt,
@@ -162,7 +179,7 @@ export class ExtensionCredentialVaultSession {
       sessionKeyMaterial,
       lastActivityAt
     };
-    return this.storage.set({ [CREDENTIAL_VAULT_SESSION_STORAGE_KEY]: value });
+    return this.storage.set({ ...additionalItems, [CREDENTIAL_VAULT_SESSION_STORAGE_KEY]: value });
   }
 
   #serial<T>(action: () => Promise<T>): Promise<T> {

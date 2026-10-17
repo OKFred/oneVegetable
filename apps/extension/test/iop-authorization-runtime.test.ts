@@ -4,6 +4,10 @@ import { IOP_API_ORIGIN, PUBLIC_AUTH_CALLBACK, PUBLIC_AUTH_ORIGIN } from '@one-v
 import type * as IopModule from '@one-vegetable/core/alibaba-iop';
 import tokens from '../../../mock/data/alibaba-auth/iop-token-responses.json';
 import credential from '../../../mock/data/node-gateway-credentials.json';
+import { SETTINGS_STORAGE_KEY, createCredentialVault } from '@one-vegetable/core';
+import { openAlibabaAuthorization } from '@one-vegetable/core/alibaba-authorization-vault';
+import { AuthorizationProtection } from '../lib/authorization-protection';
+import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import {
   IOP_VAULT_KEY,
   TOP_VAULT_KEY,
@@ -78,6 +82,8 @@ vi.mock('@one-vegetable/core/alibaba-iop', async (original) => {
 });
 import {
   handleAuthorization,
+  configureAuthorizationProtection,
+  rotateAuthorizationProtection,
   handlePublicAuthorization,
   lockAllAlibabaAuthorizations,
   resetIopAuthorization
@@ -101,6 +107,28 @@ function external(action: string, extra: Record<string, unknown> = {}) {
 }
 beforeEach(async () => {
   await resetIopAuthorization();
+  for (const key of Object.keys(mocks.data)) Reflect.deleteProperty(mocks.data, key);
+  const storage = {
+    get: (key: string) => Promise.resolve({ [key]: mocks.data[key] }),
+    set: (items: Record<string, unknown>) => {
+      Object.assign(mocks.data, items);
+      return Promise.resolve();
+    },
+    remove: (key: string) => {
+      Reflect.deleteProperty(mocks.data, key);
+      return Promise.resolve();
+    }
+  };
+  const protection = new AuthorizationProtection(storage, new ExtensionCredentialVaultSession(storage));
+  configureAuthorizationProtection({
+    prepare: (passphrase) => protection.prepare(passphrase),
+    adopt: (vault) => protection.adopt(vault),
+    status: () => Promise.resolve({ state: mocks.data[SETTINGS_STORAGE_KEY] ? 'unlocked' : 'empty' }),
+    prepareStatus: async (passphrase) => {
+      await protection.prepare(passphrase);
+      return { state: 'unlocked' };
+    }
+  });
   vi.clearAllMocks();
   mocks.permission.mockResolvedValue(true);
   mocks.token.mockResolvedValue(parseAlibabaTokenResponse(tokens.success));
@@ -108,6 +136,77 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await resetIopAuthorization();
+});
+
+it('rotates shared protection atomically without unlocking a manually locked protocol or losing receipts', async () => {
+  for (const protocol of ['top', 'iop'] as const) {
+    expect(
+      await handleAuthorization(
+        command(
+          'import',
+          {
+            bundle: { ...credential.oauthBundle, protocol },
+            passphrase: '123456'
+          },
+          protocol
+        ),
+        trusted
+      )
+    ).toMatchObject({ ok: true });
+  }
+  const opened = await openAlibabaAuthorization(mocks.data[IOP_VAULT_KEY], '123456', 'iop');
+  await handleAuthorization(command('lock', {}, 'top'), trusted);
+  const receipt = { requestId: crypto.randomUUID(), status: 'sending', timeUtc: Date.now() };
+  mocks.data[TOP_RECEIPT_KEY] = receipt;
+  const next = await createCredentialVault(
+    {
+      appKey: '',
+      appSecret: '',
+      accessToken: '',
+      endpoint: 'https://eco.taobao.com/router/rest',
+      signMethod: 'hmac'
+    },
+    'new-fixture-passphrase'
+  );
+  await rotateAuthorizationProtection(
+    opened.sessionKeyMaterial,
+    {
+      key: next.key,
+      sessionKeyMaterial: next.sessionKeyMaterial,
+      salt: next.record.kdf.salt
+    },
+    async (patch) => {
+      expect(
+        await handleAuthorization(
+          command(
+            'import',
+            {
+              bundle: { ...credential.oauthBundle, protocol: 'iop' },
+              passphrase: ''
+            },
+            'iop'
+          ),
+          trusted
+        )
+      ).toMatchObject({ ok: false, error: { code: 'AUTH_TASK_ACTIVE' } });
+      Object.assign(mocks.data, patch);
+    }
+  );
+  expect(mocks.data[TOP_RECEIPT_KEY]).toEqual(receipt);
+  expect(mocks.data[TOP_SESSION_KEY]).toBeNull();
+  expect(await handleAuthorization(command('status', {}, 'top'), trusted)).toMatchObject({
+    ok: true,
+    data: { state: 'locked' }
+  });
+  for (const protocol of ['top', 'iop'] as const) {
+    const key = protocol === 'top' ? TOP_VAULT_KEY : IOP_VAULT_KEY;
+    expect(
+      (await openAlibabaAuthorization(mocks.data[key], 'new-fixture-passphrase', protocol)).bundle.protocol
+    ).toBe(protocol);
+    await expect(openAlibabaAuthorization(mocks.data[key], '123456', protocol)).rejects.toThrow(
+      'AUTH_UNLOCK_FAILED'
+    );
+  }
 });
 
 describe('narrow public authorization bridge', () => {

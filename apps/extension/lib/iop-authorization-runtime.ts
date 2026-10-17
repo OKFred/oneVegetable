@@ -9,14 +9,35 @@ import {
   isRecord,
   required,
   parseCallback,
-  type AuthorizationStorage
+  type AuthorizationStorage,
+  type AuthorizationProtectionBridge
 } from './iop-authorization';
 import { TopAuthorizationTokenClient } from './top-authorization-token-client';
 import { IopApplicationReader, IOP_APPLICATION_READER_ORIGINS } from './iop-application-reader';
 import { TOP_APPLICATION_READER_ORIGINS } from './iop-authorization-storage';
 import { readTopApplication } from './top-application-reader';
+import type { AuthorizationProtectionKey } from './authorization-protection';
 
 const applicationReader = new IopApplicationReader();
+let protection:
+  | (AuthorizationProtectionBridge & {
+      status(): Promise<unknown>;
+      prepareStatus(passphrase: string): Promise<unknown>;
+    })
+  | undefined;
+export function configureAuthorizationProtection(bridge: NonNullable<typeof protection>): void {
+  protection = bridge;
+}
+const sharedProtection: AuthorizationProtectionBridge = {
+  async prepare(passphrase) {
+    if (!protection) throw failure('AUTH_ACTION_FAILED');
+    return protection.prepare(passphrase);
+  },
+  async adopt(vault) {
+    if (!protection) throw failure('AUTH_ACTION_FAILED');
+    await protection.adopt(vault);
+  }
+};
 
 let storageAccessReady: Promise<void> | undefined;
 function restrictLocalStorage(): Promise<void> {
@@ -50,7 +71,10 @@ const controller = new IopAuthorizationController(
     const tab = await browser.tabs.create({ url });
     if (tab.id === undefined) throw failure('AUTH_ACTION_FAILED');
     return tab.id;
-  }
+  },
+  Date.now,
+  'iop',
+  sharedProtection
 );
 const topController = new IopAuthorizationController(
   trustedLocalStorage,
@@ -61,9 +85,29 @@ const topController = new IopAuthorizationController(
     return tab.id;
   },
   Date.now,
-  'top'
+  'top',
+  sharedProtection
 );
 const controllers = { iop: controller, top: topController };
+export async function rotateAuthorizationProtection(
+  previousKey: string,
+  next: AuthorizationProtectionKey,
+  commit: (patch: Record<string, unknown>) => Promise<void>
+): Promise<void> {
+  const releaseIop = controller.holdProtection();
+  let releaseTop: (() => void) | undefined;
+  try {
+    releaseTop = topController.holdProtection();
+    const patches = await Promise.all([
+      controller.protectionUpdates(previousKey, next),
+      topController.protectionUpdates(previousKey, next)
+    ]);
+    await commit(Object.assign({}, ...patches));
+  } finally {
+    releaseTop?.();
+    releaseIop();
+  }
+}
 browser.tabs.onUpdated.addListener((tabId, change) => {
   if (change.url) void controller.acceptCallback(change.url, tabId).catch(() => undefined);
   if (change.url) void topController.acceptCallback(change.url, tabId).catch(() => undefined);
@@ -101,6 +145,16 @@ export async function handleAuthorization(
     const selected = controllers[protocol];
     let data: unknown;
     switch (value.action) {
+      case 'protection-status':
+        if (!protection) throw failure('AUTH_ACTION_FAILED');
+        // Restore/adopt a previously unlocked standalone key before requesting setup again.
+        await selected.status();
+        data = await protection.status();
+        break;
+      case 'prepare-protection':
+        if (!protection) throw failure('AUTH_ACTION_FAILED');
+        data = await protection.prepareStatus(passphrase(payload.passphrase));
+        break;
       case 'discover-application':
         if (
           !(await browser.permissions.contains({
@@ -175,7 +229,16 @@ export async function handleAuthorization(
     }
     return { requestId, ok: true, data };
   } catch (error) {
-    const code = error instanceof GatewayException ? error.gatewayError.code : 'AUTH_ACTION_FAILED';
+    const code =
+      error instanceof GatewayException
+        ? error.gatewayError.code
+        : isRecord(error) &&
+            typeof error.code === 'string' &&
+            /^PASSPHRASE_TOO_(SHORT|LONG)$/u.test(error.code)
+          ? error.code
+          : error instanceof Error && /^CREDENTIAL_VAULT_(LOCKED|INVALID)$/u.test(error.message)
+            ? error.message
+            : 'AUTH_ACTION_FAILED';
     return { requestId, ok: false, error: { code, message: code, retryable: false } };
   }
 }

@@ -436,6 +436,7 @@ export interface CredentialVaultPolicy {
 
 export interface CredentialVaultStatus {
   protocol?: 'top' | 'iop';
+  deviceProtected?: boolean;
   state: CredentialVaultState;
   hasAppKey: boolean;
   hasAppSecret: boolean;
@@ -451,6 +452,7 @@ export interface CredentialVaultStatus {
 
 export interface CredentialVaultRepository {
   status(): Promise<CredentialVaultStatus>;
+  prepareAuthorization?(passphrase: string): Promise<CredentialVaultStatus>;
   create(passphrase: string, settings: GatewaySettings): Promise<CredentialVaultStatus>;
   migrate(passphrase: string): Promise<CredentialVaultStatus>;
   unlock(passphrase: string): Promise<CredentialVaultStatus>;
@@ -461,6 +463,7 @@ export interface CredentialVaultRepository {
 
 export type CredentialVaultOperation =
   | 'status'
+  | 'prepare-authorization'
   | 'get-settings'
   | 'create'
   | 'migrate'

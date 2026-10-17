@@ -93,6 +93,10 @@ export function saveAuthorizationPatch(settings: GatewaySettings, patch: Gateway
       retryable: false
     });
   if (changed && !replacement) next.configurationId = crypto.randomUUID();
+  // Protection can be prepared before either authorization exists. Its blank TOP
+  // placeholder is not a saved protocol preference: use the first real profile.
+  if (!Object.values(authorizationProfiles(settings)).some(configuredAuthorization))
+    return { ...next, protocol };
   const result = replaceAuthorization(settings, protocol, next);
   return !changed && settings.authorizationBinding
     ? { ...result, authorizationBinding: settings.authorizationBinding }

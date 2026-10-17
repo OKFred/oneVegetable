@@ -2,6 +2,8 @@ import { browser } from 'wxt/browser';
 import {
   handleAuthorization,
   handlePublicAuthorization,
+  configureAuthorizationProtection,
+  rotateAuthorizationProtection,
   lockAllAlibabaAuthorizations,
   resetIopAuthorization
 } from '../lib/iop-authorization-runtime';
@@ -48,7 +50,6 @@ import {
   gatewayCredentialExpiryMetadata,
   alibabaAuthorizationMetadata,
   alibabaAccessTokenCapturedTime,
-  unlockCredentialVault,
   PhotoAdapter,
   ProductAdapter,
   ProductShowcaseAdapter,
@@ -84,6 +85,7 @@ import {
 } from '@one-vegetable/core/capability-validation-worker';
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
+import { AuthorizationProtection, DEVICE_PROTECTION_KEY } from '../lib/authorization-protection';
 import { executeExtensionCapabilityCall } from '../lib/capability-call';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 import { applyExtensionCapabilityProtocol, type AuthorizationStatus } from '../lib/operation-availability';
@@ -343,6 +345,14 @@ const vaultSession = new ExtensionCredentialVaultSession(browser.storage.local, 
   set: (items) => browser.storage.session.set(items),
   remove: (key) => browser.storage.session.remove(key)
 });
+const authorizationProtection = new AuthorizationProtection(browser.storage.local, vaultSession);
+configureAuthorizationProtection({
+  prepare: (passphrase) => serializeVaultOperation(() => authorizationProtection.prepare(passphrase)),
+  adopt: (vault) => serializeVaultOperation(() => authorizationProtection.adopt(vault)),
+  status: () => serializeVaultOperation(() => executeCredentialVaultOperation('status', undefined)),
+  prepareStatus: (passphrase) =>
+    serializeVaultOperation(() => executeCredentialVaultOperation('prepare-authorization', { passphrase }))
+});
 const alibabaCredentialAcquisition = new ExtensionAlibabaCredentialAcquisitionController();
 const productMutations = new ExtensionProductDisplayMutationLifecycle({
   get: (key) => browser.storage.local.get(key),
@@ -523,12 +533,7 @@ async function saveAcquiredCredentialsToVault(
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
   if (state.kind === 'empty') {
-    if (!passphrase) {
-      throw gatewayFailure('CREDENTIAL_VAULT_PASSPHRASE_REQUIRED', 'Set a vault passphrase first.');
-    }
-    const created = await createCredentialVault(settings, passphrase);
-    await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-    await vaultSession.activate(created, created.sessionKeyMaterial);
+    const created = await authorizationProtection.create(settings, passphrase ?? '');
     return credentialVaultStatus({ kind: 'vault', record: created.record }, settings.protocol);
   }
   const current = await getUnlockedVault(state);
@@ -571,6 +576,13 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
 
   switch (operation) {
+    case 'prepare-authorization': {
+      await authorizationProtection.prepare(optionalVaultString(asRecord(payload).passphrase) ?? '');
+      const current = inspectCredentialStorage(
+        (await browser.storage.local.get(SETTINGS_STORAGE_KEY))[SETTINGS_STORAGE_KEY]
+      );
+      return credentialVaultStatus(current);
+    }
     case 'status':
       return credentialVaultStatus(state);
     case 'get-settings':
@@ -664,8 +676,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     }
     case 'unlock': {
       if (state.kind !== 'vault') throw vaultStateError(state.kind);
-      const unlocked = await unlockCredentialVault(state.record, requiredVaultString(payload, 'passphrase'));
-      await vaultSession.activate({ ...unlocked, record: state.record }, unlocked.sessionKeyMaterial);
+      await authorizationProtection.prepare(optionalVaultString(asRecord(payload).passphrase) ?? '');
       return credentialVaultStatus(state);
     }
     case 'lock':
@@ -678,9 +689,10 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       }
       const request = asRecord(payload);
       const settings = initializeAuthorizationIdentities(requiredGatewaySettings(request.settings, true));
-      const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial);
+      const created = await authorizationProtection.create(
+        settings,
+        optionalVaultString(request.passphrase) ?? ''
+      );
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'migrate': {
@@ -692,8 +704,10 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       }
       const settings = initializeAuthorizationIdentities(state.settings);
       const created = await createCredentialVault(settings, requiredVaultString(payload, 'passphrase'));
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial);
+      await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial, undefined, {
+        [SETTINGS_STORAGE_KEY]: created.record,
+        [DEVICE_PROTECTION_KEY]: null
+      });
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'save': {
@@ -715,13 +729,32 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     }
     case 'rotate': {
       const current = await getUnlockedVault(state);
+      const previous = await vaultSession.protection(current.record);
       const created = await createCredentialVault(
         current.settings,
         requiredVaultString(payload, 'newPassphrase'),
         current.policy
       );
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      await vaultSession.activate({ ...created, settings: current.settings }, created.sessionKeyMaterial);
+      await rotateAuthorizationProtection(
+        previous.sessionKeyMaterial,
+        {
+          key: created.key,
+          sessionKeyMaterial: created.sessionKeyMaterial,
+          salt: created.record.kdf.salt
+        },
+        async (toolUpdates) => {
+          await vaultSession.activate(
+            { ...created, settings: current.settings },
+            created.sessionKeyMaterial,
+            undefined,
+            {
+              ...toolUpdates,
+              [SETTINGS_STORAGE_KEY]: created.record,
+              [DEVICE_PROTECTION_KEY]: null
+            }
+          );
+        }
+      );
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'update-policy': {
@@ -729,8 +762,9 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       // Kept for older clients; automatic idle locking is no longer supported.
       const policy = { idleTimeoutMinutes: 0 };
       const record = await resealCredentialVault(current.record, current.settings, current.key, policy);
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
-      await vaultSession.update({ ...current, record, policy });
+      await vaultSession.update({ ...current, record, policy }, undefined, {
+        [SETTINGS_STORAGE_KEY]: record
+      });
       return credentialVaultStatus({ kind: 'vault', record });
     }
     default:
@@ -761,6 +795,7 @@ async function credentialVaultStatus(
   const effectiveState = state.kind === 'vault' ? (activeSession ? 'unlocked' : 'locked') : state.kind;
   return {
     state: effectiveState,
+    deviceProtected: state.kind === 'vault' && Boolean(await authorizationProtection.deviceKey(state.record)),
     ...(settings?.protocol === undefined ? {} : { protocol: settings.protocol }),
     ...(allSettings ? { pool: authorizationAvailability(allSettings) } : {}),
     hasAppKey: Boolean(settings?.appKey),
@@ -826,8 +861,7 @@ async function getUnlockedVault(
 
 async function persistUnlockedSettings(current: CredentialVaultSessionValue, settings: GatewaySettings) {
   const record = await resealCredentialVault(current.record, settings, current.key, current.policy);
-  await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
-  await vaultSession.update({ ...current, record, settings });
+  await vaultSession.update({ ...current, record, settings }, undefined, { [SETTINGS_STORAGE_KEY]: record });
   return record;
 }
 
@@ -1454,6 +1488,7 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     value.operation !== 'status' &&
     value.operation !== 'get-settings' &&
     value.operation !== 'create' &&
+    value.operation !== 'prepare-authorization' &&
     value.operation !== 'migrate' &&
     value.operation !== 'unlock' &&
     value.operation !== 'lock' &&
@@ -1559,9 +1594,16 @@ function validateCredentialVaultPayload(
     validateProfileInput(payload);
     return;
   }
+  if (operation === 'prepare-authorization' || operation === 'unlock') {
+    const input = requireOnlyKeys(payload, ['passphrase']);
+    if (typeof input.passphrase !== 'string' || input.passphrase.length > 256)
+      throw gatewayFailure('INVALID_CREDENTIAL_VAULT_REQUEST', 'INVALID_CREDENTIAL_VAULT_REQUEST');
+    return;
+  }
   if (operation === 'create') {
     const input = requireOnlyKeys(payload, ['passphrase', 'settings']);
-    requiredString(input, 'passphrase');
+    if (typeof input.passphrase !== 'string' || input.passphrase.length > 256)
+      throw gatewayFailure('INVALID_CREDENTIAL_VAULT_REQUEST', 'INVALID_CREDENTIAL_VAULT_REQUEST');
     validateProfileInput(input.settings);
     return;
   }

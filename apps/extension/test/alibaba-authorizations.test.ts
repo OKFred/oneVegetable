@@ -42,6 +42,16 @@ function pair() {
   return settings;
 }
 describe('extension encrypted protocol profiles', () => {
+  it('uses the first real authorization as default after optional protection setup', async () => {
+    const empty: GatewaySettings = { ...top, appKey: '', appSecret: '', accessToken: '', refreshToken: null };
+    const saved = saveAuthorizationPatch(empty, iop);
+    expect(saved.protocol).toBe('iop');
+    expect(summarizeAuthorizations(saved).top).toBeNull();
+    expect(await resolveAuthorization(saved)).toMatchObject(iop);
+    const paired = saveAuthorizationPatch(saved, { ...top, protocol: 'top' });
+    expect(paired.protocol).toBe('iop');
+    expect(summarizeAuthorizations(paired).top?.configured).toBe(true);
+  });
   it('changes the persisted default without changing credentials, binding or pinned routing', async () => {
     const original = pair();
     const profiles = authorizationProfiles(original);
