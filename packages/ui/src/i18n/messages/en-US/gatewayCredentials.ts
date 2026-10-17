@@ -4,7 +4,7 @@ export const gatewayCredentials = {
   acquireCredentials: 'Connect Alibaba account',
   chooseAcquireProtocol: 'Connect your Alibaba account',
   chooseMethodDescription:
-    'Choose how to connect. File import opens no Alibaba page and requests no host permission.',
+    'Choose how to connect. File import opens no Alibaba page. IOP needs permission for its business API.',
   offlineMethod: 'Import an existing authorization file',
   offlineMethodHelp:
     'Choose credentialInfo.json or another complete authorization JSON. TOP / IOP is detected automatically.',
@@ -16,7 +16,7 @@ export const gatewayCredentials = {
   offlineImportSave: 'Import and save',
   offlineInvalid: 'Invalid authorization file. Choose a complete authorization JSON no larger than 256 KiB.',
   offlineFailed:
-    'Import did not complete. Check local protection and try again. Online authorization was not started.',
+    'Import did not complete. Check local protection and host permission, then try again. Online authorization was not started.',
   offlineSaved: 'Authorization file imported and saved.',
   methodBack: 'Back to connection methods',
   chooseRenewProtocol: 'Which authorization do you want to renew?',

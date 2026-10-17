@@ -46,6 +46,6 @@ export interface ExtensionAlibabaCredentialAcquisitionRepository {
   focusPrerequisitePage(): Promise<void>;
   openIopTool?(): Promise<void>;
   openTool?(protocol: 'top' | 'iop'): Promise<void>;
-  /** Explicit local JSON import; no provider request or optional host permission. */
+  /** Local JSON import; no provider request. IOP may request only its business API origin. */
   importBundle?(bundle: AlibabaOpenApiCredentialBundle): Promise<CredentialVaultStatus>;
 }

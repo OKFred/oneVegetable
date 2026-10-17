@@ -1113,7 +1113,7 @@ function confirmLanguagePreference(): void {
           :purpose="protocolDialogPurpose ?? 'acquire'"
           :vault="vault"
           :acquisition="alibabaCredentialAcquisition"
-          :before-import="credentialEditing.confirmLeave"
+          :before-import="hasVaultEdits() ? credentialEditing.confirmLeave : undefined"
           @prepared="handleProtectionPrepared"
           @imported="handleAcquiredCredentialsSaved"
           @update:open="

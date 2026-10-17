@@ -11,7 +11,7 @@ function permissions(worker: Worker): Promise<unknown> {
   });
 }
 
-test('formal extension imports TOP and IOP without provider pages or extra permissions', async () => {
+test('formal extension imports locally and requests only the required IOP business origin', async () => {
   test.setTimeout(120_000);
   const profile = await mkdtemp(resolve(tmpdir(), 'one-vegetable-offline-'));
   const extension = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
@@ -35,6 +35,23 @@ test('formal extension imports TOP and IOP without provider pages or extra permi
     await guide.getByRole('checkbox').check();
     await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
     const permissionsBefore = await permissions(worker);
+    await page.evaluate(() => {
+      const target = globalThis as unknown as {
+        importPermissionAllowed: boolean;
+        importPermissionRequests: { origins: string[]; active: boolean }[];
+        chrome: { permissions: { request(input: { origins: string[] }): Promise<boolean> } };
+      };
+      target.importPermissionAllowed = false;
+      target.importPermissionRequests = [];
+      // Isolate the native permission decision; do not grant hosts or contact Alibaba in CI.
+      target.chrome.permissions.request = (input) => {
+        target.importPermissionRequests.push({
+          origins: input.origins,
+          active: navigator.userActivation.isActive
+        });
+        return Promise.resolve(target.importPermissionAllowed);
+      };
+    });
     const pageCount = context.pages().length;
     for (const protocol of ['top', 'iop'] as const) {
       await page.getByTestId('get-alibaba-credentials').click();
@@ -76,6 +93,18 @@ test('formal extension imports TOP and IOP without provider pages or extra permi
         });
         await page.screenshot({ path: resolve(path, 'offline-file-preview.png') });
       }
+      if (protocol === 'iop') {
+        await dialog.getByTestId('confirm-authorization-file-import').click();
+        await expect(
+          page.getByText('导入未完成，请检查本机保护及域名访问权限后重试。未自动发起在线授权。', {
+            exact: true
+          })
+        ).toBeVisible();
+        await expect(dialog).toBeVisible();
+        await page.evaluate(() => {
+          (globalThis as unknown as { importPermissionAllowed: boolean }).importPermissionAllowed = true;
+        });
+      }
       await dialog.getByTestId('confirm-authorization-file-import').click();
       await expect(dialog).toBeHidden();
     }
@@ -92,6 +121,14 @@ test('formal extension imports TOP and IOP without provider pages or extra permi
     expect(saved).toMatchObject({ ok: true, data: { top: { configured: true }, iop: { configured: true } } });
     expect(context.pages()).toHaveLength(pageCount);
     expect(network).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => (globalThis as unknown as { importPermissionRequests: unknown[] }).importPermissionRequests
+      )
+    ).toEqual([
+      { origins: ['https://openapi-api.alibaba.com/*'], active: true },
+      { origins: ['https://openapi-api.alibaba.com/*'], active: true }
+    ]);
     expect(await permissions(worker)).toEqual(permissionsBefore);
   } finally {
     await context.close();

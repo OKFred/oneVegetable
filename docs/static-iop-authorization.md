@@ -7,7 +7,7 @@
 ### 给首次使用者
 
 1. 在设置点击“连接 Alibaba 账号”。首次先准备可选的本机保护口令（可留空），已解锁时不再重复询问。接着选择“导入已有授权文件”或“在线获取新授权”，不会默认打开线上流程。
-   - 已有文件：选择完整授权 JSON，预览文件名、应用名及自动识别的 TOP/IOP；点击“导入并保存”才替换对应档案，另一份保持不变。无需打开平台或申请域名权限。文件格式通过不等于平台权限或有效期通过，首次只读调用仍可能要求重新授权。文件限 256 KiB，历史未声明 protocol 的文件按 TOP 处理。到此已完成，不必执行下面的在线获取步骤。
+   - 已有文件：选择完整授权 JSON，预览文件名、应用名及自动识别的 TOP/IOP；点击“导入并保存”才替换对应档案，另一份保持不变。无需打开平台；确认导入 IOP 时仅申请新版业务网关 openapi-api.alibaba.com 的访问权限，拒绝时不保存，保留文件预览以便重试。文件格式通过不等于平台权限或有效期通过，首次只读调用仍可能要求重新授权。文件限 256 KiB，历史未声明 protocol 的文件按 TOP 处理。到此已完成，不必执行下面的在线获取步骤。
    - 在线获取：首次优先选“连接新版应用”；以前使用旧应用的用户选“连接已有旧版应用”。两者不混用，不需要一开始就配齐两份。
 2. 点击“前往 Alibaba 连接”，按官网提示登录或完成验证。应用资料会尝试自动读取；需要手动填写时再展开表单。不要把 Alibaba 登录密码填作本机保护口令。
 3. 在 Alibaba 页面自行核对账号、权限并确认授权，保持工具页打开。
@@ -17,7 +17,7 @@
 
 Choose **Connect Alibaba account**, select a new or existing legacy app, then follow the next action shown. Sign in and approve on Alibaba itself. Once the file is saved, download it and import it into the matching workbench profile. Downloading does not apply the connection. Manual entry and file import remain available; technical details and JSON editing are collapsed. Renewal is only an attempt, never a guarantee or an automatic retry.
 
-**Existing file:** after optional local protection, choose **Import an existing authorization file**. Preview the detected TOP/IOP profile, then **Import and save**. Only that profile is replaced; no provider page, token exchange, or host permission is requested. Legacy files without a protocol remain TOP. Local validation cannot prove provider permissions or token validity. The online instructions above apply only when explicitly choosing **Get a new authorization online**.
+**Existing file:** after optional local protection, choose **Import an existing authorization file**. Preview the detected TOP/IOP profile, then **Import and save**. Only that profile is replaced; no provider page or token exchange is opened. IOP confirmation requests only openapi-api.alibaba.com access; denial preserves the old profile and allows retry. Legacy files without a protocol remain TOP. Local validation cannot prove provider permissions or token validity. The online instructions above apply only when explicitly choosing **Get a new authorization online**.
 
 ### 自动读取与安全边界
 

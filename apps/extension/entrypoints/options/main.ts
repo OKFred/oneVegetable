@@ -287,6 +287,13 @@ const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionReposit
     return requestAcquisition('export-bundle', undefined);
   },
   importBundle(bundle) {
+    if (bundle.protocol === 'iop') {
+      // Request only the business API origin, directly from the import confirmation click.
+      return ensureOptionalOrigins(
+        [IOP_API_ORIGIN + '/*'],
+        translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+      ).then(() => requestAcquisition('import-bundle', { bundle }));
+    }
     return requestAcquisition('import-bundle', { bundle });
   },
   async readPrerequisite() {
