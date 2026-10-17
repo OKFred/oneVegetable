@@ -59,7 +59,7 @@ it('does not claim a new default on save failure or allow an unconfigured profil
   expect(empty.wrapper.get('[data-testid="default-authorization-iop"]').attributes('disabled')).toBeDefined();
 });
 
-it('puts save next to passphrases, explains missing credentials and saves once after completion', async () => {
+it('puts save next to passphrases and saves credentials in the same action', async () => {
   const view = await harness(SettingsView, { extension: true, empty: true });
   const setup = view.wrapper.get('[data-testid="vault-passphrase-setup"]');
   const save = setup.get('[data-testid="save-vault-near-passphrase"]');
@@ -68,10 +68,6 @@ it('puts save next to passphrases, explains missing credentials and saves once a
   if (!inputs[0] || !inputs[1]) throw new Error('Missing passphrase inputs');
   await inputs[0].setValue('fixture-passphrase');
   await inputs[1].setValue('fixture-passphrase');
-  await save.trigger('click');
-  await flushPromises();
-  expect(view.createVault).not.toHaveBeenCalled();
-  expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('请先在下方导入'));
   await view.wrapper.get('input[aria-label="App Secret"]').setValue('fixture-secret');
   await view.wrapper.get('input[aria-label="Access Token"]').setValue('fixture-token');
   await save.trigger('click');
@@ -85,6 +81,26 @@ it('puts save next to passphrases, explains missing credentials and saves once a
   );
   expect(view.wrapper.find('[data-testid="save-vault-near-passphrase"]').exists()).toBe(false);
   expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
+});
+
+it('allows saving the passphrase first and gives a clear next step without claiming credentials are ready', async () => {
+  const view = await harness(SettingsView, { extension: true, empty: true });
+  view.createVault.mockResolvedValueOnce({
+    state: 'unlocked',
+    hasAppKey: false,
+    hasAppSecret: false,
+    hasAccessToken: false,
+    idleTimeoutMinutes: 0,
+    lastActivityAt: null,
+    idleRemainingSeconds: null
+  });
+  await view.wrapper.get('input[aria-label="设置保护口令"]').setValue('fixture-passphrase');
+  await view.wrapper.get('input[aria-label="确认保护口令"]').setValue('fixture-passphrase');
+  await view.wrapper.get('[data-testid="save-vault-near-passphrase"]').trigger('click');
+  await flushPromises();
+  expect(view.createVault).toHaveBeenCalledOnce();
+  expect(toast.success).toHaveBeenCalledWith('口令已保存。接下来请导入授权文件或填写开放平台凭据。');
+  expect(toast.success).not.toHaveBeenCalledWith('凭证与设置已保存');
 });
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => {
@@ -212,6 +228,7 @@ async function harness(
   });
   const createVault = vi.fn().mockResolvedValue({
     state: 'unlocked',
+    hasAppKey: true,
     hasAccessToken: true,
     hasAppSecret: true,
     idleTimeoutMinutes: 0,

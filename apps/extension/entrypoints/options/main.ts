@@ -213,10 +213,11 @@ const settings: SettingsRepository = {
 const vault: CredentialVaultRepository = {
   status: () => requestVault('status', undefined),
   create: async (passphrase, value) => {
-    await ensureOptionalHostPermission(
-      value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
-      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
-    );
+    if (value.appKey && value.appSecret && value.accessToken)
+      await ensureOptionalHostPermission(
+        value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
+        translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+      );
     return requestVault('create', { passphrase, settings: value });
   },
   migrate: (passphrase) => requestVault('migrate', { passphrase }),

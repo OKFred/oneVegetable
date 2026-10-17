@@ -668,7 +668,7 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
         throw gatewayFailure('CREDENTIAL_VAULT_ALREADY_CONFIGURED', 'Credentials already exist.');
       }
       const request = asRecord(payload);
-      const settings = initializeAuthorizationIdentities(requiredGatewaySettings(request.settings));
+      const settings = initializeAuthorizationIdentities(requiredGatewaySettings(request.settings, true));
       const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
       await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial);
@@ -1769,13 +1769,19 @@ function optionalVaultString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
-function requiredGatewaySettings(value: unknown): GatewaySettings {
+function requiredGatewaySettings(value: unknown, allowEmptyCredentials = false): GatewaySettings {
   const record = asRecord(value);
+  const credential = (key: string): string => {
+    // Initial protection setup may precede import. This does not create a configured
+    // authorization: summaries and gateway routing still require all three values.
+    if (allowEmptyCredentials && typeof record[key] === 'string') return record[key];
+    return requiredString(record, key);
+  };
   return {
     ...gatewayProtocolMetadata(record),
-    appKey: requiredString(record, 'appKey'),
-    appSecret: requiredString(record, 'appSecret'),
-    accessToken: requiredString(record, 'accessToken'),
+    appKey: credential('appKey'),
+    appSecret: credential('appSecret'),
+    accessToken: credential('accessToken'),
     ...gatewayCredentialExpiryMetadata(record),
     ...privateRefreshMetadata(record),
     endpoint: requiredString(record, 'endpoint'),

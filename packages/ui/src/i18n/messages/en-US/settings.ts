@@ -84,9 +84,9 @@ export const settings = {
     newPassphrase: 'New protection passphrase',
     confirmNewPassphrase: 'Confirm new protection passphrase',
     setPassphrase: 'Set protection passphrase',
-    saveHere: 'Save passphrase and credentials',
-    credentialsRequired:
-      'Import an authorization file or fill in App Key, App Secret and Access Token below, then save here.',
+    saveHere: 'Save',
+    passphraseSaved:
+      'Passphrase saved. Next, import an authorization file or enter your platform credentials.',
     confirmPassphrase: 'Confirm protection passphrase',
     minimumCharacters: 'At least {count} characters',
     enterAgain: 'Enter again',

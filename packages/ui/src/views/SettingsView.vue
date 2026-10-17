@@ -177,14 +177,14 @@ async function save(): Promise<void> {
   try {
     if (mode === 'extension' && vault && vaultStatus.value?.state === 'empty') {
       assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
-      if (!model.value.appKey.trim() || !model.value.appSecret.trim() || !model.value.accessToken.trim())
-        throw new Error(t('settings.vault.credentialsRequired'));
-      applyVaultStatus(await vault.create(vaultPassphrase.value, model.value));
+      const created = await vault.create(vaultPassphrase.value, model.value);
+      applyVaultStatus(created);
       clearVaultPassphrases();
       model.value = await loadSelectedAuthorization();
       credentialEditing.markClean();
-      feedback.value = t('settings.vault.saveEncrypted');
-      toast.success(t('settings.vault.savedToast'));
+      const configured = created.hasAppKey && created.hasAppSecret && created.hasAccessToken;
+      feedback.value = t(configured ? 'settings.vault.saveEncrypted' : 'settings.vault.passphraseSaved');
+      toast.success(t(configured ? 'settings.vault.savedToast' : 'settings.vault.passphraseSaved'));
     } else {
       await settings.save(model.value);
       model.value = await loadSelectedAuthorization();
@@ -855,7 +855,9 @@ function confirmLanguagePreference(): void {
               @click="save"
             >
               <LoaderCircle v-if="saving" class="size-4 animate-spin" />
-              <Save v-else class="size-4" />{{ t('settings.vault.saveHere') }}
+              <Save v-else class="size-4" />{{
+                saving ? t('settings.credentials.saving') : t('settings.vault.saveHere')
+              }}
             </Button>
             <Button
               v-if="vaultStatus?.state === 'legacy'"

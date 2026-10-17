@@ -208,6 +208,23 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('allows passphrase setup before importing credentials without marking the empty profile configured', async () => {
+    await create({ ...topSettings, appKey: '', appSecret: '', accessToken: '' });
+    expect(await send('credential-vault-request', 'status')).toMatchObject({
+      ok: true,
+      data: { state: 'unlocked', hasAppKey: false, hasAppSecret: false, hasAccessToken: false }
+    });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { top: null, iop: null }
+    });
+    expect(await send('credential-vault-request', 'save', topSettings)).toMatchObject({ ok: true });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { top: { configured: true } }
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
   it('persists the chosen default through lock/unlock without exposing secrets or making network calls', async () => {
     const original = await createPair();
     const result = await send('credential-vault-request', 'set-default-authorization', {
