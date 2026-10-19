@@ -132,6 +132,16 @@ export function parseAlibabaOpenApiCredentialBundle(value: unknown): AlibabaOpen
   return bundle;
 }
 
+/** Import containers are local files, not a new provider credential schema. */
+export function parseAlibabaCredentialImport(value: unknown): AlibabaOpenApiCredentialBundle[] {
+  const entries = Array.isArray(value) ? value : [value];
+  if (entries.length === 0 || entries.length > 2) throw new Error('AUTH_IMPORT_INVALID_COUNT');
+  const bundles = entries.map(parseAlibabaOpenApiCredentialBundle);
+  const protocols = bundles.map((bundle) => bundle.protocol ?? 'top');
+  if (new Set(protocols).size !== protocols.length) throw new Error('AUTH_IMPORT_DUPLICATE_PROTOCOL');
+  return bundles;
+}
+
 export function isAlibabaOpenApiCredentialBundle(value: unknown): value is AlibabaOpenApiCredentialBundle {
   try {
     parseAlibabaOpenApiCredentialBundle(value);

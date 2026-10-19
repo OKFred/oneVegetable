@@ -1,5 +1,8 @@
 import { browser } from 'wxt/browser';
-import { parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
+import {
+  parseAlibabaCredentialImport,
+  parseAlibabaOpenApiCredentialBundle
+} from '@one-vegetable/core/credential-bundle';
 import {
   handleAuthorization,
   handlePublicAuthorization,
@@ -486,6 +489,12 @@ async function handleAlibabaCredentialAcquisitionRequest(
         data = await serializeVaultOperation(() => saveAcquiredCredentialsToVault(bundle, undefined));
         break;
       }
+      case 'import-bundles': {
+        const input = requireOnlyKeys(message.payload, ['bundles']);
+        const bundles = parseAlibabaCredentialImport(input.bundles);
+        data = await serializeVaultOperation(() => saveAcquiredCredentialBundlesToVault(bundles, undefined));
+        break;
+      }
       case 'export-bundle':
         data = await alibabaCredentialAcquisition.exportBundle();
         break;
@@ -521,7 +530,13 @@ async function saveAcquiredCredentialsToVault(
   bundle: Awaited<ReturnType<ExtensionAlibabaCredentialAcquisitionController['completedBundle']>>,
   passphrase: string | undefined
 ): Promise<CredentialVaultStatus> {
-  const settings = initializeAuthorizationIdentities({
+  return saveAcquiredCredentialBundlesToVault([bundle], passphrase);
+}
+
+function acquiredCredentialSettings(
+  bundle: Awaited<ReturnType<ExtensionAlibabaCredentialAcquisitionController['completedBundle']>>
+): GatewaySettings {
+  return initializeAuthorizationIdentities({
     protocol: bundle.protocol ?? 'top',
     appKey: bundle.application.appKey,
     ...alibabaAuthorizationMetadata(bundle),
@@ -536,15 +551,28 @@ async function saveAcquiredCredentialsToVault(
     endpoint: bundle.protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
     signMethod: bundle.protocol === 'iop' ? 'hmac-sha256' : 'hmac'
   });
+}
+
+async function saveAcquiredCredentialBundlesToVault(
+  input: unknown,
+  passphrase: string | undefined
+): Promise<CredentialVaultStatus> {
+  const patches = parseAlibabaCredentialImport(input).map(acquiredCredentialSettings);
+  // Prefer TOP on a fresh dual import, regardless of array order. Preserve an existing preference.
+  patches.sort((left, right) => Number(left.protocol === 'iop') - Number(right.protocol === 'iop'));
+  const first = patches[0];
+  if (!first) throw new Error('AUTH_IMPORT_INVALID_COUNT');
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
   if (state.kind === 'empty') {
+    const settings = patches.slice(1).reduce(saveAuthorizationPatch, first);
     const created = await authorizationProtection.create(settings, passphrase ?? '');
     return credentialVaultStatus({ kind: 'vault', record: created.record }, settings.protocol);
   }
   const current = await getUnlockedVault(state);
-  const record = await persistUnlockedSettings(current, saveAuthorizationPatch(current.settings, settings));
+  const settings = patches.reduce(saveAuthorizationPatch, current.settings);
+  const record = await persistUnlockedSettings(current, settings);
   return credentialVaultStatus({ kind: 'vault', record }, settings.protocol);
 }
 
@@ -1660,6 +1688,7 @@ function asAlibabaCredentialAcquisitionRequest(
     value.operation !== 'cancel' &&
     value.operation !== 'save-to-vault' &&
     value.operation !== 'import-bundle' &&
+    value.operation !== 'import-bundles' &&
     value.operation !== 'export-bundle' &&
     value.operation !== 'read-prerequisite' &&
     value.operation !== 'locate-prerequisite-field' &&

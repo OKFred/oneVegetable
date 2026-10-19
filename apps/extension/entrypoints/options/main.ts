@@ -287,14 +287,10 @@ const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionReposit
     return requestAcquisition('export-bundle', undefined);
   },
   importBundle(bundle) {
-    if (bundle.protocol === 'iop') {
-      // Request only the business API origin, directly from the import confirmation click.
-      return ensureOptionalOrigins(
-        [IOP_API_ORIGIN + '/*'],
-        translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
-      ).then(() => requestAcquisition('import-bundle', { bundle }));
-    }
-    return requestAcquisition('import-bundle', { bundle });
+    return importCredentialBundles([bundle]);
+  },
+  importBundles(bundles) {
+    return importCredentialBundles(bundles);
   },
   async readPrerequisite() {
     const prerequisite = await requestAcquisition('read-prerequisite', undefined);
@@ -331,6 +327,17 @@ async function requestIopApplicationReadPermissions(protocol: 'iop' | 'top' = 'i
     });
 }
 
+function importCredentialBundles(bundles: AlibabaOpenApiCredentialBundle[]): Promise<CredentialVaultStatus> {
+  // Request once, on the user's confirmation click; never after a first profile has saved.
+  if (bundles.some((bundle) => bundle.protocol === 'iop')) {
+    return ensureOptionalOrigins(
+      [IOP_API_ORIGIN + '/*'],
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    ).then(() => requestAcquisition('import-bundles', { bundles }));
+  }
+  return requestAcquisition('import-bundles', { bundles });
+}
+
 interface AcquisitionOperationMap {
   start: { request: { callbackUrl: string | null }; response: AlibabaCredentialAcquisitionState };
   continue: {
@@ -342,6 +349,10 @@ interface AcquisitionOperationMap {
   'save-to-vault': { request: { passphrase?: string }; response: CredentialVaultStatus };
   'export-bundle': { request: undefined; response: AlibabaOpenApiCredentialBundle };
   'import-bundle': { request: { bundle: AlibabaOpenApiCredentialBundle }; response: CredentialVaultStatus };
+  'import-bundles': {
+    request: { bundles: AlibabaOpenApiCredentialBundle[] };
+    response: CredentialVaultStatus;
+  };
   'read-prerequisite': {
     request: undefined;
     response: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }> | null;

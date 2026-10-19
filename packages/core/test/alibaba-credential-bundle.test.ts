@@ -6,10 +6,26 @@ import {
   createAlibabaOpenApiCredentialBundle,
   isAlibabaOpenApiCredentialBundle,
   parseAlibabaOpenApiCredentialBundle,
+  parseAlibabaCredentialImport,
   parseAlibabaTokenResponse
 } from '../src/alibaba-credential-bundle';
 
 describe('Alibaba credential bundle contract', () => {
+  it('accepts a single historical object and a distinct protocol array', () => {
+    expect(parseAlibabaCredentialImport(fixture())).toEqual([fixture()]);
+    const pair = [{ ...fixture(), protocol: 'iop' }, fixture()];
+    expect(parseAlibabaCredentialImport(pair)).toEqual(pair);
+    expect(parseAlibabaCredentialImport([fixture()])).toEqual([fixture()]);
+  });
+
+  it('rejects the entire import for duplicate, empty, oversized or invalid arrays', () => {
+    expect(() => parseAlibabaCredentialImport([fixture(), { ...fixture(), protocol: 'top' }])).toThrow(
+      'AUTH_IMPORT_DUPLICATE_PROTOCOL'
+    );
+    for (const value of [[], [fixture(), {}, fixture()], [fixture(), {}], [[fixture()]]]) {
+      expect(() => parseAlibabaCredentialImport(value)).toThrow();
+    }
+  });
   it('reads System API lifetime names without enabling an IOP endpoint or inventing unknown expiry', () => {
     expect(parseAlibabaTokenResponse(tokenFixture.token)).toMatchObject({
       expiresInSeconds: 3600,
