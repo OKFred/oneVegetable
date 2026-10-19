@@ -194,6 +194,7 @@ describe('Alibaba authorization protocol selection', () => {
       const view = await dialog('acquire', vault);
       expect(view.body.find('[data-testid="choose-authorization-iop"]').exists()).toBe(false);
       expect(view.body.text()).toContain('可选');
+      expect(view.body.text()).toContain('选择导入文件或在线获取');
       expect(view.body.text()).toContain('浏览器配置');
       expect(vault.prepareAuthorization).not.toHaveBeenCalled();
       await view.body.get('input').setValue(passphrase);

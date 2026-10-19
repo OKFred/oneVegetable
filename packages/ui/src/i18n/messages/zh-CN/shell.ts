@@ -7,7 +7,7 @@ export const shell = {
   openNavigation: '打开主导航',
   closeNavigation: '关闭导航',
   openWorkspace: '打开运营工作台',
-  popupDescription: '开发模式由 WXT 自动重载；真实 API 请求由扩展 service worker 发起。',
+  popupDescription: '在工作台管理商品、素材与订单，连接自己的 Alibaba 账号后使用。',
   logout: '退出',
   editing: {
     title: '放弃未保存的修改？',

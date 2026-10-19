@@ -31,7 +31,7 @@ export const gatewayCredentials = {
   protocolToolUnavailable:
     'This version has no authorization tool for this protocol. Update the extension or import its credential bundle.',
   authorizationToolFailed: 'Could not open the authorization tool. Please try again.',
-  protectionDescription: 'Prepare local credential protection before choosing a new or legacy app.',
+  protectionDescription: 'Prepare local protection, then choose file import or online authorization.',
   protectionOptional: 'Local protection passphrase (optional)',
   protectionPlaceholder: 'Leave blank, or enter at least 6 characters',
   protectionDeviceHelp:

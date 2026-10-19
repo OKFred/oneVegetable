@@ -25,7 +25,7 @@ export const gatewayCredentials = {
   chooseProtocolTopHelp: '使用以前的 TOP 应用或授权文件。找不到旧应用资料时，不能用新版资料代替。',
   protocolToolUnavailable: '当前版本未提供此协议的授权工具，请升级插件或导入对应授权包。',
   authorizationToolFailed: '授权工具打开失败，请重试。',
-  protectionDescription: '先准备本机凭据保护，再选择新版或旧版应用。',
+  protectionDescription: '先准备本机凭据保护，再选择导入文件或在线获取。',
   protectionOptional: '本机保护口令（可选）',
   protectionPlaceholder: '可留空；设置时至少 6 位',
   protectionDeviceHelp:

@@ -8,7 +8,7 @@ export const shell = {
   closeNavigation: 'Close navigation',
   openWorkspace: 'Open operations workspace',
   popupDescription:
-    'WXT reloads the extension automatically in development. Real API requests run in the extension service worker.',
+    'Manage products, assets, and orders in the workspace. Connect your own Alibaba account to get started.',
   logout: 'Sign out',
   editing: {
     title: 'Discard unsaved changes?',
