@@ -8,7 +8,7 @@ import {
   type CredentialVaultStatus
 } from '@one-vegetable/core';
 import {
-  parseAlibabaOpenApiCredentialBundle,
+  parseAlibabaCredentialImport,
   type AlibabaOpenApiCredentialBundle
 } from '@one-vegetable/core/credential-bundle';
 import type { ExtensionAlibabaCredentialAcquisitionRepository } from '@one-vegetable/core';
@@ -25,8 +25,15 @@ const props = withDefaults(
     vault?: CredentialVaultRepository | undefined;
     acquisition?: ExtensionAlibabaCredentialAcquisitionRepository | undefined;
     beforeImport?: (() => Promise<boolean>) | undefined;
+    initialFile?: File | undefined;
   }>(),
-  { purpose: 'acquire', vault: undefined, acquisition: undefined, beforeImport: undefined }
+  {
+    purpose: 'acquire',
+    vault: undefined,
+    acquisition: undefined,
+    beforeImport: undefined,
+    initialFile: undefined
+  }
 );
 const emit = defineEmits<{
   'update:open': [open: boolean];
@@ -37,11 +44,13 @@ const emit = defineEmits<{
 const text = useGatewayCredentialsI18n();
 const { t } = useUiI18n();
 const phase = ref<'checking' | 'protection' | 'methods' | 'file' | 'choices' | 'error'>('checking');
-const pendingBundle = shallowRef<AlibabaOpenApiCredentialBundle | null>(null);
+const pendingBundles = shallowRef<AlibabaOpenApiCredentialBundle[]>([]);
 const fileName = ref('');
 const fileInput = ref<HTMLInputElement>();
 const importing = ref(false);
-const canImport = computed(() => props.purpose === 'acquire' && !!props.acquisition?.importBundle);
+const canImport = computed(
+  () => props.purpose === 'acquire' && !!(props.acquisition?.importBundle ?? props.acquisition?.importBundles)
+);
 const readyPhase = () => (canImport.value ? ('methods' as const) : ('choices' as const));
 const status = ref<CredentialVaultStatus | null>(null);
 const passphrase = ref('');
@@ -55,7 +64,7 @@ function reset(): void {
   passphrase.value = '';
   status.value = null;
   busy.value = false;
-  pendingBundle.value = null;
+  pendingBundles.value = [];
   fileName.value = '';
   phase.value = 'checking';
 }
@@ -91,6 +100,17 @@ watch(
 );
 onBeforeUnmount(reset);
 
+watch(
+  [phase, () => props.initialFile],
+  ([currentPhase, file]) => {
+    if (currentPhase === 'methods' && file && props.open) {
+      phase.value = 'file';
+      void readCredentialFile(file);
+    }
+  },
+  { immediate: true }
+);
+
 async function prepare(): Promise<void> {
   const vault = props.vault;
   if (!vault?.prepareAuthorization || busy.value || phase.value !== 'protection') return;
@@ -122,37 +142,53 @@ async function readFile(event: Event): Promise<void> {
   const input = event.currentTarget as HTMLInputElement;
   const file = input.files?.[0];
   input.value = '';
+  await readCredentialFile(file);
+}
+
+async function readCredentialFile(file: File | undefined): Promise<void> {
   const current = ++generation;
-  pendingBundle.value = null;
+  pendingBundles.value = [];
   fileName.value = '';
   if (!file) return;
   busy.value = true;
   try {
     if (file.size > 256 * 1024) throw new Error('FILE_TOO_LARGE');
-    const bundle = parseAlibabaOpenApiCredentialBundle(JSON.parse(await file.text()) as unknown);
+    const bundles = parseAlibabaCredentialImport(JSON.parse(await file.text()) as unknown);
+    if (bundles.length > 1 && !props.acquisition?.importBundles) throw new Error('AUTH_IMPORT_UNAVAILABLE');
     if (current !== generation || !props.open) return;
-    pendingBundle.value = bundle;
+    pendingBundles.value = bundles;
     fileName.value = file.name;
-  } catch {
-    if (current === generation && props.open) toast.error(text('offlineInvalid'));
+  } catch (error: unknown) {
+    if (current === generation && props.open)
+      toast.error(
+        text(
+          error instanceof Error && error.message === 'AUTH_IMPORT_DUPLICATE_PROTOCOL'
+            ? 'offlineDuplicate'
+            : 'offlineInvalid'
+        )
+      );
   } finally {
     if (current === generation) busy.value = false;
   }
 }
 
 async function importFile(): Promise<void> {
-  const bundle = pendingBundle.value;
+  const bundles = pendingBundles.value;
+  const first = bundles[0];
   const repository = props.acquisition;
-  if (!bundle || !repository?.importBundle || busy.value || importing.value) return;
+  if (!first || !repository || busy.value || importing.value) return;
   importing.value = true;
   const current = generation;
   let saved = false;
   try {
     if (props.beforeImport && !(await props.beforeImport())) return;
     if (current !== generation || !props.open) return;
-    const next = await repository.importBundle(bundle);
+    let next: CredentialVaultStatus;
+    if (bundles.length === 1 && repository.importBundle) next = await repository.importBundle(first);
+    else if (repository.importBundles) next = await repository.importBundles(bundles);
+    else throw new Error('AUTH_IMPORT_UNAVAILABLE');
     saved = true;
-    pendingBundle.value = null;
+    pendingBundles.value = [];
     fileName.value = '';
     if (isCurrent(current)) {
       emit('imported', next);
@@ -275,18 +311,18 @@ function select(protocol: 'top' | 'iop'): void {
         ><FileUp class="size-4" aria-hidden="true" />{{ text('offlineChooseFile') }}</Button
       >
       <div
-        v-if="pendingBundle"
+        v-if="pendingBundles.length"
         class="grid gap-2 rounded-md border p-3 text-sm"
         data-testid="authorization-file-preview"
       >
         <div class="break-all">{{ fileName }}</div>
-        <div>
-          {{ (pendingBundle.protocol ?? 'top').toUpperCase() }} · {{ pendingBundle.application.appName }}
+        <div v-for="bundle in pendingBundles" :key="bundle.protocol ?? 'top'">
+          {{ (bundle.protocol ?? 'top').toUpperCase() }} · {{ bundle.application.appName }}
         </div>
       </div>
       <p class="text-xs leading-5 text-muted-foreground">{{ text('offlineReplaceHelp') }}</p>
       <Button
-        :disabled="!pendingBundle || busy || importing"
+        :disabled="!pendingBundles.length || busy || importing"
         data-testid="confirm-authorization-file-import"
         @click="importFile"
         >{{ busy || importing ? t('common.actions.processing') : text('offlineImportSave') }}</Button
@@ -335,7 +371,7 @@ function select(protocol: 'top' | 'iop'): void {
           variant="outline"
           :disabled="busy || importing"
           @click="
-            pendingBundle = null;
+            pendingBundles = [];
             fileName = '';
             phase = 'methods';
           "

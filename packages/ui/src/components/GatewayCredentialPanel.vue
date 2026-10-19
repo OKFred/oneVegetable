@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { KeyRound, PlugZap, RefreshCw, RotateCw, Trash2, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { parseAlibabaOpenApiCredentialBundle, parseManualGatewayCredential } from '@one-vegetable/core';
+import { parseManualGatewayCredential } from '@one-vegetable/core';
+import { parseAlibabaCredentialImport } from '@one-vegetable/core/credential-bundle';
 import type {
   AlibabaOpenApiCredentialBundle,
   ControlGatewayCredentialSummary,
@@ -134,12 +135,18 @@ async function chooseFile(event: Event): Promise<void> {
   error.value = null;
   try {
     if (file.size > 1024 * 1024) throw new Error(t('invalid'));
-    pendingBundle.value = parseAlibabaOpenApiCredentialBundle(JSON.parse(await file.text()) as unknown);
-    if (props.protocol && (pendingBundle.value.protocol ?? 'top') !== props.protocol) {
+    const bundles = parseAlibabaCredentialImport(JSON.parse(await file.text()) as unknown);
+    const selected = props.protocol
+      ? bundles.find((bundle) => (bundle.protocol ?? 'top') === props.protocol)
+      : bundles.length === 1
+        ? bundles[0]
+        : undefined;
+    if (!selected) {
       pendingBundle.value = null;
       error.value = new Error(t('profileMismatch'));
       return;
     }
+    pendingBundle.value = selected;
     fileName.value = file.name;
     confirmation.value = 'import';
   } catch {

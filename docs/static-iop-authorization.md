@@ -57,6 +57,16 @@ This extension-only flow needs no additional Node, Worker or Pages deployment. I
 - 清除本机授权包不等于撤销 Alibaba 平台授权。
 - 本服务与 alibaba.com 无官方关联，使用前请阅读平台规则。
 
+## 授权 JSON 数组导入
+
+插件“连接 Alibaba 账号 → 导入已有授权文件”支持完整授权对象，或 TOP、IOP 各一份组成的数组，总计不超过 256 KiB。未标记协议的历史包仍按 TOP 处理。空数组、重复协议或任意无效条目都会拒绝整份导入。
+
+预览只显示协议和应用名称。确认后先请求 IOP 业务域名权限，再一次加密保存；拒绝权限或保存失败不会先覆盖 TOP。未包含的协议及已有默认授权保留，新装双份导入默认 TOP。不自动调用 Alibaba 或续期。
+
+独立授权工具的高级 JSON 编辑器、BFF 指定协议面板也可读取数组，但只处理当前选中的协议。文件含明文密钥，不应放入公开教程或版本库。
+
+The extension accepts one complete bundle or an array with one TOP and one IOP bundle (256 KiB total). Invalid entries and duplicate protocols reject the entire file. Profiles are saved together after permission approval; existing defaults and other profiles are preserved. The standalone tool and BFF panel select only their current protocol. Never publish credential files.
+
 ## 静态部署
 
 Windows 环境：

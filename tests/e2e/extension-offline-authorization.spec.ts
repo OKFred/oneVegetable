@@ -1,13 +1,30 @@
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { chromium, expect, test, type Worker } from '@playwright/test';
+import { chromium, expect, test, type Page, type Worker } from '@playwright/test';
 import fixture from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
 
 function permissions(worker: Worker): Promise<unknown> {
   return worker.evaluate(() => {
     const api = (globalThis as unknown as { chrome: { permissions: { getAll(): Promise<unknown> } } }).chrome;
     return api.permissions.getAll();
+  });
+}
+
+function authorizationSummary(page: Page): Promise<unknown> {
+  return page.evaluate(async () => {
+    const api = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(value: unknown): Promise<{ ok: boolean; data: unknown }> } };
+      }
+    ).chrome;
+    const response = await api.runtime.sendMessage({
+      kind: 'credential-vault-request',
+      operation: 'authorizations',
+      requestId: crypto.randomUUID()
+    });
+    if (!response.ok) throw new Error('Unable to read test authorization summary');
+    return response.data;
   });
 }
 
@@ -77,7 +94,16 @@ test('formal extension imports locally and requests only the required IOP busine
       await dialog.getByLabel('选择授权 JSON 文件', { exact: true }).setInputFiles({
         name: 'credentialInfo.json',
         mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify({ ...fixture.oauthBundle, protocol }))
+        buffer: Buffer.from(
+          JSON.stringify(
+            protocol === 'iop'
+              ? [
+                  { ...fixture.oauthBundle, protocol: 'iop' },
+                  { ...fixture.oauthBundle, protocol: 'top' }
+                ]
+              : { ...fixture.oauthBundle, protocol }
+          )
+        )
       });
       await expect(dialog.getByTestId('authorization-file-preview')).toContainText(protocol.toUpperCase());
       await expect(dialog).not.toContainText(fixture.oauthBundle.application.appSecret);
@@ -94,6 +120,8 @@ test('formal extension imports locally and requests only the required IOP busine
         await page.screenshot({ path: resolve(path, 'offline-file-preview.png') });
       }
       if (protocol === 'iop') {
+        await expect(dialog.getByTestId('authorization-file-preview')).toContainText('TOP');
+        const before = await authorizationSummary(page);
         await dialog.getByTestId('confirm-authorization-file-import').click();
         await expect(
           page.getByText('导入未完成，请检查本机保护及域名访问权限后重试。未自动发起在线授权。', {
@@ -101,6 +129,7 @@ test('formal extension imports locally and requests only the required IOP busine
           })
         ).toBeVisible();
         await expect(dialog).toBeVisible();
+        expect(await authorizationSummary(page)).toEqual(before);
         await page.evaluate(() => {
           (globalThis as unknown as { importPermissionAllowed: boolean }).importPermissionAllowed = true;
         });

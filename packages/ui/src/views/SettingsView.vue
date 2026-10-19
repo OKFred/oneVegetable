@@ -16,6 +16,7 @@ import {
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
+import { parseAlibabaCredentialImport } from '@one-vegetable/core/credential-bundle';
 
 import {
   ALIBABA_GATEWAY,
@@ -122,6 +123,7 @@ const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
 const credentialAcquisitionOpen = ref(false);
 const protocolDialogPurpose = ref<'acquire' | 'renew' | null>(null);
+const protocolImportFile = ref<File>();
 const settingsLoaded = ref(false);
 const credentialEditing = useUnsavedEditing(() => model.value, { enabled: () => settingsLoaded.value });
 const passphraseEditing = useUnsavedEditing(
@@ -300,6 +302,12 @@ async function importCredentialBundle(event: Event): Promise<void> {
     if (!(await credentialEditing.confirmLeave())) return;
     if (file.size > 256 * 1024) throw new Error(t('settings.credentials.bundleTooLarge'));
     const parsed = JSON.parse(await file.text()) as unknown;
+    if (Array.isArray(parsed) && alibabaCredentialAcquisition?.importBundles) {
+      parseAlibabaCredentialImport(parsed);
+      protocolImportFile.value = file;
+      protocolDialogPurpose.value = 'acquire';
+      return;
+    }
     const imported = readImportedCredentials(parsed);
     if (dualSettings.value && settings.loadAuthorization) {
       const target = await settings.loadAuthorization(imported.protocol ?? 'top');
@@ -1113,12 +1121,16 @@ function confirmLanguagePreference(): void {
           :purpose="protocolDialogPurpose ?? 'acquire'"
           :vault="vault"
           :acquisition="alibabaCredentialAcquisition"
+          :initial-file="protocolImportFile"
           :before-import="hasVaultEdits() ? credentialEditing.confirmLeave : undefined"
           @prepared="handleProtectionPrepared"
           @imported="handleAcquiredCredentialsSaved"
           @update:open="
             (value) => {
-              if (!value) protocolDialogPurpose = null;
+              if (!value) {
+                protocolDialogPurpose = null;
+                protocolImportFile = undefined;
+              }
             }
           "
           @select="selectAuthorizationProtocol"

@@ -8,6 +8,17 @@ import {
 } from '../lib/authorization-json-editor';
 
 describe('advanced authorization JSON editor', () => {
+  it('selects only the current protocol from a validated dual array', () => {
+    const text = JSON.stringify([fixtures.top, fixtures.iop]);
+    expect(parseAuthorizationJson(text, 'top')).toEqual(fixtures.top);
+    expect(parseAuthorizationJson(text, 'iop')).toEqual(fixtures.iop);
+    expect(() => parseAuthorizationJson(JSON.stringify([fixtures.top, {}]), 'top')).toThrow(
+      'AUTH_JSON_INVALID'
+    );
+    expect(() => parseAuthorizationJson(JSON.stringify([fixtures.iop, fixtures.iop]), 'iop')).toThrow(
+      'AUTH_JSON_INVALID'
+    );
+  });
   it.each(['top', 'iop'] as const)(
     'accepts a complete %s bundle but never its example placeholders',
     (protocol) => {

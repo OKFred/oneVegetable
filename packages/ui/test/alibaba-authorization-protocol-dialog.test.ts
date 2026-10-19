@@ -47,6 +47,57 @@ async function dialog(
 }
 
 describe('Alibaba authorization protocol selection', () => {
+  it('previews both protocols and saves a JSON array in one call', async () => {
+    const acquisition = {
+      ...testAcquisition(),
+      importBundles: vi.fn(() => Promise.resolve(testStatus('unlocked')))
+    };
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    const bundles = [{ ...fixture.oauthBundle, protocol: 'iop' }, fixture.oauthBundle];
+    await selectFile(view.body, JSON.stringify(bundles));
+    const preview = view.body.get('[data-testid="authorization-file-preview"]').text();
+    expect(preview).toContain('TOP');
+    expect(preview).toContain('IOP');
+    expect(view.body.text()).not.toContain(fixture.oauthBundle.application.appSecret);
+    expect(acquisition.importBundles).not.toHaveBeenCalled();
+    await view.body.get('[data-testid="confirm-authorization-file-import"]').trigger('click');
+    await flushPromises();
+    expect(acquisition.importBundles).toHaveBeenCalledExactlyOnceWith(bundles);
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+    expect(view.wrapper.emitted('imported')).toHaveLength(1);
+  });
+
+  it('rejects duplicate protocols and any invalid array entry before saving', async () => {
+    const acquisition = { ...testAcquisition(), importBundles: vi.fn() };
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    for (const entries of [[], [fixture.oauthBundle, fixture.oauthBundle], [fixture.oauthBundle, {}]]) {
+      await selectFile(view.body, JSON.stringify(entries));
+      expect(view.body.find('[data-testid="authorization-file-preview"]').exists()).toBe(false);
+      expect(
+        view.body.get('[data-testid="confirm-authorization-file-import"]').attributes('disabled')
+      ).toBeDefined();
+    }
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+    expect(acquisition.importBundles).not.toHaveBeenCalled();
+  });
+
+  it('routes a file selected in Settings into the same batch preview without saving', async () => {
+    const acquisition = { ...testAcquisition(), importBundles: vi.fn() };
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    const source = JSON.stringify([fixture.oauthBundle, { ...fixture.oauthBundle, protocol: 'iop' }]);
+    const file = new File([source], 'dual.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: () => Promise.resolve(source) });
+    await view.wrapper.setProps({ initialFile: file });
+    await flushPromises();
+    expect(view.body.get('[data-testid="authorization-file-preview"]').text()).toContain('TOP');
+    expect(view.body.get('[data-testid="authorization-file-preview"]').text()).toContain('IOP');
+    expect(acquisition.importBundles).not.toHaveBeenCalled();
+    await view.body.get('[data-testid="cancel-authorization-protocol"]').trigger('click');
+    expect(acquisition.importBundles).not.toHaveBeenCalled();
+  });
+
   it('offers file import and online acquisition without automatically opening either', async () => {
     const acquisition = testAcquisition();
     const view = await dialog('acquire', testVault('unlocked'), acquisition);

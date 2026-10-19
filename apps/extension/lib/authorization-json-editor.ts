@@ -1,5 +1,5 @@
 import {
-  parseAlibabaOpenApiCredentialBundle,
+  parseAlibabaCredentialImport,
   type AlibabaOpenApiCredentialBundle
 } from '@one-vegetable/core/credential-bundle';
 
@@ -44,7 +44,10 @@ export function parseAuthorizationJson(
   if (new TextEncoder().encode(text).length > 65_536) throw new Error('AUTH_JSON_TOO_LARGE');
   let bundle: AlibabaOpenApiCredentialBundle;
   try {
-    bundle = parseAlibabaOpenApiCredentialBundle(JSON.parse(text) as unknown);
+    const bundles = parseAlibabaCredentialImport(JSON.parse(text) as unknown);
+    const selected = bundles.find((entry) => (entry.protocol ?? 'top') === protocol) ?? bundles[0];
+    if (!selected) throw new Error('AUTH_JSON_INVALID');
+    bundle = selected;
   } catch {
     throw new Error('AUTH_JSON_INVALID');
   }

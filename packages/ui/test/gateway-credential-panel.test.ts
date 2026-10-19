@@ -21,7 +21,8 @@ afterEach(() => {
 async function harness(
   role: 'admin' | 'user' = 'admin',
   overrides: Partial<ControlGatewayCredentialSummary> = {},
-  realDialogs = false
+  realDialogs = false,
+  protocol?: 'top' | 'iop'
 ) {
   const client = new BffControlClient({ baseUrl: 'http://localhost:8787' });
   const user: ControlSession['user'] = {
@@ -105,7 +106,7 @@ async function harness(
         }
       });
       // Match the shell: the global leave dialog is mounted before the settings panel.
-      return () => [h(UnsavedEditingDialog, { service: editing }), h(GatewayCredentialPanel)];
+      return () => [h(UnsavedEditingDialog, { service: editing }), h(GatewayCredentialPanel, { protocol })];
     }
   });
   const wrapper = mount(Host, {
@@ -130,6 +131,26 @@ async function harness(
   return { wrapper, status, save, importCredential, clear, test, button, editing };
 }
 describe('Node credential configuration UI', () => {
+  it('uses only the selected server profile from a fully validated JSON array', async () => {
+    const view = await harness('admin', { protocol: 'iop' }, false, 'iop');
+    const top = { ...fixture.oauthBundle, protocol: 'top' };
+    const iop = { ...fixture.oauthBundle, protocol: 'iop' };
+    const content = JSON.stringify([top, iop]);
+    const file = new File([content], 'credentials.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: () => Promise.resolve(content) });
+    const input = view.wrapper.get('input[type="file"]');
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] });
+    await input.trigger('change');
+    await flushPromises();
+    expect(view.importCredential).not.toHaveBeenCalled();
+    view.wrapper
+      .findAll('button')
+      .find((button) => button.text() === '确认')
+      ?.element.click();
+    await flushPromises();
+    expect(view.importCredential).toHaveBeenCalledExactlyOnceWith(iop, 1, null, 'iop');
+    view.wrapper.unmount();
+  });
   it.each([undefined, 'top', 'iop'] as const)(
     'shows %s protocol without changing the current configuration',
     async (protocol) => {
