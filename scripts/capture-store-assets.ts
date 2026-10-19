@@ -11,8 +11,6 @@ interface StoreScreenshotLocale {
   labels: {
     onboardingHeading: string;
     startAuthorization: string;
-    acquisitionHeading: string;
-    closeAcquisition: string;
     capabilitiesLink: string;
     capabilitiesHeading: string;
     settingsLink: string;
@@ -28,8 +26,6 @@ const screenshotLocales: readonly StoreScreenshotLocale[] = [
     labels: {
       onboardingHeading: '四步连接 Alibaba 开放平台',
       startAuthorization: '开始授权向导',
-      acquisitionHeading: '获取开放平台凭证',
-      closeAcquisition: '关闭',
       capabilitiesLink: 'API 能力',
       capabilitiesHeading: 'API 能力目录',
       settingsLink: '设置',
@@ -43,8 +39,6 @@ const screenshotLocales: readonly StoreScreenshotLocale[] = [
     labels: {
       onboardingHeading: 'Connect Alibaba Open Platform in four steps',
       startAuthorization: 'Start authorization assistant',
-      acquisitionHeading: 'Get Open Platform credentials',
-      closeAcquisition: 'Close',
       capabilitiesLink: 'API capabilities',
       capabilitiesHeading: 'API capabilities',
       settingsLink: 'Settings',
@@ -99,6 +93,7 @@ async function captureLocale(screenshotLocale: StoreScreenshotLocale): Promise<v
   });
 
   try {
+    await context.route(/^https?:/u, (route) => route.abort('blockedbyclient'));
     let serviceWorker = context.serviceWorkers()[0];
     serviceWorker ??= await context.waitForEvent('serviceworker');
     const extensionId = new URL(serviceWorker.url()).host;
@@ -129,25 +124,22 @@ async function captureLocale(screenshotLocale: StoreScreenshotLocale): Promise<v
     await settlePointer(page);
     await assertNoInternalReleaseText(page.locator('body').innerText());
     await page.screenshot({ path: resolve(localeScreenshotsDirectory, '01-onboarding.png') });
+    await page.evaluate(() => {
+      document.documentElement.style.zoom = '';
+    });
 
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: screenshotLocale.labels.startAuthorization, exact: true }).click();
-    const acquisitionDialog = page.getByRole('dialog', {
-      name: screenshotLocale.labels.acquisitionHeading,
-      exact: true
-    });
-    await acquisitionDialog.waitFor();
+    await page.getByTestId('authorization-protection').waitFor();
+    await page.getByTestId('continue-authorization-protection').click();
+    await page.getByTestId('authorization-method-choices').waitFor();
     await settlePointer(page);
     await assertNoInternalReleaseText(page.locator('body').innerText());
     await page.screenshot({
       path: resolve(localeScreenshotsDirectory, '02-authorization-guide.png')
     });
-    await acquisitionDialog
-      .getByRole('button', { name: screenshotLocale.labels.closeAcquisition, exact: true })
-      .click();
-    await page.evaluate(() => {
-      document.documentElement.style.zoom = '';
-    });
+    await page.getByTestId('cancel-authorization-protocol').click();
+    await page.getByTestId('authorization-method-choices').waitFor({ state: 'hidden' });
     await page.getByRole('link', { name: screenshotLocale.labels.capabilitiesLink, exact: true }).click();
     await page
       .getByRole('heading', { name: screenshotLocale.labels.capabilitiesHeading, exact: true })
@@ -188,4 +180,7 @@ async function assertNoInternalReleaseText(textPromise: Promise<string>): Promis
 async function settlePointer(page: Page): Promise<void> {
   await page.mouse.move(640, 16);
   await page.waitForTimeout(250);
+  await page.waitForFunction(() => document.querySelector('[data-sonner-toast]') === null, undefined, {
+    timeout: 15_000
+  });
 }
