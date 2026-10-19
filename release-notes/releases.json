@@ -3,6 +3,78 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.16.1",
+      "releasedAt": "2026-10-20",
+      "title": {
+        "zh-CN": "更轻松的双授权与模板迁移",
+        "en-US": "Simpler dual authorization and template transfers"
+      },
+      "summary": {
+        "zh-CN": "统一 TOP/IOP 在线连接与离线导入，简化本机保护与默认授权；支持模板组合、携图迁移和待办同步。",
+        "en-US": "Unify TOP/IOP online connection and offline import, simplify local protection and remember the default. Includes template composition, image transfers and to-do sync."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.16.1",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.15.1...v2.16.1",
+      "changes": [
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "按协议连接或导入",
+            "en-US": "Connect or import by protocol"
+          },
+          "description": {
+            "zh-CN": "新用户优先 IOP，既有 TOP 应用继续兼容。支持单份或双协议 JSON 数组，整份校验后导入；分别保存并记住默认授权。旧 TOP 入口失效时需原应用资料，不自动创建旧应用，不跨协议重试未知写请求。",
+            "en-US": "Recommend IOP for new users and retain existing TOP applications. Validate single bundles or dual-protocol JSON arrays before import, save independently and remember the default. Unavailable legacy entries require original app details; no legacy app creation or cross-protocol retry of unknown writes."
+          }
+        },
+        {
+          "type": "security",
+          "title": {
+            "zh-CN": "可选口令与共享本机保护",
+            "en-US": "Optional passphrase and shared protection"
+          },
+          "description": {
+            "zh-CN": "留空使用随机设备密钥，授权页与设置共用保护；重启和更新不自动锁定。旧加密授权仍需原口令，手动锁定保留。恢复材料与密文同机保存，不能防护完整浏览器配置被复制。",
+            "en-US": "Leave the passphrase blank for a random device key shared by Authorization and Settings. Restarts and updates do not auto-lock. Old encrypted credentials still require their original passphrase; manual lock remains. Recovery material beside ciphertext cannot protect a copied full browser profile."
+          }
+        },
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "模板组合与携图迁移",
+            "en-US": "Template composition and portable images"
+          },
+          "description": {
+            "zh-CN": "填写文本变量并组合最多 10 个模板，预览后插入。支持 JSON、携图 ZIP/S3 交换；平台去重须明确确认复用，核对实际分组与哈希，不自动移动或重传。",
+            "en-US": "Fill text placeholders and compose up to ten templates before insertion. Exchange JSON or image-inclusive ZIP/S3 packages. Deduplicated images require explicit reuse and actual-group/hash checks, without automatic moves or resubmission."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "待办同步与操作反馈",
+            "en-US": "To-do sync and clearer feedback"
+          },
+          "description": {
+            "zh-CN": "待办支持 Chrome 同步及离线待同步修改，旧本机待办需主动迁移；凭据不参与同步。授权提供临时消息，总览卡片高度统一。",
+            "en-US": "To-dos support Chrome sync and pending changes offline; older local to-dos require explicit migration. Credentials never sync. Authorization actions show temporary feedback and Overview cards have consistent heights."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "开发者引导与历史兼容",
+            "en-US": "Developer guidance and legacy compatibility"
+          },
+          "description": {
+            "zh-CN": "修正审核状态误判和内容脚本存储错误，提前引导应用中心操作；未标协议的旧文件仍按 TOP 读取。平台权限仍由 Alibaba 决定，不增加真实写能力。",
+            "en-US": "Correct review-status detection and content-script storage errors, and guide Application Center steps earlier. Unmarked historical bundles remain TOP. Alibaba controls permissions; no real write capability is added."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.16.0",
       "releasedAt": "2026-10-15",
       "title": { "zh-CN": "模板组合与携图迁移", "en-US": "Template composition and portable images" },
