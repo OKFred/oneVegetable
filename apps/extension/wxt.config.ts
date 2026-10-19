@@ -20,7 +20,7 @@ export default defineConfig({
     // Chrome 102 supports ES2020; keep safe modern syntax instead of ES5-style minifier output.
     build: {
       minify: 'terser',
-      terserOptions: { ecma: 2020, compress: { passes: 3 }, format: { comments: false } }
+      terserOptions: { maxWorkers: 2, ecma: 2020, compress: { passes: 3 }, format: { comments: false } }
     }
   }),
   hooks: {
