@@ -1,12 +1,72 @@
 export const gatewayCredentials = {
   title: 'Alibaba credentials',
   dualTitle: 'TOP + IOP authorizations',
+  acquireCredentials: 'Connect Alibaba account',
+  chooseAcquireProtocol: 'Connect your Alibaba account',
+  chooseMethodDescription:
+    'Choose how to connect. File import opens no Alibaba page. IOP needs permission for its business API.',
+  offlineMethod: 'Import an existing authorization file',
+  offlineMethodHelp:
+    'Use one authorization object, or a JSON array with one TOP and one IOP bundle. Protocols are detected automatically.',
+  onlineMethod: 'Get a new authorization online',
+  onlineMethodHelp: 'Choose a modern or legacy app, then sign in and approve on Alibaba.',
+  offlineChooseFile: 'Choose an authorization JSON file',
+  offlineReplaceHelp:
+    'Confirm to save all included profiles together. Profiles not in this file stay unchanged. This validates the file, not provider expiry or permissions.',
+  offlineImportSave: 'Import and save',
+  offlineInvalid:
+    'Invalid file. Use a complete object or array up to 256 KiB, with at most one TOP and one IOP bundle.',
+  offlineDuplicate: 'A file may contain only one TOP and one IOP bundle. Duplicate protocols are not saved.',
+  offlineFailed:
+    'Import did not complete. Check local protection and host permission, then try again. Online authorization was not started.',
+  offlineSaved: 'Authorization file imported and saved.',
+  methodBack: 'Back to connection methods',
+  chooseRenewProtocol: 'Which authorization do you want to renew?',
+  chooseProtocolDescription:
+    'New here? Start with a new app. Have a legacy app or authorization file? Choose legacy. Both are saved separately and never replace each other.',
+  chooseProtocolIop: 'Connect a new app (recommended)',
+  chooseProtocolIopHelp:
+    'New apps in Alibaba Application Center use IOP. We will guide you through sign-in and approval.',
+  chooseProtocolTop: 'Connect an existing legacy app',
+  chooseProtocolTopHelp:
+    'Use your existing TOP app or authorization file. New app details cannot replace missing legacy details.',
+  protocolToolUnavailable:
+    'This version has no authorization tool for this protocol. Update the extension or import its credential bundle.',
+  authorizationToolFailed: 'Could not open the authorization tool. Please try again.',
+  protectionDescription: 'Prepare local protection, then choose file import or online authorization.',
+  protectionOptional: 'Local protection passphrase (optional)',
+  protectionPlaceholder: 'Leave blank, or enter at least 6 characters',
+  protectionDeviceHelp:
+    'Leaving it blank uses a key stored in this browser profile. Anyone with this profile may unlock it; this does not protect a compromised or shared device. You can set a passphrase later in Settings.',
+  protectionOriginal: 'Original protection passphrase',
+  protectionOriginalHelp:
+    'This vault is locked. Enter its original passphrase; existing credentials will not be replaced.',
+  protectionContinue: 'Continue',
+  protectionFailed:
+    'Could not prepare local protection. Check the original passphrase if locked, then try again. Nothing was replaced.',
+  protectionSaved: 'Local protection saved. You can now import or enter authorization credentials.',
+  protectionDeviceStatus: 'Device-local protection (no passphrase)',
+  protectionBundleLoaded:
+    'Bundle loaded, not saved. Confirm save; a local protection passphrase is optional for a new vault.',
+  automaticRouting: 'Capability-based routing is enabled automatically',
+  singleRouting: 'Using the {protocol} authorization',
+  routingOwnership:
+    'Both grants should belong to the same merchant; the system does not verify store ownership for you.',
   dualDescription:
-    'Two independent grants are recommended, not mandatory. You can keep one profile. Configuring one never replaces the other.',
-  profileTop: 'TOP authorization',
-  profileIop: 'IOP authorization',
+    'Start with the app you already have. If the same merchant has both new and legacy apps, connect both to access more features.',
+  profileTop: 'TOP authorization (legacy)',
+  profileIop: 'IOP authorization (new)',
+  profileHelpTop:
+    'Use a complete legacy TOP credential set. Get it with the authorization tool, import it, or enter it manually; a new IOP app cannot replace it.',
+  profileHelpIop:
+    'Apps at i.alibaba.com/explore/open-api use IOP. Authorize with the IOP tool, export JSON, then import it into this profile.',
   selectProfile: 'Select the authorization profile to configure',
   configureProfile: 'Configure {protocol}',
+  setDefault: 'Set as default',
+  defaultSelected: 'Selected',
+  defaultSaved:
+    '{protocol} is now the saved default. Both authorizations still use capability-based routing.',
+  defaultAlreadySelected: '{protocol} is already the default authorization.',
   selectedProfile: 'Editing {protocol} authorization',
   profileSelected:
     'Switched to {protocol} settings. Import or enter credentials below; the default protocol is unchanged.',
@@ -15,9 +75,9 @@ export const gatewayCredentials = {
   profileMismatch:
     'This JSON belongs to the other protocol. Select its profile first, then import again. Nothing was changed.',
   profileConfirmBody:
-    'Replace only {protocol} for all users of this server. The other profile is preserved; same-merchant confirmation becomes invalid. No Alibaba products are changed.',
+    'Replace only {protocol} for all users of this server. The other profile is preserved. No Alibaba products are changed.',
   profileClearBody:
-    'Clear only {protocol}; the other profile remains configured. Same-merchant confirmation becomes invalid. This does not revoke the platform grant.',
+    'Clear only {protocol}; the other profile remains configured. This does not revoke the platform grant.',
   bindingConfirmed: 'User confirmed the same merchant; capability routing enabled',
   bindingRequired: 'Same-merchant confirmation required for automatic capability routing',
   bindingNeedsBoth:
@@ -32,7 +92,7 @@ export const gatewayCredentials = {
     'This is your confirmation, not official platform verification. Replacing or clearing either profile requires confirmation again.',
   bindingTime: 'User confirmed at {time}',
   routingPolicy:
-    'Once confirmed, verified supported requests prefer IOP; other supported requests use TOP. Unsupported operations stay blocked. Uncertain writes are never retried through the other protocol.',
+    'With both profiles configured, verified supported requests automatically prefer IOP; other supported requests use TOP. Unsupported operations stay blocked. Uncertain writes are never retried through the other protocol.',
   protocol: 'Gateway protocol',
   protocolTop: 'TOP (default)',
   protocolIop: 'IOP (explicit choice)',
@@ -41,9 +101,11 @@ export const gatewayCredentials = {
   acquireTop: 'Get TOP Open Platform credentials',
   acquireIop: 'Open independent IOP authorization tool',
   extensionGuideIop:
-    'Authorize in the independent IOP tool, then export, import and save JSON. TOP acquisition is not for IOP.',
+    'Choose Connect Alibaba account, then a new app. Approve on Alibaba, download the authorization file, then import and save it here.',
+  extensionGuideTop:
+    'Choose Connect Alibaba account, then an existing legacy app. Follow the steps, download the file, then import and save it here. You can also import an existing legacy file.',
   renewGuideIop:
-    'For the selected IOP profile, try Refresh Token first. If missing or refresh fails, reauthorize in the independent IOP tool, then export, import, save and test JSON. Keep the vault and session; do not replay operations.',
+    'If renewal fails, choose Connect Alibaba account and a new app, authorize again and import the new file. Legacy access is preserved.',
   expiryunknown: 'Expiry unknown; this does not mean permanent access',
   expiryvalid: 'Within the recorded authorization period',
   expiryexpiring: 'Authorization expires within 7 days; prepare to renew',
@@ -56,7 +118,7 @@ export const gatewayCredentials = {
   expiryHelp:
     'Access may be revoked early. Try refreshing, or reauthorize and import. No workbench sign-out is needed.',
   extensionRenew:
-    'The extension does not auto-renew. Use “Get Open Platform credentials” and save again when expiry approaches or access fails. Keep your existing vault.',
+    'The extension does not auto-renew. When access expires or fails, choose Connect Alibaba account and your original new or legacy app, authorize again, then import and save. Keep your existing vault.',
   description:
     'All users of this server share these credentials. Use OpenAPI credentials, not your Alibaba website login.',
   adminOnly: 'Only administrators can manage Alibaba credentials.',
@@ -74,6 +136,7 @@ export const gatewayCredentials = {
   test: 'Test connection',
   refresh: 'Refresh Token',
   renew: 'Renew authorization',
+  renewProtocolTitle: 'Renew {protocol} authorization',
   authorizationRemaining: 'Authorization remaining',
   compactdays: '{count} days',
   compacthours: '{count} hr',
@@ -89,14 +152,16 @@ export const gatewayCredentials = {
   unlockForExpiry: 'Unlock to view expiry',
   expiryReadFailed: 'Cannot read authorization; check settings',
   renewDescription: 'Renew API access without signing out or replaying product operations.',
-  refreshAvailable: 'Try Refresh Token; if rejected, reconnect in settings.',
+  refreshAvailable:
+    'Try extending access. If Alibaba declines, authorize again; no automatic retry will be made.',
   renewSettings: 'Credential settings',
   clear: 'Clear configuration',
   reload: 'Refresh status',
-  noRefresh: 'Refresh unavailable. Reauthorize and import.',
+  noRefresh:
+    'This authorization cannot be renewed directly right now. Approve again on Alibaba and import the new file.',
   renewTitle: 'How do I reconnect after authorization fails?',
   renewGuide:
-    'TOP: try refresh, or reauthorize, import and test. Keep configuration and sign-in. Local: pnpm openapi:auth.',
+    'A legacy app may not support direct renewal. If rejected, choose Connect Alibaba account and your existing legacy app, authorize again and import the new file. New app access cannot replace it.',
   legacy:
     'Startup file/environment. Saving switches to encrypted configuration; clearing never restores the old account.',
   save: 'Save and activate',

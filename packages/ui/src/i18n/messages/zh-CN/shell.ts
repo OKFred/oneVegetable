@@ -7,7 +7,7 @@ export const shell = {
   openNavigation: '打开主导航',
   closeNavigation: '关闭导航',
   openWorkspace: '打开运营工作台',
-  popupDescription: '开发模式由 WXT 自动重载；真实 API 请求由扩展 service worker 发起。',
+  popupDescription: '在工作台管理商品、素材与订单，连接自己的 Alibaba 账号后使用。',
   logout: '退出',
   editing: {
     title: '放弃未保存的修改？',
@@ -17,12 +17,13 @@ export const shell = {
   },
   startup: {
     unlockTitle: '解锁开放平台凭据',
-    unlockDescription: '请输入凭据保险库口令，不是 Alibaba 网站密码。稍后解锁仍可查看设置、帮助和版本说明。',
+    unlockDescription:
+      '请输入保险库口令，而非 Alibaba 密码。旧凭据需解锁一次，重启或更新不锁定，仅手动锁定后需再输入。也可稍后解锁，先查看设置和帮助。',
     passphrase: '凭据保险库口令',
     later: '稍后解锁',
     unlock: '解锁',
     unlocking: '正在解锁…',
-    unlocked: '凭据已解锁，正在恢复当前页面的查询。',
+    unlocked: '本机已解锁，正在恢复查询。',
     unlockFailed: '解锁失败，请检查保险库口令，或前往设置检查凭据状态。'
   },
   identity: {
@@ -67,6 +68,16 @@ export const shell = {
     todo: {
       title: '待办',
       description: '仅保存在当前浏览器，不会同步到后端。',
+      syncDescription: '待办通过 Chrome 同步，送达取决于同步状态。请勿填写密码或凭据。',
+      loading: '正在加载待办…',
+      syncStored: '已存入 Chrome 同步，其他设备可能尚未收到。',
+      syncPending: '已存本机，同步待重试。',
+      syncUnavailable: '同步不可用，本地副本可能不完整。',
+      syncQuota: '同步额度受限，更改留在本机。请清理空间或稍后重试。',
+      invalidData: '已跳过无效待办，原数据保留。',
+      migrationConflict: '同步冲突，导入停止。两份数据均保留，请核对后重试。',
+      migrationDescription: '是否导入 {count} 项本地待办？保存成功前保留原数据。',
+      migrate: '导入本地待办',
       placeholder: '添加待办事项…',
       add: '添加',
       empty: '还没有待办事项',

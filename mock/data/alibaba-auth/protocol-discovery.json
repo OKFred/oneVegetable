@@ -1,0 +1,16 @@
+{
+  "iop": {
+    "appName": "IOP fixture application",
+    "appKey": "500001",
+    "callbackUrl": "https://iop-seller.example.com/callback",
+    "status": "Online",
+    "permissions": [{ "name": "System API", "status": "Active" }]
+  },
+  "top": {
+    "appName": "TOP fixture application",
+    "appKey": "fixture-top-12345678",
+    "callbackUrl": "https://top-seller.example.com/callback",
+    "status": "Legacy Online"
+  },
+  "newAppHtml": "<!doctype html><html><body><div class='cloud-form'><span class='form-label'>App Name</span><span class='form-item'>IOP fixture application</span></div><div class='cloud-form'><span class='form-label'>AppKey</span><span class='form-item'>500001</span></div><div class='cloud-form'><span class='form-label'>Callback URL</span><span class='form-item'>https://iop-seller.example.com/callback</span></div><div class='cloud-form'><span class='form-label'>App Status</span><span class='form-item'>Online</span></div></body></html>"
+}

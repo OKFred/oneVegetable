@@ -66,12 +66,13 @@ export const admin = {
     }
   },
   credentialAcquisition: {
-    title: 'Get Open Platform credentials',
+    title: 'Get legacy TOP credentials',
     description:
       "Reuse Alibaba's current Chrome session. The extension never reads or stores the website password.",
-    existingApplicationTitle: 'Sign in → Authorize → Save',
+    existingApplicationTitle: 'Legacy TOP: Sign in → Authorize → Save',
     existingApplicationDescription:
-      'Use this for first connection or renewal. Keep your existing app and Callback. Complete sign-in, terms and CAPTCHA yourself; registration help appears only when needed.',
+      'This compatibility assistant only reads an already-open, usable legacy TOP app page. It never opens the old crosstrade URL automatically. Use the separate tool for apps in the new IOP console, or import existing TOP authorization JSON in Settings. Neither grant overwrites the other.',
+    openIopTool: 'Use the new IOP authorization tool',
     advanced: 'Advanced (usually unchanged)',
     callbackLabel: 'Callback URL (optional)',
     callbackPlaceholder: "Leave empty to keep the application's current Callback",
@@ -183,7 +184,7 @@ export const admin = {
     extensionSteps: {
       install: 'Install or open the production oneVegetable extension.',
       authorize:
-        'Select “Get Open Platform credentials” in extension settings and complete the authorization assistant.',
+        'Use the new IOP tool in extension settings, or import an existing TOP grant. The two authorizations are stored separately and must not be mixed.',
       import: 'Export credentialInfo.json, return here, and use “Import credentials” to store it encrypted.'
     },
     back: 'Back',

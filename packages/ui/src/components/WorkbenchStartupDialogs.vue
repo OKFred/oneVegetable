@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import type { CredentialVaultRepository } from '@one-vegetable/core';
 import { useUiI18n } from '../i18n';
+import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
@@ -10,16 +11,20 @@ import ModalDialog from './ui/ModalDialog.vue';
 const props = defineProps<{ vault?: CredentialVaultRepository; extension: boolean }>();
 const emit = defineEmits<{ ready: []; unlocked: []; locked: [] }>();
 const { t } = useUiI18n();
+const credentialText = useGatewayCredentialsI18n();
 const stage = ref<'checking' | 'unlock' | 'done'>('checking');
 const passphrase = ref('');
+const deviceProtected = ref(false);
 const busy = ref(false);
 const error = ref('');
 let alive = true;
 
 onMounted(async () => {
   try {
-    if (props.extension && props.vault && (await props.vault.status()).state === 'locked') {
+    const status = props.extension && props.vault ? await props.vault.status() : null;
+    if (status?.state === 'locked') {
       if (alive) {
+        deviceProtected.value = status.deviceProtected === true;
         stage.value = 'unlock';
         emit('locked');
       }
@@ -42,11 +47,11 @@ function finish(): void {
   emit('ready');
 }
 async function unlock(): Promise<void> {
-  if (!props.vault || busy.value || !passphrase.value) return;
+  if (!props.vault || busy.value || (!deviceProtected.value && !passphrase.value)) return;
   busy.value = true;
   error.value = '';
   try {
-    const status = await props.vault.unlock(passphrase.value);
+    const status = await props.vault.unlock(deviceProtected.value ? '' : passphrase.value);
     if (!alive) return;
     if (status.state !== 'unlocked') {
       error.value = t('shell.startup.unlockFailed');
@@ -65,7 +70,9 @@ async function unlock(): Promise<void> {
 async function recheckSession(): Promise<void> {
   if (stage.value !== 'unlock' || busy.value || !props.vault) return;
   try {
-    if ((await props.vault.status()).state === 'unlocked' && alive && unlockVisible()) {
+    const status = await props.vault.status();
+    if (alive && status.state === 'locked') deviceProtected.value = status.deviceProtected === true;
+    if (status.state === 'unlocked' && alive && unlockVisible()) {
       emit('unlocked');
       finish();
     }
@@ -94,16 +101,19 @@ function closeUnlock(open: boolean): void {
   <ModalDialog
     :open="stage === 'unlock'"
     :title="t('shell.startup.unlockTitle')"
-    :description="t('shell.startup.unlockDescription')"
+    :description="
+      deviceProtected ? credentialText('protectionDeviceHelp') : t('shell.startup.unlockDescription')
+    "
     :dismissible="!busy"
     size="sm"
     @update:open="closeUnlock"
   >
     <form id="startup-vault-unlock" @submit.prevent="unlock">
-      <label for="startup-vault-passphrase" class="text-sm font-medium">{{
+      <label v-if="!deviceProtected" for="startup-vault-passphrase" class="text-sm font-medium">{{
         t('shell.startup.passphrase')
       }}</label>
       <Input
+        v-if="!deviceProtected"
         id="startup-vault-passphrase"
         v-model="passphrase"
         type="password"
@@ -117,9 +127,12 @@ function closeUnlock(open: boolean): void {
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button variant="outline" :disabled="busy" @click="finish">{{ t('shell.startup.later') }}</Button>
-        <Button type="submit" form="startup-vault-unlock" :disabled="busy || !passphrase">{{
-          t(busy ? 'shell.startup.unlocking' : 'shell.startup.unlock')
-        }}</Button>
+        <Button
+          type="submit"
+          form="startup-vault-unlock"
+          :disabled="busy || (!deviceProtected && !passphrase)"
+          >{{ t(busy ? 'shell.startup.unlocking' : 'shell.startup.unlock') }}</Button
+        >
       </div>
     </template>
   </ModalDialog>

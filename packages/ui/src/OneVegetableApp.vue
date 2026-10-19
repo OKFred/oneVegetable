@@ -50,10 +50,12 @@ import type {
 } from '@one-vegetable/core';
 import type { SocialPublishingClient } from '@one-vegetable/core';
 import { APP_VERSION } from '@one-vegetable/core/version';
+import { toast } from 'vue-sonner';
 import { createGatewayConfigurationScope } from './lib/gateway-configuration-scope';
 import { useQueryClient } from '@tanstack/vue-query';
 import {
   GATEWAY_CONFIGURATION_EVENT,
+  notifyGatewayConfigurationChanged,
   isExternalGatewayConfigurationChange
 } from './lib/gateway-configuration-events';
 
@@ -67,6 +69,7 @@ import FeedbackLauncher from './components/FeedbackLauncher.vue';
 import ExtensionReviewPrompt from './components/ExtensionReviewPrompt.vue';
 import LanguageToggle from './components/LanguageToggle.vue';
 import OnboardingDialog from './components/OnboardingDialog.vue';
+import AlibabaAuthorizationProtocolDialog from './components/AlibabaAuthorizationProtocolDialog.vue';
 import SessionExpiredDialog from './components/SessionExpiredDialog.vue';
 import UnsavedEditingDialog from './components/UnsavedEditingDialog.vue';
 import WorkbenchStartupDialogs from './components/WorkbenchStartupDialogs.vue';
@@ -82,9 +85,16 @@ import { pageHash, parsePageHash, type PageId } from './lib/hash-router';
 import type { RuntimeState } from './lib/data-source';
 import { applyAppTheme, useAppPreferences } from './lib/preferences';
 import { provideServices } from './lib/services';
+import {
+  createLocalTodoRepository,
+  provideDashboardTodos,
+  type DashboardTodoRepository
+} from './lib/todo-repository';
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
 import { provideListIdentityScope } from './lib/list-identity-scope';
+import { openAlibabaAuthorizationTool } from './lib/alibaba-authorization-tool';
+import { useGatewayCredentialsI18n } from './i18n/gateway-credentials';
 
 const props = defineProps<{
   gateway: GatewayClient;
@@ -93,6 +103,7 @@ const props = defineProps<{
   alibabaCredentialAcquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
+  todos?: DashboardTodoRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
   s3Storage?: S3StorageControl;
@@ -109,6 +120,11 @@ const props = defineProps<{
 const runtime = reactive<RuntimeState>({
   backendMeta: null,
   metaStatus: props.mode === 'bff' ? 'loading' : 'ready'
+});
+const todos = props.todos ?? createLocalTodoRepository();
+provideDashboardTodos(todos);
+onBeforeUnmount(() => {
+  if (!props.todos) todos.dispose();
 });
 const queryClient = useQueryClient();
 const editing = new UnsavedEditingService();
@@ -162,11 +178,10 @@ provideServices({
   settings: props.settings,
   mode: props.mode,
   runtime,
-  openCredentialAcquisition: () => {
-    credentialAcquisitionOpen.value = true;
-  },
+  openCredentialAcquisition: requestCredentialAcquisition,
   ...(props.permissions ? { permissions: props.permissions } : {}),
   ...(props.localData ? { localData: props.localData } : {}),
+  todos,
   ...(props.onboarding ? { onboarding: props.onboarding } : {}),
   ...(props.vault ? { vault: props.vault } : {}),
   ...(props.alibabaCredentialAcquisition
@@ -264,6 +279,33 @@ watch(
   { immediate: true }
 );
 const credentialAcquisitionOpen = ref(false);
+const authorizationProtocolOpen = ref(false);
+const credentialText = useGatewayCredentialsI18n();
+
+function requestCredentialAcquisition(): void {
+  if (props.mode === 'extension' && props.alibabaCredentialAcquisition) {
+    authorizationProtocolOpen.value = true;
+  } else if (props.mode === 'bff' && props.control) {
+    credentialAcquisitionOpen.value = true;
+  }
+}
+
+function selectAcquisitionProtocol(protocol: 'top' | 'iop'): void {
+  authorizationProtocolOpen.value = false;
+  if (props.mode !== 'extension' || !props.alibabaCredentialAcquisition) return;
+  try {
+    const pending = openAlibabaAuthorizationTool(props.alibabaCredentialAcquisition, protocol);
+    if (pending) {
+      void pending.catch(() => toast.error(credentialText('authorizationToolFailed')));
+    } else if (protocol === 'top') {
+      credentialAcquisitionOpen.value = true;
+    } else {
+      toast.error(credentialText('protocolToolUnavailable'));
+    }
+  } catch {
+    toast.error(credentialText('authorizationToolFailed'));
+  }
+}
 const authenticationRequired = ref<BffAuthenticationRequiredEvent | null>(null);
 let unsubscribeAuthenticationEvents: (() => void) | null = null;
 const views: Record<PageId, Component> = {
@@ -376,7 +418,7 @@ function handleAuthenticated(nextSession: ControlSession): void {
 
 function handleOnboardingReady(destination?: 'credential-acquisition'): void {
   if (destination === 'credential-acquisition') {
-    credentialAcquisitionOpen.value = true;
+    requestCredentialAcquisition();
   }
   workspaceReady.value = true;
 }
@@ -505,6 +547,14 @@ function avatarInitials(name: string): string {
       v-model:open="credentialAcquisitionOpen"
       data-testid="extension-credential-acquisition"
     />
+    <AlibabaAuthorizationProtocolDialog
+      v-if="mode === 'extension' && alibabaCredentialAcquisition"
+      v-model:open="authorizationProtocolOpen"
+      :vault="vault"
+      :acquisition="alibabaCredentialAcquisition"
+      @imported="notifyGatewayConfigurationChanged()"
+      @select="selectAcquisitionProtocol"
+    />
     <AlibabaCloudCredentialAcquisitionDialog
       v-if="mode === 'bff' && control"
       v-model:open="credentialAcquisitionOpen"
@@ -512,7 +562,12 @@ function avatarInitials(name: string): string {
     />
     <ExtensionReviewPrompt
       v-if="
-        mode === 'extension' && workspaceReady && startupReady && !credentialAcquisitionOpen && reviewPrompt
+        mode === 'extension' &&
+        workspaceReady &&
+        startupReady &&
+        !credentialAcquisitionOpen &&
+        !authorizationProtocolOpen &&
+        reviewPrompt
       "
       :repository="reviewPrompt"
     />
@@ -521,6 +576,7 @@ function avatarInitials(name: string): string {
         workspaceReady &&
         !startupReady &&
         !credentialAcquisitionOpen &&
+        !authorizationProtocolOpen &&
         !authLoading &&
         (mode !== 'bff' || session)
       "

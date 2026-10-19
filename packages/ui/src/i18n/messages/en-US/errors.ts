@@ -1,11 +1,13 @@
 export const errors = {
   codes: {
+    TOP_APPLICATION_REQUIRED:
+      'No usable legacy TOP application was found. This console is for IOP: use the IOP authorization tool, or import or enter existing TOP credentials in Settings.',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
-      'Confirm that TOP and IOP belong to the same merchant in credential settings before using automatic capability routing.',
+      'Check that both TOP and IOP authorizations are configured, then reload their status in credential settings.',
     ALIBABA_AUTHORIZATION_BINDING_CHANGED:
-      'An authorization changed. Review both profiles and confirm the same merchant again; nothing was automatically retried.',
+      'An authorization changed. Reload both profiles and review unfinished tasks; nothing was automatically retried.',
     ALIBABA_AUTHORIZATION_BINDING_STALE:
-      'An authorization changed. Review both profiles and confirm the same merchant again; nothing was automatically retried.',
+      'An authorization changed. Reload both profiles and review unfinished tasks; nothing was automatically retried.',
     ALIBABA_PROTOCOL_SELECTION_REQUIRED:
       'Choose TOP or IOP explicitly before replacing credentials. The other authorization must be preserved.',
     ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:
@@ -105,9 +107,9 @@ export const errors = {
     CREDENTIAL_VAULT_EMPTY: 'Configure Open Platform credentials in Settings first.',
     CREDENTIAL_VAULT_LOCKED: 'Open Platform credentials are locked. Unlock them in Settings first.',
     CREDENTIAL_VAULT_IDLE_TIMEOUT:
-      'Open Platform credentials were locked after being idle. Unlock them again.',
+      'Previously locked credentials still need one unlock with the original passphrase. This device then remembers unlocking until you lock manually.',
     CREDENTIAL_VAULT_SESSION_ENDED:
-      'The Chrome session ended or the extension was updated. Unlock credentials again.',
+      'Existing credentials still need one unlock with the original passphrase. Browser restarts and extension updates will then keep them unlocked.',
     CREDENTIAL_VAULT_INVALID: 'Credential storage is invalid. Clear local data and configure it again.',
     CREDENTIAL_VAULT_MIGRATION_REQUIRED: 'Legacy plaintext credentials must be encrypted locally first.',
     CREDENTIAL_VAULT_PASSPHRASE_REQUIRED:

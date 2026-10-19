@@ -70,6 +70,20 @@ async function start(): Promise<void> {
   }
 }
 
+async function openIopTool(): Promise<void> {
+  if (!alibabaCredentialAcquisition?.openIopTool) return;
+  busy.value = true;
+  error.value = null;
+  try {
+    await alibabaCredentialAcquisition.openIopTool();
+    await requestClose();
+  } catch (cause: unknown) {
+    error.value = cause;
+  } finally {
+    busy.value = false;
+  }
+}
+
 async function initializeDialog(): Promise<void> {
   await refreshVaultStatus();
   if (!alibabaCredentialAcquisition || state.value !== null) return;
@@ -268,6 +282,15 @@ function downloadJson(value: unknown, filename: string): void {
         <p class="mt-1 text-muted-foreground">
           {{ t('admin.credentialAcquisition.existingApplicationDescription') }}
         </p>
+        <Button
+          v-if="alibabaCredentialAcquisition?.openIopTool"
+          class="mt-3"
+          variant="outline"
+          :disabled="busy"
+          @click="openIopTool"
+        >
+          <ExternalLink class="size-4" />{{ t('admin.credentialAcquisition.openIopTool') }}
+        </Button>
       </div>
 
       <template v-if="state === null">

@@ -415,6 +415,10 @@ export interface SettingsRepository {
   save(settings: GatewaySettings): Promise<void>;
   authorizations?(): Promise<AlibabaAuthorizationsSummary>;
   loadAuthorization?(protocol: AlibabaProtocol): Promise<GatewaySettings>;
+  setDefaultAuthorization?(
+    protocol: AlibabaProtocol,
+    configurationId: string
+  ): Promise<AlibabaAuthorizationsSummary>;
   confirmAuthorizations?(
     topConfigurationId: string,
     iopConfigurationId: string
@@ -432,6 +436,7 @@ export interface CredentialVaultPolicy {
 
 export interface CredentialVaultStatus {
   protocol?: 'top' | 'iop';
+  deviceProtected?: boolean;
   state: CredentialVaultState;
   hasAppKey: boolean;
   hasAppSecret: boolean;
@@ -447,6 +452,7 @@ export interface CredentialVaultStatus {
 
 export interface CredentialVaultRepository {
   status(): Promise<CredentialVaultStatus>;
+  prepareAuthorization?(passphrase: string): Promise<CredentialVaultStatus>;
   create(passphrase: string, settings: GatewaySettings): Promise<CredentialVaultStatus>;
   migrate(passphrase: string): Promise<CredentialVaultStatus>;
   unlock(passphrase: string): Promise<CredentialVaultStatus>;
@@ -457,6 +463,7 @@ export interface CredentialVaultRepository {
 
 export type CredentialVaultOperation =
   | 'status'
+  | 'prepare-authorization'
   | 'get-settings'
   | 'create'
   | 'migrate'
@@ -467,6 +474,7 @@ export type CredentialVaultOperation =
   | 'update-policy'
   | 'authorizations'
   | 'get-authorization'
+  | 'set-default-authorization'
   | 'confirm-authorizations'
   | 'clear-authorization'
   | 'refresh-authorization';

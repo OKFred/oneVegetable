@@ -113,6 +113,39 @@ async function harness(
 }
 
 describe('dashboard authorization renewal', () => {
+  it.each(['extension', 'bff'] as const)(
+    'cancels the %s protocol choice without authorization reads or refresh',
+    async (mode) => {
+      const h = await harness({ mode });
+      await h.wrapper.get('button').trigger('click');
+      await h.body.get('[data-testid="cancel-authorization-protocol"]').trigger('click');
+      await flushPromises();
+      expect(h.readSession).not.toHaveBeenCalled();
+      expect(h.status).not.toHaveBeenCalled();
+      expect(h.refresh).not.toHaveBeenCalled();
+      expect(h.acquire).not.toHaveBeenCalled();
+      expect(h.body.find('[role="dialog"]').exists()).toBe(false);
+      h.wrapper.unmount();
+    }
+  );
+
+  it('keeps the explicit IOP renewal on BFF instead of invoking the extension assistant', async () => {
+    const h = await harness();
+    await h.wrapper.get('button').trigger('click');
+    expect(h.status).not.toHaveBeenCalled();
+    await h.body.get('[data-testid="choose-authorization-iop"]').trigger('click');
+    await flushPromises();
+    expect(h.status.mock.calls).toEqual([['iop']]);
+    await h.body
+      .findAll('button')
+      .find((button) => button.text() === '刷新 Token')
+      ?.trigger('click');
+    await flushPromises();
+    expect(h.refresh.mock.calls).toEqual([['iop']]);
+    expect(h.acquire).not.toHaveBeenCalled();
+    h.wrapper.unmount();
+  });
+
   it('does not fetch or renew on mount or a language switch; refresh is an explicit action', async () => {
     const h = await harness();
     expect(h.readSession).not.toHaveBeenCalled();
@@ -122,8 +155,14 @@ describe('dashboard authorization renewal', () => {
     expect(h.readSession).not.toHaveBeenCalled();
     await h.wrapper.get('button').trigger('click');
     await flushPromises();
+    expect(h.readSession).not.toHaveBeenCalled();
+    expect(h.status).not.toHaveBeenCalled();
+    expect(h.acquire).not.toHaveBeenCalled();
+    await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
+    await flushPromises();
     expect(h.readSession).toHaveBeenCalledOnce();
     expect(h.status).toHaveBeenCalledOnce();
+    expect(h.body.get('[role="dialog"] h2').text()).toBe('Renew TOP authorization');
     expect(h.refresh).not.toHaveBeenCalled();
     const changed = vi.fn();
     globalThis.addEventListener(GATEWAY_CONFIGURATION_EVENT, changed);
@@ -144,7 +183,9 @@ describe('dashboard authorization renewal', () => {
   it('routes extension renewal to the existing authorization assistant without BFF calls', async () => {
     const h = await harness({ mode: 'extension' });
     await h.wrapper.get('button').trigger('click');
-    expect(h.acquire).toHaveBeenCalledOnce();
+    expect(h.acquire).not.toHaveBeenCalled();
+    await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
+    expect(h.acquire).toHaveBeenCalledWith('top');
     expect(h.readSession).not.toHaveBeenCalled();
     expect(h.status).not.toHaveBeenCalled();
     expect(h.refresh).not.toHaveBeenCalled();
@@ -154,6 +195,7 @@ describe('dashboard authorization renewal', () => {
   it('does not expose credential management to a non-admin', async () => {
     const h = await harness({ role: 'user' });
     await h.wrapper.get('button').trigger('click');
+    await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
     await flushPromises();
     expect(h.body.get('[role="dialog"]').text()).toContain('只有管理员');
     expect(h.status).not.toHaveBeenCalled();
@@ -167,6 +209,7 @@ describe('dashboard authorization renewal', () => {
     async (cloudflare) => {
       const h = await harness({ canRefresh: false, cloudflare });
       await h.wrapper.get('button').trigger('click');
+      await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
       await flushPromises();
       expect(h.body.get('[role="dialog"] a').attributes('href')).toBe(cloudflare ? '#/admin' : '#/settings');
       expect(h.body.get('[role="dialog"]').text()).toContain('重新授权');
@@ -182,6 +225,7 @@ describe('dashboard authorization renewal', () => {
     const changed = vi.fn();
     globalThis.addEventListener(GATEWAY_CONFIGURATION_EVENT, changed);
     await h.wrapper.get('button').trigger('click');
+    await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
     await flushPromises();
     const refreshButton = h.body.findAll('button').find((button) => button.text() === '刷新 Token');
     await refreshButton?.trigger('click');
@@ -206,6 +250,7 @@ describe('dashboard authorization renewal', () => {
         lastRefreshErrorCode: 'ALIBABA_REFRESH_TOKEN_EXPIRED'
       });
     await h.wrapper.get('button').trigger('click');
+    await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
     await flushPromises();
     await h.body
       .findAll('button')
@@ -226,6 +271,7 @@ describe('dashboard authorization renewal', () => {
       lastRefreshErrorCode: 'ALIBABA_TOKEN_REFRESH_FAILED'
     });
     await h.wrapper.get('button').trigger('click');
+    await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
     await flushPromises();
     expect(h.body.get('[role="dialog"]').text()).toContain('续期失败，请测试连接或重新授权');
     expect(h.refresh).not.toHaveBeenCalled();

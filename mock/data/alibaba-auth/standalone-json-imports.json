@@ -1,0 +1,56 @@
+{
+  "iop": {
+    "schemaVersion": 1,
+    "protocol": "iop",
+    "capturedAtUtc": "2026-10-01T00:00:00.000Z",
+    "application": {
+      "appName": "Alice JSON IOP app",
+      "appKey": "alice-json-iop-fixture-key",
+      "appSecret": "alice-json-iop-fixture-secret-0123456789",
+      "callbackUrl": "https://one-vegetable-auth.pages.dev/callback",
+      "status": "Online",
+      "permissions": []
+    },
+    "oauth": {
+      "accessToken": "fixture-json-iop-access",
+      "refreshToken": null,
+      "expiresAtUtc": null,
+      "refreshExpiresAtUtc": null
+    },
+    "callback": {
+      "receivedAtUtc": "2026-10-01T00:00:00.000Z",
+      "stateMatched": true,
+      "callbackOrigin": "https://one-vegetable-auth.pages.dev",
+      "callbackPath": "/callback"
+    }
+  },
+  "invalidIop": {
+    "schemaVersion": 1,
+    "protocol": "iop"
+  },
+  "top": {
+    "schemaVersion": 1,
+    "protocol": "top",
+    "capturedAtUtc": "2026-10-01T00:00:00.000Z",
+    "application": {
+      "appName": "Alice JSON TOP app",
+      "appKey": "alice-json-top-fixture-key",
+      "appSecret": "alice-json-top-fixture-secret-0123456789",
+      "callbackUrl": "https://one-vegetable-auth.pages.dev/callback",
+      "status": "Online",
+      "permissions": []
+    },
+    "oauth": {
+      "accessToken": "fixture-json-top-access",
+      "refreshToken": null,
+      "expiresAtUtc": null,
+      "refreshExpiresAtUtc": null
+    },
+    "callback": {
+      "receivedAtUtc": "2026-10-01T00:00:00.000Z",
+      "stateMatched": true,
+      "callbackOrigin": "https://one-vegetable-auth.pages.dev",
+      "callbackPath": "/callback"
+    }
+  }
+}

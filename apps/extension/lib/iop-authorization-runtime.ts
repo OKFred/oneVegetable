@@ -3,24 +3,127 @@ import { GatewayException } from '@one-vegetable/core/errors';
 import { AlibabaIopTokenClient, IOP_API_ORIGIN, PUBLIC_AUTH_ORIGIN } from '@one-vegetable/core/alibaba-iop';
 import { isRequestId } from '@one-vegetable/core/network';
 import { isTrustedExtensionPageSender, type ExtensionRuntimeSenderIdentity } from './trusted-runtime-sender';
-import { failure, IopAuthorizationController, isRecord, required, parseCallback } from './iop-authorization';
+import {
+  failure,
+  IopAuthorizationController,
+  isRecord,
+  required,
+  parseCallback,
+  type AuthorizationStorage,
+  type AuthorizationProtectionBridge
+} from './iop-authorization';
+import { TopAuthorizationTokenClient } from './top-authorization-token-client';
+import { IopApplicationReader, IOP_APPLICATION_READER_ORIGINS } from './iop-application-reader';
+import { TOP_APPLICATION_READER_ORIGINS } from './iop-authorization-storage';
+import { readTopApplication } from './top-application-reader';
+import type { AuthorizationProtectionKey } from './authorization-protection';
+
+const applicationReader = new IopApplicationReader();
+let protection:
+  | (AuthorizationProtectionBridge & {
+      status(): Promise<unknown>;
+      prepareStatus(passphrase: string): Promise<unknown>;
+    })
+  | undefined;
+export function configureAuthorizationProtection(bridge: NonNullable<typeof protection>): void {
+  protection = bridge;
+}
+const sharedProtection: AuthorizationProtectionBridge = {
+  async prepare(passphrase) {
+    if (!protection) throw failure('AUTH_ACTION_FAILED');
+    return protection.prepare(passphrase);
+  },
+  async adopt(vault) {
+    if (!protection) throw failure('AUTH_ACTION_FAILED');
+    await protection.adopt(vault);
+  }
+};
+
+let storageAccessReady: Promise<void> | undefined;
+function restrictLocalStorage(): Promise<void> {
+  return (storageAccessReady ??= browser.storage.local
+    .setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
+    .catch((error: unknown) => {
+      storageAccessReady = undefined;
+      throw error;
+    }));
+}
+// Includes tab navigation and public callbacks, not only trusted page messages.
+const trustedLocalStorage: AuthorizationStorage = {
+  async get(key) {
+    await restrictLocalStorage();
+    return browser.storage.local.get(key);
+  },
+  async set(items) {
+    await restrictLocalStorage();
+    await browser.storage.local.set(items);
+  },
+  async remove(keys) {
+    await restrictLocalStorage();
+    await browser.storage.local.remove(keys);
+  }
+};
 
 const controller = new IopAuthorizationController(
-  browser.storage.local,
+  trustedLocalStorage,
   new AlibabaIopTokenClient(),
   async (url) => {
     const tab = await browser.tabs.create({ url });
     if (tab.id === undefined) throw failure('AUTH_ACTION_FAILED');
     return tab.id;
-  }
+  },
+  Date.now,
+  'iop',
+  sharedProtection
 );
+const topController = new IopAuthorizationController(
+  trustedLocalStorage,
+  new TopAuthorizationTokenClient(),
+  async (url) => {
+    const tab = await browser.tabs.create({ url });
+    if (tab.id === undefined) throw failure('AUTH_ACTION_FAILED');
+    return tab.id;
+  },
+  Date.now,
+  'top',
+  sharedProtection
+);
+const controllers = { iop: controller, top: topController };
+export async function rotateAuthorizationProtection(
+  previousKey: string,
+  next: AuthorizationProtectionKey,
+  commit: (patch: Record<string, unknown>) => Promise<void>
+): Promise<void> {
+  const releaseIop = controller.holdProtection();
+  let releaseTop: (() => void) | undefined;
+  try {
+    releaseTop = topController.holdProtection();
+    const patches = await Promise.all([
+      controller.protectionUpdates(previousKey, next),
+      topController.protectionUpdates(previousKey, next)
+    ]);
+    await commit(Object.assign({}, ...patches));
+  } finally {
+    releaseTop?.();
+    releaseIop();
+  }
+}
 browser.tabs.onUpdated.addListener((tabId, change) => {
   if (change.url) void controller.acceptCallback(change.url, tabId).catch(() => undefined);
+  if (change.url) void topController.acceptCallback(change.url, tabId).catch(() => undefined);
 });
+
+/** Shared workbench manual lock; standalone lock affects only its chosen protocol. */
+export async function lockAllAlibabaAuthorizations(): Promise<void> {
+  const results = await Promise.allSettled([controller.lock(), topController.lock()]);
+  const failed = results.find((result) => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
+}
 
 /** Called only by the trusted workbench's explicit clear-all-data workflow. */
 export async function resetIopAuthorization(): Promise<void> {
   await controller.clear();
+  await topController.clear();
 }
 
 export async function handleAuthorization(
@@ -37,66 +140,105 @@ export async function handleAuthorization(
     )
       throw failure('AUTH_ORIGIN_DENIED');
     const payload = isRecord(value.payload) ? value.payload : {};
+    const protocol = value.protocol === undefined ? 'iop' : value.protocol;
+    if (protocol !== 'top' && protocol !== 'iop') throw failure('AUTH_INPUT_INVALID');
+    const selected = controllers[protocol];
     let data: unknown;
     switch (value.action) {
+      case 'protection-status':
+        if (!protection) throw failure('AUTH_ACTION_FAILED');
+        // Restore/adopt a previously unlocked standalone key before requesting setup again.
+        await selected.status();
+        data = await protection.status();
+        break;
+      case 'prepare-protection':
+        if (!protection) throw failure('AUTH_ACTION_FAILED');
+        data = await protection.prepareStatus(passphrase(payload.passphrase));
+        break;
+      case 'discover-application':
+        if (
+          !(await browser.permissions.contains({
+            origins: [
+              ...(protocol === 'iop' ? IOP_APPLICATION_READER_ORIGINS : TOP_APPLICATION_READER_ORIGINS)
+            ]
+          }))
+        )
+          throw failure('AUTH_PERMISSION_REQUIRED');
+        data = protocol === 'iop' ? await applicationReader.read() : await readTopApplication();
+        break;
       case 'status':
-        data = await controller.status();
+        data = await selected.status();
         break;
       case 'start': {
         const callbackUrl = required(payload.callbackUrl);
-        await requirePermissions(callbackUrl);
-        await controller.start({
+        await requirePermissions(protocol, callbackUrl);
+        await selected.start({
           appName: required(payload.appName),
           appKey: required(payload.appKey),
           appSecret: required(payload.appSecret),
           callbackUrl,
           passphrase: passphrase(payload.passphrase)
         });
-        data = await controller.status();
+        data = await selected.status();
         break;
       }
+      case 'reauthorize':
+        await selected.status();
+        await requirePermissions(protocol, selected.callbackUrl());
+        await selected.reauthorize();
+        data = await selected.status();
+        break;
       case 'callback':
-        await controller.acceptCallback(required(payload.url));
-        data = await controller.status();
+        await selected.acceptCallback(required(payload.url));
+        data = await selected.status();
         break;
       case 'unlock':
-        await controller.unlock(passphrase(payload.passphrase));
-        data = await controller.status();
+        await selected.unlock(passphrase(payload.passphrase));
+        data = await selected.status();
         break;
       case 'import':
-        await controller.import(payload.bundle, passphrase(payload.passphrase));
-        data = await controller.status();
+        await selected.import(payload.bundle, passphrase(payload.passphrase));
+        data = await selected.status();
         break;
       case 'refresh':
-        await requirePermissions();
-        await controller.refresh();
-        data = await controller.status();
+        await requirePermissions(protocol);
+        await selected.refresh();
+        data = await selected.status();
         break;
       case 'save':
-        await controller.save();
-        data = await controller.status();
+        await selected.save();
+        data = await selected.status();
         break;
       case 'export':
-        data = await controller.export();
+        data = await selected.export();
         break;
       case 'lock':
-        controller.lock();
-        data = await controller.status();
+        await selected.lock();
+        data = await selected.status();
         break;
       case 'cancel':
-        controller.cancel();
-        data = await controller.status();
+        selected.cancel();
+        data = await selected.status();
         break;
       case 'clear':
-        await controller.clear();
-        data = await controller.status();
+        await selected.clear();
+        data = await selected.status();
         break;
       default:
         throw failure('AUTH_INPUT_INVALID');
     }
     return { requestId, ok: true, data };
   } catch (error) {
-    const code = error instanceof GatewayException ? error.gatewayError.code : 'AUTH_ACTION_FAILED';
+    const code =
+      error instanceof GatewayException
+        ? error.gatewayError.code
+        : isRecord(error) &&
+            typeof error.code === 'string' &&
+            /^PASSPHRASE_TOO_(SHORT|LONG)$/u.test(error.code)
+          ? error.code
+          : error instanceof Error && /^CREDENTIAL_VAULT_(LOCKED|INVALID)$/u.test(error.message)
+            ? error.message
+            : 'AUTH_ACTION_FAILED';
     return { requestId, ok: false, error: { code, message: code, retryable: false } };
   }
 }
@@ -121,7 +263,9 @@ export async function handlePublicAuthorization(
       url.searchParams.set('state', required(value.state));
       if (typeof value.error === 'string') url.searchParams.set('error', 'provider-error');
       else url.searchParams.set('code', required(value.code));
-      const received = await controller.acceptCallback(url.href, sender.tab.id);
+      const received =
+        (await controller.acceptCallback(url.href, sender.tab.id)) ||
+        (await topController.acceptCallback(url.href, sender.tab.id));
       return { ok: true, data: { received } };
     }
     throw failure('AUTH_INPUT_INVALID');
@@ -129,8 +273,11 @@ export async function handlePublicAuthorization(
     return { ok: false, error: { code: 'AUTH_CALLBACK_NOT_ACCEPTED' } };
   }
 }
-async function requirePermissions(callbackUrl?: string): Promise<void> {
-  const origins = [`${IOP_API_ORIGIN}/*`, ...(callbackUrl ? [`${parseCallback(callbackUrl).origin}/*`] : [])];
+async function requirePermissions(protocol: 'top' | 'iop', callbackUrl?: string): Promise<void> {
+  const origins = [
+    `${protocol === 'top' ? 'https://oauth.alibaba.com' : IOP_API_ORIGIN}/*`,
+    ...(callbackUrl ? [`${parseCallback(callbackUrl).origin}/*`] : [])
+  ];
   if (!(await browser.permissions.contains({ origins }))) throw failure('AUTH_PERMISSION_REQUIRED');
 }
 function passphrase(value: unknown): string {

@@ -129,12 +129,17 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       'danger'
     );
     const grid = page.getByTestId('dashboard-metrics');
-    await expect(grid).toHaveCSS('align-items', 'flex-start');
+    await expect(grid).toHaveCSS('align-items', 'stretch');
     expect(await grid.locator(':scope > *').count()).toBe(4);
+    const heights: number[] = [];
     for (const metric of await grid.locator(':scope > *').all()) {
       const box = await metric.boundingBox();
-      expect(box?.height).toBeLessThanOrEqual(160);
+      expect(box).not.toBeNull();
+      if (!box) throw new Error('Dashboard metric is not visible');
+      heights.push(box.height);
+      expect(box.height).toBeLessThanOrEqual(160);
     }
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: `artifacts/dashboard-compact-desktop-${locale}.png` });
     await card.getByTestId('authorization-details').focus();
     await expect(page.getByRole('tooltip')).toContainText('TOP');

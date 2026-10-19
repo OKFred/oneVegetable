@@ -69,7 +69,7 @@ function present<T>(value: T | null | undefined): T {
 }
 
 describe('independent TOP and IOP credentials', () => {
-  it('preserves the legacy primary ciphertext and verifies redacted summary; needs confirmation before auto-routing', async () => {
+  it('preserves the legacy primary ciphertext and routes configured profiles without claiming a confirmed binding', async () => {
     const { dual, service, repository, cipher } = await harness();
     const row = await repository.find();
     expect(row?.id).toBe('primary');
@@ -85,14 +85,13 @@ describe('independent TOP and IOP credentials', () => {
       iop: { revision: 1 },
       binding: { confirmed: false }
     });
-    expect(await dual.selectProtocol('listProducts', {})).toBe('top');
-    await confirm(dual);
     expect(await dual.selectProtocol('listProducts', {})).toBe('iop');
     expect(await dual.selectProtocol('listPhotos', {})).toBe('top');
     expect(await dual.selectProtocol('listPhotos', { groupId: 'group-a' })).toBe('iop');
     expect(await dual.selectProtocol('listPhotos', { ungrouped: true })).toBe('top');
     expect(await dual.selectProtocol('getTradeOrderAggregate', { orderId: 'test' })).toBe('top');
     expect(await dual.selectProtocol('uploadPhoto', {})).toBe('top');
+    expect((await dual.authorizations()).binding.confirmed).toBe(false);
     expect(await repository.find()).toEqual(row);
     expect(await service.status()).toMatchObject({ configured: true, revision: 1 });
   });
@@ -172,7 +171,7 @@ describe('independent TOP and IOP credentials', () => {
   });
   it('never falls back to TOP after selected IOP transport failure', async () => {
     const { dual } = await harness();
-    await confirm(dual);
+    expect((await dual.authorizations()).binding.confirmed).toBe(false);
     const send = vi.fn<NetworkTransport['send']>(() => Promise.reject(new TypeError('network failed')));
     const gateway = new CredentialBackedAlibabaGatewayClient(dual, { transport: { send }, maxAttempts: 1 });
     await expect(gateway.request('listProducts', { page: 1, pageSize: 20 })).rejects.toBeDefined();

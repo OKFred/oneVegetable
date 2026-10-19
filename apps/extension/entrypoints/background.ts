@@ -1,7 +1,14 @@
 import { browser } from 'wxt/browser';
 import {
+  parseAlibabaCredentialImport,
+  parseAlibabaOpenApiCredentialBundle
+} from '@one-vegetable/core/credential-bundle';
+import {
   handleAuthorization,
   handlePublicAuthorization,
+  configureAuthorizationProtection,
+  rotateAuthorizationProtection,
+  lockAllAlibabaAuthorizations,
   resetIopAuthorization
 } from '../lib/iop-authorization-runtime';
 import { defineBackground } from 'wxt/utils/define-background';
@@ -47,7 +54,6 @@ import {
   gatewayCredentialExpiryMetadata,
   alibabaAuthorizationMetadata,
   alibabaAccessTokenCapturedTime,
-  unlockCredentialVault,
   PhotoAdapter,
   ProductAdapter,
   ProductShowcaseAdapter,
@@ -83,6 +89,7 @@ import {
 } from '@one-vegetable/core/capability-validation-worker';
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
+import { AuthorizationProtection, DEVICE_PROTECTION_KEY } from '../lib/authorization-protection';
 import { executeExtensionCapabilityCall } from '../lib/capability-call';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 import { applyExtensionCapabilityProtocol, type AuthorizationStatus } from '../lib/operation-availability';
@@ -101,6 +108,7 @@ import {
   replaceAuthorization,
   resolveAuthorization,
   saveAuthorizationPatch,
+  setDefaultAuthorization,
   summarizeAuthorizations
 } from '../lib/alibaba-authorizations';
 import {
@@ -200,10 +208,16 @@ export default defineBackground({
       s3LocalStore,
       (origins) => browser.permissions.contains({ origins }),
       undefined,
-      async () => {
-        await resetIopAuthorization();
-        await new ExtensionVideoUploadRepository().clearAll();
-      }
+      () =>
+        serializeVaultOperation(async () => {
+          // Wait for in-flight create/unlock/rotation, then clear inside the same
+          // boundary. A late passphrase derivation cannot restore deleted credentials.
+          await vaultSession.lock('manual');
+          await resetIopAuthorization();
+          await new ExtensionVideoUploadRepository().clearAll();
+          await browser.storage.local.clear();
+          await browser.storage.session.clear();
+        })
     );
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -292,11 +306,13 @@ export default defineBackground({
       }
       const acquisitionMessage = asAlibabaCredentialAcquisitionRequest(value);
       if (acquisitionMessage) {
-        // A known injected guide may only inspect/focus prerequisites, never acquire or export secrets.
+        // A known guide can inspect/focus prerequisites or open the local IOP UI,
+        // never acquire, import, change or export credentials.
         const trustedGuideRead =
           alibabaCredentialAcquisition.isGuideSender(sender) &&
           (acquisitionMessage.operation === 'read-prerequisite' ||
-            acquisitionMessage.operation === 'locate-prerequisite-field');
+            acquisitionMessage.operation === 'locate-prerequisite-field' ||
+            acquisitionMessage.operation === 'open-iop-tool');
         return handleAlibabaCredentialAcquisitionRequest(
           acquisitionMessage,
           storageAccessReady,
@@ -323,14 +339,23 @@ export default defineBackground({
 async function restrictStorageToTrustedContexts(): Promise<void> {
   await Promise.all([
     browser.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
+    browser.storage.sync.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
     browser.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
   ]);
 }
 
-const vaultSession = new ExtensionCredentialVaultSession({
+const vaultSession = new ExtensionCredentialVaultSession(browser.storage.local, Date.now, {
   get: (key) => browser.storage.session.get(key),
   set: (items) => browser.storage.session.set(items),
   remove: (key) => browser.storage.session.remove(key)
+});
+const authorizationProtection = new AuthorizationProtection(browser.storage.local, vaultSession);
+configureAuthorizationProtection({
+  prepare: (passphrase) => serializeVaultOperation(() => authorizationProtection.prepare(passphrase)),
+  adopt: (vault) => serializeVaultOperation(() => authorizationProtection.adopt(vault)),
+  status: () => serializeVaultOperation(() => executeCredentialVaultOperation('status', undefined)),
+  prepareStatus: (passphrase) =>
+    serializeVaultOperation(() => executeCredentialVaultOperation('prepare-authorization', { passphrase }))
 });
 const alibabaCredentialAcquisition = new ExtensionAlibabaCredentialAcquisitionController();
 const productMutations = new ExtensionProductDisplayMutationLifecycle({
@@ -458,6 +483,18 @@ async function handleAlibabaCredentialAcquisitionRequest(
         );
         break;
       }
+      case 'import-bundle': {
+        const input = requireOnlyKeys(message.payload, ['bundle']);
+        const bundle = parseAlibabaOpenApiCredentialBundle(input.bundle);
+        data = await serializeVaultOperation(() => saveAcquiredCredentialsToVault(bundle, undefined));
+        break;
+      }
+      case 'import-bundles': {
+        const input = requireOnlyKeys(message.payload, ['bundles']);
+        const bundles = parseAlibabaCredentialImport(input.bundles);
+        data = await serializeVaultOperation(() => saveAcquiredCredentialBundlesToVault(bundles, undefined));
+        break;
+      }
       case 'export-bundle':
         data = await alibabaCredentialAcquisition.exportBundle();
         break;
@@ -471,10 +508,17 @@ async function handleAlibabaCredentialAcquisitionRequest(
         await alibabaCredentialAcquisition.focusPrerequisitePage();
         data = null;
         break;
-      case 'open-iop-tool':
-        await browser.tabs.create({ url: browser.runtime.getURL('/authorization.html') });
+      case 'open-iop-tool': {
+        if (payload.protocol !== undefined && payload.protocol !== 'top' && payload.protocol !== 'iop')
+          throw new Error('Invalid authorization protocol');
+        const path =
+          payload.protocol === 'top'
+            ? '/authorization.html?protocol=top&discover=1'
+            : '/authorization.html?discover=1';
+        await browser.tabs.create({ url: browser.runtime.getURL(path) });
         data = null;
         break;
+      }
     }
     return { requestId: message.requestId, ok: true, data };
   } catch (error: unknown) {
@@ -486,7 +530,13 @@ async function saveAcquiredCredentialsToVault(
   bundle: Awaited<ReturnType<ExtensionAlibabaCredentialAcquisitionController['completedBundle']>>,
   passphrase: string | undefined
 ): Promise<CredentialVaultStatus> {
-  const settings = initializeAuthorizationIdentities({
+  return saveAcquiredCredentialBundlesToVault([bundle], passphrase);
+}
+
+function acquiredCredentialSettings(
+  bundle: Awaited<ReturnType<ExtensionAlibabaCredentialAcquisitionController['completedBundle']>>
+): GatewaySettings {
+  return initializeAuthorizationIdentities({
     protocol: bundle.protocol ?? 'top',
     appKey: bundle.application.appKey,
     ...alibabaAuthorizationMetadata(bundle),
@@ -501,21 +551,35 @@ async function saveAcquiredCredentialsToVault(
     endpoint: bundle.protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
     signMethod: bundle.protocol === 'iop' ? 'hmac-sha256' : 'hmac'
   });
+}
+
+async function saveAcquiredCredentialBundlesToVault(
+  input: unknown,
+  passphrase: string | undefined
+): Promise<CredentialVaultStatus> {
+  const patches = parseAlibabaCredentialImport(input).map(acquiredCredentialSettings);
+  // Prefer TOP on a fresh dual import, regardless of array order. Preserve an existing preference.
+  patches.sort((left, right) => Number(left.protocol === 'iop') - Number(right.protocol === 'iop'));
+  const first = patches[0];
+  if (!first) throw new Error('AUTH_IMPORT_INVALID_COUNT');
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
   if (state.kind === 'empty') {
-    if (!passphrase) {
-      throw gatewayFailure('CREDENTIAL_VAULT_PASSPHRASE_REQUIRED', 'Set a vault passphrase first.');
-    }
-    const created = await createCredentialVault(settings, passphrase);
-    await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-    await vaultSession.activate(created, created.sessionKeyMaterial);
-    return credentialVaultStatus({ kind: 'vault', record: created.record }, settings.protocol);
+    const settings = patches.slice(1).reduce(saveAuthorizationPatch, first);
+    const created = await authorizationProtection.create(settings, passphrase ?? '');
+    return credentialVaultStatus(
+      { kind: 'vault', record: created.record },
+      patches.length === 1 ? first.protocol : settings.protocol
+    );
   }
   const current = await getUnlockedVault(state);
-  const record = await persistUnlockedSettings(current, saveAuthorizationPatch(current.settings, settings));
-  return credentialVaultStatus({ kind: 'vault', record }, settings.protocol);
+  const settings = patches.reduce(saveAuthorizationPatch, current.settings);
+  const record = await persistUnlockedSettings(current, settings);
+  return credentialVaultStatus(
+    { kind: 'vault', record },
+    patches.length === 1 ? first.protocol : settings.protocol
+  );
 }
 
 async function handleCredentialVaultRequest(
@@ -553,6 +617,13 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
 
   switch (operation) {
+    case 'prepare-authorization': {
+      await authorizationProtection.prepare(optionalVaultString(asRecord(payload).passphrase) ?? '');
+      const current = inspectCredentialStorage(
+        (await browser.storage.local.get(SETTINGS_STORAGE_KEY))[SETTINGS_STORAGE_KEY]
+      );
+      return credentialVaultStatus(current);
+    }
     case 'status':
       return credentialVaultStatus(state);
     case 'get-settings':
@@ -603,6 +674,17 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       await persistUnlockedSettings(current, settings);
       return readAuthorizationsSummary(settings);
     }
+    case 'set-default-authorization': {
+      const current = await getUnlockedVault(state);
+      const input = asRecord(payload);
+      const settings = setDefaultAuthorization(
+        current.settings,
+        requiredAuthorizationProtocol(input.protocol),
+        requiredString(input, 'configurationId')
+      );
+      await persistUnlockedSettings(current, settings);
+      return readAuthorizationsSummary(settings);
+    }
     case 'clear-authorization': {
       const current = await getUnlockedVault(state);
       await persistUnlockedSettings(
@@ -635,22 +717,23 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     }
     case 'unlock': {
       if (state.kind !== 'vault') throw vaultStateError(state.kind);
-      const unlocked = await unlockCredentialVault(state.record, requiredVaultString(payload, 'passphrase'));
-      await vaultSession.activate({ ...unlocked, record: state.record }, unlocked.sessionKeyMaterial);
+      await authorizationProtection.prepare(optionalVaultString(asRecord(payload).passphrase) ?? '');
       return credentialVaultStatus(state);
     }
     case 'lock':
       await vaultSession.lock('manual');
+      await lockAllAlibabaAuthorizations();
       return credentialVaultStatus(state);
     case 'create': {
       if (state.kind !== 'empty') {
         throw gatewayFailure('CREDENTIAL_VAULT_ALREADY_CONFIGURED', 'Credentials already exist.');
       }
       const request = asRecord(payload);
-      const settings = initializeAuthorizationIdentities(requiredGatewaySettings(request.settings));
-      const created = await createCredentialVault(settings, requiredString(request, 'passphrase'));
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial);
+      const settings = initializeAuthorizationIdentities(requiredGatewaySettings(request.settings, true));
+      const created = await authorizationProtection.create(
+        settings,
+        optionalVaultString(request.passphrase) ?? ''
+      );
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'migrate': {
@@ -662,8 +745,10 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
       }
       const settings = initializeAuthorizationIdentities(state.settings);
       const created = await createCredentialVault(settings, requiredVaultString(payload, 'passphrase'));
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial);
+      await vaultSession.activate({ ...created, settings }, created.sessionKeyMaterial, undefined, {
+        [SETTINGS_STORAGE_KEY]: created.record,
+        [DEVICE_PROTECTION_KEY]: null
+      });
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'save': {
@@ -685,21 +770,42 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
     }
     case 'rotate': {
       const current = await getUnlockedVault(state);
+      const previous = await vaultSession.protection(current.record);
       const created = await createCredentialVault(
         current.settings,
         requiredVaultString(payload, 'newPassphrase'),
         current.policy
       );
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: created.record });
-      await vaultSession.activate({ ...created, settings: current.settings }, created.sessionKeyMaterial);
+      await rotateAuthorizationProtection(
+        previous.sessionKeyMaterial,
+        {
+          key: created.key,
+          sessionKeyMaterial: created.sessionKeyMaterial,
+          salt: created.record.kdf.salt
+        },
+        async (toolUpdates) => {
+          await vaultSession.activate(
+            { ...created, settings: current.settings },
+            created.sessionKeyMaterial,
+            undefined,
+            {
+              ...toolUpdates,
+              [SETTINGS_STORAGE_KEY]: created.record,
+              [DEVICE_PROTECTION_KEY]: null
+            }
+          );
+        }
+      );
       return credentialVaultStatus({ kind: 'vault', record: created.record });
     }
     case 'update-policy': {
       const current = await getUnlockedVault(state);
-      const policy = { idleTimeoutMinutes: requiredNumber(asRecord(payload), 'idleTimeoutMinutes') };
+      // Kept for older clients; automatic idle locking is no longer supported.
+      const policy = { idleTimeoutMinutes: 0 };
       const record = await resealCredentialVault(current.record, current.settings, current.key, policy);
-      await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
-      await vaultSession.update({ ...current, record, policy });
+      await vaultSession.update({ ...current, record, policy }, undefined, {
+        [SETTINGS_STORAGE_KEY]: record
+      });
       return credentialVaultStatus({ kind: 'vault', record });
     }
     default:
@@ -730,6 +836,7 @@ async function credentialVaultStatus(
   const effectiveState = state.kind === 'vault' ? (activeSession ? 'unlocked' : 'locked') : state.kind;
   return {
     state: effectiveState,
+    deviceProtected: state.kind === 'vault' && Boolean(await authorizationProtection.deviceKey(state.record)),
     ...(settings?.protocol === undefined ? {} : { protocol: settings.protocol }),
     ...(allSettings ? { pool: authorizationAvailability(allSettings) } : {}),
     hasAppKey: Boolean(settings?.appKey),
@@ -795,8 +902,7 @@ async function getUnlockedVault(
 
 async function persistUnlockedSettings(current: CredentialVaultSessionValue, settings: GatewaySettings) {
   const record = await resealCredentialVault(current.record, settings, current.key, current.policy);
-  await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: record });
-  await vaultSession.update({ ...current, record, settings });
+  await vaultSession.update({ ...current, record, settings }, undefined, { [SETTINGS_STORAGE_KEY]: record });
   return record;
 }
 
@@ -1423,6 +1529,7 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     value.operation !== 'status' &&
     value.operation !== 'get-settings' &&
     value.operation !== 'create' &&
+    value.operation !== 'prepare-authorization' &&
     value.operation !== 'migrate' &&
     value.operation !== 'unlock' &&
     value.operation !== 'lock' &&
@@ -1432,6 +1539,7 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     value.operation !== 'authorizations' &&
     value.operation !== 'get-authorization' &&
     value.operation !== 'confirm-authorizations' &&
+    value.operation !== 'set-default-authorization' &&
     value.operation !== 'clear-authorization' &&
     value.operation !== 'refresh-authorization'
   ) {
@@ -1527,14 +1635,28 @@ function validateCredentialVaultPayload(
     validateProfileInput(payload);
     return;
   }
+  if (operation === 'prepare-authorization' || operation === 'unlock') {
+    const input = requireOnlyKeys(payload, ['passphrase']);
+    if (typeof input.passphrase !== 'string' || input.passphrase.length > 256)
+      throw gatewayFailure('INVALID_CREDENTIAL_VAULT_REQUEST', 'INVALID_CREDENTIAL_VAULT_REQUEST');
+    return;
+  }
   if (operation === 'create') {
     const input = requireOnlyKeys(payload, ['passphrase', 'settings']);
-    requiredString(input, 'passphrase');
+    if (typeof input.passphrase !== 'string' || input.passphrase.length > 256)
+      throw gatewayFailure('INVALID_CREDENTIAL_VAULT_REQUEST', 'INVALID_CREDENTIAL_VAULT_REQUEST');
     validateProfileInput(input.settings);
     return;
   }
   if (['get-authorization', 'clear-authorization', 'refresh-authorization'].includes(operation)) {
     requiredAuthorizationProtocol(requireOnlyKeys(payload, ['protocol']).protocol);
+    return;
+  }
+  if (operation === 'set-default-authorization') {
+    const input = requireOnlyKeys(payload, ['protocol', 'configurationId']);
+    requiredAuthorizationProtocol(input.protocol);
+    if (!/^[\w.-]{1,128}$/u.test(requiredString(input, 'configurationId')))
+      throw gatewayFailure('INVALID_CREDENTIAL_VAULT_REQUEST', 'INVALID_CREDENTIAL_VAULT_REQUEST');
     return;
   }
   if (operation === 'confirm-authorizations') {
@@ -1571,6 +1693,8 @@ function asAlibabaCredentialAcquisitionRequest(
     value.operation !== 'status' &&
     value.operation !== 'cancel' &&
     value.operation !== 'save-to-vault' &&
+    value.operation !== 'import-bundle' &&
+    value.operation !== 'import-bundles' &&
     value.operation !== 'export-bundle' &&
     value.operation !== 'read-prerequisite' &&
     value.operation !== 'locate-prerequisite-field' &&
@@ -1740,13 +1864,19 @@ function optionalVaultString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
-function requiredGatewaySettings(value: unknown): GatewaySettings {
+function requiredGatewaySettings(value: unknown, allowEmptyCredentials = false): GatewaySettings {
   const record = asRecord(value);
+  const credential = (key: string): string => {
+    // Initial protection setup may precede import. This does not create a configured
+    // authorization: summaries and gateway routing still require all three values.
+    if (allowEmptyCredentials && typeof record[key] === 'string') return record[key];
+    return requiredString(record, key);
+  };
   return {
     ...gatewayProtocolMetadata(record),
-    appKey: requiredString(record, 'appKey'),
-    appSecret: requiredString(record, 'appSecret'),
-    accessToken: requiredString(record, 'accessToken'),
+    appKey: credential('appKey'),
+    appSecret: credential('appSecret'),
+    accessToken: credential('accessToken'),
     ...gatewayCredentialExpiryMetadata(record),
     ...privateRefreshMetadata(record),
     endpoint: requiredString(record, 'endpoint'),

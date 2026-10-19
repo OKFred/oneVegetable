@@ -1,7 +1,7 @@
-import type { AlibabaIopTokenClient } from '@one-vegetable/core/alibaba-iop';
 import { IOP_AUTHORIZE_ENDPOINT, isRecord } from '@one-vegetable/core/alibaba-iop';
 import {
   openAlibabaAuthorization,
+  restoreAlibabaAuthorization,
   sealAlibabaAuthorization,
   resealAlibabaAuthorization,
   type OpenAlibabaAuthorizationVault
@@ -15,9 +15,27 @@ import {
 } from '@one-vegetable/core/credential-bundle';
 import { GatewayException } from '@one-vegetable/core/errors';
 import { validateVaultPassphrase } from '@one-vegetable/core/credential-vault';
+import type { AuthorizationProtectionKey } from './authorization-protection';
 
-import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from './iop-authorization-storage';
-export { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from './iop-authorization-storage';
+export interface AuthorizationProtectionBridge {
+  prepare(passphrase: string): Promise<AuthorizationProtectionKey>;
+  adopt(vault: OpenAlibabaAuthorizationVault): Promise<void>;
+}
+
+import {
+  IOP_VAULT_KEY,
+  IOP_RECEIPT_KEY,
+  TOP_VAULT_KEY,
+  TOP_RECEIPT_KEY,
+  IOP_SESSION_KEY,
+  TOP_SESSION_KEY
+} from './iop-authorization-storage';
+export {
+  IOP_VAULT_KEY,
+  IOP_RECEIPT_KEY,
+  IOP_SESSION_KEY,
+  TOP_SESSION_KEY
+} from './iop-authorization-storage';
 export interface AuthorizationStorage {
   get(key: string): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
@@ -30,18 +48,35 @@ export interface IopAuthorizationSummary {
   expiresAtUtc: string | null;
   refreshExpiresAtUtc: string | null;
   canRefresh: boolean;
+  canReauthorize: boolean;
   canSave: boolean;
   errorCode: string | null;
+  callbackUrl: string | null;
+}
+export interface AuthorizationTokenClient {
+  request(
+    path: '/auth/token/create' | '/auth/token/refresh',
+    input: {
+      appKey: string;
+      appSecret: string;
+      value: string;
+      requestId: string;
+      redirectUri?: string;
+    }
+  ): Promise<AlibabaTokenResponse>;
 }
 interface AuthorizationJob {
   application: AlibabaOpenApiCredentialBundle['application'];
   state: string;
   tabId: number;
   deadline: number;
-  passphrase: string;
+  protection:
+    | { passphrase: string }
+    | { vault: OpenAlibabaAuthorizationVault }
+    | { shared: AuthorizationProtectionKey };
 }
 
-/** No website passwords, remote code, automatic authorization confirmation or TOP fallback. */
+/** Protocol is explicit; no website passwords, automatic approval or cross-protocol fallback. */
 export class IopAuthorizationController {
   private unlocked: OpenAlibabaAuthorizationVault | null = null;
   private job: AuthorizationJob | null = null;
@@ -49,36 +84,100 @@ export class IopAuthorizationController {
   private errorCode: string | null = null;
   private pendingSave = false;
   private expiryTimer: ReturnType<typeof setTimeout> | null = null;
+  private revision = 0;
+  private manuallyLocked = false;
+  private protectionChanging = false;
 
   constructor(
     private readonly storage: AuthorizationStorage,
-    private readonly client: Pick<AlibabaIopTokenClient, 'request'>,
+    private readonly client: AuthorizationTokenClient,
     private readonly openTab: (url: string) => Promise<number>,
-    private readonly clock: () => number = Date.now
+    private readonly clock: () => number = Date.now,
+    private readonly protocol: 'iop' | 'top' = 'iop',
+    private readonly protection?: AuthorizationProtectionBridge
   ) {}
 
+  private get vaultKey(): string {
+    return this.protocol === 'iop' ? IOP_VAULT_KEY : TOP_VAULT_KEY;
+  }
+  private get receiptKey(): string {
+    return this.protocol === 'iop' ? IOP_RECEIPT_KEY : TOP_RECEIPT_KEY;
+  }
+  private get sessionKey(): string {
+    return this.protocol === 'iop' ? IOP_SESSION_KEY : TOP_SESSION_KEY;
+  }
+
+  private recoveryRecord(vault: OpenAlibabaAuthorizationVault) {
+    return { ...vault.record, protocol: this.protocol, sessionKeyMaterial: vault.sessionKeyMaterial };
+  }
+
+  private async persist(vault: OpenAlibabaAuthorizationVault): Promise<void> {
+    // Commit ciphertext, matching recovery material and receipt together.
+    await this.storage.set({
+      [this.vaultKey]: vault.record,
+      [this.sessionKey]: this.recoveryRecord(vault),
+      [this.receiptKey]: null
+    });
+    this.manuallyLocked = false;
+  }
+
+  private async restore(duringAction = false): Promise<void> {
+    if (this.pendingSave || this.manuallyLocked || (this.busy && !duringAction)) return;
+    const revision = this.revision;
+    const current = () => revision === this.revision && !this.manuallyLocked;
+    const value = (await this.storage.get(this.vaultKey))[this.vaultKey];
+    const saved = (await this.storage.get(this.sessionKey))[this.sessionKey];
+    if (!current()) return;
+    if (
+      !isRecord(value) ||
+      !isRecord(saved) ||
+      saved.version !== 1 ||
+      saved.protocol !== this.protocol ||
+      saved.salt !== value.salt ||
+      saved.iv !== value.iv ||
+      saved.ciphertext !== value.ciphertext ||
+      typeof saved.sessionKeyMaterial !== 'string'
+    ) {
+      this.unlocked = null;
+      return;
+    }
+    try {
+      const restored = await restoreAlibabaAuthorization(value, saved.sessionKeyMaterial, this.protocol);
+      // Status may overlap manual lock/clear or a token write. Discard late reads.
+      if (current()) this.unlocked = restored;
+    } catch {
+      if (current()) {
+        this.unlocked = null;
+        this.errorCode = 'AUTH_UNLOCK_FAILED';
+      }
+      // Retain invalid storage for explicit unlock or clear, never overwrite it.
+    }
+  }
+
   async status(): Promise<IopAuthorizationSummary> {
+    await this.restore();
     if (this.job && this.job.deadline <= this.clock()) {
       this.endJob();
       this.errorCode = 'AUTH_TASK_EXPIRED';
     }
-    const receipt = (await this.storage.get(IOP_RECEIPT_KEY))[IOP_RECEIPT_KEY];
+    const receipt = (await this.storage.get(this.receiptKey))[this.receiptKey];
     const pending = receipt !== null && receipt !== undefined;
-    const exists = (await this.storage.get(IOP_VAULT_KEY))[IOP_VAULT_KEY] !== undefined;
+    const exists = (await this.storage.get(this.vaultKey))[this.vaultKey] !== undefined;
     if (!exists && !this.pendingSave) this.unlocked = null;
+    if (this.unlocked) await this.protection?.adopt(this.unlocked);
     const bundle = this.unlocked?.bundle;
     return {
       state: this.busy
         ? 'busy'
         : this.job
           ? 'waiting'
-          : pending
-            ? 'unknown'
-            : !this.unlocked
-              ? exists
-                ? 'locked'
-                : 'empty'
-              : 'ready',
+          : !this.unlocked && exists
+            ? 'locked'
+            : pending
+              ? 'unknown'
+              : this.unlocked
+                ? 'ready'
+                : 'empty',
       appName: bundle?.application.appName ?? null,
       appKeySuffix: bundle?.application.appKey.slice(-4) ?? null,
       expiresAtUtc: bundle?.oauth.expiresAtUtc ?? null,
@@ -91,7 +190,9 @@ export class IopAuthorizationController {
         (bundle.oauth.refreshExpiresAtUtc === null ||
           Date.parse(bundle.oauth.refreshExpiresAtUtc) > this.clock()),
       canSave: this.pendingSave && !!this.unlocked && !this.busy,
-      errorCode: this.errorCode ?? (pending ? 'AUTH_REFRESH_RESULT_UNKNOWN' : null)
+      canReauthorize: !!this.unlocked && !this.busy && !this.job,
+      errorCode: this.errorCode ?? (pending ? 'AUTH_REFRESH_RESULT_UNKNOWN' : null),
+      callbackUrl: bundle?.application.callbackUrl ?? null
     };
   }
 
@@ -104,7 +205,14 @@ export class IopAuthorizationController {
   }): Promise<void> {
     await this.exclusive(async () => {
       if (this.job) throw failure('AUTH_TASK_ACTIVE');
+      await this.restore(true);
       const callback = parseCallback(input.callbackUrl);
+      if (
+        this.protection &&
+        !this.unlocked &&
+        (await this.storage.get(this.vaultKey))[this.vaultKey] !== undefined
+      )
+        throw failure('AUTH_VAULT_LOCKED');
       const application = {
         appName: required(input.appName),
         appKey: required(input.appKey),
@@ -114,29 +222,58 @@ export class IopAuthorizationController {
         permissions: []
       };
       // Validate the passphrase and application before opening any remote page.
-      validateVaultPassphrase(input.passphrase);
-      const state = crypto.randomUUID();
-      const url = new URL(IOP_AUTHORIZE_ENDPOINT);
-      url.search = new URLSearchParams({
-        client_id: application.appKey,
-        response_type: 'code',
-        redirect_uri: callback.href,
-        state
-      }).toString();
-      const tabId = await this.openTab(url.href);
-      this.job = {
-        application,
-        state,
-        tabId,
-        deadline: this.clock() + 600_000,
-        passphrase: input.passphrase
-      };
-      this.expiryTimer = setTimeout(() => {
-        this.endJob();
-        this.errorCode = 'AUTH_TASK_EXPIRED';
-      }, 600_000);
-      this.errorCode = null;
+      if (this.protection) {
+        await this.beginJob(application, { shared: await this.protection.prepare(input.passphrase) });
+      } else if (input.passphrase === '' && this.unlocked) {
+        await this.beginJob(application, { vault: this.unlocked });
+      } else {
+        validateVaultPassphrase(input.passphrase);
+        await this.beginJob(application, { passphrase: input.passphrase });
+      }
     });
+  }
+
+  async reauthorize(): Promise<void> {
+    await this.exclusive(async () => {
+      if (this.job) throw failure('AUTH_TASK_ACTIVE');
+      await this.restore(true);
+      const vault = this.requireUnlocked();
+      // A fresh OAuth code is not a retry of an uncertain token refresh. Retain
+      // its receipt until a newly authorized bundle has been safely persisted.
+      await this.beginJob(vault.bundle.application, { vault });
+    });
+  }
+
+  private async beginJob(
+    application: AlibabaOpenApiCredentialBundle['application'],
+    protection: AuthorizationJob['protection']
+  ): Promise<void> {
+    const callback = parseCallback(application.callbackUrl);
+    const state = crypto.randomUUID();
+    const url = new URL(
+      this.protocol === 'iop' ? IOP_AUTHORIZE_ENDPOINT : 'https://oauth.alibaba.com/authorize'
+    );
+    url.search = new URLSearchParams({
+      client_id: application.appKey,
+      response_type: 'code',
+      redirect_uri: callback.href,
+      state
+    }).toString();
+    if (this.protocol === 'top') {
+      url.searchParams.set('view', 'web');
+      url.searchParams.set('sp', 'ICBU');
+    }
+    const tabId = await this.openTab(url.href);
+    this.job = { application, protection, state, tabId, deadline: this.clock() + 600_000 };
+    this.expiryTimer = setTimeout(() => {
+      this.endJob();
+      this.errorCode = 'AUTH_TASK_EXPIRED';
+    }, 600_000);
+    this.errorCode = null;
+  }
+
+  callbackUrl(): string {
+    return this.requireUnlocked().bundle.application.callbackUrl;
   }
 
   async acceptCallback(urlText: string, tabId?: number): Promise<boolean> {
@@ -175,8 +312,9 @@ export class IopAuthorizationController {
     await this.exclusive(async () => {
       // Consume once, before the request: navigation events and polling cannot re-exchange a code.
       this.endJob();
+      const previousReceipt = (await this.storage.get(this.receiptKey))[this.receiptKey];
       await this.storage.set({
-        [IOP_RECEIPT_KEY]: { requestId: crypto.randomUUID(), status: 'exchanging', timeUtc: this.clock() }
+        [this.receiptKey]: { requestId: crypto.randomUUID(), status: 'exchanging', timeUtc: this.clock() }
       });
       let token: AlibabaTokenResponse;
       try {
@@ -184,11 +322,15 @@ export class IopAuthorizationController {
           appKey: job.application.appKey,
           appSecret: job.application.appSecret,
           value: code,
-          requestId: crypto.randomUUID()
+          requestId: crypto.randomUUID(),
+          redirectUri: job.application.callbackUrl
         });
       } catch (error) {
-        if (error instanceof GatewayException && error.gatewayError.code === 'IOP_TOKEN_REJECTED')
-          await this.storage.remove([IOP_RECEIPT_KEY]);
+        if (isDefiniteRejection(error)) {
+          if (previousReceipt !== null && previousReceipt !== undefined)
+            await this.storage.set({ [this.receiptKey]: previousReceipt });
+          else await this.storage.remove([this.receiptKey]);
+        }
         throw error;
       }
       const bundle = {
@@ -198,11 +340,25 @@ export class IopAuthorizationController {
           token,
           receivedCallbackUrl: actual.href
         }),
-        protocol: 'iop' as const
+        protocol: this.protocol
       };
-      this.unlocked = await sealAlibabaAuthorization(bundle, job.passphrase);
+      this.unlocked =
+        'shared' in job.protection
+          ? await this.sealWithProtection(bundle, job.protection.shared)
+          : 'passphrase' in job.protection
+            ? await sealAlibabaAuthorization(bundle, job.protection.passphrase, this.protocol)
+            : {
+                ...job.protection.vault,
+                bundle,
+                record: await resealAlibabaAuthorization(
+                  bundle,
+                  job.protection.vault.key,
+                  job.protection.vault.record.salt,
+                  this.protocol
+                )
+              };
       this.pendingSave = true;
-      await this.storage.set({ [IOP_VAULT_KEY]: this.unlocked.record, [IOP_RECEIPT_KEY]: null });
+      await this.persist(this.unlocked);
       this.pendingSave = false;
       this.errorCode = null;
     });
@@ -211,8 +367,22 @@ export class IopAuthorizationController {
 
   async unlock(passphrase: string): Promise<void> {
     await this.exclusive(async () => {
-      const value = (await this.storage.get(IOP_VAULT_KEY))[IOP_VAULT_KEY];
-      this.unlocked = await openAlibabaAuthorization(value, passphrase);
+      const value = (await this.storage.get(this.vaultKey))[this.vaultKey];
+      const unlocked =
+        passphrase === '' && this.protection
+          ? await restoreAlibabaAuthorization(
+              value,
+              (await this.protection.prepare('')).sessionKeyMaterial,
+              this.protocol
+            )
+          : await openAlibabaAuthorization(value, passphrase, this.protocol);
+      await this.protection?.adopt(unlocked);
+      await this.protection?.prepare(passphrase);
+      // Old records stay untouched; recovery becomes available only after the old passphrase succeeds.
+      await this.storage.set({ [this.sessionKey]: this.recoveryRecord(unlocked) });
+      this.unlocked = unlocked;
+      this.manuallyLocked = false;
+      this.errorCode = null;
     });
   }
 
@@ -220,9 +390,15 @@ export class IopAuthorizationController {
     await this.exclusive(async () => {
       if (this.job) throw failure('AUTH_TASK_ACTIVE');
       const checked = parseAlibabaOpenApiCredentialBundle(bundle);
-      if (checked.protocol !== 'iop') throw failure('IOP_REQUIRED');
-      const unlocked = await sealAlibabaAuthorization(checked, passphrase);
-      await this.storage.set({ [IOP_VAULT_KEY]: unlocked.record, [IOP_RECEIPT_KEY]: null });
+      if ((checked.protocol ?? 'top') !== this.protocol)
+        throw failure(this.protocol === 'iop' ? 'IOP_REQUIRED' : 'TOP_REQUIRED');
+      const unlocked = this.protection
+        ? await this.sealWithProtection(
+            { ...checked, protocol: this.protocol },
+            await this.protection.prepare(passphrase)
+          )
+        : await sealAlibabaAuthorization({ ...checked, protocol: this.protocol }, passphrase, this.protocol);
+      await this.persist(unlocked);
       this.unlocked = unlocked;
       this.pendingSave = false;
       this.errorCode = null;
@@ -232,9 +408,10 @@ export class IopAuthorizationController {
   async refresh(): Promise<void> {
     await this.exclusive(async () => {
       if (this.job) throw failure('AUTH_TASK_ACTIVE');
+      await this.restore(true);
       const unlocked = this.requireUnlocked();
       const bundle = unlocked.bundle;
-      const pending = (await this.storage.get(IOP_RECEIPT_KEY))[IOP_RECEIPT_KEY];
+      const pending = (await this.storage.get(this.receiptKey))[this.receiptKey];
       if (pending !== null && pending !== undefined) throw failure('AUTH_REFRESH_RESULT_UNKNOWN');
       if (
         !bundle.oauth.refreshToken ||
@@ -244,7 +421,7 @@ export class IopAuthorizationController {
         throw failure('AUTH_REFRESH_EXPIRED');
       const requestId = crypto.randomUUID();
       // Commit the send intent before out-of-process I/O. Worker termination makes it unknown, never retryable.
-      await this.storage.set({ [IOP_RECEIPT_KEY]: { requestId, status: 'sending', timeUtc: this.clock() } });
+      await this.storage.set({ [this.receiptKey]: { requestId, status: 'sending', timeUtc: this.clock() } });
       try {
         const token = await this.client.request('/auth/token/refresh', {
           appKey: bundle.application.appKey,
@@ -264,16 +441,21 @@ export class IopAuthorizationController {
                 : credentialExpiryFromSeconds(this.clock(), token.refreshExpiresInSeconds)
           }
         };
-        const record = await resealAlibabaAuthorization(next, unlocked.key, unlocked.record.salt);
+        const record = await resealAlibabaAuthorization(
+          next,
+          unlocked.key,
+          unlocked.record.salt,
+          this.protocol
+        );
         // Keep rotated tokens in memory even if local storage fails; no second network call is allowed.
         this.unlocked = { ...unlocked, record, bundle: next };
         this.pendingSave = true;
-        await this.storage.set({ [IOP_VAULT_KEY]: record, [IOP_RECEIPT_KEY]: null });
+        await this.persist(this.unlocked);
         this.pendingSave = false;
         this.errorCode = null;
       } catch (error) {
-        if (error instanceof GatewayException && error.gatewayError.code === 'IOP_TOKEN_REJECTED') {
-          await this.storage.remove([IOP_RECEIPT_KEY]);
+        if (isDefiniteRejection(error)) {
+          await this.storage.remove([this.receiptKey]);
         }
         throw error;
       }
@@ -283,6 +465,7 @@ export class IopAuthorizationController {
   async export(): Promise<AlibabaOpenApiCredentialBundle> {
     if (this.busy || this.job) throw failure('AUTH_TASK_ACTIVE');
     const status = await this.status();
+    if (status.state === 'locked' || status.state === 'empty') throw failure('AUTH_VAULT_LOCKED');
     if (status.state !== 'ready') throw failure('AUTH_REFRESH_RESULT_UNKNOWN');
     return structuredClone(this.requireUnlocked().bundle);
   }
@@ -290,30 +473,81 @@ export class IopAuthorizationController {
   async save(): Promise<void> {
     await this.exclusive(async () => {
       if (!this.pendingSave) throw failure('AUTH_INPUT_INVALID');
-      await this.storage.set({ [IOP_VAULT_KEY]: this.requireUnlocked().record, [IOP_RECEIPT_KEY]: null });
+      await this.persist(this.requireUnlocked());
       this.pendingSave = false;
       this.errorCode = null;
     });
   }
-  lock(): void {
-    if (this.busy) throw failure('AUTH_TASK_ACTIVE');
-    this.unlocked = null;
-    this.endJob();
-    this.pendingSave = false;
+  async lock(): Promise<void> {
+    await this.exclusive(async () => {
+      this.manuallyLocked = true;
+      this.unlocked = null;
+      this.endJob();
+      this.pendingSave = false;
+      // A failed deletion must not report a durable lock or restore in this worker.
+      await this.storage.remove([this.sessionKey]);
+      this.errorCode = null;
+    });
+  }
+  /** Return an atomic storage patch for shared-key rotation; preserve receipts and explicit locks. */
+  async protectionUpdates(
+    previousKey: string,
+    next: AuthorizationProtectionKey
+  ): Promise<Record<string, unknown>> {
+    if (this.busy || this.job || this.pendingSave) throw failure('AUTH_TASK_ACTIVE');
+    const value = (await this.storage.get(this.vaultKey))[this.vaultKey];
+    if (value === undefined) return {};
+    let opened: OpenAlibabaAuthorizationVault;
+    try {
+      opened = await restoreAlibabaAuthorization(value, previousKey, this.protocol);
+    } catch {
+      return {}; // Older independently protected vaults retain their original protection.
+    }
+    const saved = (await this.storage.get(this.sessionKey))[this.sessionKey];
+    const unlocked =
+      isRecord(saved) &&
+      saved.sessionKeyMaterial === previousKey &&
+      saved.ciphertext === opened.record.ciphertext;
+    const changed = await this.sealWithProtection(opened.bundle, next);
+    return {
+      [this.vaultKey]: changed.record,
+      [this.sessionKey]: unlocked ? this.recoveryRecord(changed) : null
+    };
+  }
+  holdProtection(): () => void {
+    if (this.busy || this.job || this.pendingSave || this.protectionChanging)
+      throw failure('AUTH_TASK_ACTIVE');
+    this.protectionChanging = true;
+    return () => {
+      this.protectionChanging = false;
+    };
   }
   cancel(): void {
-    if (this.busy) throw failure('AUTH_TASK_ACTIVE');
+    if (this.busy || this.protectionChanging) throw failure('AUTH_TASK_ACTIVE');
     this.endJob();
   }
   async clear(): Promise<void> {
     await this.exclusive(async () => {
-      await this.storage.remove([IOP_VAULT_KEY, IOP_RECEIPT_KEY]);
+      this.manuallyLocked = true;
       this.unlocked = null;
       this.endJob();
-      this.errorCode = null;
       this.pendingSave = false;
+      await this.storage.remove([this.vaultKey, this.receiptKey, this.sessionKey]);
+      this.errorCode = null;
     });
   }
+  private async sealWithProtection(
+    bundle: AlibabaOpenApiCredentialBundle,
+    protection: AuthorizationProtectionKey
+  ): Promise<OpenAlibabaAuthorizationVault> {
+    return {
+      bundle,
+      key: protection.key,
+      sessionKeyMaterial: protection.sessionKeyMaterial,
+      record: await resealAlibabaAuthorization(bundle, protection.key, protection.salt, this.protocol)
+    };
+  }
+
   private requireUnlocked(): OpenAlibabaAuthorizationVault {
     if (!this.unlocked) throw failure('AUTH_VAULT_LOCKED');
     return this.unlocked;
@@ -324,7 +558,8 @@ export class IopAuthorizationController {
     this.expiryTimer = null;
   }
   private async exclusive(action: () => Promise<void>): Promise<void> {
-    if (this.busy) throw failure('AUTH_TASK_ACTIVE');
+    if (this.busy || this.protectionChanging) throw failure('AUTH_TASK_ACTIVE');
+    this.revision += 1;
     this.busy = true;
     try {
       await action();
@@ -367,5 +602,11 @@ export function required(value: unknown): string {
 }
 export function failure(code: string): GatewayException {
   return new GatewayException({ code, message: code, retryable: false });
+}
+function isDefiniteRejection(error: unknown): boolean {
+  return (
+    error instanceof GatewayException &&
+    ['IOP_TOKEN_REJECTED', 'TOP_TOKEN_REJECTED'].includes(error.gatewayError.code)
+  );
 }
 export { isRecord };

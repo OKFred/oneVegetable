@@ -29,6 +29,79 @@ import { GATEWAY_CONFIGURATION_EVENT } from '../src/lib/gateway-configuration-ev
 
 vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 const wrappers: VueWrapper[] = [];
+it('saves the extension default and keeps form editing separate from the saved choice', async () => {
+  const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
+  expect(view.wrapper.get('[data-testid="default-authorization-top"]').text()).toContain('已选择');
+  await view.wrapper.get('[data-testid="default-authorization-iop"]').trigger('click');
+  await flushPromises();
+  expect(view.setDefaultAuthorization).toHaveBeenCalledExactlyOnceWith('iop', 'iop-opaque-configuration');
+  expect(view.current().defaultProtocol).toBe('iop');
+  expect(view.wrapper.get('[data-testid="default-authorization-iop"]').attributes('aria-pressed')).toBe(
+    'true'
+  );
+  expect(view.saveSettings).not.toHaveBeenCalled();
+  await view.wrapper.get('[data-testid="authorization-profile-editor"]').setValue('top');
+  await flushPromises();
+  expect(view.current().defaultProtocol).toBe('iop');
+  expect(view.setDefaultAuthorization).toHaveBeenCalledTimes(1);
+});
+
+it('does not claim a new default on save failure or allow an unconfigured profile', async () => {
+  const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
+  view.setDefaultAuthorization.mockRejectedValue(new Error('Cannot save default'));
+  await view.wrapper.get('[data-testid="default-authorization-iop"]').trigger('click');
+  await flushPromises();
+  expect(view.current().defaultProtocol).toBe('top');
+  expect(toast.error).toHaveBeenCalledWith('Cannot save default');
+  const summary = dualSummary();
+  summary.iop = null;
+  const empty = await harness(SettingsView, { extension: true, defaultSwitch: true, summary });
+  expect(empty.wrapper.get('[data-testid="default-authorization-iop"]').attributes('disabled')).toBeDefined();
+});
+
+it('puts save next to passphrases and saves credentials in the same action', async () => {
+  const view = await harness(SettingsView, { extension: true, empty: true });
+  const setup = view.wrapper.get('[data-testid="vault-passphrase-setup"]');
+  const save = setup.get('[data-testid="save-vault-near-passphrase"]');
+  expect(save.attributes('disabled')).toBeUndefined();
+  const inputs = setup.findAll('input');
+  if (!inputs[0] || !inputs[1]) throw new Error('Missing passphrase inputs');
+  await inputs[0].setValue('fixture-passphrase');
+  await inputs[1].setValue('fixture-passphrase');
+  await view.wrapper.get('input[aria-label="App Secret"]').setValue('fixture-secret');
+  await view.wrapper.get('input[aria-label="Access Token"]').setValue('fixture-token');
+  await save.trigger('click');
+  await flushPromises();
+  expect(view.createVault).toHaveBeenCalledExactlyOnceWith(
+    'fixture-passphrase',
+    expect.objectContaining({
+      appSecret: 'fixture-secret',
+      accessToken: 'fixture-token'
+    })
+  );
+  expect(view.wrapper.find('[data-testid="save-vault-near-passphrase"]').exists()).toBe(false);
+  expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
+});
+
+it('allows saving the passphrase first and gives a clear next step without claiming credentials are ready', async () => {
+  const view = await harness(SettingsView, { extension: true, empty: true });
+  view.createVault.mockResolvedValueOnce({
+    state: 'unlocked',
+    hasAppKey: false,
+    hasAppSecret: false,
+    hasAccessToken: false,
+    idleTimeoutMinutes: 0,
+    lastActivityAt: null,
+    idleRemainingSeconds: null
+  });
+  await view.wrapper.get('input[aria-label="设置保护口令"]').setValue('fixture-passphrase');
+  await view.wrapper.get('input[aria-label="确认保护口令"]').setValue('fixture-passphrase');
+  await view.wrapper.get('[data-testid="save-vault-near-passphrase"]').trigger('click');
+  await flushPromises();
+  expect(view.createVault).toHaveBeenCalledOnce();
+  expect(toast.success).toHaveBeenCalledWith('口令已保存。接下来请导入授权文件或填写开放平台凭据。');
+  expect(toast.success).not.toHaveBeenCalledWith('凭证与设置已保存');
+});
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => {
     wrapper.unmount();
@@ -80,6 +153,8 @@ async function harness(
     role?: 'admin' | 'user';
     summary?: AlibabaAuthorizationsSummary;
     locked?: boolean;
+    empty?: boolean;
+    defaultSwitch?: boolean;
   } = {}
 ) {
   let current = options.summary ?? dualSummary();
@@ -147,6 +222,19 @@ async function harness(
   const load = vi.fn(() => Promise.resolve(settingsFor('top')));
   const loadAuthorization = vi.fn((protocol: 'top' | 'iop') => Promise.resolve(settingsFor(protocol)));
   const settingsSummary = vi.fn(() => Promise.resolve(current));
+  const setDefaultAuthorization = vi.fn((protocol: 'top' | 'iop', _configurationId: string) => {
+    current = { ...current, defaultProtocol: protocol };
+    return Promise.resolve(current);
+  });
+  const createVault = vi.fn().mockResolvedValue({
+    state: 'unlocked',
+    hasAppKey: true,
+    hasAccessToken: true,
+    hasAppSecret: true,
+    idleTimeoutMinutes: 0,
+    lastActivityAt: null,
+    idleRemainingSeconds: null
+  });
   const saveSettings = vi.fn((settings: GatewaySettings) => {
     const protocol = settings.protocol ?? 'top';
     current = {
@@ -184,6 +272,7 @@ async function harness(
         settings: {
           load,
           save: saveSettings,
+          ...(options.defaultSwitch ? { setDefaultAuthorization } : {}),
           ...(!options.legacy
             ? {
                 authorizations: settingsSummary,
@@ -198,14 +287,14 @@ async function harness(
           ? {
               vault: {
                 status: vi.fn().mockResolvedValue({
-                  state: options.locked ? 'locked' : 'unlocked',
+                  state: options.empty ? 'empty' : options.locked ? 'locked' : 'unlocked',
                   hasAccessToken: true,
                   hasAppSecret: true,
                   policy: { idleTimeoutMinutes: 0 },
                   lastActivityAt: null,
                   idleRemainingSeconds: null
                 }),
-                create: vi.fn(),
+                create: createVault,
                 migrate: vi.fn(),
                 unlock: vi.fn(),
                 lock: vi.fn(),
@@ -263,6 +352,8 @@ async function harness(
     loadAuthorization,
     settingsSummary,
     saveSettings,
+    setDefaultAuthorization,
+    createVault,
     clearAuthorization,
     refreshAuthorization,
     confirmAuthorizations,
@@ -297,7 +388,7 @@ async function manualSave(wrapper: VueWrapper): Promise<void> {
   await flushPromises();
 }
 
-describe('independent authorization metadata and user binding', () => {
+describe('independent authorization metadata and automatic capability routing', () => {
   it.each([false, true])(
     'notifies profile selection without saving or changing defaults (extension=%s)',
     async (extension) => {
@@ -332,30 +423,49 @@ describe('independent authorization metadata and user binding', () => {
     );
   });
 
-  it('requires the same-merchant checkbox and an explicit confirmation, with both opaque IDs', async () => {
+  it('shows automatic routing without a same-merchant confirmation or ownership-verification claim', async () => {
     const view = await harness(GatewayAuthorizationsPanel);
-    expect(view.wrapper.text()).toContain('推荐同时配置');
-    expect(view.wrapper.text()).toContain('不是平台官方验证');
+    expect(view.wrapper.text()).toContain('先连接你已有的应用即可');
+    expect(view.wrapper.text()).toContain('TOP 授权（旧版）');
+    expect(view.wrapper.text()).toContain('IOP 授权（新版）');
+    expect(view.wrapper.text()).toContain('不能使用新版 IOP 应用替代');
+    expect(view.wrapper.text()).toContain('系统不会替你验证店铺归属');
     expect(view.wrapper.get('[data-testid="authorization-top"]').text()).toContain('有效期未知');
     expect(view.wrapper.get('[data-testid="authorization-iop"]').text()).toContain('剩余约');
-    const action = view.wrapper.get('[data-testid="confirm-authorization-binding"]');
-    expect(action.attributes('disabled')).toBeDefined();
+    expect(view.wrapper.find('[data-testid="confirm-authorization-binding"]').exists()).toBe(false);
+    expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
     expect(view.confirm).not.toHaveBeenCalled();
-    await view.wrapper.get('[data-testid="same-merchant-confirmation"]').setValue(true);
-    expect(view.confirm).not.toHaveBeenCalled();
-    await action.trigger('click');
-    await flushPromises();
-    expect(view.confirm).toHaveBeenCalledWith('top-opaque-configuration', 'iop-opaque-configuration');
-    expect(view.wrapper.text()).toContain('用户已确认同一商家');
+    expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.text()).not.toContain('用户已确认同一商家');
+    expect(view.current().binding.confirmed).toBe(false);
     expect(view.test).not.toHaveBeenCalled();
     expect(view.refresh).not.toHaveBeenCalled();
   });
 
-  it.each(['missing-profile', 'missing-id', 'stale-binding'] as const)(
-    'does not enable routing for %s',
+  it('keeps automatic-routing and ownership guidance accurate in both UI languages without API calls', async () => {
+    const view = await harness(GatewayAuthorizationsPanel);
+    const reads = view.read.mock.calls.length;
+    const statusReads = view.status.mock.calls.length;
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    const guidance = view.wrapper.get('[data-testid="authorization-binding"]').text();
+    expect(guidance).toContain('Capability-based routing is enabled automatically');
+    expect(guidance).toContain('With both profiles configured');
+    expect(guidance).toContain('the system does not verify store ownership');
+    expect(guidance).not.toMatch(/once confirmed|after confirmation|user confirmed/iu);
+    expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
+    expect(view.read).toHaveBeenCalledTimes(reads);
+    expect(view.status).toHaveBeenCalledTimes(statusReads);
+    expect(view.confirm).not.toHaveBeenCalled();
+    expect(view.current().binding.confirmed).toBe(false);
+  });
+
+  it.each(['missing-profile', 'unconfigured-profile', 'missing-id', 'stale-binding'] as const)(
+    'derives routing availability from configured profiles rather than legacy binding: %s',
     async (caseName) => {
       const summary = dualSummary();
       if (caseName === 'missing-profile') summary.iop = null;
+      else if (caseName === 'unconfigured-profile' && summary.iop) summary.iop.configured = false;
       else if (caseName === 'missing-id' && summary.top) summary.top.configurationId = null;
       else
         summary.binding = {
@@ -367,30 +477,34 @@ describe('independent authorization metadata and user binding', () => {
       const view = await harness(AlibabaAuthorizationsPanel, {
         props: { summary, selectedProtocol: 'top', canConfirm: true }
       });
-      expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
-      if (caseName !== 'stale-binding')
-        expect(
-          view.wrapper.get('[data-testid="same-merchant-confirmation"]').attributes('disabled')
-        ).toBeDefined();
-      if (caseName === 'missing-id') expect(view.wrapper.text()).toContain('分别导入托管授权 JSON');
+      const automatic = caseName === 'missing-id' || caseName === 'stale-binding';
+      expect(view.wrapper.text().includes('已默认启用按能力自动路由')).toBe(automatic);
+      if (!automatic) expect(view.wrapper.text()).toContain('当前使用 TOP 授权');
+      expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
+      expect(view.wrapper.find('[data-testid="confirm-authorization-binding"]').exists()).toBe(false);
+      expect(view.confirm).not.toHaveBeenCalled();
     }
   );
 
-  it('resets the checkbox after replacement and keeps stale-ID refusal visible without retrying', async () => {
+  it('reloads replaced profile metadata without confirming ownership or changing the default', async () => {
     const view = await harness(GatewayAuthorizationsPanel);
-    await view.wrapper.get('[data-testid="same-merchant-confirmation"]').setValue(true);
     const next = dualSummary();
     if (next.iop) next.iop.configurationId = 'iop-replaced-externally';
     view.replace(next);
-    view.confirm.mockRejectedValue(new Error('ALIBABA_AUTHORIZATION_BINDING_CHANGED'));
-    await view.wrapper.get('[data-testid="confirm-authorization-binding"]').trigger('click');
+    const panel = view.wrapper.findComponent(GatewayAuthorizationsPanel).vm as unknown as {
+      reload(): Promise<void>;
+    };
+    await panel.reload();
     await flushPromises();
-    expect(view.confirm).toHaveBeenCalledOnce();
-    expect(view.wrapper.text()).toContain('ALIBABA_AUTHORIZATION_BINDING_CHANGED');
-    expect(
-      (view.wrapper.get('[data-testid="same-merchant-confirmation"]').element as HTMLInputElement).checked
-    ).toBe(false);
-    expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
+    expect(view.read).toHaveBeenCalledTimes(2);
+    expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+    expect(view.current().iop?.configurationId).toBe('iop-replaced-externally');
+    expect(view.current().defaultProtocol).toBe('top');
+    expect(view.current().binding.confirmed).toBe(false);
+    expect(view.confirm).not.toHaveBeenCalled();
+    expect(view.save).not.toHaveBeenCalled();
+    expect(view.test).not.toHaveBeenCalled();
+    expect(view.refresh).not.toHaveBeenCalled();
   });
 
   it('does not load administrator summaries for regular users', async () => {
@@ -455,7 +569,9 @@ describe('protocol-targeted BFF credential actions', () => {
       expect(view.refresh.mock.calls).toEqual([['top']]);
       expect(changed).toHaveBeenCalledOnce();
       expect(view.read).toHaveBeenCalledTimes(2);
-      expect(view.wrapper.text()).toContain('用户已确认同一商家');
+      expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+      expect(view.current().binding).toEqual(summary.binding);
+      expect(view.confirm).not.toHaveBeenCalled();
     } finally {
       globalThis.removeEventListener(GATEWAY_CONFIGURATION_EVENT, changed);
     }
@@ -497,7 +613,8 @@ describe('protocol-targeted BFF credential actions', () => {
     await flushPromises();
     expect(view.clear.mock.calls).toEqual([[37, 'iop']]);
     expect(view.current().top?.configurationId).toBe('top-opaque-configuration');
-    expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
+    expect(view.wrapper.text()).not.toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.text()).toContain('当前使用 TOP 授权');
   });
 
   it('keeps a failed IOP renewal and recorded expiry without replacing credentials or retrying TOP', async () => {
@@ -546,6 +663,18 @@ describe('protocol-targeted BFF credential actions', () => {
 });
 
 describe('extension settings profile isolation', () => {
+  it('cancels renewal protocol selection without loading or refreshing an authorization', async () => {
+    const view = await harness(SettingsView, { extension: true });
+    const reads = view.settingsSummary.mock.calls.length;
+    await view.wrapper.get('[data-testid="renew-authorization-top"]').trigger('click');
+    await view.wrapper.get('[data-testid="cancel-authorization-protocol"]').trigger('click');
+    await flushPromises();
+    expect(view.settingsSummary).toHaveBeenCalledTimes(reads);
+    expect(view.loadAuthorization).not.toHaveBeenCalled();
+    expect(view.refreshAuthorization).not.toHaveBeenCalled();
+    expect(view.confirmAuthorizations).not.toHaveBeenCalled();
+  });
+
   it('loads the selected IOP profile before editing and saving; the TOP profile remains intact', async () => {
     const view = await harness(SettingsView, { extension: true });
     await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
@@ -593,16 +722,17 @@ describe('extension settings profile isolation', () => {
     expect(view.current().binding.confirmed).toBe(false);
   });
 
-  it('confirms local grants with the exact IDs, and targets renewal/clear separately', async () => {
+  it('automatically routes local grants without confirming ownership, targeting renewal/clear separately', async () => {
     const view = await harness(SettingsView, { extension: true });
-    await view.wrapper.get('[data-testid="same-merchant-confirmation"]').setValue(true);
-    await view.wrapper.get('[data-testid="confirm-authorization-binding"]').trigger('click');
-    await flushPromises();
-    expect(view.confirmAuthorizations).toHaveBeenCalledWith(
-      'top-opaque-configuration',
-      'iop-opaque-configuration'
-    );
+    expect(view.wrapper.text()).toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.find('[data-testid="same-merchant-confirmation"]').exists()).toBe(false);
+    expect(view.wrapper.find('[data-testid="confirm-authorization-binding"]').exists()).toBe(false);
+    expect(view.confirmAuthorizations).not.toHaveBeenCalled();
+    expect(view.current().binding.confirmed).toBe(false);
     await view.wrapper.get('[data-testid="renew-authorization-iop"]').trigger('click');
+    await flushPromises();
+    expect(view.refreshAuthorization).not.toHaveBeenCalled();
+    await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
     await flushPromises();
     expect(view.refreshAuthorization.mock.calls).toEqual([['iop']]);
     await view.wrapper.get('[data-testid="clear-authorization-iop"]').trigger('click');
@@ -612,7 +742,10 @@ describe('extension settings profile isolation', () => {
     await flushPromises();
     expect(view.clearAuthorization.mock.calls).toEqual([['iop']]);
     expect(view.current().top?.configurationId).toBe('top-opaque-configuration');
-    expect(view.wrapper.text()).not.toContain('已启用按能力自动路由');
+    expect(view.current().defaultProtocol).toBe('top');
+    expect(view.wrapper.text()).not.toContain('已默认启用按能力自动路由');
+    expect(view.wrapper.text()).toContain('当前使用 TOP 授权');
+    expect(view.confirmAuthorizations).not.toHaveBeenCalled();
   });
 
   it('guards unsaved profile edits and preserves them after a failed renewal', async () => {
@@ -625,6 +758,7 @@ describe('extension settings profile isolation', () => {
     expect(view.loadAuthorization).not.toHaveBeenCalled();
     view.refreshAuthorization.mockRejectedValue(new Error('Renewal denied'));
     await view.wrapper.get('[data-testid="renew-authorization-iop"]').trigger('click');
+    await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
     view.editing.answer(false);
     await flushPromises();
     expect(view.refreshAuthorization).not.toHaveBeenCalled();
@@ -645,6 +779,7 @@ describe('extension settings profile isolation', () => {
     const view = await harness(SettingsView, { extension: true });
     view.refreshAuthorization.mockRejectedValue(new Error('IOP renewal refused'));
     await view.wrapper.get('[data-testid="renew-authorization-iop"]').trigger('click');
+    await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
     await flushPromises();
     expect(view.refreshAuthorization.mock.calls).toEqual([['iop']]);
     expect(view.wrapper.text()).toContain('IOP renewal refused');
@@ -705,8 +840,12 @@ describe('overview independent expiries and explicit renewal', () => {
       view.refresh.mockRejectedValue(new Error('Renewal refused'));
       view.refreshAuthorization.mockRejectedValue(new Error('Renewal refused'));
       await view.wrapper.get('[data-testid="dashboard-renew-authorization-iop"]').trigger('click');
+      expect(view.refresh).not.toHaveBeenCalled();
+      expect(view.refreshAuthorization).not.toHaveBeenCalled();
+      expect(view.status).not.toHaveBeenCalled();
+      await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
       await flushPromises();
-      expect(view.wrapper.text()).toContain('独立 IOP 授权工具');
+      expect(view.wrapper.text()).toContain('选择新版应用，重新授权后导入新文件');
       await button(view.wrapper, '刷新 Token').trigger('click');
       await flushPromises();
       expect(extension ? view.refreshAuthorization.mock.calls : view.refresh.mock.calls).toEqual([['iop']]);
@@ -786,8 +925,11 @@ describe('overview independent expiries and explicit renewal', () => {
       summary.top = null;
       const view = await harness(DashboardAuthorizationAction, { summary, extension });
       await view.wrapper.get('[data-testid="dashboard-renew-authorization"]').trigger('click');
+      expect(view.status).not.toHaveBeenCalled();
+      expect(view.refreshAuthorization).not.toHaveBeenCalled();
+      await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
       await flushPromises();
-      expect(view.wrapper.text()).toContain('独立 IOP 授权工具');
+      expect(view.wrapper.text()).toContain('选择新版应用，重新授权后导入新文件');
       await button(view.wrapper, '刷新 Token').trigger('click');
       await flushPromises();
       expect(extension ? view.refreshAuthorization.mock.calls : view.refresh.mock.calls).toEqual([['iop']]);

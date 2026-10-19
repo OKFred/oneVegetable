@@ -147,6 +147,28 @@ export async function createCredentialVault(
   return { record, key, sessionKeyMaterial, settings, policy: normalizedPolicy };
 }
 
+/** Reuse an already authenticated local protection key, never a credential or a passphrase. */
+export async function createCredentialVaultFromProtection(
+  settings: GatewaySettings,
+  protection: { key: CryptoKey; sessionKeyMaterial: string; salt: string }
+): Promise<CredentialVaultUnlockResult & { record: CredentialVaultRecord }> {
+  const salt = fromBase64(protection.salt);
+  if (salt.length !== SALT_BYTES || fromBase64(protection.sessionKeyMaterial).length !== 32)
+    throw new CredentialVaultError('VAULT_INVALID', 'VAULT_INVALID');
+  const policy = defaultCredentialVaultPolicy();
+  const record = await sealCredentialVault(
+    settings,
+    policy,
+    protection.key,
+    salt,
+    CREDENTIAL_VAULT_ITERATIONS,
+    globalThis.crypto
+  );
+  // Authenticate the supplied key material before committing a recovery record.
+  const restored = await restoreCredentialVaultSession(record, protection.sessionKeyMaterial);
+  return { ...restored, record };
+}
+
 export async function unlockCredentialVault(
   record: CredentialVaultRecord,
   passphrase: string,

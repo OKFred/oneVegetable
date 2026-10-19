@@ -82,7 +82,7 @@ describe('extension credential vault session', () => {
     expect(await nextWorker.read(created.record)).toBeDefined();
   });
 
-  it('clears an expired or record-mismatched session instead of restoring it', async () => {
+  it('ignores old idle policies after browser restart but refuses mismatched records', async () => {
     const expiredStorage = new MemorySessionStorage();
     const created = await createCredentialVault(settings, 'session-password', {
       idleTimeoutMinutes: 5
@@ -91,9 +91,11 @@ describe('extension credential vault session', () => {
     await active.activate({ ...created, record: created.record }, created.sessionKeyMaterial);
 
     const expired = new ExtensionCredentialVaultSession(expiredStorage, () => 301_000);
-    expect(await expired.read(created.record)).toBeUndefined();
-    expect(expired.lockReason).toBe('idle');
-    expect(expiredStorage.values).not.toHaveProperty(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    expect(await expired.read(created.record)).toMatchObject({
+      value: { settings, policy: { idleTimeoutMinutes: 0 } },
+      remainingSeconds: null
+    });
+    expect(expired.lockReason).toBeNull();
 
     const mismatchedStorage = new MemorySessionStorage();
     const original = new ExtensionCredentialVaultSession(mismatchedStorage, () => 1_000);
@@ -102,7 +104,8 @@ describe('extension credential vault session', () => {
     changed.cipher.iv = btoa('changed-iv!!');
     const mismatched = new ExtensionCredentialVaultSession(mismatchedStorage, () => 2_000);
     expect(await mismatched.read(changed)).toBeUndefined();
-    expect(mismatchedStorage.values).not.toHaveProperty(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    expect(mismatchedStorage.values).toHaveProperty(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    expect((await mismatched.read(created.record))?.value.settings).toEqual(settings);
   });
 
   it('removes the session cache when the user locks the vault', async () => {
@@ -114,8 +117,80 @@ describe('extension credential vault session', () => {
     await session.lock('manual');
 
     expect(session.lockReason).toBe('manual');
-    expect(storage.values).not.toHaveProperty(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    expect(storage.values[CREDENTIAL_VAULT_SESSION_STORAGE_KEY]).toEqual({
+      schemaVersion: 2,
+      state: 'locked'
+    });
     expect(await session.read(created.record)).toBeUndefined();
+    expect(await new ExtensionCredentialVaultSession(storage).read(created.record)).toBeUndefined();
+  });
+
+  it('migrates a legacy temporary session once and survives its removal', async () => {
+    const local = new MemorySessionStorage();
+    const legacy = new MemorySessionStorage();
+    const created = await createCredentialVault(settings, '123456', { idleTimeoutMinutes: 5 });
+    await new ExtensionCredentialVaultSession(legacy, () => 1000).activate(
+      created,
+      created.sessionKeyMaterial
+    );
+    const upgraded = new ExtensionCredentialVaultSession(local, () => 900000, legacy);
+    expect((await upgraded.read(created.record))?.value.settings).toEqual(settings);
+    expect(legacy.values).not.toHaveProperty(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    expect((await new ExtensionCredentialVaultSession(local).read(created.record))?.value.settings).toEqual(
+      settings
+    );
+  });
+
+  it('requires the original passphrase for an older locked vault without recovery material', async () => {
+    const created = await createCredentialVault(settings, '123456');
+    const local = new MemorySessionStorage();
+    expect(await new ExtensionCredentialVaultSession(local).read(created.record)).toBeUndefined();
+    expect(local.values).toEqual({});
+  });
+
+  it('does not reactivate from a legacy session after explicit lock', async () => {
+    const local = new MemorySessionStorage();
+    const legacy = new MemorySessionStorage();
+    const created = await createCredentialVault(settings, '123456');
+    await new ExtensionCredentialVaultSession(legacy).activate(created, created.sessionKeyMaterial);
+    await new ExtensionCredentialVaultSession(local).lock();
+    expect(
+      await new ExtensionCredentialVaultSession(local, Date.now, legacy).read(created.record)
+    ).toBeUndefined();
+  });
+
+  it('does not resurrect a manually locked session from a concurrent read or late save', async () => {
+    const local = new MemorySessionStorage();
+    const created = await createCredentialVault(settings, '123456');
+    const vault = new ExtensionCredentialVaultSession(local);
+    await vault.activate(created, created.sessionKeyMaterial);
+    const reading = vault.read(created.record);
+    const locking = vault.lock();
+    await Promise.all([reading, locking]);
+    await expect(vault.update(created)).rejects.toThrow('CREDENTIAL_VAULT_LOCKED');
+    expect(await new ExtensionCredentialVaultSession(local).read(created.record)).toBeUndefined();
+  });
+
+  it('clears in-memory access after local data is removed', async () => {
+    const local = new MemorySessionStorage();
+    const created = await createCredentialVault(settings, '123456');
+    const vault = new ExtensionCredentialVaultSession(local);
+    await vault.activate(created, created.sessionKeyMaterial);
+    await local.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    expect(await vault.read(created.record)).toBeUndefined();
+  });
+
+  it('fails rather than claiming persistence when storage writes fail', async () => {
+    const local = new MemorySessionStorage();
+    const broken: ExtensionCredentialVaultSessionStorage = {
+      get: (key) => local.get(key),
+      set: () => Promise.reject(new Error('storage failed')),
+      remove: (key) => local.remove(key)
+    };
+    const created = await createCredentialVault(settings, '123456');
+    const vault = new ExtensionCredentialVaultSession(broken);
+    await expect(vault.activate(created, created.sessionKeyMaterial)).rejects.toThrow('storage failed');
+    expect(await vault.read(created.record)).toBeUndefined();
   });
 });
 

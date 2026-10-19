@@ -78,6 +78,21 @@ test('formal MV3 guide works with trusted-only storage and detects current Revie
     expect(errors).toEqual([]);
     await worker.evaluate(async (id) => {
       const chrome = (globalThis as unknown as { chrome: TestChrome }).chrome;
+      await chrome.tabs.sendMessage(id, {
+        kind: 'one-vegetable-alibaba-developer-guide-update',
+        uiLocale: 'zh-CN',
+        state: {
+          status: 'failed',
+          error: { code: 'TOP_APPLICATION_REQUIRED', message: 'fixture', retryable: false }
+        }
+      });
+    }, tabId);
+    await expect(guide.getByRole('heading', { name: '请使用新版 IOP 授权工具' })).toBeVisible();
+    await expect(guide).toContainText('TOP 与 IOP 是两套独立授权');
+    await expect(guide.getByRole('button', { name: '打开 IOP 授权工具', exact: true })).toBeVisible();
+    await expect(guide.getByRole('button', { name: '重新检查', exact: true })).toBeHidden();
+    await worker.evaluate(async (id) => {
+      const chrome = (globalThis as unknown as { chrome: TestChrome }).chrome;
       await chrome.tabs.sendMessage(id, { kind: 'one-vegetable-alibaba-developer-guide-remove' });
     }, tabId);
     await expect(guide).toHaveCount(0);

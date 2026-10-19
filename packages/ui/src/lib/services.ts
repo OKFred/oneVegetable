@@ -18,6 +18,7 @@ import type {
 import type { SocialPublishingClient } from '@one-vegetable/core';
 
 import type { RuntimeMetaStatus } from './data-source';
+import type { DashboardTodoRepository } from './todo-repository';
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
 
@@ -31,9 +32,10 @@ export interface AppServices {
   settings: SettingsRepository;
   vault?: CredentialVaultRepository;
   alibabaCredentialAcquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
-  openCredentialAcquisition?: () => void;
+  openCredentialAcquisition?: (protocol?: 'top' | 'iop') => void;
   permissions?: HostPermissionsRepository;
   localData?: LocalDataRepository;
+  todos?: DashboardTodoRepository;
   onboarding?: OnboardingRepository;
   control?: ControlClient;
   s3Storage?: S3StorageControl;

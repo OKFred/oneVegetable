@@ -1,0 +1,52 @@
+{
+  "settings": {
+    "appKey": "fixture-top-app-key",
+    "appSecret": "fixture-top-app-secret",
+    "accessToken": "fixture-top-access-token",
+    "refreshToken": "fixture-top-refresh-token",
+    "endpoint": "https://eco.taobao.com/router/rest",
+    "signMethod": "hmac-sha256",
+    "configurationId": "fixture-top-profile",
+    "protocolCredentials": {
+      "iop": {
+        "protocol": "iop",
+        "appKey": "fixture-iop-app-key",
+        "appSecret": "fixture-iop-app-secret",
+        "accessToken": "fixture-iop-access-token",
+        "refreshToken": "fixture-iop-refresh-token",
+        "endpoint": "https://openapi-api.alibaba.com/rest",
+        "signMethod": "hmac-sha256",
+        "configurationId": "fixture-iop-profile"
+      }
+    },
+    "authorizationBinding": {
+      "topConfigurationId": "fixture-top-profile",
+      "iopConfigurationId": "fixture-iop-profile",
+      "confirmedAtUtc": 1000
+    }
+  },
+  "oauthBundle": {
+    "schemaVersion": 1,
+    "capturedAtUtc": "2026-10-17T00:00:00.000Z",
+    "application": {
+      "appName": "Synthetic authorization fixture",
+      "appKey": "fixture-tool-app-key",
+      "appSecret": "fixture-tool-app-secret",
+      "callbackUrl": "https://callback.example.test/authorization",
+      "status": "user-provided",
+      "permissions": []
+    },
+    "oauth": {
+      "accessToken": "fixture-tool-access-token",
+      "refreshToken": "fixture-tool-refresh-token",
+      "expiresAtUtc": null,
+      "refreshExpiresAtUtc": null
+    },
+    "callback": {
+      "receivedAtUtc": "2026-10-17T00:00:00.000Z",
+      "stateMatched": true,
+      "callbackOrigin": "https://callback.example.test",
+      "callbackPath": "/authorization"
+    }
+  }
+}

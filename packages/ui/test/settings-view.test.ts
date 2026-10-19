@@ -19,9 +19,11 @@ import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 
 import SettingsView from '../src/views/SettingsView.vue';
+import { uiI18n } from '../src/i18n';
 import LocalDiagnosticsPanel from '../src/components/LocalDiagnosticsPanel.vue';
 import { provideServices } from '../src/lib/services';
 import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
+import { notifyCredentialVaultChanged } from '../src/lib/credential-vault-events';
 
 vi.mock('vue-sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() }
@@ -36,11 +38,12 @@ const migrateVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus(
 const createVault = vi.fn((_passphrase: string, _settings: GatewaySettings) =>
   Promise.resolve(vaultStatus('unlocked'))
 );
-const updateVaultPolicy = vi.fn((idleTimeoutMinutes: number) =>
-  Promise.resolve(vaultStatus('unlocked', idleTimeoutMinutes))
-);
+const updateVaultPolicy = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
+const rotateVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus('unlocked')));
+const manualLockVault = vi.fn(() => Promise.resolve(vaultStatus('locked')));
 
 beforeEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   localStorage.clear();
   document.documentElement.classList.remove('dark');
   delete document.documentElement.dataset.theme;
@@ -56,8 +59,11 @@ function mountView(
     beforeInspect?: () => Promise<void>;
     logs?: boolean;
     initialSettings?: Partial<GatewaySettings>;
+    initialVaultStatus?: CredentialVaultStatus;
     save?: (settings: GatewaySettings) => Promise<void>;
     acquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
+    status?: () => Promise<CredentialVaultStatus>;
+    loadSettings?: () => Promise<GatewaySettings>;
   } = {}
 ) {
   let grantedHosts = ['https://images.example.com/*'];
@@ -68,15 +74,17 @@ function mountView(
       provideServices({
         gateway: new MockGatewayClient(0),
         settings: {
-          load: () =>
-            Promise.resolve({
-              appKey: currentVaultState === 'unlocked' ? 'configured-key' : '',
-              appSecret: '',
-              accessToken: '',
-              endpoint: ALIBABA_GATEWAY,
-              signMethod: 'hmac' as const,
-              ...options.initialSettings
-            }),
+          load:
+            options.loadSettings ??
+            (() =>
+              Promise.resolve({
+                appKey: currentVaultState === 'unlocked' ? 'configured-key' : '',
+                appSecret: '',
+                accessToken: '',
+                endpoint: ALIBABA_GATEWAY,
+                signMethod: 'hmac' as const,
+                ...options.initialSettings
+              })),
           save: options.save ?? (() => Promise.resolve())
         },
         permissions: {
@@ -111,8 +119,13 @@ function mountView(
         ...(initialVaultState
           ? {
               vault: {
-                status: () =>
-                  Promise.resolve(vaultStatus(currentVaultState ?? 'empty', 0, initialLockReason)),
+                status:
+                  options.status ??
+                  (() =>
+                    Promise.resolve(
+                      options.initialVaultStatus ??
+                        vaultStatus(currentVaultState ?? 'empty', 0, initialLockReason)
+                    )),
                 create: createVault,
                 migrate: migrateVault,
                 unlock: async (passphrase) => {
@@ -121,9 +134,9 @@ function mountView(
                 },
                 lock: () => {
                   currentVaultState = 'locked';
-                  return Promise.resolve(vaultStatus('locked'));
+                  return manualLockVault();
                 },
-                rotate: () => Promise.resolve(vaultStatus('unlocked')),
+                rotate: rotateVault,
                 updatePolicy: updateVaultPolicy
               }
             }
@@ -161,6 +174,7 @@ async function confirmSettingsAction(title: string): Promise<void> {
 }
 
 afterEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   vi.restoreAllMocks();
   anchorClick.mockClear();
   createObjectUrl.mockClear();
@@ -170,10 +184,107 @@ afterEach(() => {
   migrateVault.mockClear();
   createVault.mockClear();
   updateVaultPolicy.mockClear();
+  rotateVault.mockClear();
+  manualLockVault.mockClear();
 });
 
 describe('SettingsView diagnostics', () => {
-  it('makes independent IOP acquisition primary and disables the labelled TOP acquisition', async () => {
+  it('saves a new vault with blank optional protection', async () => {
+    const wrapper = mountView('extension', 'empty');
+    await flushPromises();
+    const save = wrapper.get('[data-testid="save-vault-near-passphrase"]');
+    expect(save.attributes('disabled')).toBeUndefined();
+    await save.trigger('click');
+    await flushPromises();
+    expect(createVault).toHaveBeenCalledWith('', expect.objectContaining({ endpoint: ALIBABA_GATEWAY }));
+    wrapper.unmount();
+  });
+
+  it('explicitly unlocks device-protected settings without a password and keeps rotation available', async () => {
+    const wrapper = mountView('extension', 'locked', 'manual', 'node', {
+      initialVaultStatus: { ...vaultStatus('locked'), deviceProtected: true }
+    });
+    await flushPromises();
+    expect(wrapper.find('input[aria-label="保护口令"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="vault-device-protected"]').exists()).toBe(true);
+    expect(unlockVault).not.toHaveBeenCalled();
+    const unlock = wrapper.findAll('button').find((button) => button.text() === '解锁');
+    expect(unlock?.attributes('disabled')).toBeUndefined();
+    await unlock?.trigger('click');
+    await flushPromises();
+    expect(unlockVault).toHaveBeenCalledExactlyOnceWith('');
+    expect(wrapper.find('input[aria-label="新保护口令"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('coalesces vault notifications and adopts returning authorization state without creating or unlocking again', async () => {
+    let currentStatus = vaultStatus('empty');
+    const status = vi.fn(() => Promise.resolve(currentStatus));
+    const loadSettings = vi.fn(() =>
+      Promise.resolve({
+        appKey: currentStatus.state === 'unlocked' ? 'returned-key' : '',
+        appSecret: '',
+        accessToken: '',
+        endpoint: ALIBABA_GATEWAY,
+        signMethod: 'hmac' as const
+      })
+    );
+    const wrapper = mountView('extension', 'empty', 'manual', 'node', { status, loadSettings });
+    await flushPromises();
+    window.dispatchEvent(new Event('storage'));
+    expect(status).toHaveBeenCalledTimes(1);
+    currentStatus = { ...vaultStatus('unlocked'), deviceProtected: true };
+    notifyCredentialVaultChanged();
+    notifyCredentialVaultChanged();
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="vault-device-protected"]').exists()).toBe(true);
+    });
+    await flushPromises();
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(loadSettings).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('[data-testid="vault-passphrase-setup"]').exists()).toBe(false);
+    expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+      'returned-key'
+    );
+    expect(createVault).not.toHaveBeenCalled();
+    expect(unlockVault).not.toHaveBeenCalled();
+    wrapper.unmount();
+    notifyCredentialVaultChanged();
+    await flushPromises();
+    expect(status).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['credentials', 'passphrase'] as const)(
+    'does not overwrite unsaved %s after vault storage notifications',
+    async (field) => {
+      const editing = new UnsavedEditingService();
+      const status = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
+      const loadSettings = vi.fn(() =>
+        Promise.resolve({
+          appKey: 'initial',
+          appSecret: '',
+          accessToken: '',
+          endpoint: ALIBABA_GATEWAY,
+          signMethod: 'hmac' as const
+        })
+      );
+      const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { editing, status, loadSettings });
+      await flushPromises();
+      const selector =
+        field === 'credentials' ? 'input[aria-label="App Key"]' : 'input[aria-label="新保护口令"]';
+      await wrapper.get(selector).setValue('unsaved-draft');
+      notifyCredentialVaultChanged();
+      await vi.waitFor(() => {
+        expect(status).toHaveBeenCalledTimes(2);
+      });
+      expect(loadSettings).toHaveBeenCalledTimes(1);
+      expect((wrapper.get(selector).element as HTMLInputElement).value).toBe('unsaved-draft');
+      expect(editing.dirty.value).toBe(true);
+      wrapper.unmount();
+      editing.dispose();
+    }
+  );
+  it('offers the IOP recommendation without opening a tool before the protocol choice', async () => {
     const openIopTool = vi.fn().mockResolvedValue(undefined);
     const acquisition = {
       openIopTool,
@@ -189,18 +300,118 @@ describe('SettingsView diagnostics', () => {
     };
     const wrapper = mountView('extension', 'empty', 'manual', 'node', { acquisition });
     await flushPromises();
-    const top = wrapper.findAll('button').find((button) => button.text() === '获取 TOP 开放平台凭证');
-    expect(top?.attributes('disabled')).toBeUndefined();
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
+      '选择已有旧版应用'
+    );
     await wrapper.get('select[aria-label="网关协议"]').setValue('iop');
-    expect(top?.attributes('disabled')).toBeDefined();
-    const iop = wrapper.findAll('button').find((button) => button.text() === '打开独立 IOP 授权工具');
-    expect(iop?.classes()).toContain('bg-primary');
-    await iop?.trigger('click');
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
+      '选择新版应用'
+    );
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).toContain(
+      '下载文件并在这里导入保存'
+    );
+    expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).not.toContain(
+      '已打开的旧应用页面'
+    );
+    await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+    expect(openIopTool).not.toHaveBeenCalled();
+    expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+    expect(acquisition.start).not.toHaveBeenCalled();
+    const iop = document.body.querySelector<HTMLButtonElement>('[data-testid="choose-authorization-iop"]');
+    expect(iop?.textContent).toContain('连接新版应用（推荐）');
+    iop?.click();
+    await flushPromises();
     expect(openIopTool).toHaveBeenCalledOnce();
     expect(acquisition.start).not.toHaveBeenCalled();
     expect(createVault).not.toHaveBeenCalled();
     wrapper.unmount();
   });
+
+  it.each(['top', 'iop'] as const)(
+    'launches only the chosen %s tool directly from its click',
+    async (protocol) => {
+      let clicking = false;
+      const openTool = vi.fn(() => {
+        expect(clicking).toBe(true);
+        return Promise.resolve();
+      });
+      const acquisition = {
+        openTool,
+        openIopTool: vi.fn(),
+        start: vi.fn(),
+        continue: vi.fn(),
+        status: vi.fn(),
+        cancel: vi.fn(),
+        saveToVault: vi.fn(),
+        exportBundle: vi.fn(),
+        readPrerequisite: vi.fn(),
+        locatePrerequisiteField: vi.fn(),
+        focusPrerequisitePage: vi.fn()
+      };
+      const wrapper = mountView('extension', 'locked', 'manual', 'node', { acquisition });
+      await flushPromises();
+      await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+      expect(openTool).not.toHaveBeenCalled();
+      expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+      clicking = true;
+      document.body
+        .querySelector<HTMLButtonElement>(`[data-testid="choose-authorization-${protocol}"]`)
+        ?.click();
+      clicking = false;
+      expect(openTool.mock.calls).toEqual([[protocol]]);
+      expect(acquisition.openIopTool).not.toHaveBeenCalled();
+      expect(acquisition.start).not.toHaveBeenCalled();
+      expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
+  it.each(['cancel', 'iop-unavailable', 'bff'] as const)(
+    'does not acquire or read an app on %s',
+    async (scenario) => {
+      const acquisition = {
+        openTool: vi.fn(),
+        openIopTool: vi.fn(),
+        start: vi.fn(),
+        continue: vi.fn(),
+        status: vi.fn(),
+        cancel: vi.fn(),
+        saveToVault: vi.fn(),
+        exportBundle: vi.fn(),
+        readPrerequisite: vi.fn(),
+        locatePrerequisiteField: vi.fn(),
+        focusPrerequisitePage: vi.fn()
+      };
+      if (scenario === 'iop-unavailable') {
+        Object.defineProperty(acquisition, 'openTool', { value: undefined });
+        Object.defineProperty(acquisition, 'openIopTool', { value: undefined });
+      }
+      const wrapper = mountView(scenario === 'bff' ? 'bff' : 'extension', 'empty', 'manual', 'node', {
+        acquisition
+      });
+      await flushPromises();
+      if (scenario === 'bff') {
+        expect(wrapper.find('[data-testid="get-alibaba-credentials"]').exists()).toBe(false);
+      } else {
+        await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+        const action = scenario === 'cancel' ? 'cancel-authorization-protocol' : 'choose-authorization-iop';
+        document.body.querySelector<HTMLButtonElement>(`[data-testid="${action}"]`)?.click();
+      }
+      await flushPromises();
+      if (scenario === 'iop-unavailable') {
+        expect(toast.error).toHaveBeenCalledWith(
+          '当前版本未提供此协议的授权工具，请升级插件或导入对应授权包。'
+        );
+      } else {
+        expect(acquisition.openTool).not.toHaveBeenCalled();
+        expect(acquisition.openIopTool).not.toHaveBeenCalled();
+      }
+      expect(acquisition.start).not.toHaveBeenCalled();
+      expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
+      expect(acquisition.status).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
   it('shows legacy TOP without changing or saving existing endpoint/signing', async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
@@ -371,27 +582,74 @@ describe('SettingsView diagnostics', () => {
     expect(guide.text()).not.toContain('artifacts/openapi-auth/credentials.json');
     wrapper.unmount();
   });
-  it('shows no idle auto-lock as the default and explains the six-character minimum', async () => {
-    const wrapper = mountView('extension', 'unlocked');
+  it('removes idle controls and countdowns even from an old timed status, while retaining passphrase setup', async () => {
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      initialVaultStatus: vaultStatus('unlocked', 30)
+    });
     await flushPromises();
 
-    expect((wrapper.get('select[aria-label="空闲自动锁定时间"]').element as HTMLSelectElement).value).toBe(
-      '0'
-    );
-    expect(wrapper.get('select[aria-label="空闲自动锁定时间"]').text()).toContain('不自动锁定（默认）');
+    expect(wrapper.find('select[aria-label="空闲自动锁定时间"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('保存锁定策略');
+    expect(wrapper.text()).not.toContain('快照剩余');
+    expect(wrapper.text()).toContain('本机记住解锁');
+    expect(wrapper.text()).toContain('重启浏览器或更新扩展不锁定');
+    expect(wrapper.text()).toContain('之后仅手动锁定需再输入');
     expect(wrapper.get('input[aria-label="新保护口令"]').attributes('placeholder')).toBe('至少 6 位');
     expect(wrapper.text()).not.toContain('UTF-8 字节');
-
-    const policyButton = wrapper
-      .findAll('button')
-      .find((candidate) => candidate.text().includes('保存锁定策略'));
-    if (!policyButton) throw new Error('Missing idle-lock policy button');
-    await policyButton.trigger('click');
-    await vi.waitFor(() => {
-      expect(updateVaultPolicy).toHaveBeenCalledWith(0);
-      expect(wrapper.text()).toContain('已关闭空闲自动锁定');
-    });
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(wrapper.text()).toContain('Unlocking survives browser restarts and extension updates');
+    expect(wrapper.text()).toContain('only manual locking requires it again');
+    expect(wrapper.text()).toContain('No idle lock');
+    expect(wrapper.text()).toContain('Lock now');
+    expect(wrapper.find('select[aria-label="Automatic idle lock duration"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Save lock policy');
+    expect(wrapper.text()).not.toContain('minutes left');
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
     wrapper.unmount();
+  });
+
+  it('keeps manual locking and requires the passphrase before unlocking again', async () => {
+    const wrapper = mountView('extension', 'unlocked');
+    await flushPromises();
+    const lockButton = wrapper.findAll('button').find((candidate) => candidate.text() === '立即锁定');
+    if (!lockButton) throw new Error('Missing manual lock button');
+    await lockButton.trigger('click');
+    await flushPromises();
+    expect(manualLockVault).toHaveBeenCalledOnce();
+    expect(wrapper.text()).toContain('已手动锁定');
+    expect(wrapper.text()).toContain('请输入口令恢复使用');
+    expect(wrapper.find('input[aria-label="App Key"]').exists()).toBe(false);
+    expect(unlockVault).not.toHaveBeenCalled();
+    await wrapper.get('input[aria-label="保护口令"]').setValue('test-only-passphrase');
+    const unlockButton = wrapper.findAll('button').find((candidate) => candidate.text() === '解锁');
+    if (!unlockButton) throw new Error('Missing unlock button');
+    await unlockButton.trigger('click');
+    await flushPromises();
+    expect(unlockVault).toHaveBeenCalledWith('test-only-passphrase');
+    expect(wrapper.text()).toContain('本机已记住状态');
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('retains unsaved passphrase protection and rotation without a lock policy', async () => {
+    const editing = new UnsavedEditingService();
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { editing });
+    await flushPromises();
+    expect(editing.dirty.value).toBe(false);
+    await wrapper.get('input[aria-label="新保护口令"]').setValue('rotated-test-only');
+    await wrapper.get('input[aria-label="确认新保护口令"]').setValue('rotated-test-only');
+    expect(editing.dirty.value).toBe(true);
+    const rotateButton = wrapper.findAll('button').find((candidate) => candidate.text() === '更换口令');
+    if (!rotateButton) throw new Error('Missing passphrase rotation button');
+    await rotateButton.trigger('click');
+    await flushPromises();
+    expect(rotateVault).toHaveBeenCalledWith('rotated-test-only');
+    expect(editing.dirty.value).toBe(false);
+    expect((wrapper.get('input[aria-label="新保护口令"]').element as HTMLInputElement).value).toBe('');
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
+    wrapper.unmount();
+    editing.dispose();
   });
 
   it('saves credentials and settings in one action when creating the extension vault', async () => {
@@ -409,7 +667,7 @@ describe('SettingsView diagnostics', () => {
       '123456',
       expect.objectContaining({ endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' })
     );
-    expect(wrapper.text()).toContain('凭证与设置已加密保存');
+    expect(wrapper.text()).toContain('凭证与设置已保存');
     expect(toast.success).toHaveBeenCalledWith('凭证与设置已保存');
     expect(wrapper.text()).not.toContain('加密保存凭证');
     wrapper.unmount();
@@ -438,7 +696,7 @@ describe('SettingsView diagnostics', () => {
     if (!save) throw new Error('Missing settings save button');
     await save.trigger('click');
     await flushPromises();
-    expect(wrapper.text()).toContain('凭证与设置已加密保存');
+    expect(wrapper.text()).toContain('凭证与设置已保存');
     expect(finishInspect).toBeUndefined();
     expect(inspections).toBe(0);
     expect(editing.dirty.value).toBe(false);
@@ -703,7 +961,7 @@ describe('SettingsView diagnostics', () => {
     await wrapper.get('input[aria-label="保护口令"]').setValue('correct-vault-password');
     await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('凭证已解锁');
+      expect(wrapper.text()).toContain('已解锁，本机已记住状态');
     });
     expect((wrapper.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
       'configured-key'
@@ -711,28 +969,25 @@ describe('SettingsView diagnostics', () => {
     expect(unlockVault).toHaveBeenCalledWith('correct-vault-password');
     expect(wrapper.get('input[aria-label="App Secret"]').attributes('placeholder')).toContain('留空保持不变');
 
-    await wrapper.get('select[aria-label="空闲自动锁定时间"]').setValue('30');
-    const policyButton = wrapper
-      .findAll('button')
-      .find((candidate) => candidate.text().includes('保存锁定策略'));
-    if (!policyButton) throw new Error('Missing idle-lock policy button');
-    await policyButton.trigger('click');
-    await vi.waitFor(() => {
-      expect(updateVaultPolicy).toHaveBeenCalledWith(30);
-      expect(wrapper.text()).toContain('连续 30 分钟未使用后自动锁定');
-    });
+    expect(wrapper.find('select[aria-label="空闲自动锁定时间"]').exists()).toBe(false);
+    expect(updateVaultPolicy).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 
-  it('explains that ending the Chrome session cleared only the in-memory unlock material', async () => {
-    const wrapper = mountView('extension', 'locked', 'session-ended');
-    await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Chrome 会话已结束，需要重新解锁');
-    });
-    expect(wrapper.text()).toContain('会清除内存解锁材料');
-    expect(wrapper.text()).toContain('加密凭据仍保留');
-    wrapper.unmount();
-  });
+  it.each(['session-ended', 'idle'] as const)(
+    'requires one unlock for an existing %s record without claiming new auto-lock behavior',
+    async (reason) => {
+      const wrapper = mountView('extension', 'locked', reason);
+      await vi.waitFor(() => {
+        expect(wrapper.text()).toContain('现有开放平台凭证仍处于锁定状态');
+      });
+      expect(wrapper.text()).toContain('旧凭证仍锁定');
+      expect(wrapper.text()).toContain('请用原口令解锁一次');
+      expect(unlockVault).not.toHaveBeenCalled();
+      expect(wrapper.text()).not.toContain('会清除内存解锁材料');
+      wrapper.unmount();
+    }
+  );
 
   it('requires matching passphrases before migrating legacy plaintext credentials', async () => {
     const wrapper = mountView('extension', 'legacy');
@@ -751,7 +1006,7 @@ describe('SettingsView diagnostics', () => {
     await wrapper.get('#settings-credentials button').trigger('click');
     await vi.waitFor(() => {
       expect(migrateVault).toHaveBeenCalledWith('migrated-vault-password');
-      expect(wrapper.text()).toContain('旧凭证已原位加密，会话内可用');
+      expect(wrapper.text()).toContain('旧凭证已加密，本机保持解锁');
     });
     wrapper.unmount();
   });

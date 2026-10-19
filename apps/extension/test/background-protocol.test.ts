@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { browser } from 'wxt/browser';
 import {
   ALIBABA_GATEWAY,
   AlibabaClient,
@@ -23,6 +24,10 @@ import credentialFixtures from '../../../mock/data/node-gateway-credentials.json
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
+import { s3LocalStore } from '../lib/s3-local-store';
+import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
+
+const setSyncAccessLevel = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 const state = vi.hoisted<{
   local: Record<string, unknown>;
@@ -49,12 +54,20 @@ vi.mock('wxt/browser', () => {
       Reflect.deleteProperty(state[name], key);
       return Promise.resolve();
     },
+    clear: () => {
+      state[name] = {};
+      return Promise.resolve();
+    },
     setAccessLevel: () => Promise.resolve()
   });
   return {
     browser: {
-      storage: { local: area('local'), session: area('session') },
-      tabs: { onUpdated: { addListener: vi.fn() } },
+      storage: {
+        local: area('local'),
+        session: area('session'),
+        sync: { setAccessLevel: setSyncAccessLevel }
+      },
+      tabs: { onUpdated: { addListener: vi.fn() }, create: vi.fn() },
       permissions: { contains: () => Promise.resolve(true) },
       runtime: {
         id: 'protocol-test-extension',
@@ -171,7 +184,43 @@ afterEach(() => {
 });
 
 describe('extension background protocol persistence and dispatch', () => {
-  it('allows a bound guide to recheck, but never to acquire, export or save credentials', async () => {
+  it('waits for an in-flight passphrase rotation before clearing persistent credentials', async () => {
+    await create();
+    vi.spyOn(ExtensionVideoUploadRepository.prototype, 'clearAll').mockResolvedValue();
+    vi.spyOn(s3LocalStore, 'remove').mockResolvedValue();
+    vi.spyOn(s3LocalStore, 'removeKey').mockResolvedValue();
+    let release: (() => void) | undefined;
+    let entered: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const original = crypto.subtle.deriveBits.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, 'deriveBits').mockImplementation(async (...args) => {
+      entered?.();
+      await blocked;
+      return original(...args);
+    });
+    const rotating = send('credential-vault-request', 'rotate', { newPassphrase: '654321' });
+    await started;
+    const resetting = sendEnvelope({ kind: 's3-storage-request', operation: 'reset', payload: {} });
+    release?.();
+    expect(await rotating).toMatchObject({ ok: true });
+    expect(await resetting).toMatchObject({ ok: true });
+    expect(state.local).toEqual({});
+    expect(state.session).toEqual({});
+    expect(await send('credential-vault-request', 'status')).toMatchObject({
+      ok: true,
+      data: { state: 'empty' }
+    });
+  });
+  it('restricts dashboard sync storage to trusted extension contexts', () => {
+    expect(setSyncAccessLevel).toHaveBeenCalledWith({ accessLevel: 'TRUSTED_CONTEXTS' });
+  });
+
+  it('allows a bound guide to recheck and open the local IOP tool, never to acquire, export or save credentials', async () => {
     vi.spyOn(ExtensionAlibabaCredentialAcquisitionController.prototype, 'isGuideSender').mockReturnValue(
       true
     );
@@ -185,14 +234,103 @@ describe('extension background protocol persistence and dispatch', () => {
         source
       )
     ).toMatchObject({ ok: true, data: null });
-    for (const operation of ['start', 'status', 'continue', 'cancel', 'export-bundle', 'save-to-vault']) {
+    expect(
+      await sendEnvelope(
+        { kind: 'alibaba-credential-acquisition-request', operation: 'open-iop-tool' },
+        source
+      )
+    ).toMatchObject({ ok: true, data: null });
+    for (const operation of [
+      'start',
+      'status',
+      'continue',
+      'cancel',
+      'export-bundle',
+      'save-to-vault',
+      'import-bundle'
+    ]) {
       expect(
         await sendEnvelope({ kind: 'alibaba-credential-acquisition-request', operation }, source)
       ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
     }
+    vi.spyOn(ExtensionAlibabaCredentialAcquisitionController.prototype, 'isGuideSender').mockReturnValue(
+      false
+    );
+    expect(
+      await sendEnvelope(
+        { kind: 'alibaba-credential-acquisition-request', operation: 'open-iop-tool' },
+        source
+      )
+    ).toMatchObject({ ok: false, error: { code: 'EXTENSION_TRUSTED_PAGE_REQUIRED' } });
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('allows passphrase setup before importing credentials without marking the empty profile configured', async () => {
+    await create({ ...topSettings, appKey: '', appSecret: '', accessToken: '' });
+    expect(await send('credential-vault-request', 'status')).toMatchObject({
+      ok: true,
+      data: { state: 'unlocked', hasAppKey: false, hasAppSecret: false, hasAccessToken: false }
+    });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { top: null, iop: null }
+    });
+    expect(await send('credential-vault-request', 'save', topSettings)).toMatchObject({ ok: true });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { top: { configured: true } }
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it('persists the chosen default through lock/unlock without exposing secrets or making network calls', async () => {
+    const original = await createPair();
+    const result = await send('credential-vault-request', 'set-default-authorization', {
+      protocol: 'iop',
+      configurationId: original.iop?.configurationId
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      data: { defaultProtocol: 'iop', binding: { confirmed: true } }
+    });
+    expect(JSON.stringify(result)).not.toContain(settings.appSecret);
+    expect(JSON.stringify(result)).not.toContain(settings.accessToken);
+    await send('credential-vault-request', 'lock');
+    expect(
+      await send('credential-vault-request', 'set-default-authorization', {
+        protocol: 'top',
+        configurationId: original.top?.configurationId
+      })
+    ).toMatchObject({ ok: false });
+    await send('credential-vault-request', 'unlock', { passphrase: '123456' });
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { defaultProtocol: 'iop', top: { configurationId: original.top?.configurationId } }
+    });
+    expect(
+      await send('credential-vault-request', 'set-default-authorization', {
+        protocol: 'top',
+        configurationId: 'stale'
+      })
+    ).toMatchObject({ ok: false, error: { code: 'ENTITY_VERSION_CONFLICT' } });
+    expect(
+      await send('credential-vault-request', 'set-default-authorization', {
+        protocol: 'top',
+        configurationId: original.top?.configurationId,
+        appSecret: 'injection'
+      })
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_CREDENTIAL_VAULT_REQUEST' } });
+    expect(
+      await sendEnvelope(
+        {
+          kind: 'credential-vault-request',
+          operation: 'set-default-authorization',
+          payload: { protocol: 'top', configurationId: original.top?.configurationId }
+        },
+        { ...sender, url: 'https://i.alibaba.com/explore/open-api' }
+      )
+    ).toMatchObject({ ok: false });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
   it('returns a safe empty profile for first-time import without requiring an existing vault', async () => {
     for (const protocol of ['top', 'iop'] as const) {
       expect(await send('credential-vault-request', 'get-authorization', { protocol })).toMatchObject({
@@ -833,6 +971,117 @@ describe('extension background protocol persistence and dispatch', () => {
       expect(fetch).not.toHaveBeenCalled();
     }
   );
+  it.each(['top', 'iop'] as const)(
+    'imports a %s file locally and preserves the other authorization',
+    async (protocol) => {
+      await create(protocol === 'top' ? settings : topSettings);
+      const before = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      const bundle = { ...credentialFixtures.oauthBundle, protocol };
+      const result = await send('alibaba-credential-acquisition-request', 'import-bundle', { bundle });
+      expect(result).toMatchObject({ ok: true, data: { protocol, hasAccessToken: true } });
+      expect(JSON.stringify(result)).not.toContain(bundle.application.appSecret);
+      expect(JSON.stringify(result)).not.toContain(bundle.oauth.accessToken);
+      const after = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      const { protocolCredentials, ...primary } = after.settings;
+      expect(primary).toEqual(before.settings);
+      expect(protocolCredentials?.[protocol]).toMatchObject({
+        appKey: bundle.application.appKey,
+        accessToken: bundle.oauth.accessToken
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('does not import invalid files or bypass a manual vault lock', async () => {
+    await create();
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    expect(
+      await send('alibaba-credential-acquisition-request', 'import-bundle', { bundle: {} })
+    ).toMatchObject({ ok: false });
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    await send('credential-vault-request', 'lock');
+    expect(
+      await send('alibaba-credential-acquisition-request', 'import-bundle', {
+        bundle: credentialFixtures.oauthBundle
+      })
+    ).toMatchObject({ ok: false });
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('commits a dual array once and preserves the existing default', async () => {
+    await create();
+    const write = vi.spyOn(browser.storage.local, 'set');
+    const bundles = ['top', 'iop'].map((protocol) => ({ ...credentialFixtures.oauthBundle, protocol }));
+    expect(await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })).toMatchObject(
+      { ok: true, data: { protocol: 'iop' } }
+    );
+    expect(write.mock.calls.filter(([items]) => Object.hasOwn(items, SETTINGS_STORAGE_KEY))).toHaveLength(1);
+    const restored = await unlockCredentialVault(
+      state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+      '123456'
+    );
+    expect(restored.settings.protocol).toBe('iop');
+    expect(restored.settings.protocolCredentials?.top?.accessToken).toBe(
+      credentialFixtures.oauthBundle.oauth.accessToken
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('defaults a fresh dual-array import to TOP regardless of file order', async () => {
+    const bundles = ['iop', 'top'].map((protocol) => ({ ...credentialFixtures.oauthBundle, protocol }));
+    expect(await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })).toMatchObject(
+      { ok: true, data: { protocol: 'top' } }
+    );
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { top: { configured: true }, iop: { configured: true } }
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an entire invalid array before changing storage', async () => {
+    await create();
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    for (const bundles of [
+      [],
+      [credentialFixtures.oauthBundle, {}],
+      [credentialFixtures.oauthBundle, credentialFixtures.oauthBundle]
+    ]) {
+      expect(
+        await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })
+      ).toMatchObject({ ok: false });
+      expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not save the first profile when the combined encrypted write fails', async () => {
+    await create();
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    const storage = browser.storage.local as unknown as {
+      set(items: Record<string, unknown>): Promise<void>;
+    };
+    const original = storage.set.bind(storage);
+    vi.spyOn(storage, 'set').mockImplementation((items) =>
+      Object.hasOwn(items, SETTINGS_STORAGE_KEY)
+        ? Promise.reject(new Error('Fixture storage failure'))
+        : original(items)
+    );
+    const bundles = ['top', 'iop'].map((protocol) => ({ ...credentialFixtures.oauthBundle, protocol }));
+    expect(await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })).toMatchObject(
+      { ok: false }
+    );
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('reports an unknown refresh only for the matching configuration ID without leaking intent values', async () => {
     await createPair();
     const before = (await send('credential-vault-request', 'authorizations'))
@@ -924,13 +1173,13 @@ describe('extension background protocol persistence and dispatch', () => {
     expect((await sendEnvelope({ kind: 'gallery-transfer-context' })).data).toEqual(galleryBefore.data);
     const record = state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord;
     const session = new ExtensionCredentialVaultSession({
-      get: (key) => Promise.resolve({ [key]: state.session[key] }),
+      get: (key) => Promise.resolve({ [key]: state.local[key] }),
       set: (items) => {
-        Object.assign(state.session, items);
+        Object.assign(state.local, items);
         return Promise.resolve();
       },
       remove: (key) => {
-        Reflect.deleteProperty(state.session, key);
+        Reflect.deleteProperty(state.local, key);
         return Promise.resolve();
       }
     });

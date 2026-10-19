@@ -1,4 +1,9 @@
 export const common = {
+  todoSync: {
+    retry: 'Retry saving',
+    clearNotice:
+      'Clearing extension data also deletes dashboard to-dos from Chrome sync storage and this device. This affects other synced browsers. A content-free reset marker is retained to block old data from returning.'
+  },
   platformReadback: {
     inventory:
       'Inventory synchronization may be delayed, so queries can temporarily show the old quantity. Refresh later to check; do not repeat a stock adjustment for this reason.',

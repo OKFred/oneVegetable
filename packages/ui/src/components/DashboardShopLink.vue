@@ -23,10 +23,11 @@ const url = ref<string | null>(null);
 const draft = ref('');
 const open = ref(false);
 const busy = ref(false);
-const error = ref('');
 const draftInvalid = computed(() => draft.value.length > 0 && !normalizeAlibabaShopUrl(draft.value));
+const CONTEXT_NOTICE_ID = 'dashboard-shop-context-unavailable';
 let generation = 0;
 let disposed = false;
+let contextUnavailable = false;
 
 async function readScope(): Promise<string> {
   const context = await gateway.galleryTransferContext?.();
@@ -34,7 +35,7 @@ async function readScope(): Promise<string> {
   return dashboardShopScope(mode, context);
 }
 
-async function refresh(): Promise<void> {
+async function refresh(userInitiated = false): Promise<void> {
   const captured = ++generation;
   try {
     const current = await readScope();
@@ -45,19 +46,32 @@ async function refresh(): Promise<void> {
     }
     scope.value = current;
     url.value = loadDashboardShopUrl(globalThis.localStorage, current);
-    error.value = '';
+    if (contextUnavailable) toast.dismiss(CONTEXT_NOTICE_ID);
+    contextUnavailable = false;
   } catch {
     if (captured !== generation || disposed) return;
     scope.value = null;
     url.value = null;
     open.value = false;
-    error.value = 'shell.dashboard.shop.unavailable';
+    if (userInitiated || !contextUnavailable) {
+      toast.warning(t('shell.dashboard.shop.unavailable'), {
+        id: CONTEXT_NOTICE_ID,
+        duration: 4_000,
+        action: {
+          label: t('shell.navigation.settings'),
+          onClick: () => {
+            globalThis.location.hash = '#/settings';
+          }
+        }
+      });
+    }
+    contextUnavailable = true;
   }
 }
 
 async function edit(): Promise<void> {
   busy.value = true;
-  await refresh();
+  await refresh(true);
   busy.value = false;
   if (!scope.value || disposed) return;
   draft.value = url.value ?? '';
@@ -68,7 +82,6 @@ async function persist(clear = false): Promise<void> {
   const expected = scope.value;
   if (!expected || busy.value || (!clear && !normalizeAlibabaShopUrl(draft.value))) return;
   busy.value = true;
-  error.value = '';
   try {
     const current = await readScope();
     if (disposed) return;
@@ -87,7 +100,11 @@ async function persist(clear = false): Promise<void> {
     draft.value = '';
     toast.success(t(clear ? 'shell.dashboard.shop.cleared' : 'shell.dashboard.shop.saved'));
   } catch {
-    error.value = 'shell.dashboard.shop.saveFailed';
+    if (disposed) return;
+    toast.error(t('shell.dashboard.shop.saveFailed'), {
+      id: 'dashboard-shop-save-failed',
+      duration: 4_000
+    });
   } finally {
     busy.value = false;
   }
@@ -115,6 +132,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   disposed = true;
   generation += 1;
+  if (contextUnavailable) toast.dismiss(CONTEXT_NOTICE_ID);
   globalThis.removeEventListener('focus', refreshOnFocus);
   globalThis.removeEventListener('storage', storageChanged);
 });
@@ -135,7 +153,6 @@ onBeforeUnmount(() => {
     <Button variant="outline" size="sm" :disabled="busy" data-testid="dashboard-shop-edit" @click="edit">
       <Settings2 class="size-4" />{{ t(url ? 'shell.dashboard.shop.edit' : 'shell.dashboard.shop.set') }}
     </Button>
-    <p v-if="error && !open" class="basis-full text-xs text-muted-foreground" role="status">{{ t(error) }}</p>
   </div>
 
   <ModalDialog
@@ -166,7 +183,6 @@ onBeforeUnmount(() => {
       <p v-if="draftInvalid" id="dashboard-shop-url-error" class="text-sm text-destructive" role="alert">
         {{ t('shell.dashboard.shop.invalid') }}
       </p>
-      <p v-if="error" class="text-sm text-destructive" role="alert">{{ t(error) }}</p>
     </form>
     <template #footer>
       <div class="flex flex-wrap justify-end gap-2">

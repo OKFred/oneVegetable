@@ -93,6 +93,10 @@ export function saveAuthorizationPatch(settings: GatewaySettings, patch: Gateway
       retryable: false
     });
   if (changed && !replacement) next.configurationId = crypto.randomUUID();
+  // Protection can be prepared before either authorization exists. Its blank TOP
+  // placeholder is not a saved protocol preference: use the first real profile.
+  if (!Object.values(authorizationProfiles(settings)).some(configuredAuthorization))
+    return { ...next, protocol };
   const result = replaceAuthorization(settings, protocol, next);
   return !changed && settings.authorizationBinding
     ? { ...result, authorizationBinding: settings.authorizationBinding }
@@ -117,6 +121,35 @@ export function clearAuthorizationProfile(
     accessToken: '',
     endpoint: primary.endpoint,
     signMethod: primary.signMethod
+  };
+}
+
+/** Promote a saved profile without re-importing it or changing either account identity. */
+export function setDefaultAuthorization(
+  settings: GatewaySettings,
+  protocol: AuthorizationProtocol,
+  configurationId: string
+): GatewaySettings {
+  const profiles = authorizationProfiles(settings);
+  const selected = profiles[protocol];
+  if (!selected || !configuredAuthorization(selected))
+    throw new GatewayException({
+      code: 'CREDENTIAL_VAULT_EMPTY',
+      message: 'CREDENTIAL_VAULT_EMPTY',
+      retryable: false
+    });
+  if (!selected.configurationId || selected.configurationId !== configurationId)
+    throw new GatewayException({
+      code: 'ENTITY_VERSION_CONFLICT',
+      message: 'ENTITY_VERSION_CONFLICT',
+      retryable: false
+    });
+  const other = protocol === 'top' ? 'iop' : 'top';
+  return {
+    ...selected,
+    protocol,
+    protocolCredentials: profiles[other] ? { [other]: profiles[other] } : {},
+    ...(settings.authorizationBinding ? { authorizationBinding: settings.authorizationBinding } : {})
   };
 }
 

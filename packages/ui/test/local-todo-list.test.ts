@@ -2,6 +2,16 @@
 
 import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { defineComponent, h } from 'vue';
+import {
+  mockTodoLocalStorage,
+  mockTodoSync,
+  TODO_FIXTURE,
+  TODO_TEXTS
+} from '../../../mock/data/dashboard-todo-sync';
+import { provideDashboardTodos } from '../src/lib/todo-repository';
+import { createSyncTodoRepository } from '../src/lib/sync-todos';
+import { saveDashboardTodos } from '../src/lib/local-todos';
 
 import LocalTodoList from '../src/components/LocalTodoList.vue';
 import { loadDashboardTodos } from '../src/lib/local-todos';
@@ -42,6 +52,45 @@ describe('LocalTodoList', () => {
     wrapper.unmount();
   });
 
+  it('shows extension sync copy, explicit migration and honest pending/retry status', async () => {
+    uiI18n.global.locale.value = 'en-US';
+    const cloud = mockTodoSync();
+    const local = mockTodoLocalStorage();
+    saveDashboardTodos(local, [TODO_FIXTURE]);
+    const repository = createSyncTodoRepository({ ...cloud, local });
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          provideDashboardTodos(repository);
+          return () => h(LocalTodoList);
+        }
+      })
+    );
+    await flushPromises();
+    expect(wrapper.text()).toContain('To-dos use Chrome Sync when available');
+    expect(wrapper.get('[data-testid="todo-migration"]').text()).toContain('Import 1 local to-dos');
+    expect(cloud.writes).toEqual([]);
+    await wrapper.get('[data-testid="todo-migration"] button').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain(TODO_FIXTURE.text);
+    expect(wrapper.find('[data-testid="todo-migration"]').exists()).toBe(false);
+    cloud.state.writeFailure = true;
+    await wrapper.get('[data-testid="todo-input"]').setValue(TODO_TEXTS[1]);
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Saved locally; sync pending');
+    expect(wrapper.text()).not.toContain('Saved to Chrome sync storage;');
+    cloud.state.writeFailure = false;
+    await wrapper.get('[data-testid="todo-retry"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('other devices may not have received it yet');
+    uiI18n.global.locale.value = 'zh-CN';
+    await flushPromises();
+    expect(wrapper.text()).toContain('送达取决于同步状态');
+    wrapper.unmount();
+    repository.dispose();
+  });
+
   it('removes completed items and restores persisted items after remounting', async () => {
     const first = mount(LocalTodoList);
     await first.get('[data-testid="todo-input"]').setValue('Persist this item');
@@ -49,6 +98,7 @@ describe('LocalTodoList', () => {
     first.unmount();
 
     const second = mount(LocalTodoList);
+    await flushPromises();
     expect(second.text()).toContain('Persist this item');
     await second.get('input[type="checkbox"]').setValue(true);
     await second.get('[data-testid="todo-clear-completed"]').trigger('click');

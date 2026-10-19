@@ -1,6 +1,19 @@
 import { browser } from 'wxt/browser';
-import { IOP_VAULT_KEY, IOP_RECEIPT_KEY } from '../../lib/iop-authorization-storage';
+import {
+  IOP_VAULT_KEY,
+  IOP_RECEIPT_KEY,
+  IOP_SESSION_KEY,
+  TOP_VAULT_KEY,
+  TOP_RECEIPT_KEY,
+  TOP_SESSION_KEY,
+  IOP_APPLICATION_READER_ORIGINS,
+  TOP_APPLICATION_READER_ORIGINS
+} from '../../lib/iop-authorization-storage';
 import { IOP_API_ORIGIN } from '@one-vegetable/core/alibaba-iop';
+import {
+  CREDENTIAL_VAULT_SESSION_STORAGE_KEY,
+  DEVICE_PROTECTION_KEY
+} from '../../lib/credential-vault-storage';
 
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
@@ -55,6 +68,20 @@ import {
 } from '@one-vegetable/core/runtime';
 import type { AlibabaAuthorizationsSummary } from '@one-vegetable/core';
 import '@one-vegetable/ui/styles.css';
+import type { DashboardTodoRepository } from '@one-vegetable/ui';
+
+let dashboardTodosPromise: Promise<DashboardTodoRepository> | undefined;
+function getDashboardTodos(): Promise<DashboardTodoRepository> {
+  return (dashboardTodosPromise ??= import('@one-vegetable/ui').then((ui) => {
+    const local = ui.browserTodoStorage();
+    return ui.createSyncTodoRepository({
+      sync: browser.storage.sync,
+      changes: browser.storage.onChanged,
+      ...(local ? { local } : {}),
+      prepare: () => browser.storage.sync.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
+    });
+  }));
+}
 import { ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS } from '../../lib/alibaba-credential-page-driver';
 import {
   createExtensionOperationAvailabilityClient,
@@ -180,6 +207,8 @@ const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
   authorizations: () => requestVault('authorizations', undefined),
   loadAuthorization: (protocol) => requestVault('get-authorization', { protocol }),
+  setDefaultAuthorization: (protocol, configurationId) =>
+    requestVault('set-default-authorization', { protocol, configurationId }),
   confirmAuthorizations: (topConfigurationId, iopConfigurationId) =>
     requestVault('confirm-authorizations', { topConfigurationId, iopConfigurationId }),
   async clearAuthorization(protocol) {
@@ -203,11 +232,13 @@ const settings: SettingsRepository = {
 
 const vault: CredentialVaultRepository = {
   status: () => requestVault('status', undefined),
+  prepareAuthorization: (passphrase) => requestVault('prepare-authorization', { passphrase }),
   create: async (passphrase, value) => {
-    await ensureOptionalHostPermission(
-      value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
-      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
-    );
+    if (value.appKey && value.appSecret && value.accessToken)
+      await ensureOptionalHostPermission(
+        value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
+        translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+      );
     return requestVault('create', { passphrase, settings: value });
   },
   migrate: (passphrase) => requestVault('migrate', { passphrase }),
@@ -255,6 +286,12 @@ const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionReposit
   exportBundle() {
     return requestAcquisition('export-bundle', undefined);
   },
+  importBundle(bundle) {
+    return importCredentialBundles([bundle]);
+  },
+  importBundles(bundles) {
+    return importCredentialBundles(bundles);
+  },
   async readPrerequisite() {
     const prerequisite = await requestAcquisition('read-prerequisite', undefined);
     if (prerequisite) latestAcquisitionState = prerequisite;
@@ -267,9 +304,39 @@ const alibabaCredentialAcquisition: ExtensionAlibabaCredentialAcquisitionReposit
     await requestAcquisition('focus-prerequisite-page', undefined);
   },
   async openIopTool() {
+    await requestIopApplicationReadPermissions();
     await requestAcquisition('open-iop-tool', undefined);
+  },
+  async openTool(protocol) {
+    await requestIopApplicationReadPermissions(protocol);
+    await requestAcquisition('open-iop-tool', { protocol });
   }
 };
+
+async function requestIopApplicationReadPermissions(protocol: 'iop' | 'top' = 'iop'): Promise<void> {
+  // The caller is a user click. Request directly; don't await contains first.
+  if (
+    !(await browser.permissions.request({
+      origins: [...(protocol === 'iop' ? IOP_APPLICATION_READER_ORIGINS : TOP_APPLICATION_READER_ORIGINS)]
+    }))
+  )
+    throw new GatewayException({
+      code: 'AUTH_PERMISSION_REQUIRED',
+      message: 'AUTH_PERMISSION_REQUIRED',
+      retryable: false
+    });
+}
+
+function importCredentialBundles(bundles: AlibabaOpenApiCredentialBundle[]): Promise<CredentialVaultStatus> {
+  // Request once, on the user's confirmation click; never after a first profile has saved.
+  if (bundles.some((bundle) => bundle.protocol === 'iop')) {
+    return ensureOptionalOrigins(
+      [IOP_API_ORIGIN + '/*'],
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    ).then(() => requestAcquisition('import-bundles', { bundles }));
+  }
+  return requestAcquisition('import-bundles', { bundles });
+}
 
 interface AcquisitionOperationMap {
   start: { request: { callbackUrl: string | null }; response: AlibabaCredentialAcquisitionState };
@@ -281,13 +348,18 @@ interface AcquisitionOperationMap {
   cancel: { request: { jobId: string }; response: AlibabaCredentialAcquisitionState };
   'save-to-vault': { request: { passphrase?: string }; response: CredentialVaultStatus };
   'export-bundle': { request: undefined; response: AlibabaOpenApiCredentialBundle };
+  'import-bundle': { request: { bundle: AlibabaOpenApiCredentialBundle }; response: CredentialVaultStatus };
+  'import-bundles': {
+    request: { bundles: AlibabaOpenApiCredentialBundle[] };
+    response: CredentialVaultStatus;
+  };
   'read-prerequisite': {
     request: undefined;
     response: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }> | null;
   };
   'locate-prerequisite-field': { request: undefined; response: string | null };
   'focus-prerequisite-page': { request: undefined; response: null };
-  'open-iop-tool': { request: undefined; response: null };
+  'open-iop-tool': { request: { protocol: 'top' | 'iop' } | undefined; response: null };
 }
 
 async function requestAcquisition<K extends ExtensionAlibabaCredentialAcquisitionOperation>(
@@ -320,6 +392,10 @@ function rememberAcquisitionState(
 }
 
 interface VaultOperationMap {
+  'set-default-authorization': {
+    request: { protocol: 'top' | 'iop'; configurationId: string };
+    response: AlibabaAuthorizationsSummary;
+  };
   authorizations: { request: undefined; response: AlibabaAuthorizationsSummary };
   'get-authorization': { request: { protocol: 'top' | 'iop' }; response: GatewaySettings };
   'confirm-authorizations': {
@@ -329,6 +405,7 @@ interface VaultOperationMap {
   'clear-authorization': { request: { protocol: 'top' | 'iop' }; response: null };
   'refresh-authorization': { request: { protocol: 'top' | 'iop' }; response: AlibabaAuthorizationsSummary };
   status: { request: undefined; response: CredentialVaultStatus & AuthorizationStatus };
+  'prepare-authorization': { request: { passphrase: string }; response: CredentialVaultStatus };
   'get-settings': { request: undefined; response: GatewaySettings };
   create: {
     request: { passphrase: string; settings: GatewaySettings };
@@ -428,11 +505,17 @@ const localData: LocalDataRepository = {
       ...Object.entries(local).filter(
         ([key]) =>
           key !== SETTINGS_STORAGE_KEY &&
+          key !== CREDENTIAL_VAULT_SESSION_STORAGE_KEY &&
+          key !== DEVICE_PROTECTION_KEY &&
           key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
           key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY &&
           key !== EXTENSION_S3_STORAGE_KEY &&
           key !== IOP_VAULT_KEY &&
-          key !== IOP_RECEIPT_KEY
+          key !== IOP_RECEIPT_KEY &&
+          key !== IOP_SESSION_KEY &&
+          key !== TOP_VAULT_KEY &&
+          key !== TOP_RECEIPT_KEY &&
+          key !== TOP_SESSION_KEY
       ),
       ...localEntries.filter(
         ([key]) => key === APP_PREFERENCES_STORAGE_KEY || key === LEGACY_APP_PREFERENCES_STORAGE_KEY
@@ -461,11 +544,20 @@ const localData: LocalDataRepository = {
         id: 'credentials',
         label: translateUi('settings.extensionRuntime.localData.credentials.label'),
         storage: 'chrome.storage.local',
-        itemCount: Number(SETTINGS_STORAGE_KEY in local) + Number(IOP_VAULT_KEY in local),
+        itemCount:
+          Number(SETTINGS_STORAGE_KEY in local) +
+          Number(IOP_VAULT_KEY in local) +
+          Number(TOP_VAULT_KEY in local),
         approximateBytes: approximateStorageBytes({
           settings: local[SETTINGS_STORAGE_KEY],
+          recovery: local[CREDENTIAL_VAULT_SESSION_STORAGE_KEY],
+          deviceRecovery: local[DEVICE_PROTECTION_KEY],
           iop: local[IOP_VAULT_KEY],
-          receipt: local[IOP_RECEIPT_KEY]
+          iopRecovery: local[IOP_SESSION_KEY],
+          receipt: local[IOP_RECEIPT_KEY],
+          top: local[TOP_VAULT_KEY],
+          topRecovery: local[TOP_SESSION_KEY],
+          topReceipt: local[TOP_RECEIPT_KEY]
         }),
         sensitive: true,
         retention: translateUi('settings.extensionRuntime.localData.credentials.retention')
@@ -519,14 +611,13 @@ const localData: LocalDataRepository = {
     return createLocalDataInventory(categories);
   },
   async clearAll() {
+    // Fail closed before deleting local data if synchronized todo cleanup is incomplete.
+    await (await getDashboardTodos()).clearAll();
     await resetLocalTemplates();
     await requestS3('reset', {});
     const granted = await permissions.list();
-    await Promise.all([
-      browser.storage.local.clear(),
-      browser.storage.session.clear(),
-      ...granted.map((origin) => browser.permissions.remove({ origins: [origin] }))
-    ]);
+    // The trusted reset operation clears extension storage in its vault queue.
+    await Promise.all(granted.map((origin) => browser.permissions.remove({ origins: [origin] })));
     globalThis.localStorage.clear();
   }
 };
@@ -822,6 +913,29 @@ async function mountOptionsApp(): Promise<void> {
   ]);
   const { OneVegetableApp, uiI18n } = uiModule;
   activeRuntimeTranslator = uiModule.translateUi;
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (
+      (areaName === 'local' || areaName === 'session') &&
+      [
+        SETTINGS_STORAGE_KEY,
+        CREDENTIAL_VAULT_SESSION_STORAGE_KEY,
+        TOP_VAULT_KEY,
+        IOP_VAULT_KEY,
+        TOP_SESSION_KEY,
+        IOP_SESSION_KEY,
+        TOP_RECEIPT_KEY,
+        IOP_RECEIPT_KEY
+      ].some((key) => {
+        const change = changes[key];
+        return (
+          change !== undefined &&
+          (![CREDENTIAL_VAULT_SESSION_STORAGE_KEY, TOP_SESSION_KEY, IOP_SESSION_KEY].includes(key) ||
+            uiModule.isMaterialVaultSessionChange(change))
+        );
+      })
+    )
+      uiModule.notifyCredentialVaultChanged();
+  });
   const gateway = new ExtensionGatewayClient();
   const productMutationJobs = new ExtensionProductMutationJobClient(
     { send: (message) => browser.runtime.sendMessage(message) },
@@ -854,6 +968,7 @@ async function mountOptionsApp(): Promise<void> {
     videoUploads: { videoUpload: requestVideoUpload },
     permissions,
     localData,
+    todos: await getDashboardTodos(),
     onboarding,
     reviewPrompt,
     vault,

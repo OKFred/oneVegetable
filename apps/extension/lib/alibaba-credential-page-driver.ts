@@ -1,6 +1,10 @@
 import { browser } from 'wxt/browser';
 import { APP_PREFERENCES_STORAGE_KEY, parseAppPreferences } from '@one-vegetable/core/preferences';
 import { inspectAlibabaDeveloperPageDocument } from '@one-vegetable/core/alibaba-developer-page-inspection';
+import {
+  authorizationDiscoveryReason,
+  type AuthorizationDiscoveryReason
+} from './authorization-discovery-reason';
 
 export { inspectAlibabaDeveloperPageDocument as inspectApplicationPageStateInFrame };
 
@@ -12,7 +16,6 @@ import type {
 } from '@one-vegetable/core';
 
 export const ALIBABA_APPLICATION_CENTER_URL = 'https://i.alibaba.com/explore/open-api';
-const ALIBABA_LEGACY_APPLICATION_URL = 'https://crosstrade.alibaba.com/ecology/index.htm';
 
 export const ALIBABA_CREDENTIAL_ACQUISITION_ORIGINS = [
   'https://i.alibaba.com/*',
@@ -85,10 +88,11 @@ export async function openAlibabaApplicationCenterTab(): Promise<number> {
   return tab.id;
 }
 
-export async function openAlibabaLegacyApplicationTab(): Promise<number> {
-  const tab = await browser.tabs.create({ url: ALIBABA_LEGACY_APPLICATION_URL, active: false });
-  if (tab.id === undefined) throw new Error('无法创建 Alibaba 旧应用标签页');
-  return tab.id;
+export async function findAlibabaLegacyApplicationTab(): Promise<number | null> {
+  // The retired landing page can return 404. Never open it as an automatic
+  // fallback from the new IOP console; only reuse an existing legacy page.
+  const tabs = await browser.tabs.query({ url: 'https://crosstrade.alibaba.com/ecology/*' });
+  return tabs.find((tab) => tab.id !== undefined && !/404|not found/iu.test(tab.title ?? ''))?.id ?? null;
 }
 
 export async function openAlibabaOAuthTab(url: URL): Promise<number> {
@@ -113,18 +117,23 @@ export async function closeAlibabaTabs(tabIds: readonly (number | null | undefin
   await browser.tabs.remove(unique).catch(() => undefined);
 }
 
-export async function inspectAlibabaApplicationCenter(tabId: number): Promise<{
+export async function inspectAlibabaApplicationCenter(
+  tabId: number,
+  domOnly = false
+): Promise<{
   application: ExtensionAlibabaApplicationDetails | null;
   candidates: ExtensionAlibabaApplicationCandidate[];
+  frameId?: number;
 }> {
   const results = await browser.scripting.executeScript({
     target: { tabId, allFrames: true },
     world: 'MAIN',
-    func: inspectApplicationCenterFrame
+    func: inspectApplicationCenterFrame,
+    args: [!domOnly]
   });
   for (const result of results) {
     const snapshot = parseApplicationCenterSnapshot(result.result);
-    if (snapshot) return snapshot;
+    if (snapshot) return { ...snapshot, frameId: result.frameId };
   }
   return { application: null, candidates: [] };
 }
@@ -175,7 +184,7 @@ export async function focusNextAlibabaDeveloperRegistrationField(tabId: number):
 
 export async function showAlibabaDeveloperGuide(
   tabId: number,
-  state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' }>
+  state: Extract<AlibabaCredentialAcquisitionState, { status: 'prerequisite-required' | 'failed' }>
 ): Promise<void> {
   const stored = await browser.storage.local.get(APP_PREFERENCES_STORAGE_KEY);
   const { uiLocale } = parseAppPreferences(stored[APP_PREFERENCES_STORAGE_KEY]);
@@ -187,6 +196,30 @@ export async function showAlibabaDeveloperGuide(
     kind: 'one-vegetable-alibaba-developer-guide-update',
     uiLocale,
     state
+  });
+}
+
+export type AlibabaAuthorizationGuidePhase = 'opening' | 'application' | 'secret' | 'ready' | 'blocked';
+/** Safe progress only: never include an AppKey, secret, callback code or DOM snapshot. */
+export async function showAlibabaAuthorizationGuide(
+  tabId: number,
+  protocol: 'top' | 'iop',
+  phase: AlibabaAuthorizationGuidePhase,
+  reasonCode?: AuthorizationDiscoveryReason
+): Promise<void> {
+  const stored: Record<string, unknown> = await browser.storage.local
+    .get(APP_PREFERENCES_STORAGE_KEY)
+    .catch(() => ({}));
+  const { uiLocale } = parseAppPreferences(stored[APP_PREFERENCES_STORAGE_KEY]);
+  await browser.scripting.executeScript({ target: { tabId }, files: ['/alibaba-developer-guide.js'] });
+  await sendAlibabaDeveloperGuideMessage(tabId, {
+    kind: 'one-vegetable-alibaba-developer-guide-update',
+    uiLocale,
+    authorization: {
+      protocol,
+      phase,
+      ...(phase === 'blocked' && authorizationDiscoveryReason(reasonCode) ? { reasonCode } : {})
+    }
   });
 }
 
@@ -211,11 +244,17 @@ export async function hideAlibabaDeveloperGuide(tabId: number): Promise<void> {
     .catch(() => undefined);
 }
 
-export async function revealAlibabaApplicationSecret(tabId: number): Promise<ExtensionAlibabaSecretResult> {
+export async function revealAlibabaApplicationSecret(
+  tabId: number,
+  readOnly = false,
+  frameId?: number,
+  expectedAppKey?: string
+): Promise<ExtensionAlibabaSecretResult> {
   const results = await browser.scripting.executeScript({
-    target: { tabId, allFrames: true },
+    target: frameId === undefined ? { tabId, allFrames: true } : { tabId, frameIds: [frameId] },
     world: 'MAIN',
-    func: revealApplicationSecretInFrame
+    func: revealApplicationSecretInFrame,
+    args: [!readOnly, expectedAppKey ?? '']
   });
   for (const result of results) {
     const parsed = parseSecretResult(result.result);
@@ -443,7 +482,7 @@ function isRegistrationFieldId(value: unknown): value is AlibabaDeveloperRegistr
   );
 }
 
-async function inspectApplicationCenterFrame(): Promise<unknown> {
+async function inspectApplicationCenterFrame(readCandidates = true): Promise<unknown> {
   const forms = [...document.querySelectorAll('.cloud-form')].map((element) => ({
     label: element.querySelector('.form-label')?.textContent.trim() ?? '',
     value: element.querySelector('.form-item')?.textContent.trim() ?? ''
@@ -463,11 +502,13 @@ async function inspectApplicationCenterFrame(): Promise<unknown> {
 
   let response: unknown = null;
   try {
-    const result = await window.fetch('/handler/share/app/getAppList.json', {
-      credentials: 'include',
-      headers: { Accept: 'application/json' }
-    });
-    if (result.ok) response = (await result.json()) as unknown;
+    const result = readCandidates
+      ? await window.fetch('/handler/share/app/getAppList.json', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' }
+        })
+      : null;
+    if (result?.ok) response = (await result.json()) as unknown;
   } catch {
     response = null;
   }
@@ -617,7 +658,13 @@ async function updateCallbackInFrame(callbackUrl: string): Promise<boolean> {
   return false;
 }
 
-function revealApplicationSecretInFrame(): unknown {
+function revealApplicationSecretInFrame(allowClick = true, expectedAppKey?: string): unknown {
+  if (expectedAppKey) {
+    const keyField = [...document.querySelectorAll('.cloud-form')].find(
+      (form) => form.querySelector('.form-label')?.textContent.trim() === 'AppKey'
+    );
+    if (keyField?.querySelector('.form-item')?.textContent.trim() !== expectedAppKey) return null;
+  }
   const body = document.body.innerText;
   const challenge = /captcha|verification code|security verification|验证码|滑块|安全验证|二次验证/i.test(
     body
@@ -628,21 +675,27 @@ function revealApplicationSecretInFrame(): unknown {
   );
   if (!form) return challenge ? { status: 'waiting', reason: 'security-verification' } : null;
   const item = form.querySelector('.form-item');
-  const candidate = (item?.textContent ?? '')
+  const copy = item?.cloneNode(true);
+  if (copy instanceof Element) {
+    for (const control of copy.querySelectorAll('button, a, [role="button"], script, style'))
+      control.remove();
+  }
+  const candidate = (copy?.textContent ?? '')
     .split(/\s+/u)
     .map((value) => value.trim())
-    .find((value) => value !== '' && !/^(view|reset|hide)$/iu.test(value));
+    .find((value) => /^[\w-]{16,4096}$/u.test(value) && !/^[*•●]+$/u.test(value));
+  if (challenge) return { status: 'waiting', reason: 'security-verification' };
   if (candidate) return { status: 'available', appSecret: candidate };
   const view = [...form.querySelectorAll('button, a, [role="button"]')].find(
     (element) => element.textContent.trim() === 'View'
   );
-  if (view instanceof HTMLElement) {
+  if (view instanceof HTMLElement && allowClick) {
     view.click();
     return { status: 'waiting', reason: 'reveal' };
   }
   return {
     status: 'waiting',
-    reason: challenge ? 'security-verification' : 'layout'
+    reason: 'layout'
   };
 }
 

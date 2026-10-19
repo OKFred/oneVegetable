@@ -1,9 +1,12 @@
 export const errors = {
   codes: {
+    TOP_APPLICATION_REQUIRED:
+      '未发现可用的旧版 TOP 应用。此应用中心是新版 IOP，请使用 IOP 授权工具；已有 TOP 凭据可在设置中导入或手动填写。',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
-      '请先在凭据配置中确认 TOP 和 IOP 属于同一商家，再使用按能力自动路由。',
-    ALIBABA_AUTHORIZATION_BINDING_CHANGED: '授权已变化，请核对两份配置并重新确认同一商家；不会自动重试操作。',
-    ALIBABA_AUTHORIZATION_BINDING_STALE: '授权已变化，请核对两份配置并重新确认同一商家；不会自动重试操作。',
+      '请检查 TOP 和 IOP 授权是否配置齐全，并在凭据设置中重新读取状态。',
+    ALIBABA_AUTHORIZATION_BINDING_CHANGED:
+      '授权已变化，请重新读取两份配置并核对未完成任务；不会自动重试操作。',
+    ALIBABA_AUTHORIZATION_BINDING_STALE: '授权已变化，请重新读取两份配置并核对未完成任务；不会自动重试操作。',
     ALIBABA_PROTOCOL_SELECTION_REQUIRED: '更换凭据前请明确选择 TOP 或 IOP，另一份授权必须保留。',
     ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:
       '请求协议尚未配置凭据，请配置对应授权；不能混用另一协议的授权。',
@@ -81,8 +84,10 @@ export const errors = {
     MISSING_CREDENTIALS: '请先在设置中配置 App Key、App Secret 和 Access Token。',
     CREDENTIAL_VAULT_EMPTY: '请先在设置中配置开放平台凭证。',
     CREDENTIAL_VAULT_LOCKED: '开放平台凭证已锁定，请先在设置中解锁。',
-    CREDENTIAL_VAULT_IDLE_TIMEOUT: '开放平台凭证因空闲超时已锁定，请重新解锁。',
-    CREDENTIAL_VAULT_SESSION_ENDED: 'Chrome 会话已结束或扩展已更新，请重新解锁凭证。',
+    CREDENTIAL_VAULT_IDLE_TIMEOUT:
+      '旧凭证仍处于锁定状态，请输入原口令解锁一次；之后本机会记住解锁状态，直到手动锁定。',
+    CREDENTIAL_VAULT_SESSION_ENDED:
+      '现有凭证尚未解锁，请输入原口令解锁一次；之后浏览器重启或扩展更新不再锁定。',
     CREDENTIAL_VAULT_INVALID: '凭证存储格式无效，请清除本地数据后重新配置。',
     CREDENTIAL_VAULT_MIGRATION_REQUIRED: '旧版明文凭证必须先完成本机加密。',
     CREDENTIAL_VAULT_PASSPHRASE_REQUIRED: '首次保存到插件时需要设置本机保护口令。',

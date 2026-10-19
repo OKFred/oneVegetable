@@ -33,7 +33,7 @@ import {
 
 let context: BrowserContext | null = null;
 
-test('formal MV3 opens reauthorization from Overview without starting OAuth automatically', async () => {
+test('formal MV3 asks for a renewal protocol before any authorization flow', async () => {
   if (!context) throw new Error('Missing extension context');
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const page = await context.newPage();
@@ -43,9 +43,13 @@ test('formal MV3 opens reauthorization from Overview without starting OAuth auto
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
   const pagesBefore = context.pages().length;
   await page.getByTestId('dashboard-renew-authorization').click();
-  const authorization = page.getByRole('dialog', { name: '获取开放平台凭证', exact: true });
+  const authorization = page.getByRole('dialog', { name: '要续期哪一份授权？', exact: true });
   await expect(authorization).toBeVisible();
-  await expect(authorization.getByRole('button', { name: '打开 Alibaba 并开始', exact: true })).toBeVisible();
+  await expect(authorization.getByTestId('authorization-protection')).toBeVisible();
+  await expect(authorization.getByTestId('choose-authorization-iop')).toHaveCount(0);
+  await authorization.getByTestId('continue-authorization-protection').click();
+  await expect(authorization.getByTestId('choose-authorization-iop')).toBeVisible();
+  await expect(authorization.getByTestId('choose-authorization-top')).toBeVisible();
   expect(context.pages()).toHaveLength(pagesBefore);
   await page.keyboard.press('Escape');
   await expect(authorization).toBeHidden();
@@ -75,7 +79,7 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
     )
   });
   await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
-  await page.getByLabel('设置保护口令').fill('123456');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('123456');
   await page.getByLabel('确认保护口令').fill('123456');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -100,7 +104,7 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   await expect(page.getByTestId('dashboard-authorization-card')).not.toContainText('剩余约');
 });
 
-test('formal MV3 dual profiles persist user confirmation and route photo reads independently', async () => {
+test('formal MV3 dual profiles persist automatic routing without merchant confirmation', async () => {
   if (!context) throw new Error('Missing extension context');
   const browserContext = context;
   const worker = browserContext.serviceWorkers()[0] ?? (await browserContext.waitForEvent('serviceworker'));
@@ -233,7 +237,7 @@ test('formal MV3 dual profiles persist user confirmation and route photo reads i
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(topBundle))
   });
-  await page.getByLabel('设置保护口令').fill('e2e-dual-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-dual-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-dual-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -275,16 +279,14 @@ test('formal MV3 dual profiles persist user confirmation and route photo reads i
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
   await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
-  const beforeConfirmation = await readAuthorizations();
-  expect(beforeConfirmation.top).toEqual(topOnly.top);
-  expect(beforeConfirmation).toMatchObject({ defaultProtocol: 'top', binding: { confirmed: false } });
-  expect(beforeConfirmation.iop?.configurationId).toEqual(expect.any(String));
-  const checkbox = panel.getByTestId('same-merchant-confirmation');
-  const confirm = panel.getByTestId('confirm-authorization-binding');
-  await expect(checkbox).not.toBeChecked();
-  await expect(confirm).toBeDisabled();
-  await expect(panel.getByTestId('authorization-binding')).toContainText('不是平台官方验证');
-  await expect(panel.getByTestId('authorization-binding')).toContainText('请求仍使用原默认协议（TOP）');
+  const configuredPair = await readAuthorizations();
+  expect(configuredPair.top).toEqual(topOnly.top);
+  expect(configuredPair).toMatchObject({ defaultProtocol: 'top', binding: { confirmed: false } });
+  expect(configuredPair.iop?.configurationId).toEqual(expect.any(String));
+  await expect(panel.getByTestId('same-merchant-confirmation')).toHaveCount(0);
+  await expect(panel.getByTestId('confirm-authorization-binding')).toHaveCount(0);
+  await expect(panel.getByTestId('authorization-binding')).toContainText('系统不会替你验证店铺归属');
+  await expect(panel.getByTestId('authorization-binding')).toContainText('已默认启用按能力自动路由');
 
   const listPhotos = async (selectedGroupId: string) => {
     const requestId = crypto.randomUUID();
@@ -319,26 +321,16 @@ test('formal MV3 dual profiles persist user confirmation and route photo reads i
   };
   expect(calls).toEqual([]); // Imports never auto-renew or test a gateway.
   await listPhotos(groupId);
-  expect(calls).toEqual([{ protocol: 'top', location: 'SUB_GROUP' }]);
-  await checkbox.check();
-  await expect(confirm).toBeEnabled();
-  expect((await readAuthorizations()).binding.confirmed).toBe(false); // Checkbox alone does not bind.
-  await confirm.click();
-  await expect(panel.getByTestId('authorization-binding')).toContainText('用户已确认同一商家');
-  const confirmed = await readAuthorizations();
-  expect(confirmed.binding).toMatchObject({
-    confirmed: true,
-    topConfigurationId: topOnly.top?.configurationId,
-    iopConfigurationId: beforeConfirmation.iop?.configurationId,
-    confirmedAtUtc: expect.any(Number)
-  });
+  expect(calls).toEqual([{ protocol: 'iop', location: groupId }]);
+  // Routing is automatic; it never fabricates a user confirmation or ownership verification.
+  expect(await readAuthorizations()).toEqual(configuredPair);
   await page.reload();
   await expect(panel.getByTestId('authorization-top')).toContainText(
     credentialFixture.knownExpiry.slice(0, 10)
   );
   await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
-  await expect(panel.getByTestId('authorization-binding')).toContainText('用户已确认同一商家');
-  expect(await readAuthorizations()).toEqual(confirmed);
+  await expect(panel.getByTestId('authorization-binding')).toContainText('已默认启用按能力自动路由');
+  expect(await readAuthorizations()).toEqual(configuredPair);
   await expect(page.getByLabel('App Secret', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('Access Token', { exact: true })).toHaveValue('');
   const encrypted = await readExtensionLocalValue(page, 'gatewaySettings');
@@ -353,7 +345,7 @@ test('formal MV3 dual profiles persist user confirmation and route photo reads i
   await listPhotos('-1');
   await listPhotos(groupId);
   expect(calls).toEqual([
-    { protocol: 'top', location: 'SUB_GROUP' },
+    { protocol: 'iop', location: groupId },
     { protocol: 'top', location: 'ALL_GROUP' },
     { protocol: 'iop', location: groupId }
   ]);
@@ -396,7 +388,7 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -588,7 +580,7 @@ test('formal MV3 showcase uses the actual worker with isolated TOP responses', a
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -797,7 +789,7 @@ test('formal MV3 dedicated inventory survives worker restart with no writes', as
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -879,7 +871,7 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
   await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
@@ -1061,16 +1053,21 @@ test('MV3 options page persists settings and exposes the audited catalog', async
     });
   });
   expect(diagnosticsBeforeConsent).toMatchObject({ ok: true, data: { entries: [] } });
+  const pagesBeforeAcquisition = browserContext.pages().length;
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '开始授权向导' }).click();
-  const acquisitionDialog = page.getByRole('dialog', { name: '获取开放平台凭证' });
+  const acquisitionDialog = page.getByRole('dialog', { name: '连接 Alibaba 账号' });
   await expect(acquisitionDialog).toBeVisible();
-  await expect(acquisitionDialog.getByText('登录 → 授权 → 保存', { exact: true })).toBeVisible();
-  await expect(acquisitionDialog.getByText('1. 开发者注册', { exact: true })).toHaveCount(0);
-  await expect(acquisitionDialog.getByLabel('Callback URL（可选）')).not.toBeVisible();
-  await acquisitionDialog.getByText('高级设置（通常无需修改）', { exact: true }).click();
-  await expect(acquisitionDialog.getByLabel('Callback URL（可选）')).toBeVisible();
-  await acquisitionDialog.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(acquisitionDialog.getByTestId('authorization-protection')).toBeVisible();
+  await acquisitionDialog.getByTestId('authorization-protection-passphrase').fill('e2e-vault-password');
+  await acquisitionDialog.getByTestId('continue-authorization-protection').click();
+  await expect(acquisitionDialog.getByTestId('authorization-method-file')).toBeVisible();
+  await acquisitionDialog.getByTestId('authorization-method-online').click();
+  await expect(acquisitionDialog.getByTestId('choose-authorization-iop')).toBeVisible();
+  await expect(acquisitionDialog.getByTestId('choose-authorization-top')).toBeVisible();
+  await expect(acquisitionDialog).toContainText('两份授权分别保存，不会互相覆盖');
+  expect(browserContext.pages()).toHaveLength(pagesBeforeAcquisition);
+  await acquisitionDialog.getByTestId('cancel-authorization-protocol').click();
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await expect(page.getByText('用得不错？赏个评价。')).toHaveCount(0);
   await expect
@@ -1149,7 +1146,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '开放平台凭证保护' })).toBeVisible();
-  await expect(page.getByText('未创建', { exact: true })).toBeVisible();
+  await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await expect(page.getByText('未创建', { exact: true })).toHaveCount(0);
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
@@ -1169,10 +1167,9 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(feedbackDialog).toBeVisible();
   await feedbackDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(feedbackDialog).toHaveCount(0);
-  await page.getByLabel('设置保护口令').fill('e2e-vault-password');
-  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
+  await expect(page.getByTestId('vault-passphrase-setup')).toHaveCount(0);
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
   const encryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -1322,9 +1319,8 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
 
-  await page.getByLabel('空闲自动锁定时间').selectOption('5');
-  await page.getByRole('button', { name: '保存锁定策略' }).click();
-  await expect(page.getByText(/连续 5 分钟未使用后自动锁定/)).toBeVisible();
+  await expect(page.getByLabel('空闲自动锁定时间')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '保存锁定策略' })).toHaveCount(0);
   const encryptedPolicySettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -1348,7 +1344,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
-  await expect(page.getByLabel('空闲自动锁定时间')).toHaveValue('5');
+  await expect(page.getByLabel('空闲自动锁定时间')).toHaveCount(0);
 
   await page.getByRole('link', { name: 'API 能力' }).click();
   await expect(page.locator('tbody tr')).toHaveCount(10);
@@ -1679,7 +1675,7 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByText('待迁移', { exact: true })).toBeVisible();
   await expect(page.getByText(settingsZh.vault.legacyDescription)).toBeVisible();
-  await page.getByLabel('设置保护口令').fill('migrated-vault-password');
+  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('migrated-vault-password');
   await page.getByLabel('确认保护口令').fill('migrated-vault-password');
   await page.getByRole('button', { name: '加密并迁移旧凭证' }).click();
   await expect(page.getByText(settingsZh.vault.migratedFeedback).first()).toBeVisible();

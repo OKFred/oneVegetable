@@ -16,6 +16,7 @@ import { MockGatewayClient } from '@one-vegetable/core/mock';
 import OneVegetableApp from '../src/OneVegetableApp.vue';
 import AccountMenu from '../src/components/AccountMenu.vue';
 import AuthGate from '../src/components/AuthGate.vue';
+import AlibabaAuthorizationProtocolDialog from '../src/components/AlibabaAuthorizationProtocolDialog.vue';
 import { appHash, PAGE_IDS, pageHash, parseAppHash } from '../src/lib/hash-router';
 
 vi.mock('../src/views/DashboardView.vue', () => ({ default: { template: '<div />' } }));
@@ -60,83 +61,110 @@ afterEach(() => {
 });
 
 describe('OneVegetableApp hash navigation', () => {
-  it('opens the extension authorization assistant from first-time onboarding', async () => {
-    globalThis.history.replaceState(null, '', '#/dashboard');
-    const OnboardingStub = defineComponent({
-      emits: { ready: (_destination?: 'credential-acquisition') => true },
-      setup(_props, { emit }) {
-        return () =>
-          h(
-            'button',
-            {
-              'data-testid': 'finish-onboarding',
-              onClick: () => {
-                emit('ready', 'credential-acquisition');
-              }
-            },
-            '开始授权向导'
-          );
-      }
-    });
-    const AcquisitionStub = defineComponent({
-      props: { open: { type: Boolean, required: true } },
-      template: '<div v-if="open" data-testid="extension-credential-acquisition" />'
-    });
-    const ReviewPromptStub = defineComponent({
-      setup() {
-        return () => h('div', { 'data-testid': 'review-prompt' });
-      }
-    });
-    const StartupStub = defineComponent({
-      emits: ['ready'],
-      template: '<button data-testid="finish-startup" @click="$emit(\'ready\')">Ready</button>'
-    });
-    const wrapper = shallowMount(OneVegetableApp, {
-      props: {
-        gateway: new MockGatewayClient(0),
-        settings,
-        onboarding: {
-          load: () => Promise.resolve({ version: 1 as const, completedAt: null }),
-          complete: () => Promise.resolve({ version: 1 as const, completedAt: '2026-08-28T00:00:00.000Z' })
-        },
-        reviewPrompt: {
-          claimDuePrompt: () => Promise.resolve(false),
-          openStoreReview: () => Promise.resolve()
-        },
-        alibabaCredentialAcquisition: {} as never,
-        mode: 'extension'
-      },
-      global: {
-        stubs: {
-          AlibabaCredentialAcquisitionDialog: AcquisitionStub,
-          ExtensionReviewPrompt: ReviewPromptStub,
-          WorkbenchStartupDialogs: StartupStub,
-          OnboardingDialog: OnboardingStub
+  it.each(['legacy', 'top', 'iop', 'cancel'] as const)(
+    'chooses the extension authorization protocol after onboarding (%s)',
+    async (choice) => {
+      globalThis.history.replaceState(null, '', '#/dashboard');
+      const OnboardingStub = defineComponent({
+        emits: { ready: (_destination?: 'credential-acquisition') => true },
+        setup(_props, { emit }) {
+          return () =>
+            h(
+              'button',
+              {
+                'data-testid': 'finish-onboarding',
+                onClick: () => {
+                  emit('ready', 'credential-acquisition');
+                }
+              },
+              '开始授权向导'
+            );
         }
+      });
+      const AcquisitionStub = defineComponent({
+        props: { open: { type: Boolean, required: true } },
+        template: '<div v-if="open" data-testid="extension-credential-acquisition" />'
+      });
+      const ReviewPromptStub = defineComponent({
+        setup() {
+          return () => h('div', { 'data-testid': 'review-prompt' });
+        }
+      });
+      const StartupStub = defineComponent({
+        emits: ['ready'],
+        template: '<button data-testid="finish-startup" @click="$emit(\'ready\')">Ready</button>'
+      });
+      let selecting = false;
+      const openTool = vi.fn(() => {
+        expect(selecting).toBe(true);
+        return Promise.resolve();
+      });
+      const wrapper = shallowMount(OneVegetableApp, {
+        props: {
+          gateway: new MockGatewayClient(0),
+          settings,
+          onboarding: {
+            load: () => Promise.resolve({ version: 1 as const, completedAt: null }),
+            complete: () => Promise.resolve({ version: 1 as const, completedAt: '2026-08-28T00:00:00.000Z' })
+          },
+          reviewPrompt: {
+            claimDuePrompt: () => Promise.resolve(false),
+            openStoreReview: () => Promise.resolve()
+          },
+          alibabaCredentialAcquisition: (choice === 'legacy' ? {} : { openTool }) as never,
+          mode: 'extension'
+        },
+        global: {
+          stubs: {
+            AlibabaCredentialAcquisitionDialog: AcquisitionStub,
+            ExtensionReviewPrompt: ReviewPromptStub,
+            WorkbenchStartupDialogs: StartupStub,
+            OnboardingDialog: OnboardingStub
+          }
+        }
+      });
+
+      expect(wrapper.find('nav').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
+      await wrapper.get('[data-testid="finish-onboarding"]').trigger('click');
+      await flushPromises();
+
+      expect(globalThis.location.hash).toBe('#/dashboard');
+      expect(wrapper.get('nav a[href="#/dashboard"]').attributes('aria-current')).toBe('page');
+      const chooser = wrapper.getComponent(AlibabaAuthorizationProtocolDialog);
+      const chooserVm = chooser.vm as unknown as {
+        $emit(event: 'select', protocol: 'top' | 'iop'): void;
+        $emit(event: 'update:open', open: boolean): void;
+      };
+      expect(chooser.props('open')).toBe(true);
+      expect(wrapper.find('[data-testid="extension-credential-acquisition"]').exists()).toBe(false);
+      expect(openTool).not.toHaveBeenCalled();
+      expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
+      if (choice === 'cancel') chooserVm.$emit('update:open', false);
+      else {
+        selecting = true;
+        chooserVm.$emit('select', choice === 'legacy' ? 'top' : choice);
+        selecting = false;
       }
-    });
-
-    expect(wrapper.find('nav').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
-    await wrapper.get('[data-testid="finish-onboarding"]').trigger('click');
-    await flushPromises();
-
-    expect(globalThis.location.hash).toBe('#/dashboard');
-    expect(wrapper.get('nav a[href="#/dashboard"]').attributes('aria-current')).toBe('page');
-    expect(wrapper.get('[data-testid="extension-credential-acquisition"]').attributes('data-testid')).toBe(
-      'extension-credential-acquisition'
-    );
-    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
-    wrapper.getComponent(AcquisitionStub).vm.$emit('update:open', false);
-    await flushPromises();
-    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
-    await wrapper.get('[data-testid="finish-startup"]').trigger('click');
-    await flushPromises();
-    expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(true);
-    wrapper.unmount();
-  });
+      await flushPromises();
+      if (choice === 'legacy') {
+        expect(wrapper.find('[data-testid="extension-credential-acquisition"]').exists()).toBe(true);
+        wrapper.getComponent(AcquisitionStub).vm.$emit('update:open', false);
+      } else if (choice !== 'cancel') {
+        expect(openTool.mock.calls).toEqual([[choice]]);
+        expect(wrapper.find('[data-testid="extension-credential-acquisition"]').exists()).toBe(false);
+      } else expect(openTool).not.toHaveBeenCalled();
+      await flushPromises();
+      expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(false);
+      await wrapper.get('[data-testid="finish-startup"]').trigger('click');
+      await flushPromises();
+      expect(wrapper.find('[data-testid="review-prompt"]').exists()).toBe(true);
+      wrapper.unmount();
+    }
+  );
 
   it('guides a signed-in self-hosted administrator into the cloud authorization assistant', async () => {
+    const openTool = vi.fn();
     const OnboardingStub = defineComponent({
       emits: { ready: (_destination?: 'credential-acquisition') => true },
       setup(_props, { emit }) {
@@ -166,6 +194,7 @@ describe('OneVegetableApp hash navigation', () => {
           complete: () => Promise.resolve({ version: 1 as const, completedAt: '2026-09-04T00:00:00.000Z' })
         },
         control: adminControl(),
+        alibabaCredentialAcquisition: { openTool } as never,
         mode: 'bff'
       },
       global: {
@@ -185,6 +214,8 @@ describe('OneVegetableApp hash navigation', () => {
       'cloud-credential-acquisition'
     );
     expect(wrapper.find('nav').exists()).toBe(true);
+    expect(wrapper.findComponent(AlibabaAuthorizationProtocolDialog).exists()).toBe(false);
+    expect(openTool).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

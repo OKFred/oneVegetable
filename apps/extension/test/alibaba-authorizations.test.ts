@@ -8,6 +8,7 @@ import {
   initializeAuthorizationIdentities,
   resolveAuthorization,
   saveAuthorizationPatch,
+  setDefaultAuthorization,
   summarizeAuthorizations,
   runtimeAuthorization
 } from '../lib/alibaba-authorizations';
@@ -41,6 +42,40 @@ function pair() {
   return settings;
 }
 describe('extension encrypted protocol profiles', () => {
+  it('uses the first real authorization as default after optional protection setup', async () => {
+    const empty: GatewaySettings = { ...top, appKey: '', appSecret: '', accessToken: '', refreshToken: null };
+    const saved = saveAuthorizationPatch(empty, iop);
+    expect(saved.protocol).toBe('iop');
+    expect(summarizeAuthorizations(saved).top).toBeNull();
+    expect(await resolveAuthorization(saved)).toMatchObject(iop);
+    const paired = saveAuthorizationPatch(saved, { ...top, protocol: 'top' });
+    expect(paired.protocol).toBe('iop');
+    expect(summarizeAuthorizations(paired).top?.configured).toBe(true);
+  });
+  it('changes the persisted default without changing credentials, binding or pinned routing', async () => {
+    const original = pair();
+    const profiles = authorizationProfiles(original);
+    const topId = profiles.top?.configurationId;
+    const iopId = profiles.iop?.configurationId;
+    if (!topId || !iopId) throw new Error('Missing fixture identities');
+    const next = setDefaultAuthorization(original, 'iop', iopId);
+    expect(next.protocol).toBe('iop');
+    expect(authorizationProfiles(next).iop).toEqual(profiles.iop);
+    expect(authorizationProfiles(next).top).toEqual(profiles.top);
+    expect(next.authorizationBinding).toEqual(original.authorizationBinding);
+    expect(original.protocol).toBeUndefined();
+    expect(await resolveAuthorization(next)).toMatchObject(iop);
+    expect(await resolveAuthorization(next, 'listPhotos', {})).toMatchObject(top);
+    const restored = setDefaultAuthorization(next, 'top', topId);
+    expect(restored.protocol).toBe('top');
+    expect(restored.protocolCredentials?.iop).toEqual(profiles.iop);
+  });
+  it('rejects missing and stale profiles without changing the saved default', () => {
+    const original = initializeAuthorizationIdentities(top);
+    expect(() => setDefaultAuthorization(original, 'iop', 'missing')).toThrow();
+    expect(() => setDefaultAuthorization(original, 'top', 'stale')).toThrow('ENTITY_VERSION_CONFLICT');
+    expect(original.protocol).toBeUndefined();
+  });
   it('preserves the original TOP profile and issues a new identity for every import', () => {
     const original = initializeAuthorizationIdentities(top);
     const settings = saveAuthorizationPatch(original, iop);
@@ -92,7 +127,7 @@ describe('extension encrypted protocol profiles', () => {
       defaultProtocol: 'iop'
     });
   });
-  it('routes all/ungrouped photos to TOP and selected groups to verified IOP only when confirmed', async () => {
+  it('routes a configured pair by capability without requiring legacy confirmation', async () => {
     const settings = pair();
     for (const payload of [{}, { groupId: '-1' }, { ungrouped: true }])
       expect((await resolveAuthorization(settings, 'listPhotos', payload)).accessToken).toBe(top.accessToken);
@@ -100,8 +135,11 @@ describe('extension encrypted protocol profiles', () => {
     const unconfirmed = { ...settings };
     delete unconfirmed.authorizationBinding;
     expect((await resolveAuthorization(unconfirmed, 'listPhotos', { groupId: '123' })).accessToken).toBe(
-      top.accessToken
+      iop.accessToken
     );
+    expect((await resolveAuthorization(unconfirmed, 'listProducts')).protocol).toBe('iop');
+    expect(summarizeAuthorizations(unconfirmed).binding.confirmed).toBe(false);
+    expect(unconfirmed.authorizationBinding).toBeUndefined();
     expect((await resolveAuthorization(settings, 'getDashboard')).accessToken).toBe(top.accessToken);
     expect((await resolveAuthorization(settings, 'getTradeOrderAggregate')).accessToken).toBe(
       top.accessToken
@@ -109,6 +147,7 @@ describe('extension encrypted protocol profiles', () => {
   });
   it('matches exact saved contexts ahead of preference and rejects removed contexts without rebinding', async () => {
     const settings = pair();
+    delete settings.authorizationBinding;
     const profiles = authorizationProfiles(settings);
     if (!profiles.top || !profiles.iop) throw new Error('Missing fixture profiles');
     const topId = await galleryGatewayId(runtimeAuthorization(profiles.top));

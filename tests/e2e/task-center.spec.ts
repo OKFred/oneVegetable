@@ -177,7 +177,7 @@ test('formal MV3 task center keeps uncertain receipts and reuses the original ta
     await page.getByLabel('App Key').fill('e2e-app-key');
     await page.getByLabel('App Secret').fill('e2e-secret');
     await page.getByLabel('Access Token').fill('e2e-token');
-    await page.getByLabel('设置保护口令').fill('e2e-vault-password');
+    await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
     await page.getByLabel('确认保护口令').fill('e2e-vault-password');
     await page.getByRole('button', { name: '保存设置', exact: true }).click();
     await expect(page.getByText(settingsZh.vault.saveEncrypted)).toBeVisible();

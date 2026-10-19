@@ -1,17 +1,16 @@
 import {
   CredentialVaultSession,
-  credentialVaultSessionTiming,
   restoreCredentialVaultSession,
   type CredentialVaultRecord,
   type CredentialVaultSessionSnapshot,
   type CredentialVaultSessionValue
 } from '@one-vegetable/core';
 
-export const CREDENTIAL_VAULT_SESSION_STORAGE_KEY = 'one-vegetable-credential-vault-session-v1';
-const SESSION_SCHEMA_VERSION = 1;
+import { CREDENTIAL_VAULT_SESSION_STORAGE_KEY } from './credential-vault-storage';
+export { CREDENTIAL_VAULT_SESSION_STORAGE_KEY } from './credential-vault-storage';
 
 interface StoredCredentialVaultSession {
-  schemaVersion: typeof SESSION_SCHEMA_VERSION;
+  schemaVersion: 1;
   recordSalt: string;
   recordIv: string;
   recordCiphertext: string;
@@ -25,110 +24,178 @@ export interface ExtensionCredentialVaultSessionStorage {
   remove(key: string): Promise<void>;
 }
 
+/**
+ * Local-device convenience, not protection against an offline profile reader.
+ * Never store this recovery material in sync or return it in runtime responses.
+ */
 export class ExtensionCredentialVaultSession {
   readonly #session = new CredentialVaultSession();
   #sessionKeyMaterial: string | null = null;
+  #pending: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly storage: ExtensionCredentialVaultSessionStorage,
-    private readonly clock: () => number = Date.now
+    private readonly clock: () => number = Date.now,
+    private readonly legacySessionStorage?: ExtensionCredentialVaultSessionStorage
   ) {}
 
   get lockReason(): CredentialVaultSession['lockReason'] {
     return this.#session.lockReason;
   }
 
-  async activate(
+  activate(
     value: CredentialVaultSessionValue,
     sessionKeyMaterial: string,
-    now = this.clock()
+    now = this.clock(),
+    additionalItems: Record<string, unknown> = {}
   ): Promise<void> {
-    this.#session.activate(value, now);
-    this.#sessionKeyMaterial = sessionKeyMaterial;
-    await this.#persist(value.record, sessionKeyMaterial, now);
+    return this.#serial(async () => {
+      // Commit before reporting success; a failed save must never appear remembered.
+      await this.#persist(value.record, sessionKeyMaterial, now, additionalItems);
+      await this.legacySessionStorage?.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+      this.#activate(value, sessionKeyMaterial, now);
+    });
   }
 
-  async update(value: CredentialVaultSessionValue, now = this.clock()): Promise<void> {
-    const keyMaterial = this.#sessionKeyMaterial;
-    if (!keyMaterial) throw new Error('凭证会话密钥不可用');
-    await this.activate(value, keyMaterial, now);
+  update(
+    value: CredentialVaultSessionValue,
+    now = this.clock(),
+    additionalItems: Record<string, unknown> = {}
+  ): Promise<void> {
+    return this.#serial(async () => {
+      const stored = await this.#readStored();
+      const keyMaterial = this.#sessionKeyMaterial;
+      // A concurrent clear/lock must not be undone by a late settings response.
+      if (!keyMaterial || !isStoredSession(stored) || stored.sessionKeyMaterial !== keyMaterial)
+        throw new Error('CREDENTIAL_VAULT_LOCKED');
+      await this.#persist(value.record, keyMaterial, now, additionalItems);
+      this.#activate(value, keyMaterial, now);
+    });
   }
 
-  async lock(reason: 'idle' | 'manual' = 'manual'): Promise<void> {
-    this.#session.lock(reason);
-    this.#sessionKeyMaterial = null;
-    await this.storage.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+  lock(_reason: 'idle' | 'manual' = 'manual'): Promise<void> {
+    return this.#serial(async () => {
+      this.#session.lock('manual');
+      this.#sessionKeyMaterial = null;
+      // A content-free marker blocks migration from an old temporary session,
+      // including if Chrome shuts down between these two storage writes.
+      await this.storage.set({
+        [CREDENTIAL_VAULT_SESSION_STORAGE_KEY]: { schemaVersion: 2, state: 'locked' }
+      });
+      await this.legacySessionStorage?.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    });
   }
 
-  async read(
+  read(
     record: CredentialVaultRecord,
     touch = false,
     now = this.clock()
   ): Promise<CredentialVaultSessionSnapshot | undefined> {
-    let snapshot = this.#session.read(record, touch, now);
-    if (!snapshot && this.#session.lockReason !== null) {
-      await this.storage.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
-      this.#sessionKeyMaterial = null;
-      return undefined;
-    }
-    snapshot ??= await this.#restore(record, touch, now);
-    if (snapshot && touch) {
-      const keyMaterial = this.#sessionKeyMaterial;
-      if (!keyMaterial) {
-        await this.lock('manual');
+    return this.#serial(async () => {
+      let stored = await this.#readStored();
+      let migrating = false;
+      if (stored === undefined && this.legacySessionStorage) {
+        stored = (await this.legacySessionStorage.get(CREDENTIAL_VAULT_SESSION_STORAGE_KEY))[
+          CREDENTIAL_VAULT_SESSION_STORAGE_KEY
+        ];
+        migrating = stored !== undefined;
+      }
+      if (isRecord(stored) && stored.schemaVersion === 2 && stored.state === 'locked') {
+        this.#forget('manual');
         return undefined;
       }
-      await this.#persist(record, keyMaterial, snapshot.lastActivityAt);
-    }
-    return snapshot;
+      if (!isStoredSession(stored)) {
+        this.#forget();
+        if (stored !== undefined) await this.#discard();
+        return undefined;
+      }
+      if (!matchesRecord(stored, record)) {
+        // An older in-flight caller must not erase a newer valid saved session.
+        this.#forget();
+        return undefined;
+      }
+      let snapshot = this.#session.read(record, touch, now);
+      if (!snapshot || this.#sessionKeyMaterial !== stored.sessionKeyMaterial) {
+        let unlocked;
+        try {
+          unlocked = await restoreCredentialVaultSession(record, stored.sessionKeyMaterial);
+        } catch {
+          this.#forget();
+          await this.#discard();
+          return undefined;
+        }
+        this.#activate({ ...unlocked, record }, stored.sessionKeyMaterial, stored.lastActivityAt);
+        snapshot = this.#session.read(record, touch, now);
+      }
+      if (snapshot && (migrating || touch)) {
+        await this.#persist(record, stored.sessionKeyMaterial, snapshot.lastActivityAt);
+        await this.legacySessionStorage?.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+      }
+      return snapshot;
+    });
   }
 
-  async #restore(
+  /** Background-only bridge. Never include this result in runtime/page responses. */
+  async protection(record: CredentialVaultRecord) {
+    const active = await this.read(record);
+    if (!active || !this.#sessionKeyMaterial) throw new Error('CREDENTIAL_VAULT_LOCKED');
+    return { key: active.value.key, sessionKeyMaterial: this.#sessionKeyMaterial, salt: record.kdf.salt };
+  }
+
+  #activate(value: CredentialVaultSessionValue, key: string, now: number): void {
+    // Old encrypted idle policies remain readable but are no longer enforced.
+    this.#session.activate({ ...value, policy: { idleTimeoutMinutes: 0 } }, now);
+    this.#sessionKeyMaterial = key;
+  }
+
+  #forget(reason: 'manual' | null = null): void {
+    this.#session.lock('manual');
+    this.#session.lockReason = reason;
+    this.#sessionKeyMaterial = null;
+  }
+
+  async #discard(): Promise<void> {
+    await this.storage.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+    await this.legacySessionStorage?.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
+  }
+
+  async #readStored(): Promise<unknown> {
+    return (await this.storage.get(CREDENTIAL_VAULT_SESSION_STORAGE_KEY))[
+      CREDENTIAL_VAULT_SESSION_STORAGE_KEY
+    ];
+  }
+
+  #persist(
     record: CredentialVaultRecord,
-    touch: boolean,
-    now: number
-  ): Promise<CredentialVaultSessionSnapshot | undefined> {
-    const stored = await this.storage.get(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
-    const value = stored[CREDENTIAL_VAULT_SESSION_STORAGE_KEY];
-    if (value === undefined) return undefined;
-    if (!isStoredSession(value) || !matchesRecord(value, record)) {
-      await this.storage.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
-      return undefined;
-    }
-    try {
-      const unlocked = await restoreCredentialVaultSession(record, value.sessionKeyMaterial);
-      const timing = credentialVaultSessionTiming(unlocked.policy, value.lastActivityAt, now);
-      if (timing.expired) {
-        await this.lock('idle');
-        return undefined;
-      }
-      this.#session.activate({ ...unlocked, record }, value.lastActivityAt);
-      this.#sessionKeyMaterial = value.sessionKeyMaterial;
-      return this.#session.read(record, touch, now);
-    } catch {
-      await this.storage.remove(CREDENTIAL_VAULT_SESSION_STORAGE_KEY);
-      this.#sessionKeyMaterial = null;
-      return undefined;
-    }
-  }
-
-  #persist(record: CredentialVaultRecord, sessionKeyMaterial: string, lastActivityAt: number): Promise<void> {
+    sessionKeyMaterial: string,
+    lastActivityAt: number,
+    additionalItems: Record<string, unknown> = {}
+  ): Promise<void> {
     const value: StoredCredentialVaultSession = {
-      schemaVersion: SESSION_SCHEMA_VERSION,
+      schemaVersion: 1,
       recordSalt: record.kdf.salt,
       recordIv: record.cipher.iv,
       recordCiphertext: record.cipher.ciphertext,
       sessionKeyMaterial,
       lastActivityAt
     };
-    return this.storage.set({ [CREDENTIAL_VAULT_SESSION_STORAGE_KEY]: value });
+    return this.storage.set({ ...additionalItems, [CREDENTIAL_VAULT_SESSION_STORAGE_KEY]: value });
+  }
+
+  #serial<T>(action: () => Promise<T>): Promise<T> {
+    const next = this.#pending.then(action);
+    this.#pending = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
   }
 }
 
 function isStoredSession(value: unknown): value is StoredCredentialVaultSession {
   return (
     isRecord(value) &&
-    value.schemaVersion === SESSION_SCHEMA_VERSION &&
+    value.schemaVersion === 1 &&
     typeof value.recordSalt === 'string' &&
     typeof value.recordIv === 'string' &&
     typeof value.recordCiphertext === 'string' &&
