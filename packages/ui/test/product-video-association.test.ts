@@ -191,7 +191,9 @@ describe('product video association component', () => {
         expect.anything()
       );
       expect(request.mock.calls[0]?.[2]?.requestId).toEqual(expect.any(String));
-      expect(wrapper.get('[data-testid="video-association-receipt"]').text()).toContain('回读已确认');
+      await expect
+        .poll(() => wrapper.get('[data-testid="video-association-receipt"]').text())
+        .toContain('回读已确认');
       expect(wrapper.getComponent(ProductVideoAssociation).emitted('submit')).toBeUndefined();
     }
   );
