@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { browser } from 'wxt/browser';
 import {
   ALIBABA_GATEWAY,
   AlibabaClient,
@@ -1010,6 +1011,73 @@ describe('extension background protocol persistence and dispatch', () => {
         bundle: credentialFixtures.oauthBundle
       })
     ).toMatchObject({ ok: false });
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('commits a dual array once and preserves the existing default', async () => {
+    await create();
+    const write = vi.spyOn(browser.storage.local, 'set');
+    const bundles = ['top', 'iop'].map((protocol) => ({ ...credentialFixtures.oauthBundle, protocol }));
+    expect(await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })).toMatchObject(
+      { ok: true, data: { protocol: 'iop' } }
+    );
+    expect(write.mock.calls.filter(([items]) => Object.hasOwn(items, SETTINGS_STORAGE_KEY))).toHaveLength(1);
+    const restored = await unlockCredentialVault(
+      state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+      '123456'
+    );
+    expect(restored.settings.protocol).toBe('iop');
+    expect(restored.settings.protocolCredentials?.top?.accessToken).toBe(
+      credentialFixtures.oauthBundle.oauth.accessToken
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('defaults a fresh dual-array import to TOP regardless of file order', async () => {
+    const bundles = ['iop', 'top'].map((protocol) => ({ ...credentialFixtures.oauthBundle, protocol }));
+    expect(await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })).toMatchObject(
+      { ok: true, data: { protocol: 'top' } }
+    );
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { top: { configured: true }, iop: { configured: true } }
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an entire invalid array before changing storage', async () => {
+    await create();
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    for (const bundles of [
+      [],
+      [credentialFixtures.oauthBundle, {}],
+      [credentialFixtures.oauthBundle, credentialFixtures.oauthBundle]
+    ]) {
+      expect(
+        await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })
+      ).toMatchObject({ ok: false });
+      expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not save the first profile when the combined encrypted write fails', async () => {
+    await create();
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    const storage = browser.storage.local as unknown as {
+      set(items: Record<string, unknown>): Promise<void>;
+    };
+    const original = storage.set.bind(storage);
+    vi.spyOn(storage, 'set').mockImplementation((items) =>
+      Object.hasOwn(items, SETTINGS_STORAGE_KEY)
+        ? Promise.reject(new Error('Fixture storage failure'))
+        : original(items)
+    );
+    const bundles = ['top', 'iop'].map((protocol) => ({ ...credentialFixtures.oauthBundle, protocol }));
+    expect(await send('alibaba-credential-acquisition-request', 'import-bundles', { bundles })).toMatchObject(
+      { ok: false }
+    );
     expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
     expect(fetch).not.toHaveBeenCalled();
   });

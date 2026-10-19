@@ -568,12 +568,18 @@ async function saveAcquiredCredentialBundlesToVault(
   if (state.kind === 'empty') {
     const settings = patches.slice(1).reduce(saveAuthorizationPatch, first);
     const created = await authorizationProtection.create(settings, passphrase ?? '');
-    return credentialVaultStatus({ kind: 'vault', record: created.record }, settings.protocol);
+    return credentialVaultStatus(
+      { kind: 'vault', record: created.record },
+      patches.length === 1 ? first.protocol : settings.protocol
+    );
   }
   const current = await getUnlockedVault(state);
   const settings = patches.reduce(saveAuthorizationPatch, current.settings);
   const record = await persistUnlockedSettings(current, settings);
-  return credentialVaultStatus({ kind: 'vault', record }, settings.protocol);
+  return credentialVaultStatus(
+    { kind: 'vault', record },
+    patches.length === 1 ? first.protocol : settings.protocol
+  );
 }
 
 async function handleCredentialVaultRequest(
