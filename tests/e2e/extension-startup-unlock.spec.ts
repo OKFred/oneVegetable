@@ -126,7 +126,8 @@ test('onboarding precedes unlock; Later, X, Escape and backdrop never trap the l
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('不是 Alibaba 网站密码');
+  await expect(dialog).toContainText('请输入保险库口令，而非 Alibaba 密码。');
+  await expect(dialog).toContainText('仅手动锁定后需再输入');
   await dialog.getByRole('button', { name: '稍后解锁', exact: true }).click();
   await page.getByRole('link', { name: '版本更新', exact: true }).click();
   await expect(page).toHaveURL(/#\/releases$/u);
