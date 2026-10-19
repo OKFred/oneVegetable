@@ -217,7 +217,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Card class="p-5" data-testid="dashboard-authorization-card" :aria-busy="loading">
+  <Card class="h-full min-w-0 p-5" data-testid="dashboard-authorization-card" :aria-busy="loading">
     <div class="flex items-center justify-between gap-3">
       <span class="text-sm text-muted-foreground">{{ t('authorizationRemaining') }}</span>
       <Tooltip :text="details"

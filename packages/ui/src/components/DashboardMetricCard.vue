@@ -57,7 +57,7 @@ const shortStatus = computed(() =>
 </script>
 
 <template>
-  <Card class="p-5">
+  <Card class="h-full min-w-0 p-5">
     <div class="flex items-center justify-between gap-3">
       <span class="text-sm text-muted-foreground">{{ title }}</span>
       <Tooltip :text="details">

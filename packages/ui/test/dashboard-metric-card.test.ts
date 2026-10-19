@@ -18,6 +18,8 @@ describe('DashboardMetricCard', () => {
     });
 
     expect(wrapper.text()).toContain('0');
+    expect(wrapper.classes()).toContain('h-full');
+    expect(wrapper.classes()).toContain('min-w-0');
     expect(wrapper.get('button').attributes('aria-label')).toContain('已确认为 0');
     expect(wrapper.text()).not.toContain('接口请求失败');
   });
