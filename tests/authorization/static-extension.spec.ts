@@ -1590,13 +1590,19 @@ for (const [body, code] of [
     await expect(workbench.getByTestId('iop-protocol-notice')).toContainText(
       '已验收的 Schema 发布、存草稿、更新'
     );
-    // Acquisition now starts with an explicit TOP/IOP choice instead of a
-    // protocol-specific disabled button. The current saved IOP profile stays selected.
+    // Import-first method selection precedes the explicit TOP/IOP choice.
+    // Browsing either step must not open OAuth or change the saved profile.
     await expect(workbench.getByRole('button', { name: '连接 Alibaba 账号', exact: true })).toBeEnabled();
     const pagesBeforeChoice = context.pages().length;
     await workbench.getByRole('button', { name: '连接 Alibaba 账号', exact: true }).click();
     const choice = workbench.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
     await expect(choice).toBeVisible();
+    await expect(choice.getByTestId('authorization-method-file')).toBeEnabled();
+    await expect(choice.getByTestId('authorization-method-online')).toBeEnabled();
+    await expect(choice.getByTestId('alibaba-authorization-protocol-choices')).toHaveCount(0);
+    expect(context.pages()).toHaveLength(pagesBeforeChoice);
+    expect(reads + topCalls + creates + refreshes).toBe(0);
+    await choice.getByTestId('authorization-method-online').click();
     await expect(choice.getByRole('button', { name: /连接新版应用/u })).toBeEnabled();
     await expect(choice.getByRole('button', { name: /连接已有旧版应用/u })).toBeEnabled();
     await choice.getByRole('button', { name: '取消', exact: true }).click();

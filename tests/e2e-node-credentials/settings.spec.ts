@@ -158,11 +158,20 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       if (request.url().endsWith('/admin/gateway-credentials/refresh')) renewalRequests += 1;
     });
     await page.getByTestId('dashboard-renew-authorization').click();
-    const renewal = page.getByRole('dialog', {
-      name: en ? 'TOP · Renew authorization' : 'TOP · 授权续期',
+    const renewalChoice = page.getByRole('dialog', {
+      name: en ? 'Which authorization do you want to renew?' : '要续期哪一份授权？',
       exact: true
     });
-    await expect(renewal).toContainText(en ? 'Reauthorize and import' : '重新授权后导入');
+    await expect(renewalChoice).toBeVisible();
+    expect(renewalRequests).toBe(0);
+    await renewalChoice.getByTestId('choose-authorization-top').click();
+    const renewal = page.getByRole('dialog', {
+      name: en ? 'Renew TOP authorization' : 'TOP 授权续期',
+      exact: true
+    });
+    await expect(renewal).toContainText(
+      en ? 'Approve again on Alibaba and import the new file.' : '请重新到 Alibaba 确认授权，再导入新文件。'
+    );
     expect(renewalRequests).toBe(0);
     await renewal
       .getByRole('link', { name: en ? 'Credential settings' : '前往凭据配置', exact: true })
@@ -218,6 +227,9 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     });
     await page.goto('/#/dashboard');
     await page.getByTestId('dashboard-renew-authorization').click();
+    await expect(renewalChoice).toBeVisible();
+    expect(renewalRequests).toBe(0);
+    await renewalChoice.getByTestId('choose-authorization-top').click();
     await renewal.getByRole('button', { name: en ? 'Refresh Token' : '刷新 Token', exact: true }).click();
     await expect(renewal).toBeVisible();
     await expect(renewal).toContainText('ALIBABA_TOKEN_REFRESH_FAILED');
