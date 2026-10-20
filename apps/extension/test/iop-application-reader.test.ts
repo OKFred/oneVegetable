@@ -120,6 +120,7 @@ describe('bounded IOP app discovery', () => {
       gatewayError: { code }
     });
     expect(guide).toHaveBeenLastCalledWith(7, 'blocked', code);
+    if (target === 'secret') expect(page.click).toHaveBeenCalledOnce();
   });
   it('delivers a concrete guide error even after its discovery deadline expires', async () => {
     vi.useFakeTimers();

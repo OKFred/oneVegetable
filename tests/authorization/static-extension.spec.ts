@@ -30,6 +30,10 @@ import {
   createProductMutationFingerprints
 } from '../../packages/core/src/product-mutation-fingerprint';
 import { installNodeXmlDomGlobals } from '../../scripts/node-xml-dom';
+import {
+  closeExtensionCredentialConfiguration,
+  openExtensionCredentialEditor
+} from '../e2e/helpers/extension-credentials';
 
 let context: BrowserContext;
 let worker: Worker;
@@ -1526,25 +1530,36 @@ test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session s
     });
   });
   const workbench = await openWorkbenchSettings();
-  await expect(workbench.getByTestId('authorization-profile-editor')).toHaveValue('top');
-  await workbench.getByLabel('导入授权包 JSON').setInputFiles({
+  await workbench.getByTestId('get-alibaba-credentials').click();
+  const acquisition = workbench.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
+  await acquisition.getByTestId('authorization-protection-passphrase').fill('123456');
+  await acquisition.getByTestId('continue-authorization-protection').click();
+  await acquisition.getByTestId('authorization-method-file').click();
+  await acquisition.locator('input[type="file"]').setInputFiles({
     name: 'legacy-top.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(credentials.oauthBundle))
   });
-  await expect(workbench.getByLabel('App Key')).toHaveValue(credentials.manual.appKey);
-  await expect(workbench.getByTestId('authorization-profile-editor')).toHaveValue('top');
+  await expect(acquisition.getByTestId('confirm-authorization-file-import')).toBeEnabled();
   await expect(workbench.getByTestId('iop-protocol-notice')).toHaveCount(0);
   expect(await sendWorkbench(workbench, 'credential-vault-request', 'status')).toMatchObject({
-    data: { state: 'empty' }
+    data: { state: 'unlocked', hasAppKey: false, hasAppSecret: false, hasAccessToken: false }
   });
   expect(topCalls + iopCalls).toBe(0);
-  await workbench.getByLabel('设置保护口令').fill('123456');
-  await workbench.getByLabel('确认保护口令').fill('123456');
-  await workbench.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(workbench.getByLabel('Access Token')).toHaveValue('');
-  await workbench.reload();
+  await acquisition.getByTestId('confirm-authorization-file-import').click();
+  await expect(acquisition).toBeHidden();
+  await expect(workbench.getByTestId('default-authorization-top')).toHaveAttribute('aria-pressed', 'true');
+  await openExtensionCredentialEditor(workbench, 'top');
+  await expect(workbench.getByLabel('App Key', { exact: true })).toHaveValue(credentials.manual.appKey);
+  await expect(workbench.getByLabel('Access Token', { exact: true })).toHaveValue('');
   await expect(workbench.getByTestId('authorization-profile-editor')).toHaveValue('top');
+  await workbench
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(workbench, 'top');
+  await workbench.reload();
+  await expect(workbench.getByTestId('default-authorization-top')).toHaveAttribute('aria-pressed', 'true');
   expect(await sendWorkbench(workbench, 'credential-vault-request', 'get-settings')).toMatchObject({
     data: { protocol: 'top', endpoint: 'https://eco.taobao.com/router/rest', appSecret: '', accessToken: '' }
   });
@@ -1583,13 +1598,18 @@ for (const [body, code] of [
       })
     ).toMatchObject({ ok: true });
     await workbench.reload();
-    const iopProfile = workbench.getByTestId('authorization-profile-editor');
-    await expect(iopProfile).toBeEnabled();
-    await iopProfile.selectOption('iop');
-    await expect(iopProfile).toHaveValue('iop');
+    await expect(workbench.getByTestId('default-authorization-iop')).toHaveAttribute('aria-pressed', 'true');
+    await openExtensionCredentialEditor(workbench, 'iop');
+    await expect(workbench.getByTestId('authorization-profile-editor')).toHaveValue('iop');
+    await expect(workbench.getByTestId('authorization-profile-editor')).toBeDisabled();
     await expect(workbench.getByTestId('iop-protocol-notice')).toContainText(
       '已验收的 Schema 发布、存草稿、更新'
     );
+    await workbench
+      .getByRole('dialog', { name: '手动填写', exact: true })
+      .getByRole('button', { name: '取消', exact: true })
+      .click();
+    await closeExtensionCredentialConfiguration(workbench, 'iop');
     // Import-first method selection precedes the explicit TOP/IOP choice.
     // Browsing either step must not open OAuth or change the saved profile.
     await expect(workbench.getByRole('button', { name: '连接 Alibaba 账号', exact: true })).toBeEnabled();
@@ -1609,7 +1629,7 @@ for (const [body, code] of [
     await expect(choice).toHaveCount(0);
     expect(context.pages()).toHaveLength(pagesBeforeChoice);
     expect(reads + topCalls + creates + refreshes).toBe(0);
-    await expect(iopProfile).toHaveValue('iop');
+    await expect(workbench.getByTestId('default-authorization-iop')).toHaveAttribute('aria-pressed', 'true');
     expect(await sendWorkbench(workbench, 'credential-vault-request', 'get-settings')).toMatchObject({
       data: { protocol: 'iop', appKey: credentials.manual.appKey }
     });

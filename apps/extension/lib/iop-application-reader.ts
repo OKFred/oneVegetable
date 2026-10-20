@@ -164,7 +164,11 @@ export class IopApplicationReader {
             secretClicked = await bounded(
               this.page.click(tabId, 'reveal-secret', frameId, application.appKey, deadline)
             );
-            if (secretClicked) waitingReason = 'IOP_APP_SECRET_UNAVAILABLE';
+            // A blocked View control requires the user, not repeated guided
+            // clicks. Keep this concrete reason instead of timing out in a
+            // later generic page-inspection phase.
+            if (!secretClicked) throw failure('IOP_APP_SECRET_CONTROL_UNAVAILABLE');
+            waitingReason = 'IOP_APP_SECRET_UNAVAILABLE';
           }
         } else if (!centerClicked && ['navigation-ready', 'registration-approved'].includes(state.kind)) {
           waitingReason = 'IOP_APP_CENTER_UNAVAILABLE';
