@@ -20,6 +20,7 @@ import {
 import tokens from '../../mock/data/alibaba-auth/iop-token-responses.json' with { type: 'json' };
 import credentials from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
 import business from '../../mock/data/alibaba-auth/iop-business-responses.json' with { type: 'json' };
+import iopVideo from '../../mock/data/video/iop.json' with { type: 'json' };
 import standalone from '../../mock/data/alibaba-auth/standalone-authorization.json' with { type: 'json' };
 import jsonImports from '../../mock/data/alibaba-auth/standalone-json-imports.json' with { type: 'json' };
 import { iopOperationReason } from '../../packages/core/src/alibaba-iop-business';
@@ -1260,6 +1261,7 @@ test('a superseded file read cannot prompt for or replace the latest selected TO
 
 test('workbench persists explicit IOP and rejects unadapted methods without TOP fallback', async () => {
   let reads = 0;
+  let videoReads = 0;
   let topCalls = 0;
   await context.route('https://eco.taobao.com/**', async (route) => {
     topCalls += 1;
@@ -1272,6 +1274,15 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
     expect(parameters.has('session')).toBe(false);
     expect(parameters.has('method')).toBe(false);
     await route.fulfill({ json: business.photoGroups });
+  });
+  await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/alibaba/icbu/video/query`, async (route) => {
+    videoReads += 1;
+    const parameters = new URLSearchParams(route.request().postData() ?? '');
+    expect(parameters.get('current_page')).toBe('1');
+    expect(parameters.get('page_size')).toBe('20');
+    expect(parameters.has('session')).toBe(false);
+    expect(parameters.has('method')).toBe(false);
+    await route.fulfill({ json: iopVideo });
   });
   const workbench = await context.newPage();
   await workbench.goto(`chrome-extension://${extensionId}/options.html#/settings`);
@@ -1294,7 +1305,13 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
     ok: true,
     data: [{ id: '1001', name: 'Fixture images' }]
   });
-  for (const operation of ['listVideos', 'uploadPhoto'] as const) {
+  expect(iopOperationReason('uploadPhoto')).toBeNull();
+  expect(iopOperationReason('listVideos')).toBeNull();
+  expect(await send('gateway-request', 'listVideos', { page: 1, pageSize: 20 })).toMatchObject({
+    ok: true,
+    data: { items: [{ id: '900002', encryptedId: null }] }
+  });
+  for (const operation of ['listVideoRelatedProducts', 'getRfq'] as const) {
     const reason = iopOperationReason(operation);
     expect(reason).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
     expect(await send('gateway-request', operation)).toMatchObject({
@@ -1311,6 +1328,7 @@ test('workbench persists explicit IOP and rejects unadapted methods without TOP 
   });
   expect(await send('gateway-request', 'listPhotoGroups')).toMatchObject({ ok: true });
   expect(reads).toBe(2);
+  expect(videoReads).toBe(1);
   expect(topCalls).toBe(0);
 });
 
@@ -1650,7 +1668,7 @@ for (const [body, code] of [
         )
         .first()
     ).toBeVisible();
-    expect(await sendWorkbench(workbench, 'gateway-request', 'listVideos', {})).toMatchObject({
+    expect(await sendWorkbench(workbench, 'gateway-request', 'listVideoRelatedProducts', {})).toMatchObject({
       ok: false,
       error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
     });
