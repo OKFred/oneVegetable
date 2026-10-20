@@ -37,6 +37,11 @@ describe('shared IOP coverage registry', () => {
     }
   );
   it('does not promote public candidate writes before protocol-specific live acceptance', () => {
+    expect(getIopMethod('alibaba.icbu.product.inventory.update')).toMatchObject({
+      adapted: true,
+      accountVerified: true,
+      risk: 'mutation'
+    });
     expect(getIopMethod('alibaba.icbu.photobank.upload')).toMatchObject({
       risk: 'mutation',
       adapted: true,

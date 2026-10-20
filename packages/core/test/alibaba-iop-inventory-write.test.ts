@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/alibaba-auth/iop-inventory-update.json';
 import { createIopBusinessRequest, normalizeIopBusinessResponse } from '../src/alibaba-iop-business';
 import { IOP_BUSINESS_ENDPOINT } from '../src/alibaba-iop';
 import { validateCapabilityRequest, validateCapabilityResponse } from '../src/capability-registry';
+import { authorizeCapabilityCall } from '../src/capability-policy';
+import { AlibabaClient } from '../src/alibaba-client';
+import { NetworkManager } from '../src/network';
 
 const credentials = {
   protocol: 'iop' as const,
@@ -17,6 +20,23 @@ const cell = { operate: 'plus', inventory_code: 'FIXTURE_WH', inventory: 1, sku_
 const request = { request_param: { product_id: 700001, inventory_list: [cell] } };
 
 describe('IOP inventory delta adaptation', () => {
+  it('retains the read-only debugger boundary and never retries a sent IOP write', async () => {
+    expect(authorizeCapabilityCall({ method, parameters: request })).toMatchObject({
+      allowed: false,
+      reasonCode: 'REAL_MUTATION_DISABLED'
+    });
+    const send = vi.fn().mockRejectedValue(new Error('Simulated connection loss'));
+    const client = new AlibabaClient(
+      credentials,
+      new NetworkManager({
+        transport: { send },
+        policies: { alibaba: { allowedOrigins: ['https://openapi-api.alibaba.com'] } }
+      }),
+      { maxAttempts: 3, shouldRetry: () => true }
+    );
+    await expect(client.call(method, request)).rejects.toThrow();
+    expect(send).toHaveBeenCalledTimes(1);
+  });
   it('flattens only the native parameters, preserves delta and warehouse identity', async () => {
     expect(await validateCapabilityRequest(method, request)).toEqual([]);
     const signed = await createIopBusinessRequest(credentials, method, request);

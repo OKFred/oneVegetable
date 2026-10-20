@@ -161,7 +161,7 @@
     "alibaba.icbu.product.batch.update.display": {
       "path": "/icbu/product/update/display",
       "risk": "mutation",
-      "adapted": false,
+      "adapted": true,
       "accountVerified": false,
       "authorizationRequired": true
     },

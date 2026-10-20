@@ -69,3 +69,11 @@ IOP-only coverage is expanded before new procurement, sales and fulfillment feat
 - 仍不新增库存写页面或通用写开关。平台受理后只能读取核对，未知结果不自动重试；任何其他库存变化都会停止后续减量。
 
 The isolated remote Node IOP inventory experiment passed: one plus-one request, readback, one sub-one request and full-baseline restoration. Native parameters and acknowledgements are validated without weakening TOP contracts. Historical unresolved receipts remain unresolved. The generic debugger remains read-only; this is not a claim of MV3/Worker write acceptance or a new inventory-write UI.
+
+## 上下架协议适配（仍关闭）
+
+- 新版公开请求为数字 `product_id_list` 数组，旧 TOP 为加密标识字符串。适配器只使用请求中已配对的明文 ID，不把数字伪造成加密 ID，不调用失败的加密接口猜测转换，也不改变 TOP 传参。
+- 原生响应必须有可解释的 `fail_id_map`、错误字段及 trace；非空失败表、缺字段或业务错误不转成成功。任务层仍需回读最终状态，不能把这份受理结果当作完成。
+- 远程 IOP 真实列表抽样返回商品及明文 ID，但没有加密 ID；现有上下架任务的目标核对仍依赖该标识。该任务链路尚待补齐，因此本批只交付有测试的协议适配，继续 `unverified-write`，没有发送上下架写入，双授权继续选择 TOP。
+
+IOP display transport now separates numeric IDs from TOP encrypted identifiers. Live IOP listing did not supply the encrypted identity required by the existing task workflow, so runtime display mutation remains gated. No display mutation was sent, and no production acceptance is claimed.

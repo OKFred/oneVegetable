@@ -23,7 +23,7 @@ export interface ProductCategoryCache {
 
 export class ProductAdapter {
   constructor(
-    private readonly client: Pick<AlibabaClient, 'call'>,
+    private readonly client: Pick<AlibabaClient, 'call'> & Partial<Pick<AlibabaClient, 'protocol'>>,
     private readonly mutationClient: Pick<AlibabaClient, 'call'> = client,
     private readonly categoryCache?: ProductCategoryCache
   ) {}
@@ -229,8 +229,17 @@ export class ProductAdapter {
 
   async updateDisplay(request: RequestOf<'updateProductDisplay'>): Promise<ProductDisplayMutationResult> {
     const method = 'alibaba.icbu.product.batch.update.display';
+    const iop = this.client.protocol === 'iop';
+    if (iop && request.productIds.length !== request.encryptedProductIds.length)
+      throw new GatewayException({
+        code: 'REQUEST_CONTRACT_INVALID',
+        message: 'REQUEST_CONTRACT_INVALID',
+        retryable: false
+      });
     const call = await this.client.call(method, {
-      product_id_list: request.encryptedProductIds.join(','),
+      product_id_list: iop
+        ? request.productIds.map(requireNumericProductId)
+        : request.encryptedProductIds.join(','),
       new_display: request.display === 'online' ? 'on' : 'off'
     });
     const root = unwrap(call.data, method);

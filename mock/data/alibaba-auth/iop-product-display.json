@@ -1,0 +1,10 @@
+{
+  "code": "0",
+  "request_id": "fixture-iop-display",
+  "result": {
+    "fail_id_map": {},
+    "trace_id": "fixture-display-trace",
+    "error_code": "",
+    "error_msg": ""
+  }
+}

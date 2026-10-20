@@ -11,6 +11,7 @@ import {
 
 const INVENTORY = 'alibaba.icbu.product.inventory.get';
 const INVENTORY_UPDATE = 'alibaba.icbu.product.inventory.update';
+const PRODUCT_DISPLAY = 'alibaba.icbu.product.batch.update.display';
 const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
 const PHOTO_UPLOAD = 'alibaba.icbu.photobank.upload';
 const PHOTO_GROUP = 'alibaba.icbu.photobank.group.operate';
@@ -98,6 +99,19 @@ export async function createIopBusinessRequest(
       page_size: positiveInteger(input.page_size),
       ...(input.id === undefined ? {} : { video_id: positiveInteger(input.id) })
     };
+  } else if (method === PRODUCT_DISPLAY) {
+    if (Object.keys(input).some((key) => !['product_id_list', 'new_display'].includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    if (
+      !Array.isArray(input.product_id_list) ||
+      input.product_id_list.length === 0 ||
+      input.product_id_list.length > 30 ||
+      !['on', 'off'].includes(String(input.new_display))
+    )
+      throw failure('REQUEST_CONTRACT_INVALID');
+    const ids = input.product_id_list.map(positiveInteger);
+    if (new Set(ids).size !== ids.length) throw failure('REQUEST_CONTRACT_INVALID');
+    business = { product_id_list: ids, new_display: input.new_display };
   } else if (method === INVENTORY_UPDATE) {
     const request = input.request_param;
     if (!isRecord(request) || Object.keys(input).length !== 1) throw failure('REQUEST_CONTRACT_INVALID');
@@ -267,6 +281,40 @@ export function normalizeIopBusinessResponse(
   }
   const root = value.result;
   if (!isRecord(root)) throw failure();
+  if (method === PRODUCT_DISPLAY) {
+    if (root.error_code !== undefined && !['', '0', 0].includes(root.error_code as string | number))
+      throw providerFailure(
+        root.error_code,
+        root.error_msg,
+        root.trace_id ?? value.request_id,
+        credentials,
+        'ALIBABA_IOP_BUSINESS_REJECTED'
+      );
+    if (
+      !isRecord(root.fail_id_map) ||
+      typeof root.trace_id !== 'string' ||
+      !root.trace_id.trim() ||
+      root.error_code === undefined ||
+      root.success === false ||
+      root.success === 'false'
+    )
+      throw failure();
+    if (Object.keys(root.fail_id_map).length > 0)
+      throw providerFailure(
+        'DISPLAY_ITEM_REJECTED',
+        'IOP reported failed product IDs; reconcile each item before retrying.',
+        root.trace_id,
+        credentials,
+        'ALIBABA_IOP_BUSINESS_REJECTED'
+      );
+    return {
+      alibaba_icbu_product_batch_update_display_response: {
+        sub_success: true,
+        trace_id: root.trace_id,
+        request_id: value.request_id
+      }
+    };
+  }
   if (method === INVENTORY_UPDATE) {
     const result = isRecord(root.result) ? root.result : root;
     for (const data of result === root ? [result] : [root, result]) {
