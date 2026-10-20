@@ -22,7 +22,7 @@
 - 当前图片查询必须指定分组；不猜全部/未分组 ID，不扫描整库。图片分组支持通过文档中的 `id` 查询父级及其子分组，不再强制转 TOP。
 - 订单聚合保留物流；新版手续费不能冒充已付金额。RFQ、橱窗、排名等缺口可提示补充 TOP，不做失败后的跨协议重试。
 - 下载商品素材、本地诊断与目录操作不应被 TOP/IOP 协议闸门误拦截。
-- 图片文件上传与分组新增、改名、库存增减已完成 IOP 真实回读；分组删除仍未验收，单独拦截并在双授权时选 TOP。商品分组新增、上下架和视频方法继续按批次适配，未经真实回读不自动开放写入。通用调试器仍为只读，不因协议适配而放开写入。
+- 图片文件上传与分组新增、改名、库存增减及商品上下架已完成 IOP 真实回读；图片分组删除仍未验收，单独拦截并在双授权时选 TOP。商品分组新增和视频方法继续按批次适配，未经真实回读不自动开放写入。通用调试器仍为只读，不因协议适配而放开写入。
 - 新版 Product V2 不替换现有 Schema 内容语义。采购和销售订单分开，不把 BuyNow 创建采购订单当作卖家起草订单。
 - 第二阶段先补订单详情、物流轨迹、运费、仓库和运费模板，再为采购下单、取消、GGS 物流下单和发货设计独立持久回执；不执行付款。
 - ZIP 2,000,000 字节、解包 5,470,000 字节及其他现有门禁不放宽。真实验收回执放忽略目录，不保存明文密钥或完整业务响应。
@@ -70,7 +70,7 @@ IOP-only coverage is expanded before new procurement, sales and fulfillment feat
 
 The isolated remote Node IOP inventory experiment passed: one plus-one request, readback, one sub-one request and full-baseline restoration. Native parameters and acknowledgements are validated without weakening TOP contracts. Historical unresolved receipts remain unresolved. The generic debugger remains read-only; this is not a claim of MV3/Worker write acceptance or a new inventory-write UI.
 
-## 上下架协议适配（仍关闭）
+## 首轮上下架协议适配（仍关闭）
 
 - 新版公开请求为数字 `product_id_list` 数组，旧 TOP 为加密标识字符串。适配器只使用请求中已配对的明文 ID，不把数字伪造成加密 ID，不调用失败的加密接口猜测转换，也不改变 TOP 传参。
 - 原生响应必须有可解释的 `fail_id_map`、错误字段及 trace；非空失败表、缺字段或业务错误不转成成功。任务层仍需回读最终状态，不能把这份受理结果当作完成。
@@ -88,3 +88,29 @@ IOP display transport now separates numeric IDs from TOP encrypted identifiers. 
 - 当前返回的订单标识不满足轨迹接口文档中的数值要求，跳过 `/order/logistics/tracking/get`，未强行数值化或猜转换；这不是“没有物流”。回执：`artifacts/iop-order-native-validation/55e25d39-4549-488c-9765-d29de5c9e067.json`；列表的 `observationId` 是本地观察标识，不冒充出网 requestId。
 
 Remote Windows checks passed (2,918 unit tests, 24 isolated Worker tests and 33 related browser E2Es). The isolated production MV3 build made 28 real IOP reads with no TOP, token or mutation requests; inventory contained eight valid records and order logistics was explicitly empty. Native sales/buyer lists and one correlated order-detail read also passed a bounded probe, not a shipped UI integration. Tracking was skipped rather than coercing an incompatible identifier. Existing credentials, release archives, deployment and main branches were not changed.
+
+## IOP 上下架任务兼容与恢复验收（远程双端通过）
+
+- 请求可显式绑定 `top/iop`。IOP 使用明文数字 ID（最多 30 个），无需混淆 ID；旧请求和未标记历史任务继续按 TOP 处理。选定协议不可在失败后切换。
+- BFF SQLite/D1 migration 17 保留旧任务和索引，兼容 IOP 空混淆 ID，并保存授权上下文、协议及恢复请求标识。扩展使用相同的任务模型。按单个明文 ID 精确回读，不扫描全店。
+- 恢复前先核对当前状态；已是原状态则不发写请求。恢复意图必须先持久化，失败即不出网。一旦已保存 `recoveryRequestId`，重启、超时或再次点击都不能重发恢复，只允许读取核对。
+- 真实平台成功回执省略 `result.trace_id`，追踪信息在外层 `_trace_id_/request_id`。现兼容该格式，但仍要求明确的错误字段及失败表，部分失败不能当作整批未执行。
+- 远程隔离 Node 样本 `1600495255011` 初始上架。一次下架后已回读为下架；首次回执因上述格式差异保留为结果不明，没有重发。只在确认下架后发送一次恢复上架，平台审核结束后回读为上架，原持久任务刷新为 `recovered`。总计两次写请求，没有修改商品内容或库存。
+- 正式 MV3 隔离 Profile 只导入 IOP，对同一商品再次完成下架、回读、恢复及最终上架回读。两次原生写入均取得有效回执；审核期间只读等待，不追加恢复。107 次平台请求中只有 2 次写入，TOP、Token 和越界请求均为 0；恢复任务保留协议、授权上下文和一次性恢复标识。
+- MV3 回执：`artifacts/iop-feature-parity/2026-10-21-display-mv3-cycle.json`。被测生产代码复制不变，仅隔离 Manifest 预授予精确 IOP Origin；原生权限弹窗本轮未验收，也未重载或替换日常插件。
+- 仅上下架方法提升为 `account-verified`，原有管理员、运行时 feature flag、可信扩展页面、CSRF 和授权上下文限制继续执行；通用调试器仍不能绕过专用任务。没有扩大其他未验收写方法。
+- 复核补齐了两个失败前置检查：上下文缺失的旧 TOP 任务不能通过静态 IOP 网关回读；精确 ID 查询必须同时满足匹配记录和 `total=1`，不能接受分页首条加上模糊总数。两项均有零写入/零越界请求回归。
+- 最小基线、持久任务和脱敏回执：`artifacts/iop-feature-parity/2026-10-21-display-node-cycle.json` 及同名 `.sqlite`。只读续查命令如下；此模式明确禁止平台写请求：
+
+  ```powershell
+  pnpm exec tsx scripts/smoke-iop-display-real.ts --verify-existing --credential=artifacts/local-dual-authorization/iop-credentials.json --product-id=1600495255011 --receipt=artifacts/iop-feature-parity/2026-10-21-display-node-cycle.json
+  ```
+
+IOP display receipts now support plain product IDs, pinned authorization contexts and durable, one-shot recovery intent while historical TOP receipts remain compatible. Both isolated remote Node and formal MV3 cycles confirmed offline readback and final online restoration. Each cycle sent exactly two writes; review delays caused read-only polling, never another mutation. Only the display method is promoted, with existing runtime authorization and dedicated-task requirements intact. No content/inventory edit, active credential replacement, deployment or release was performed. Native host-permission consent was not part of this isolated pregrant acceptance.
+
+### 本次最终检查
+
+- 远程 Windows `pnpm check` 完整通过：338 个文件、2,964 项单测，以及格式、Lint、i18n、契约漂移、类型、Web/Worker/扩展构建、包体和商店合规门禁。未提高任何预算。
+- 另有 24 项 Worker 隔离测试、12 条商品列表/库存能力/批量维护 Web 与正式 MV3 回放 E2E 通过；回放与上面的真实双端上下架分别计验收。
+- 最后重建的正式插件再次只配置 IOP：28 次真实只读请求，商品、分组、图片、Schema 和订单通过，所选商品库存和订单物流为合法空结果，TOP、Token 及写请求均为 0。回执：`artifacts/iop-workbench-read-validation/978200b7-2441-4de1-8564-dd871a556be8-EJQaqp/report.json`。
+- ZIP 仅在内存测量为 1,277,228 字节；解包 4,376,238 字节，options eager JS 247,321 字节。既有发布包没有覆盖，未在日常浏览器中执行插件安装、重载或授权替换。

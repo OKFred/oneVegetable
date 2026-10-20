@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["../smoke-iop-display-extension-real.ts", "./iop-display-extension-real.test.ts"]
+}

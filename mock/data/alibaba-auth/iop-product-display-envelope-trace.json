@@ -1,0 +1,6 @@
+{
+  "code": "0",
+  "request_id": "fixture-envelope-request",
+  "_trace_id_": "fixture-envelope-trace",
+  "result": { "fail_id_map": {}, "error_code": "" }
+}
