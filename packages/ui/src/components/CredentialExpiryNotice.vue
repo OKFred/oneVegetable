@@ -9,6 +9,7 @@ const props = defineProps<{
   refreshExpires?: number | null | undefined;
   invalid?: boolean;
   extension?: boolean;
+  compact?: boolean;
 }>();
 const t = useGatewayCredentialsI18n();
 const now = ref(Date.now());
@@ -30,14 +31,15 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section
-    class="space-y-2 rounded-lg border p-3 text-sm"
-    :class="
+    class="rounded-lg border text-sm"
+    :class="[
+      compact ? 'p-2' : 'space-y-2 p-3',
       tone === 'danger'
         ? 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-300'
         : tone === 'warning'
           ? 'border-amber-500/50 bg-amber-500/10'
           : 'bg-muted/30'
-    "
+    ]"
     data-testid="credential-expiry"
     :data-tone="tone"
     role="status"
@@ -46,14 +48,16 @@ onBeforeUnmount(() => {
       {{ t(`expiry${state}`)
       }}<span v-if="state === 'valid' || state === 'expiring'"> · {{ remaining }}</span>
     </p>
-    <p v-if="expiry.status !== 'unknown'">{{ t('expires') }}: {{ formatDateTime(expires ?? null) }}</p>
-    <p v-if="refreshExpires != null">
+    <p v-if="!compact && expiry.status !== 'unknown'">
+      {{ t('expires') }}: {{ formatDateTime(expires ?? null) }}
+    </p>
+    <p v-if="!compact && refreshExpires != null">
       {{ t('refreshExpires') }}: {{ formatDateTime(refreshExpires) }} ·
       {{
         t(credentialExpiryState(refreshExpires, now).status === 'expired' ? 'expiryexpired' : 'refreshWindow')
       }}
     </p>
-    <p class="text-xs leading-5 text-muted-foreground">
+    <p v-if="!compact" class="text-xs leading-5 text-muted-foreground">
       {{ t(extension ? 'extensionRenew' : 'expiryHelp') }}
     </p>
   </section>

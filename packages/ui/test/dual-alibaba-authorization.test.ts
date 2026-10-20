@@ -18,6 +18,7 @@ import dashboardFixture from '../../../mock/data/dashboard-authorization.json';
 import AlibabaAuthorizationsPanel from '../src/components/AlibabaAuthorizationsPanel.vue';
 import GatewayAuthorizationsPanel from '../src/components/GatewayAuthorizationsPanel.vue';
 import GatewayCredentialPanel from '../src/components/GatewayCredentialPanel.vue';
+import ModalDialog from '../src/components/ui/ModalDialog.vue';
 import DashboardAuthorizationCard from '../src/components/DashboardAuthorizationCard.vue';
 import DashboardAuthorizationAction from '../src/components/DashboardAuthorizationAction.vue';
 import UnsavedEditingDialog from '../src/components/UnsavedEditingDialog.vue';
@@ -324,7 +325,7 @@ async function harness(
     global: {
       stubs: {
         ModalDialog: {
-          props: ['open', 'title', 'description'],
+          props: ['open', 'title', 'description', 'dismissible'],
           template:
             '<div v-if="open" role="dialog"><h2>{{ title }}</h2><p>{{ description }}</p><slot /><slot name="footer" /></div>'
         }
@@ -389,6 +390,88 @@ async function manualSave(wrapper: VueWrapper): Promise<void> {
 }
 
 describe('independent authorization metadata and automatic capability routing', () => {
+  it('opens an unconfigured protocol and preserves the other profile during a confirmed save', async () => {
+    const summary = dualSummary();
+    summary.iop = null;
+    const view = await harness(GatewayAuthorizationsPanel, { props: { dialogConfiguration: true }, summary });
+    const top = view.current().top;
+    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('配置 IOP');
+    await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
+    await flushPromises();
+    await manualSave(view.wrapper);
+    expect(view.save).toHaveBeenCalledWith(expect.objectContaining({ protocol: 'iop' }), null, null, 'iop');
+    expect(view.current().top).toEqual(top);
+    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('更新 IOP');
+    expect(view.test).not.toHaveBeenCalled();
+  });
+
+  it('keeps an open manual form and an in-flight test inside its protocol configuration', async () => {
+    const view = await harness(GatewayAuthorizationsPanel, { props: { dialogConfiguration: true } });
+    await view.wrapper.get('[data-testid="select-authorization-top"]').trigger('click');
+    await flushPromises();
+    const modal = view.wrapper
+      .findAllComponents(ModalDialog)
+      .find((item) => item.props('title') === 'TOP 授权配置');
+    if (!modal) throw new Error('Missing protocol dialog');
+    await button(view.wrapper, '手动填写').trigger('click');
+    (modal.vm as { $emit(event: 'update:open', open: boolean): void }).$emit('update:open', false);
+    await flushPromises();
+    expect(view.wrapper.find('form').exists()).toBe(true);
+    await button(view.wrapper, '取消').trigger('click');
+    await flushPromises();
+    let finishTest: (() => void) | undefined;
+    view.test.mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finishTest = resolve;
+      });
+      return {
+        status: 'passed',
+        requestId: crypto.randomUUID(),
+        checkedAtUtc: 1,
+        durationMilliseconds: 1,
+        configurationId: null,
+        errorCode: null
+      };
+    });
+    await button(view.wrapper, '测试连接').trigger('click');
+    expect(modal.props('dismissible')).toBe(false);
+    (modal.vm as { $emit(event: 'update:open', open: boolean): void }).$emit('update:open', false);
+    await flushPromises();
+    expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(true);
+    finishTest?.();
+    await flushPromises();
+    expect(view.test).toHaveBeenCalledExactlyOnceWith('top');
+    expect(modal.props('dismissible')).toBe(true);
+    await button(view.wrapper, '完成').trigger('click');
+    expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(false);
+  });
+
+  it('opens compact administrator configuration on every explicit click without writing or testing', async () => {
+    const view = await harness(GatewayAuthorizationsPanel, { props: { dialogConfiguration: true } });
+    expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(false);
+    expect(view.status).not.toHaveBeenCalled();
+    expect(view.wrapper.get('[data-testid="authorization-binding"]').element.tagName).toBe('DETAILS');
+    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('更新 IOP');
+    await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
+    await flushPromises();
+    expect(view.status).toHaveBeenLastCalledWith('iop');
+    expect(view.wrapper.text()).toContain('IOP 授权配置');
+    expect(view.wrapper.get('[data-testid="credential-import-actions"]').text()).toContain('手动填写');
+    expect(view.wrapper.get('[data-testid="credential-connection-actions"]').text()).toContain('测试连接');
+    expect(view.wrapper.get('[data-testid="credential-import-actions"]').text()).not.toContain('测试连接');
+    expect(view.wrapper.get('[data-testid="gateway-credential-panel"]').element.tagName).toBe('SECTION');
+    await button(view.wrapper, '完成').trigger('click');
+    expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(false);
+    await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
+    await flushPromises();
+    expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(true);
+    expect(view.current().defaultProtocol).toBe('top');
+    expect(view.save).not.toHaveBeenCalled();
+    expect(view.importCredential).not.toHaveBeenCalled();
+    expect(view.test).not.toHaveBeenCalled();
+    expect(view.refresh).not.toHaveBeenCalled();
+  });
+
   it.each([false, true])(
     'notifies profile selection without saving or changing defaults (extension=%s)',
     async (extension) => {

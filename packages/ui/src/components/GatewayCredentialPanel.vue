@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { KeyRound, PlugZap, RefreshCw, RotateCw, Trash2, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { parseManualGatewayCredential } from '@one-vegetable/core';
@@ -25,7 +25,7 @@ import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from './CredentialExpiryNotice.vue';
 import GatewayProtocolNotice from './settings/GatewayProtocolNotice.vue';
 
-const props = defineProps<{ protocol?: 'top' | 'iop' | undefined }>();
+const props = defineProps<{ protocol?: 'top' | 'iop' | undefined; embedded?: boolean }>();
 const { control, runtime } = useServices();
 const t = useGatewayCredentialsI18n();
 const { t: uiText } = useUiI18n();
@@ -33,6 +33,7 @@ const summary = ref<ControlGatewayCredentialSummary | null>(null);
 const latestTest = ref<GatewayCredentialTestResult | null>(null);
 const admin = ref(false);
 const busy = ref(false);
+const actionPending = ref(false);
 const error = ref<unknown>(null);
 const unavailable = ref(false);
 const dialog = ref(false);
@@ -68,8 +69,14 @@ const managed = computed(() => summary.value?.revision !== null && summary.value
 const valid = computed(() =>
   Boolean(fields.appKey.trim() && fields.appSecret.trim() && fields.accessToken.trim())
 );
-const emit = defineEmits<{ changed: []; statusChanged: [] }>();
-defineExpose({ reload });
+const emit = defineEmits<{ changed: []; statusChanged: []; busyChanged: [busy: boolean] }>();
+watch(actionPending, (value) => {
+  emit('busyChanged', value);
+});
+defineExpose({
+  reload,
+  canClose: () => !actionPending.value && !dialog.value && !confirmation.value && !discardManual.value
+});
 
 onMounted(async () => {
   if (!control) return;
@@ -162,6 +169,7 @@ function dismissConfirmation(open: boolean): void {
 async function confirm(): Promise<void> {
   if (!control || !confirmation.value) return;
   busy.value = true;
+  actionPending.value = true;
   error.value = null;
   const action = confirmation.value;
   try {
@@ -218,11 +226,13 @@ async function confirm(): Promise<void> {
     pendingBundle.value = null;
   } finally {
     busy.value = false;
+    actionPending.value = false;
   }
 }
 async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
   if (!control || busy.value) return;
   busy.value = true;
+  actionPending.value = kind !== 'reload';
   error.value = null;
   try {
     if (kind === 'test' && control.testGatewayCredential) {
@@ -248,23 +258,58 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
     error.value = cause;
   } finally {
     busy.value = false;
+    actionPending.value = false;
   }
 }
 </script>
 
 <template>
-  <Card id="alibaba-credentials" class="space-y-4 p-5" data-testid="gateway-credential-panel">
-    <h2 class="flex items-center gap-2 font-semibold"><KeyRound class="size-4" />{{ t('title') }}</h2>
-    <p class="text-sm text-muted-foreground">{{ t('description') }}</p>
-    <p v-if="protocol" class="text-sm font-medium">
+  <component
+    :is="embedded ? 'section' : Card"
+    id="alibaba-credentials"
+    class="space-y-4"
+    :class="embedded ? undefined : 'p-5'"
+    data-testid="gateway-credential-panel"
+  >
+    <h2 v-if="!embedded" class="flex items-center gap-2 font-semibold">
+      <KeyRound class="size-4" />{{ t('title') }}
+    </h2>
+    <p v-if="!embedded" class="text-sm text-muted-foreground">{{ t('description') }}</p>
+    <p v-if="protocol && !embedded" class="text-sm font-medium">
       {{ t('selectedProfile', { protocol: protocol.toUpperCase() }) }}
     </p>
-    <p v-if="protocol" class="text-xs text-muted-foreground">{{ t('profileIsolation') }}</p>
+    <p v-if="protocol && !embedded" class="text-xs text-muted-foreground">{{ t('profileIsolation') }}</p>
     <p v-if="!busy && !admin" class="text-sm">{{ t('adminOnly') }}</p>
     <ErrorNotice v-if="error" :error="error" :fallback="t('error')" />
     <template v-if="admin">
       <p v-if="unavailable" class="text-sm">{{ t('unavailable') }}</p>
       <template v-else>
+        <input
+          ref="fileInput"
+          class="hidden"
+          type="file"
+          accept=".json,application/json"
+          :aria-label="t('import')"
+          @change="chooseFile"
+        />
+        <section class="space-y-3 rounded-lg border p-4" data-testid="credential-import-actions">
+          <h3 class="text-sm font-medium">{{ t('importActions') }}</h3>
+          <div class="flex flex-wrap gap-2">
+            <Button variant="outline" :disabled="busy" @click="fileInput?.click()"
+              ><Upload class="size-4" />{{ t('import') }}</Button
+            >
+            <Button
+              variant="outline"
+              :disabled="busy || !control?.saveGatewayCredential"
+              @click="
+                resetForm();
+                dialog = true;
+              "
+              ><KeyRound class="size-4" />{{ t('manual') }}</Button
+            >
+            <slot />
+          </div>
+        </section>
         <p class="text-sm font-medium">{{ summary?.configured ? t('configured') : t('empty') }}</p>
         <p class="text-sm" data-testid="gateway-protocol-summary">
           {{ t('protocol') }}:
@@ -307,57 +352,41 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
         <p v-if="managed && !summary?.canRefresh" class="text-sm text-muted-foreground">
           {{ t('noRefresh') }}
         </p>
-        <input
-          ref="fileInput"
-          class="hidden"
-          type="file"
-          accept=".json,application/json"
-          :aria-label="t('import')"
-          @change="chooseFile"
-        />
-        <div class="flex flex-wrap gap-2">
-          <Button variant="outline" :disabled="busy" @click="fileInput?.click()"
-            ><Upload class="size-4" />{{ t('import') }}</Button
-          >
-          <Button
-            variant="outline"
-            :disabled="busy || !control?.saveGatewayCredential"
-            @click="
-              resetForm();
-              dialog = true;
-            "
-            ><KeyRound class="size-4" />{{ t('manual') }}</Button
-          >
-          <Button
-            variant="outline"
-            :disabled="busy || !summary?.configured || !real || !control?.testGatewayCredential"
-            :title="!real ? t('notReal') : t('testNotice')"
-            @click="run('test')"
-            ><PlugZap class="size-4" />{{ t('test') }}</Button
-          >
-          <Button variant="outline" :disabled="busy || !summary?.canRefresh" @click="run('refresh')"
-            ><RotateCw class="size-4" />{{ t('refresh') }}</Button
-          >
-          <Button variant="outline" :disabled="busy" @click="run('reload')"
-            ><RefreshCw class="size-4" />{{ t('reload') }}</Button
-          >
+        <section class="space-y-3 rounded-lg border p-4" data-testid="credential-connection-actions">
+          <h3 class="text-sm font-medium">{{ t('connectionActions') }}</h3>
+          <p class="text-xs text-muted-foreground">{{ t('testNotice') }}</p>
+          <div class="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              :disabled="busy || !summary?.configured || !real || !control?.testGatewayCredential"
+              :title="!real ? t('notReal') : t('testNotice')"
+              @click="run('test')"
+              ><PlugZap class="size-4" />{{ t('test') }}</Button
+            >
+            <Button variant="outline" :disabled="busy || !summary?.canRefresh" @click="run('refresh')"
+              ><RotateCw class="size-4" />{{ t('refresh') }}</Button
+            >
+            <Button variant="outline" :disabled="busy" @click="run('reload')"
+              ><RefreshCw class="size-4" />{{ t('reload') }}</Button
+            >
+          </div>
+          <div class="rounded-md bg-muted p-3 text-sm" aria-live="polite">
+            <p>{{ t('lastTest') }}：{{ latestTest ? t(latestTest.status) : t('notTested') }}</p>
+            <p v-if="latestTest" class="mt-1 break-all text-xs">
+              {{ formatDateTime(latestTest.checkedAtUtc) }} · {{ latestTest.durationMilliseconds }} ms ·
+              {{ latestTest.requestId }} <span v-if="latestTest.errorCode">· {{ latestTest.errorCode }}</span>
+            </p>
+          </div>
+        </section>
+        <div class="flex justify-end border-t pt-4">
           <Button variant="outline" :disabled="busy || !summary?.configured" @click="confirmation = 'clear'"
             ><Trash2 class="size-4" />{{ t('clear') }}</Button
           >
         </div>
-        <p class="text-xs text-muted-foreground">{{ t('testNotice') }}</p>
-        <div class="rounded-md bg-muted p-3 text-sm" aria-live="polite">
-          <p>{{ t('lastTest') }}：{{ latestTest ? t(latestTest.status) : t('notTested') }}</p>
-          <p v-if="latestTest" class="mt-1 break-all text-xs">
-            {{ formatDateTime(latestTest.checkedAtUtc) }} · {{ latestTest.durationMilliseconds }} ms ·
-            {{ latestTest.requestId }} <span v-if="latestTest.errorCode">· {{ latestTest.errorCode }}</span>
-          </p>
-        </div>
       </template>
     </template>
     <AlibabaIndependentNotice />
-    <slot />
-  </Card>
+  </component>
   <ModalDialog
     :open="dialog"
     :title="t('manual')"

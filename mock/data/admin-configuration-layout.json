@@ -1,0 +1,19 @@
+{
+  "passkeys": [
+    {
+      "id": "layout-passkey",
+      "name": "Fixture Passkey",
+      "deviceType": "multiDevice",
+      "backedUp": true,
+      "rpId": "example.com",
+      "createTimeUtc": 1
+    }
+  ],
+  "mutationStatus": {
+    "paused": false,
+    "revision": 1,
+    "updateTimeUtc": 1,
+    "updaterId": "fixture-admin",
+    "remark": null
+  }
+}

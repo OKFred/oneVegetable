@@ -8,14 +8,19 @@ import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import AlibabaAuthorizationsPanel from './AlibabaAuthorizationsPanel.vue';
 import GatewayCredentialPanel from './GatewayCredentialPanel.vue';
 import ErrorNotice from './ErrorNotice.vue';
+import ModalDialog from './ui/ModalDialog.vue';
+import Button from './ui/Button.vue';
 
+const props = defineProps<{ dialogConfiguration?: boolean }>();
 const authorizations = useAlibabaAuthorizations();
 const { summary, busy, error, canConfirm } = authorizations;
 const t = useGatewayCredentialsI18n();
 const editing = useUnsavedEditingService();
 const selectedProtocol = ref<'top' | 'iop'>('top');
 const ready = ref(false);
-const credentialPanel = ref<{ reload: () => Promise<void> } | null>(null);
+const configurationOpen = ref(false);
+const configurationBusy = ref(false);
+const credentialPanel = ref<{ reload: () => Promise<void>; canClose: () => boolean } | null>(null);
 onMounted(async () => {
   await authorizations.reload();
   if (summary.value) selectedProtocol.value = summary.value.defaultProtocol;
@@ -23,6 +28,11 @@ onMounted(async () => {
 });
 async function select(protocol: 'top' | 'iop'): Promise<void> {
   if (busy.value) return;
+  if (props.dialogConfiguration) {
+    selectedProtocol.value = protocol;
+    configurationOpen.value = true;
+    return;
+  }
   if (protocol === selectedProtocol.value) {
     toast.info(t('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
     return;
@@ -34,6 +44,10 @@ async function select(protocol: 'top' | 'iop'): Promise<void> {
 async function changed(): Promise<void> {
   authorizations.invalidateBinding();
   await authorizations.reload();
+}
+function closeConfiguration(open: boolean): void {
+  if (open || configurationBusy.value || credentialPanel.value?.canClose() === false) return;
+  configurationOpen.value = false;
 }
 async function confirm(): Promise<void> {
   await authorizations.confirm();
@@ -54,12 +68,14 @@ defineExpose({ reload });
       :selected-protocol="selectedProtocol"
       :busy="busy"
       :can-confirm="canConfirm"
+      :compact="dialogConfiguration"
+      :configure-actions="dialogConfiguration"
       @select="select"
       @confirm="confirm"
     />
     <ErrorNotice v-if="error" :error="error" :fallback="t('error')" />
     <GatewayCredentialPanel
-      v-if="ready"
+      v-if="ready && (!summary || !dialogConfiguration)"
       :key="summary ? selectedProtocol : 'legacy'"
       ref="credentialPanel"
       :protocol="summary ? selectedProtocol : undefined"
@@ -68,5 +84,32 @@ defineExpose({ reload });
     >
       <slot :protocol="summary ? selectedProtocol : undefined" />
     </GatewayCredentialPanel>
+    <ModalDialog
+      v-if="summary && dialogConfiguration"
+      :open="configurationOpen"
+      :title="t('configurationTitle', { protocol: selectedProtocol.toUpperCase() })"
+      :description="t('configurationDescription', { protocol: selectedProtocol.toUpperCase() })"
+      size="lg"
+      :dismissible="!configurationBusy"
+      @update:open="closeConfiguration"
+    >
+      <GatewayCredentialPanel
+        v-if="configurationOpen"
+        :key="selectedProtocol"
+        ref="credentialPanel"
+        :protocol="selectedProtocol"
+        embedded
+        @changed="changed"
+        @status-changed="authorizations.reload"
+        @busy-changed="configurationBusy = $event"
+      >
+        <slot :protocol="selectedProtocol" />
+      </GatewayCredentialPanel>
+      <template #footer>
+        <Button variant="outline" :disabled="configurationBusy" @click="closeConfiguration(false)">
+          {{ t('closeConfiguration') }}
+        </Button>
+      </template>
+    </ModalDialog>
   </div>
 </template>

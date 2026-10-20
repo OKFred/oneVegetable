@@ -8,6 +8,7 @@ defineProps<{
   protocol: 'top' | 'iop';
   summary: ControlGatewayCredentialSummary | null;
   extension?: boolean;
+  compact?: boolean;
 }>();
 const t = useGatewayCredentialsI18n();
 </script>
@@ -20,7 +21,7 @@ const t = useGatewayCredentialsI18n();
     <h3 class="flex items-center gap-2 text-sm font-semibold">
       <KeyRound class="size-4" aria-hidden="true" />{{ t(protocol === 'top' ? 'profileTop' : 'profileIop') }}
     </h3>
-    <p class="text-xs leading-5 text-muted-foreground">
+    <p v-if="!compact" class="text-xs leading-5 text-muted-foreground">
       {{ t(protocol === 'top' ? 'profileHelpTop' : 'profileHelpIop') }}
     </p>
     <p class="text-sm text-muted-foreground">{{ t(summary?.configured ? 'configured' : 'empty') }}</p>
@@ -31,6 +32,7 @@ const t = useGatewayCredentialsI18n();
       :captured-time="summary.accessTokenCapturedTimeUtc"
       :refresh-expires="summary.refreshTokenExpiresTimeUtc"
       :extension="extension"
+      :compact="compact"
     />
     <p v-if="summary?.lastRefreshErrorCode" class="text-xs text-amber-700 dark:text-amber-300" role="status">
       {{ t('refreshFailed') }}

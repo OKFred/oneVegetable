@@ -50,6 +50,13 @@ export const gatewayCredentials = {
     'i.alibaba.com/explore/open-api 中的应用是新版 IOP。用 IOP 工具授权，导出 JSON 后导入此档案。',
   selectProfile: '选择要配置的授权档案',
   configureProfile: '配置 {protocol}',
+  updateProfile: '更新 {protocol}',
+  configurationTitle: '{protocol} 授权配置',
+  configurationDescription:
+    '以下操作仅针对 {protocol} 授权，另一份授权保持不变。导入文件或手动填写后，再测试连接。',
+  closeConfiguration: '完成',
+  importActions: '配置与更新',
+  connectionActions: '连接检查与续期',
   setDefault: '设为默认',
   defaultSelected: '已选择',
   defaultSaved: '已将 {protocol} 设为默认授权，重新打开后仍会保留。双授权继续按能力选路。',

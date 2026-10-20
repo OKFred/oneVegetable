@@ -167,15 +167,15 @@ function userError(cause: unknown, fallback: string): Error {
 
     <ErrorNotice v-if="error" :error="error" :fallback="t('admin.selfHosted.errors.panel')" />
 
-    <div class="grid gap-5 xl:grid-cols-3">
-      <GatewayAuthorizationsPanel ref="credentialPanel" v-slot="{ protocol }">
+    <div class="space-y-4" data-testid="self-hosted-settings-sections">
+      <GatewayAuthorizationsPanel ref="credentialPanel" v-slot="{ protocol }" dialog-configuration>
         <Button v-if="protocol !== 'iop'" variant="outline" size="sm" @click="acquisitionOpen = true"
           ><Sparkles class="size-4" />{{ t('admin.selfHosted.connect') }}</Button
         >
       </GatewayAuthorizationsPanel>
 
-      <Card class="p-5">
-        <div class="flex items-center justify-between gap-3">
+      <Card class="p-5" data-testid="real-mutation-settings">
+        <div class="flex flex-wrap items-center justify-between gap-3">
           <h3 class="flex items-center gap-2 font-semibold">
             <Shield class="size-4" />{{ t('admin.selfHosted.emergency') }}
           </h3>
@@ -192,7 +192,7 @@ function userError(cause: unknown, fallback: string): Error {
           {{ t('admin.selfHosted.emergencyDescription') }}
         </p>
         <Button
-          class="mt-4 w-full"
+          class="mt-4 w-full sm:w-auto"
           :variant="mutationControl?.paused ? 'default' : 'destructive'"
           @click="confirmation = { kind: 'pause', paused: !mutationControl?.paused }"
         >
@@ -202,8 +202,8 @@ function userError(cause: unknown, fallback: string): Error {
         </Button>
       </Card>
 
-      <Card class="p-5">
-        <div class="flex items-center justify-between gap-3">
+      <Card class="p-5" data-testid="passkey-settings">
+        <div class="flex flex-wrap items-center justify-between gap-3">
           <h3 class="flex items-center gap-2 font-semibold">
             <KeyRound class="size-4" />{{ t('admin.selfHosted.passkeys') }}
           </h3>
@@ -213,7 +213,7 @@ function userError(cause: unknown, fallback: string): Error {
           <div
             v-for="credential in passkeys"
             :key="credential.id"
-            class="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm"
           >
             <div class="min-w-0">
               <p class="truncate font-medium">{{ credential.name }}</p>
@@ -230,7 +230,7 @@ function userError(cause: unknown, fallback: string): Error {
           </div>
         </div>
         <Button
-          class="mt-4 w-full"
+          class="mt-4 w-full sm:w-auto"
           size="sm"
           variant="outline"
           @click="confirmation = { kind: 'recovery-codes' }"

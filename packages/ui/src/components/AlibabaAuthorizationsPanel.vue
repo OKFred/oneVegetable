@@ -16,6 +16,8 @@ const props = defineProps<{
   canRenew?: boolean;
   canClear?: boolean;
   canSetDefault?: boolean;
+  compact?: boolean;
+  configureActions?: boolean;
 }>();
 const emit = defineEmits<{
   select: [protocol: 'top' | 'iop'];
@@ -41,6 +43,7 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
         :protocol="protocol"
         :summary="summary[protocol]"
         :extension="extension"
+        :compact="compact"
       >
         <div class="flex flex-wrap gap-2">
           <Button
@@ -69,13 +72,19 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
             v-else
             variant="outline"
             :disabled="busy"
-            :aria-pressed="selectedProtocol === protocol"
+            :aria-pressed="configureActions ? undefined : selectedProtocol === protocol"
             :data-testid="`select-authorization-${protocol}`"
             @click="emit('select', protocol)"
           >
-            <Check v-if="selectedProtocol === protocol" class="size-4" aria-hidden="true" />
+            <Check
+              v-if="!configureActions && selectedProtocol === protocol"
+              class="size-4"
+              aria-hidden="true"
+            />
             <Link2 v-else class="size-4" aria-hidden="true" />{{
-              t('configureProfile', { protocol: protocol.toUpperCase() })
+              t(configureActions && summary[protocol]?.configured ? 'updateProfile' : 'configureProfile', {
+                protocol: protocol.toUpperCase()
+              })
             }}
           </Button>
           <Button
@@ -99,16 +108,25 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
         </div>
       </AlibabaAuthorizationProfile>
     </div>
-    <section class="space-y-3 rounded-lg border bg-muted/30 p-3 text-sm" data-testid="authorization-binding">
-      <p class="font-medium" role="status">
+    <component
+      :is="compact ? 'details' : 'section'"
+      class="space-y-3 rounded-lg border bg-muted/30 p-3 text-sm"
+      data-testid="authorization-binding"
+    >
+      <component
+        :is="compact ? 'summary' : 'p'"
+        class="font-medium"
+        :class="compact ? 'cursor-pointer' : undefined"
+        :role="compact ? undefined : 'status'"
+      >
         {{
           automatic
             ? t('automaticRouting')
             : t('singleRouting', { protocol: summary.defaultProtocol.toUpperCase() })
         }}
-      </p>
+      </component>
       <p class="leading-6 text-muted-foreground">{{ t('routingPolicy') }}</p>
       <p class="text-xs text-muted-foreground">{{ t('routingOwnership') }}</p>
-    </section>
+    </component>
   </Card>
 </template>

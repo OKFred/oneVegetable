@@ -465,7 +465,7 @@ const userColumns = computed<DataColumn<ControlUser>[]>(() => [
   </p>
 
   <template v-if="control">
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Card class="p-5">
         <p class="text-xs text-muted-foreground">{{ t('admin.view.system.runtime') }}</p>
         <p class="mt-2 font-semibold">{{ system?.runtime ?? '—' }} / {{ system?.environment ?? '—' }}</p>
@@ -520,7 +520,7 @@ const userColumns = computed<DataColumn<ControlUser>[]>(() => [
     <SelfHostedAdminPanel v-if="selfHosted" />
     <MetaSocialAdminPanel />
 
-    <div class="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+    <div class="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
       <Card class="overflow-hidden">
         <div class="border-b p-5">
           <h2 class="font-semibold">{{ t('admin.view.users.title') }}</h2>
@@ -589,7 +589,7 @@ const userColumns = computed<DataColumn<ControlUser>[]>(() => [
       </Card>
     </div>
 
-    <div class="mt-5 grid gap-5 xl:grid-cols-2">
+    <div class="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
       <Card class="p-5">
         <h2 class="font-semibold">{{ t('admin.view.policy.title') }}</h2>
         <pre

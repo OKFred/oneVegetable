@@ -76,6 +76,12 @@ describe('SelfHostedAdminPanel', () => {
     expect(wrapper.text()).toContain('一键连接');
     expect(wrapper.text()).toContain('已配置');
     expect(wrapper.text()).toContain('Windows Hello');
+    expect(wrapper.get('[data-testid="self-hosted-settings-sections"]').classes()).not.toContain('grid');
+    expect(wrapper.find('[data-testid="real-mutation-settings"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="passkey-settings"]').exists()).toBe(true);
+    expect(wrapper.getComponent({ name: 'GatewayAuthorizationsPanel' }).props('dialogConfiguration')).toBe(
+      true
+    );
     const pause = wrapper.findAll('button').find((button) => button.text().includes('暂停全部真实写入'));
     if (!pause) throw new Error('Missing emergency pause button');
     await pause.trigger('click');
