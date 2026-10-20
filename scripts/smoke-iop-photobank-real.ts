@@ -16,7 +16,8 @@ import { PhotoAdapter } from '../packages/core/src/photo-adapter';
 import { downloadProductAsset } from '../packages/core/src/photo-transfer';
 import { normalizeGatewayError } from '../packages/core/src/errors';
 import { atomicWriteJson } from './openapi-auth/storage';
-import type { GatewayCredentials } from '../packages/core/src/types';
+import { confirmedEmptyPhotoChild, confirmedPhotoChildRemoved } from './lib/iop-photo-delete-proof';
+import type { GatewayCredentials, PhotoGroupOperationRequest } from '../packages/core/src/types';
 
 const option = (key: string) =>
   process.argv.find((argument) => argument.startsWith(`--${key}=`))?.slice(key.length + 3);
@@ -178,10 +179,10 @@ async function mutation(
 }
 
 async function group(action: 'add' | 'rename' | 'delete', name: string, id?: string) {
-  const request = {
+  const request: PhotoGroupOperationRequest = {
     operation: action,
-    ...(id ? { groupId: id } : {}),
-    ...(action === 'delete' ? {} : { groupName: name })
+    groupId: id ?? null,
+    groupName: action === 'delete' ? null : name
   };
   const data = await mutation(`group-${action}`, groupMethod, {
     photo_group_operation_request: {
@@ -230,13 +231,15 @@ try {
   );
   const empty = await photos.list({ groupId: child.groupId, page: 1, pageSize: 1 });
   if (!process.argv.includes('--keep-created-test-child')) {
+    const groups = await photos.listGroups(parent.groupId);
+    const childGroups = await photos.listGroups(child.groupId);
     assert(
-      empty.items.length === 0 && !empty.hasNextPage,
-      'Refuse to delete a nonempty or incompletely read group.'
+      confirmedEmptyPhotoChild(parent.groupId, child.groupId, groups, empty, childGroups),
+      'Refuse to delete without a consistent zero total and a confirmed parent-child relationship.'
     );
     await group('delete', '', child.groupId);
-    await poll(
-      async () => !(await photos.listGroups(parent.groupId)).some((item) => item.id === child.groupId)
+    await poll(async () =>
+      confirmedPhotoChildRemoved(parent.groupId, child.groupId, await photos.listGroups(parent.groupId))
     );
   }
 

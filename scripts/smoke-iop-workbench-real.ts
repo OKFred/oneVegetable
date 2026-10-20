@@ -48,19 +48,23 @@ export interface ReadRecord {
 export function parseOptions(args: readonly string[]): {
   credential: string;
   productId?: string;
+  photoGroupId?: string;
   nativeHostConsent?: true;
 } {
   const inputs = args.filter((arg) => arg.startsWith('--credential='));
   const products = args.filter((arg) => arg.startsWith('--product-id='));
+  const photoGroups = args.filter((arg) => arg.startsWith('--photo-group-id='));
   if (
     inputs.length !== 1 ||
     args.filter((arg) => arg === '--confirm-readonly').length !== 1 ||
     args.filter((arg) => arg === '--native-host-consent').length > 1 ||
     products.length > 1 ||
+    photoGroups.length > 1 ||
     args.some(
       (arg) =>
         !arg.startsWith('--credential=') &&
         !arg.startsWith('--product-id=') &&
+        !arg.startsWith('--photo-group-id=') &&
         arg !== '--confirm-readonly' &&
         arg !== '--native-host-consent'
     )
@@ -69,10 +73,13 @@ export function parseOptions(args: readonly string[]): {
   const credential = inputs[0]?.slice('--credential='.length).trim();
   if (!credential) throw new Error('READ_ONLY_ARGUMENTS_REQUIRED');
   const productId = products[0]?.slice('--product-id='.length);
+  const photoGroupId = photoGroups[0]?.slice('--photo-group-id='.length);
   if (products.length && !safeNumericId(productId)) throw new Error('PRODUCT_ID_INVALID');
+  if (photoGroups.length && !safeNumericId(photoGroupId)) throw new Error('PHOTO_GROUP_ID_INVALID');
   return {
     credential,
     ...(productId ? { productId } : {}),
+    ...(photoGroupId ? { photoGroupId } : {}),
     ...(args.includes('--native-host-consent') ? { nativeHostConsent: true as const } : {})
   };
 }
@@ -94,6 +101,7 @@ const SAFE_CODES = new Set([
   'ALIBABA_IOP_METHOD_UNSUPPORTED',
   'ALIBABA_IOP_PARAMETER_UNSUPPORTED',
   'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',
+  'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
   'ALIBABA_IOP_RESPONSE_INVALID',
   'ALIBABA_IOP_API_REJECTED',
   'ALIBABA_IOP_BUSINESS_REJECTED',
@@ -165,7 +173,8 @@ export function summarizeRead(operation: ReadOperation, value: unknown): number 
 export async function runReadPlan(
   call: (operation: ReadOperation, payload: Payload) => Promise<unknown>,
   skip: (operation: ReadOperation, reason: string) => void,
-  productId?: string
+  productId?: string,
+  photoGroupId?: string
 ): Promise<void> {
   const products = await call('listProducts', {
     page: 1,
@@ -174,8 +183,10 @@ export async function runReadPlan(
     ...(productId ? { productId } : {})
   });
   await call('listProductGroups', {});
-  const groups = await call('listPhotoGroups', {});
-  const group = items(groups).find((entry) => positiveId(entry.id));
+  const groups = await call('listPhotoGroups', photoGroupId ? { parentId: photoGroupId } : {});
+  const group = items(groups).find(
+    (entry) => positiveId(entry.id) && (!photoGroupId || entry.id === photoGroupId)
+  );
   if (group) await call('listPhotos', { groupId: group.id, page: 1, pageSize: 1 });
   else skip('listPhotos', 'NO_VALID_PHOTO_GROUP');
   const product = items(products).find(
@@ -619,7 +630,8 @@ export async function main(args: readonly string[]): Promise<void> {
           errorCode: reason,
           networkRequests: 0
         }),
-      options.productId
+      options.productId,
+      options.photoGroupId
     );
     report.status =
       report.blockedRequests || records.some((entry) => entry.status === 'failed')

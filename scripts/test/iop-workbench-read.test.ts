@@ -12,6 +12,7 @@ import {
 } from '../smoke-iop-workbench-real';
 import business from '../../mock/data/alibaba-auth/iop-business-responses.json';
 import credentials from '../../mock/data/node-gateway-credentials.json';
+import photoFixture from '../../mock/data/alibaba-auth/iop-photo-responses.json';
 
 afterEach(() => {
   Reflect.deleteProperty(globalThis, '__iopReadSmokeGuard');
@@ -29,12 +30,17 @@ describe('IOP real workbench acceptance safety', () => {
     expect(
       parseOptions(['--confirm-readonly', '--credential=artifacts/input.json', '--native-host-consent'])
     ).toMatchObject({ nativeHostConsent: true });
+    expect(
+      parseOptions(['--confirm-readonly', '--credential=artifacts/input.json', '--photo-group-id=1001'])
+    ).toMatchObject({ photoGroupId: '1001' });
     for (const args of [
       [],
       ['--credential=foo'],
       ['--confirm-readonly', '--credential=foo', '--write'],
       ['--confirm-readonly', '--credential=foo', '--native-host-consent', '--native-host-consent'],
-      ['--confirm-readonly', '--credential=foo', '--product-id=9007199254740993']
+      ['--confirm-readonly', '--credential=foo', '--product-id=9007199254740993'],
+      ['--confirm-readonly', '--credential=foo', '--photo-group-id=9007199254740993'],
+      ['--confirm-readonly', '--credential=foo', '--photo-group-id=1001', '--photo-group-id=1002']
     ])
       expect(() => parseOptions(args)).toThrow();
   });
@@ -42,6 +48,7 @@ describe('IOP real workbench acceptance safety', () => {
     expect(() => readIopBundle({ application: credentials.manual })).toThrow('EXPLICIT_IOP_BUNDLE_REQUIRED');
     expect(() => readIopBundle({ protocol: 'iop' })).toThrow('IOP_BUNDLE_INVALID');
     expect(safeErrorCode('private-secret')).toBe('ERROR_REDACTED');
+    expect(safeErrorCode('ALIBABA_IOP_PHOTO_SCOPE_MISMATCH')).toBe('ALIBABA_IOP_PHOTO_SCOPE_MISMATCH');
     const bundle = {
       ...credentials.oauthBundle,
       protocol: 'iop',
@@ -74,6 +81,19 @@ describe('IOP real workbench acceptance safety', () => {
     expect(() =>
       summarizeRead('getProductInventory', { status: 'no-data', records: [], issues: ['drift'] })
     ).toThrow('READ_RESULT_INVALID');
+  });
+  it('reads only an explicitly selected existing photo group without scanning unrelated groups', async () => {
+    const call = vi.fn().mockResolvedValue({ items: [] });
+    const skip = vi.fn();
+    await runReadPlan(call, skip, undefined, '1001');
+    expect(call).toHaveBeenCalledWith('listPhotoGroups', { parentId: '1001' });
+    expect(call.mock.calls.some(([operation]) => operation === 'listPhotos')).toBe(false);
+    call.mockClear();
+    call.mockImplementation((operation) =>
+      Promise.resolve(operation === 'listPhotoGroups' ? photoFixture.deleteProofGroups : { items: [] })
+    );
+    await runReadPlan(call, skip, undefined, '1001');
+    expect(call).toHaveBeenCalledWith('listPhotos', { groupId: '1001', page: 1, pageSize: 1 });
   });
   it('allows exactly one armed signed read and blocks mutation, TOP and token traffic', async () => {
     const send = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ code: 0 }));

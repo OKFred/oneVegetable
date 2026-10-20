@@ -114,3 +114,18 @@ IOP display receipts now support plain product IDs, pinned authorization context
 - 另有 24 项 Worker 隔离测试、12 条商品列表/库存能力/批量维护 Web 与正式 MV3 回放 E2E 通过；回放与上面的真实双端上下架分别计验收。
 - 最后重建的正式插件再次只配置 IOP：28 次真实只读请求，商品、分组、图片、Schema 和订单通过，所选商品库存和订单物流为合法空结果，TOP、Token 及写请求均为 0。回执：`artifacts/iop-workbench-read-validation/978200b7-2441-4de1-8564-dd871a556be8-EJQaqp/report.json`。
 - ZIP 仅在内存测量为 1,277,228 字节；解包 4,376,238 字节，options eager JS 247,321 字节。既有发布包没有覆盖，未在日常浏览器中执行插件安装、重载或授权替换。
+
+## 图片分组范围交叉核对（最新结论优先）
+
+- 上下架批次的 GitHub CI 已通过，包含完整 Web/BFF/授权 E2E。继续补齐图片分组删除前，发现此前“图片可读取”不能等同“按分组查询正确”：请求已知测试子分组，平台返回的一条素材明确属于其他分组。
+- 再次读取公开 IOP 文档，参数仍为 `groupId/currentPage/pageSize`。保留文档映射，不猜特殊分组、父级/子级递归语义，也不使用官网私有接口；额外只读比较同时提供旧式参数没有改善范围错误，不进入生产签名逻辑。
+- IOP 图片响应现在与实际签名的分组及分页快照关联。异组、混合组、缺少分组或精度不安全的分组标识一律返回 `ALIBABA_IOP_PHOTO_SCOPE_MISMATCH`；不静默过滤成空列表。数量、已返回分页与 total 明显矛盾时同样拒绝，不把不完整数据用于删除或上传核对。
+- 两端显示中英文可操作提示，并保留脱敏 requestId/traceId。不会自动重试、跨协议补请求或扫描全库。
+- 覆盖清单将 `listPhotos` 改为部分支持、文档验证，增加分组范围未确认限制。双授权在出网前选 TOP；仅 IOP 仍可调用公开方法，但范围不符会明确停止。这修正此前只核对 fileId、图片哈希后过度泛化的验收结论；上传回执和源文件哈希仍是独立有效证据，不代表整个分组列表正确。
+- 删除继续关闭。验收脚本必须同时取得可信的 `total=0`、空第一页和唯一且完整的父子关系；删除后父级本身也必须仍可读，不能仅凭子分组未出现判成功。缺失的 photoCount 默认值绝不作为空分组证据。本批没有删除或新增任何远端资源，没有改商品/库存/当前授权。
+- 远程只读诊断：`artifacts/iop-feature-parity/2026-10-21-photo-scope-final.json`。只保存结构、匹配数量及请求标识，不保存其他分组图片内容、分组名称、凭据或完整响应。平台 trace 若包含凭据也不保留。
+- 正式 MV3 指定同一真实测试子分组完成复核：28 次 IOP 请求，0 TOP、Token、写入及越界请求；商品、商品分组、图片分组、Schema 和订单通过，所选样本库存和物流为合法空结果。图片查询返回 `ALIBABA_IOP_PHOTO_SCOPE_MISMATCH`，所以完整只读验收报告仍为 `failed`，不是宣称整个图库通过；安全拦截已生效。回执：`artifacts/iop-workbench-read-validation/a1e0f263-2900-4f43-9d65-b6cc5303d0cd-lZJ7qz/report.json`。生产代码副本未改，仅隔离 Manifest 预授予 IOP Origin，不替代原生权限弹窗验收。
+- 最终 Windows `pnpm check` 通过：339 个测试文件、2,990 项单测，以及格式、Lint、i18n、契约、类型、三端构建、包体和商店合规。补跑 24 项 Worker 隔离测试及 4 条图片选择/模板携图/传输任务 Web E2E；新增验收脚本独立类型检查通过，诊断收集器收窄后的格式和 Lint 另行通过。
+- ZIP 在内存测量为 1,277,646 字节、解包 4,377,202 字节；options eager JS 248,225 字节，双语 i18n 309,955 字节。没有提高门槛、写出或覆盖正式发布 ZIP，也没有增加权限、合并主线或部署。
+
+The latest scope check supersedes earlier broad photo-list acceptance: transport, upload identifiers and file hashes do not prove group-scoped listing. A live IOP request for the known test child returned a foreign-group row. The shared client now rejects uncorrelated group/pagination data without filtering, retrying, scanning or falling back. Dual profiles choose TOP before dispatch; IOP-only keeps an explicit, localized limitation. Photo-group deletion remains unverified and disabled. This batch performs read-only checks, not remote deletion, product changes, credential replacement or deployment.
