@@ -719,9 +719,13 @@ async function executeCredentialVaultOperation(
             const root = asRecord(raw[method.replaceAll('.', '_') + '_response'] ?? result.data);
             const products = Array.isArray(root.products) ? root.products : asRecord(root.products).product;
             const checked = { ...root, ...(Array.isArray(products) ? { products } : {}) };
+            const issues = await validateCapabilityResponse(method, checked);
             if (
               (!Array.isArray(products) && root.total_item !== 0) ||
-              (await validateCapabilityResponse(method, checked)).length
+              // The connectivity probe accepts additive provider metadata.
+              // Known field types and structure still have to match; this does
+              // not relax the capability debugger's response contract.
+              issues.some((issue) => issue.keyword !== 'additionalProperties')
             )
               throw gatewayFailure('RESPONSE_CONTRACT_INVALID', 'RESPONSE_CONTRACT_INVALID');
             return { ...result, data: { [method.replaceAll('.', '_') + '_response']: checked } };

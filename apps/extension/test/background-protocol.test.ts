@@ -934,6 +934,24 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    ['additionalProductMetadata', 'passed'],
+    ['invalidProductType', 'contract-drift']
+  ] as const)(
+    'checks known fields, not additive metadata, for the %s connection probe',
+    async (sample, status) => {
+      await createPair();
+      vi.mocked(fetch).mockResolvedValueOnce(Response.json(connection[sample]));
+      expect(await send('credential-vault-request', 'test-authorization', { protocol: 'top' })).toMatchObject(
+        {
+          ok: true,
+          data: { status }
+        }
+      );
+      expect(fetch).toHaveBeenCalledOnce();
+    }
+  );
+
   it('rejects malformed connection-test runtime messages before network access', async () => {
     await createPair();
     expect(
