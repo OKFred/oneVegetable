@@ -337,7 +337,8 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
   };
   expect(calls).toEqual([]); // Imports never auto-renew or test a gateway.
   await listPhotos(groupId);
-  expect(calls).toEqual([{ protocol: 'iop', location: groupId }]);
+  // IOP group scoping is not live-verified: dual profiles choose TOP before dispatch.
+  expect(calls).toEqual([{ protocol: 'top', location: 'SUB_GROUP' }]);
   // Routing is automatic; it never fabricates a user confirmation or ownership verification.
   expect(await readAuthorizations()).toEqual(configuredPair);
   await page.reload();
@@ -365,9 +366,9 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
   await listPhotos('-1');
   await listPhotos(groupId);
   expect(calls).toEqual([
-    { protocol: 'iop', location: groupId },
+    { protocol: 'top', location: 'SUB_GROUP' },
     { protocol: 'top', location: 'ALL_GROUP' },
-    { protocol: 'iop', location: groupId }
+    { protocol: 'top', location: 'SUB_GROUP' }
   ]);
   expect(blockedRequests).toEqual([]);
 });

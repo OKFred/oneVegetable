@@ -129,3 +129,11 @@ IOP display receipts now support plain product IDs, pinned authorization context
 - ZIP 在内存测量为 1,277,646 字节、解包 4,377,202 字节；options eager JS 248,225 字节，双语 i18n 309,955 字节。没有提高门槛、写出或覆盖正式发布 ZIP，也没有增加权限、合并主线或部署。
 
 The latest scope check supersedes earlier broad photo-list acceptance: transport, upload identifiers and file hashes do not prove group-scoped listing. A live IOP request for the known test child returned a foreign-group row. The shared client now rejects uncorrelated group/pagination data without filtering, retrying, scanning or falling back. Dual profiles choose TOP before dispatch; IOP-only keeps an explicit, localized limitation. Photo-group deletion remains unverified and disabled. This batch performs read-only checks, not remote deletion, product changes, credential replacement or deployment.
+
+### 传输格式有限对照与 CI 回归
+
+- 对已知父/子分组分别比较表单 POST、JSON POST、GET，共 9 次只读请求。三种方式在子分组均返回异组图片；第二页返回不同图片，但仍不属于目标分组。另从真实分组树选择一个不同根分组，只读查询仍返回原测试父分组的图片。
+- 结果不能支持“换成 JSON 或 GET 即可修复”的判断，不修改生产签名、不过滤伪造空结果，也不扩大可删除范围。脱敏报告：`artifacts/iop-feature-parity/2026-10-21-photo-transport-comparison.json` 和 `2026-10-21-photo-other-root.json`；总计 11 次请求、0 次写入。
+- 上批 CI 的 118 条 Web/插件 E2E 中，117 条通过，双授权图片选路的旧断言失败。断言现与共享安全策略一致：无论全部图片或指定分组，双授权均在请求前选择 TOP；不在 IOP 失败后重试 TOP，不修改或虚构商家绑定信息。
+
+Eleven bounded, read-only probes show the same incorrect photo-group scope across form POST, JSON POST, GET and a different real root group. No transport change, filtering, mutation or credential replacement is justified. The MV3 dual-profile regression now expects the intentional pre-dispatch TOP choice rather than obsolete IOP scope acceptance.
