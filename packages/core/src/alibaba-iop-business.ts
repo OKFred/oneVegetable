@@ -10,6 +10,7 @@ import {
 } from './alibaba-iop-registry';
 
 const INVENTORY = 'alibaba.icbu.product.inventory.get';
+const INVENTORY_UPDATE = 'alibaba.icbu.product.inventory.update';
 const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
 const PHOTO_UPLOAD = 'alibaba.icbu.photobank.upload';
 const PHOTO_GROUP = 'alibaba.icbu.photobank.group.operate';
@@ -96,6 +97,37 @@ export async function createIopBusinessRequest(
       current_page: positiveInteger(input.current_page),
       page_size: positiveInteger(input.page_size),
       ...(input.id === undefined ? {} : { video_id: positiveInteger(input.id) })
+    };
+  } else if (method === INVENTORY_UPDATE) {
+    const request = input.request_param;
+    if (!isRecord(request) || Object.keys(input).length !== 1) throw failure('REQUEST_CONTRACT_INVALID');
+    if (Object.keys(request).some((key) => !['product_id', 'inventory_list'].includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    if (
+      !Array.isArray(request.inventory_list) ||
+      !request.inventory_list.length ||
+      request.inventory_list.length > 500
+    )
+      throw failure('REQUEST_CONTRACT_INVALID');
+    const seen = new Set<string>();
+    business = {
+      product_id: positiveInteger(request.product_id),
+      inventory_list: request.inventory_list.map((item: unknown) => {
+        if (
+          !isRecord(item) ||
+          Object.keys(item).some((key) => !['operate', 'inventory_code', 'inventory', 'sku_id'].includes(key))
+        )
+          throw failure('REQUEST_CONTRACT_INVALID');
+        if (item.operate !== 'plus' && item.operate !== 'sub') throw failure('REQUEST_CONTRACT_INVALID');
+        const sku_id = positiveInteger(item.sku_id);
+        const inventory_code = requiredText(item.inventory_code);
+        if (inventory_code.trim() !== inventory_code || /\p{Cc}/u.test(inventory_code))
+          throw failure('REQUEST_CONTRACT_INVALID');
+        const key = JSON.stringify([sku_id, inventory_code]);
+        if (seen.has(key)) throw failure('REQUEST_CONTRACT_INVALID');
+        seen.add(key);
+        return { operate: item.operate, inventory_code, inventory: positiveInteger(item.inventory), sku_id };
+      })
     };
   } else if (method === INVENTORY || method === ENCRYPT) {
     if (Object.keys(input).some((key) => key !== 'product_id' && key !== 'language'))
@@ -235,6 +267,46 @@ export function normalizeIopBusinessResponse(
   }
   const root = value.result;
   if (!isRecord(root)) throw failure();
+  if (method === INVENTORY_UPDATE) {
+    const result = isRecord(root.result) ? root.result : root;
+    for (const data of result === root ? [result] : [root, result]) {
+      if (
+        data.success === false ||
+        data.success === 'false' ||
+        data.data === false ||
+        data.data === 'false' ||
+        (data.msg_code !== undefined && data.msg_code !== '') ||
+        (data.error_code !== undefined && !['', '0', 0].includes(data.error_code as string | number))
+      )
+        throw providerFailure(
+          typeof data.msg_code === 'string' && data.msg_code !== ''
+            ? data.msg_code
+            : (data.error_code ?? 'BUSINESS_REJECTED'),
+          data.message_info ?? data.error_msg,
+          data.trace_id ?? value.request_id,
+          credentials,
+          'ALIBABA_IOP_BUSINESS_REJECTED'
+        );
+    }
+    if (
+      (result.success !== true && result.success !== 'true') ||
+      (result.data !== true && result.data !== 'true')
+    )
+      throw failure();
+    // The shared contract keeps the TOP wrapper, but success is checked using the native IOP response.
+    return {
+      alibaba_icbu_product_inventory_update_response: {
+        result: {
+          success: true,
+          data: 'true',
+          ...(result.message_info === undefined ? {} : { message: result.message_info }),
+          ...(result.msg_code === undefined ? {} : { msg_code: result.msg_code }),
+          ...(result.trace_id === undefined ? {} : { trace_id: result.trace_id })
+        },
+        request_id: value.request_id
+      }
+    };
+  }
   if (method === VIDEO_QUERY) {
     const model = root.model;
     if (root.msg_code !== undefined && root.msg_code !== '200' && root.msg_code !== 200)

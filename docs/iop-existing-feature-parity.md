@@ -22,7 +22,7 @@
 - 当前图片查询必须指定分组；不猜全部/未分组 ID，不扫描整库。图片分组支持通过文档中的 `id` 查询父级及其子分组，不再强制转 TOP。
 - 订单聚合保留物流；新版手续费不能冒充已付金额。RFQ、橱窗、排名等缺口可提示补充 TOP，不做失败后的跨协议重试。
 - 下载商品素材、本地诊断与目录操作不应被 TOP/IOP 协议闸门误拦截。
-- 图片文件上传与分组新增、改名已完成 IOP 真实回读；分组删除仍未验收，单独拦截并在双授权时选 TOP。商品分组新增、上下架、库存写入和视频方法继续按批次适配，未经真实回读不自动开放写入。
+- 图片文件上传与分组新增、改名、库存增减已完成 IOP 真实回读；分组删除仍未验收，单独拦截并在双授权时选 TOP。商品分组新增、上下架和视频方法继续按批次适配，未经真实回读不自动开放写入。通用调试器仍为只读，不因协议适配而放开写入。
 - 新版 Product V2 不替换现有 Schema 内容语义。采购和销售订单分开，不把 BuyNow 创建采购订单当作卖家起草订单。
 - 第二阶段先补订单详情、物流轨迹、运费、仓库和运费模板，再为采购下单、取消、GGS 物流下单和发货设计独立持久回执；不执行付款。
 - ZIP 2,000,000 字节、解包 5,470,000 字节及其他现有门禁不放宽。真实验收回执放忽略目录，不保存明文密钥或完整业务响应。
@@ -59,3 +59,13 @@ IOP-only coverage is expanded before new procurement, sales and fulfillment feat
 - 单次受控新增保存发送前回执后执行，平台返回业务错误；没有再次发送，回执保守保留 `unknown`。随后 21 次限速只读请求核对根层分组，未发现本次唯一测试名称，仍不能排除平台延迟或其他差异，不自动重试。
 - 回执：`artifacts/iop-feature-parity/2026-10-21-product-group.json`；只读核对：`2026-10-21-product-group-reconciliation.json`。未修改商品，不回退 TOP；该方法继续为 `unverified-write`，未开放生产入口。
 - 首次工具漏存平台业务子码，现已补齐后续回执的子码和 traceId 字段；不为补日志重复发送这次结果不明的写入。
+
+## 库存增减批次（远程 Node 真实通过）
+
+- 再次读取新版公开文档，库存更新使用顶层 `product_id` 和 `inventory_list`，不是 TOP 的 `request_param`。只映射明确的增减量、SKU 和仓编码；拒绝零/负数、精度损失、重复 SKU+仓、未知字段及绝对库存操作。
+- 成功必须同时具有 `success=true`、`data=true` 且没有业务错误码。原生 `message_info` 映射到共享契约的 `message`，不放宽 TOP validator，也不把 HTTP 成功当成库存已生效。
+- 远程 Windows 的隔离 IOP 授权完成两次基线读取、单 SKU 加 1、只读轮询确认、减 1及完整快照恢复。只发送两次写入，不改历史异常 SKU，不覆盖历史未决回执；没有修改工作台授权或其他商品字段。
+- 回执：`artifacts/iop-feature-parity/2026-10-21-inventory-cycle.json`，各阶段包含发送前独占、fsync 的意图记录及 requestId；已存在的回执不能再次执行。此处为协议/Node 验收，不冒充正式插件库存写 UI 或 Worker 真实写入验收。
+- 仍不新增库存写页面或通用写开关。平台受理后只能读取核对，未知结果不自动重试；任何其他库存变化都会停止后续减量。
+
+The isolated remote Node IOP inventory experiment passed: one plus-one request, readback, one sub-one request and full-baseline restoration. Native parameters and acknowledgements are validated without weakening TOP contracts. Historical unresolved receipts remain unresolved. The generic debugger remains read-only; this is not a claim of MV3/Worker write acceptance or a new inventory-write UI.

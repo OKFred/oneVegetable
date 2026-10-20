@@ -1,0 +1,14 @@
+{
+  "baseline": [
+    { "skuId": 101, "code": "FIXTURE_WH", "quantity": 20 },
+    { "skuId": 102, "code": "FIXTURE_WH", "quantity": 30 }
+  ],
+  "increased": [
+    { "skuId": 101, "code": "FIXTURE_WH", "quantity": 20 },
+    { "skuId": 102, "code": "FIXTURE_WH", "quantity": 31 }
+  ],
+  "concurrentChange": [
+    { "skuId": 101, "code": "FIXTURE_WH", "quantity": 19 },
+    { "skuId": 102, "code": "FIXTURE_WH", "quantity": 31 }
+  ]
+}

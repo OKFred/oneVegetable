@@ -1,0 +1,11 @@
+{
+  "code": "0",
+  "request_id": "fixture-iop-inventory",
+  "result": {
+    "success": true,
+    "data": "true",
+    "trace_id": "fixture-inventory-trace",
+    "message_info": "",
+    "msg_code": ""
+  }
+}

@@ -168,8 +168,8 @@
     "alibaba.icbu.product.inventory.update": {
       "path": "/icbu/product/inventory/update",
       "risk": "mutation",
-      "adapted": false,
-      "accountVerified": false,
+      "adapted": true,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "alibaba.icbu.video.query": {

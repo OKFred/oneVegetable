@@ -395,20 +395,13 @@ describe('explicit IOP business compatibility', () => {
       )
     ).toThrow('ALIBABA_IOP_API_REJECTED');
   });
-  it('keeps SKU inventory, stock writes and ID decryption unsupported before network', async () => {
+  it('keeps SKU-only inventory and ID decryption unsupported before network', async () => {
     const { adapter, send, client } = inventoryAdapter(fixtures.inventory);
     await expect(adapter.get({ ...inventoryInput, source: 'sku' })).rejects.toMatchObject({
       gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
     });
-    for (const method of [
-      'alibaba.icbu.product.inventory.update',
-      'alibaba.icbu.product.sku.inventory.get',
-      'alibaba.icbu.product.id.decrypt'
-    ]) {
-      const reason =
-        method === 'alibaba.icbu.product.inventory.update'
-          ? 'ALIBABA_IOP_MUTATION_UNVERIFIED'
-          : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+    for (const method of ['alibaba.icbu.product.sku.inventory.get', 'alibaba.icbu.product.id.decrypt']) {
+      const reason = 'ALIBABA_IOP_METHOD_UNSUPPORTED';
       expect(iopOperationReason('callCapability', method)).toBe(reason);
       await expect(client.call(method, {})).rejects.toMatchObject({
         gatewayError: { code: reason }
