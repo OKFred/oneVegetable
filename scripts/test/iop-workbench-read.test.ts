@@ -62,6 +62,62 @@ describe('IOP real workbench acceptance safety', () => {
       readIopBundle({ ...bundle, oauth: { ...bundle.oauth, expiresAtUtc: new Date(0).toISOString() } })
     ).toThrow('IOP_BUNDLE_INVALID');
   });
+  it('can isolate the order aggregate using only a correlated live order from the preceding list', async () => {
+    expect(
+      parseOptions(['--confirm-readonly', '--credential=artifacts/input.json', '--orders-only'])
+    ).toMatchObject({ ordersOnly: true });
+    const order = { id: '90071992547409931234', status: 'unknown', amount: null, currency: null };
+    const aggregate = {
+      order,
+      publicDetail: { source: 'iop-public', orderId: order.id, products: null },
+      fund: null
+    };
+    const call = vi
+      .fn<(operation: ReadOperation, payload: Record<string, unknown>) => Promise<unknown>>()
+      .mockImplementation((operation) =>
+        Promise.resolve(operation === 'listTradeOrders' ? { items: [order] } : aggregate)
+      );
+    await runReadPlan(call, vi.fn(), undefined, undefined, true);
+    expect(call.mock.calls.map(([operation]) => operation)).toEqual([
+      'listTradeOrders',
+      'getTradeOrderAggregate'
+    ]);
+    expect(summarizeRead('getTradeOrderAggregate', aggregate)).toBe(1);
+    expect(() =>
+      summarizeRead('getTradeOrderAggregate', {
+        ...aggregate,
+        publicDetail: { ...aggregate.publicDetail, orderId: 'other' }
+      })
+    ).toThrow('READ_RESULT_INVALID');
+  });
+  it('allows one correlated native detail plus logistics, but never duplicate detail or an unrelated order', async () => {
+    const send = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ code: 0 }));
+    vi.stubGlobal('fetch', send);
+    installReadOnlyGuard({ origin: 'https://openapi-api.alibaba.com', paths: READ_PATHS, intervalMs: 0 });
+    const guard = (globalThis as typeof globalThis & { __iopReadSmokeGuard: WorkerGuard })
+      .__iopReadSmokeGuard;
+    const read = (path: string, parameters: string) =>
+      fetch(`https://openapi-api.alibaba.com${path}`, {
+        method: 'POST',
+        headers: { 'X-Request-ID': 'fixture-request' },
+        body: `access_token=fixture&sign=fixture&sign_method=sha256&${parameters}`
+      });
+    guard.arm('getTradeOrderAggregate', 'fixture-request');
+    await read(READ_PATHS.getTradeOrderAggregate, 'e_trade_id=90071992547409931234');
+    await expect(read(READ_PATHS.getTradeOrderAggregate, 'e_trade_id=90071992547409931234')).rejects.toThrow(
+      'READ_ONLY_NETWORK_DENIED'
+    );
+    await read(READ_PATHS.getTradeOrderLogistics, 'trade_id=90071992547409931234');
+    expect(send).toHaveBeenCalledTimes(2);
+    guard.disarm();
+    guard.arm('getTradeOrderAggregate', 'fixture-request');
+    await read(READ_PATHS.getTradeOrderAggregate, 'e_trade_id=90071992547409931234');
+    await expect(read(READ_PATHS.getTradeOrderLogistics, 'trade_id=other')).rejects.toThrow(
+      'READ_ONLY_NETWORK_DENIED'
+    );
+    expect(send).toHaveBeenCalledTimes(3);
+    guard.disarm();
+  });
   it('uses dependent live IDs only and refuses malformed response summaries', async () => {
     const call = vi.fn().mockResolvedValue({ items: [] });
     const skip = vi.fn<(operation: ReadOperation, reason: string) => void>();
@@ -74,7 +130,8 @@ describe('IOP real workbench acceptance safety', () => {
       'listPhotos',
       'renderProductSchema',
       'getProductInventory',
-      'getTradeOrderLogistics'
+      'getTradeOrderLogistics',
+      'getTradeOrderAggregate'
     ]);
     expect(summarizeRead('listProducts', { items: [] })).toBe(0);
     expect(summarizeRead('renderProductSchema', { xml: business.schema.result.data })).toBe(1);
@@ -107,6 +164,7 @@ describe('IOP real workbench acceptance safety', () => {
         listPhotos: '/rest/icbu/product/photobank/list',
         renderProductSchema: '/rest/icbu/product/schema/render',
         listTradeOrders: '/rest/alibaba/order/list',
+        getTradeOrderAggregate: '/rest/alibaba/order/get',
         getTradeOrderLogistics: '/rest/order/logistics/query',
         getProductInventory: '/rest/icbu/product/inventory/get'
       },

@@ -3,23 +3,29 @@
 import { defineComponent, h } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   APP_PREFERENCES_STORAGE_KEY,
   OPERATION_IDS,
-  StaticOperationAvailabilityClient
+  StaticOperationAvailabilityClient,
+  type OperationId,
+  type RequestOf,
+  type ResponseOf
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
+import { formatDateTime } from '../src/lib/date-time';
+import { uiI18n } from '../src/i18n';
 import OrdersView from '../src/views/OrdersView.vue';
+import iopDetailFixture from '../../../mock/data/iop-order-public-detail.json';
 
-function mountView(mode: 'mock' | 'extension' = 'mock') {
+function mountView(mode: 'mock' | 'extension' = 'mock', gateway = new MockGatewayClient(0)) {
   const Host = defineComponent({
     setup() {
       provideServices({
-        gateway: new MockGatewayClient(0),
+        gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
         operationAvailability: new StaticOperationAvailabilityClient(
           new Set(mode === 'mock' ? OPERATION_IDS : [])
@@ -232,6 +238,231 @@ describe('OrdersView', () => {
     expect(wrapper.text()).toContain('当前环境未开放信保订单创建（STATIC_DISABLED）');
     expect(button(wrapper, '创建信保订单（未开放）').attributes('disabled')).toBeDefined();
     wrapper.unmount();
+  });
+});
+
+function iopDetailGateway(waitForFailedOrder?: Promise<void>) {
+  const gateway = new MockGatewayClient(0);
+  const original = gateway.request.bind(gateway);
+  const aggregates = Object.values(iopDetailFixture);
+  vi.spyOn(gateway, 'request').mockImplementation(
+    <K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> => {
+      if (operation === 'listTradeOrders') {
+        return Promise.resolve({
+          items: aggregates.map((aggregate) => structuredClone(aggregate.order)),
+          page: 1,
+          pageSize: 20,
+          total: aggregates.length,
+          documentTimeZoneUnverified: true
+        } as unknown as ResponseOf<K>);
+      }
+      if (operation === 'getTradeOrderAggregate') {
+        const order = (payload as RequestOf<'getTradeOrderAggregate'>).order;
+        const aggregate = aggregates.find((candidate) => candidate.order.id === order.id);
+        if (!aggregate) return Promise.reject(new Error('Missing fictional aggregate'));
+        const pending = order.id === iopDetailFixture.failed.order.id ? waitForFailedOrder : undefined;
+        return Promise.resolve(pending).then(() => structuredClone(aggregate) as unknown as ResponseOf<K>);
+      }
+      return original(operation, payload);
+    }
+  );
+  return gateway;
+}
+
+async function openFixtureOrder(wrapper: ReturnType<typeof mountView>, id: string) {
+  await vi.waitFor(() => {
+    expect(wrapper.text()).toContain(id);
+  });
+  const row = wrapper.findAll('tbody tr').find((candidate) => candidate.text().includes(id));
+  if (!row) throw new Error(`Missing fictional order: ${id}`);
+  await row.trigger('keydown', { key: 'Enter' });
+  await flushPromises();
+}
+
+function detailElement(testId: string): HTMLElement {
+  const element = document.body.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+  if (!element) throw new Error(`Missing drawer element: ${testId}`);
+  return element;
+}
+
+describe('OrdersView native IOP public detail', () => {
+  const wrappers: ReturnType<typeof mountView>[] = [];
+  function mountIop(gateway = iopDetailGateway()) {
+    const wrapper = mountView('mock', gateway);
+    wrappers.push(wrapper);
+    return wrapper;
+  }
+  beforeEach(() => {
+    localStorage.clear();
+    globalThis.history.replaceState(null, '', '#/orders');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Unexpected live call')));
+  });
+  afterEach(() => {
+    for (const wrapper of wrappers.splice(0)) wrapper.unmount();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    uiI18n.global.locale.value = 'zh-CN';
+    document.documentElement.classList.remove('dark');
+    Reflect.deleteProperty(document.documentElement.dataset, 'theme');
+  });
+
+  it.each([
+    ['zh-CN', '买家', '订单金额', '商品名称'],
+    ['en-US', 'Buyer', 'Order amount', 'Product name']
+  ] as const)(
+    'renders source-labelled readonly detail in %s dark mode without inventing funds',
+    async (locale, buyerLabel, amountLabel, productLabel) => {
+      localStorage.setItem(
+        APP_PREFERENCES_STORAGE_KEY,
+        JSON.stringify({ uiLocale: locale, alibabaLanguage: 'en_US', theme: 'dark' })
+      );
+      const wrapper = mountIop();
+      await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+      await vi.waitFor(() => {
+        expect(document.body.querySelector('[data-testid="iop-order-public-detail"]')).not.toBeNull();
+      });
+      const card = detailElement('iop-order-public-detail');
+      expect(card.textContent).toContain('IOP · /alibaba/order/get');
+      expect(card.textContent).toContain(buyerLabel);
+      expect(card.textContent).toContain(amountLabel);
+      expect(card.textContent).toContain(productLabel);
+      expect(card.textContent).toContain('Fictional Buyer Alpha');
+      expect(card.textContent).toContain('DELIVERING');
+      expect(card.textContent).toContain('CAD 124.500');
+      expect(card.textContent).toContain('920000000000000001');
+      expect(card.textContent).toContain('Fictional reusable sample box');
+      expect(card.textContent).toContain('2.50');
+      expect(card.textContent).toContain('cartons');
+      expect(card.textContent).toContain('CAD 49.800');
+      expect(card.textContent).not.toContain('fictional-login-alpha');
+      expect(card.textContent).not.toContain('EUR 80.00');
+      expect(card.querySelector('button, a, input')).toBeNull();
+      expect(card.hasAttribute('data-feedback-redact')).toBe(true);
+      const rows = card.querySelectorAll('tbody tr');
+      expect(rows).toHaveLength(3);
+      expect(rows[1]?.textContent).toContain(uiI18n.global.t('orders.notReturned'));
+      expect(rows[2]?.textContent).toContain('JPY 0');
+      const zeroQuantity = rows[2]?.children[2];
+      if (!zeroQuantity) throw new Error('Missing fictional zero quantity');
+      expect(zeroQuantity.textContent.trim()).toBe('0');
+      const summary = detailElement('order-summary');
+      expect(summary.textContent).toContain('fictional-login-alpha');
+      expect(summary.textContent).toContain('EUR 80.00');
+      expect(summary.textContent).toContain(formatDateTime(iopDetailFixture.ready.order.createdAt));
+      const funds = detailElement('order-funds');
+      expect(funds.textContent).toContain(uiI18n.global.t('orders.drawer.apiUnavailable'));
+      expect(funds.textContent).not.toContain('124.500');
+      expect(funds.textContent).not.toMatch(/USD|0\.00/);
+      expect(detailElement('order-logistics').textContent).toContain('FICTIONAL-TRACK-ALPHA');
+      expect(detailElement('order-full-detail-restriction').textContent).toContain('TOP ·');
+      expect(document.body.textContent).not.toContain('fullDetail: jushita-only');
+      expect(card.classList.contains('bg-card')).toBe(true);
+      expect(card.classList.contains('text-card-foreground')).toBe(true);
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+      expect(detailElement('order-full-detail-restriction').classList.contains('dark:bg-amber-950/30')).toBe(
+        true
+      );
+    }
+  );
+
+  it.each(['zh-CN', 'en-US'] as const)(
+    'keeps a native detail error visible beside available logistics in %s',
+    async (locale) => {
+      localStorage.setItem(
+        APP_PREFERENCES_STORAGE_KEY,
+        JSON.stringify({ uiLocale: locale, alibabaLanguage: 'en_US', theme: 'light' })
+      );
+      const wrapper = mountIop();
+      await openFixtureOrder(wrapper, iopDetailFixture.failed.order.id);
+      await vi.waitFor(() => {
+        expect(document.body.querySelector('[data-testid="iop-order-public-detail-error"]')).not.toBeNull();
+      });
+      const error = detailElement('iop-order-public-detail-error');
+      expect(error.textContent).toContain(uiI18n.global.t('errors.codes.ALIBABA_IOP_API_REJECTED'));
+      expect(error.textContent).not.toContain('errors.codes.');
+      expect(document.body.querySelector('[data-testid="iop-order-public-detail"]')).toBeNull();
+      expect(detailElement('order-logistics').textContent).toContain('Fictional Carrier Beta');
+      expect(detailElement('order-logistics').textContent).toContain('FICTIONAL-TRACK-BETA');
+      expect(detailElement('order-funds').textContent).toContain(
+        uiI18n.global.t('orders.drawer.apiUnavailable')
+      );
+      expect(detailElement('iop-order-public-source').textContent).toContain('IOP');
+    }
+  );
+
+  it('keeps absent native fields unknown instead of borrowing list amounts, names or dates', async () => {
+    const wrapper = mountIop();
+    await openFixtureOrder(wrapper, iopDetailFixture.sparse.order.id);
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[data-testid="iop-order-public-detail"]')).not.toBeNull();
+    });
+    const card = detailElement('iop-order-public-detail');
+    expect(card.textContent).not.toContain('300.00');
+    expect(card.textContent).not.toContain('USD');
+    expect(card.textContent).not.toContain('fictional-login-gamma');
+    expect(card.textContent).not.toContain(uiI18n.global.t('orders.drawer.createdAt'));
+    expect(card.textContent).toContain(uiI18n.global.t('orders.notReturned'));
+    expect(detailElement('iop-order-public-products-empty').textContent).toContain(
+      uiI18n.global.t('orders.documentNotReturned')
+    );
+    expect(detailElement('order-logistics').textContent).toContain(
+      uiI18n.global.t('orders.drawer.apiUnavailable')
+    );
+  });
+
+  it('distinguishes an explicitly empty product list and preserves a real zero total', async () => {
+    const wrapper = mountIop();
+    await openFixtureOrder(wrapper, iopDetailFixture.emptyProducts.order.id);
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[data-testid="iop-order-public-detail"]')).not.toBeNull();
+    });
+    expect(detailElement('iop-order-public-detail').textContent).toContain('GBP 0');
+    expect(detailElement('iop-order-public-products-empty').textContent).toContain(
+      uiI18n.global.t('common.data.empty')
+    );
+    expect(detailElement('iop-order-public-detail').querySelector('table')).toBeNull();
+  });
+
+  it('removes the previous order detail while the next native request is pending', async () => {
+    const waiting = Promise.withResolvers<undefined>();
+    const wrapper = mountIop(iopDetailGateway(waiting.promise));
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Fictional Buyer Alpha');
+    });
+    bodyButton(uiI18n.global.t('orders.drawer.nextLabel')).click();
+    await flushPromises();
+    expect(document.body.querySelector('[data-testid="iop-order-public-detail"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="iop-order-public-source"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('Fictional Buyer Alpha');
+    expect(document.body.textContent).not.toContain('FICTIONAL-TRACK-ALPHA');
+    waiting.resolve(undefined);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('FICTIONAL-TRACK-BETA');
+    });
+    expect(document.body.querySelector('[data-testid="iop-order-public-detail-error"]')).not.toBeNull();
+    bodyButton(uiI18n.global.t('common.dialog.closeDetails')).click();
+    await flushPromises();
+    expect(document.body.querySelector('[data-testid="iop-order-public-detail-error"]')).toBeNull();
+  });
+
+  it('does not reveal a late native response after closing or attach it to another order', async () => {
+    const waiting = Promise.withResolvers<undefined>();
+    const wrapper = mountIop(iopDetailGateway(waiting.promise));
+    await openFixtureOrder(wrapper, iopDetailFixture.failed.order.id);
+    bodyButton(uiI18n.global.t('common.dialog.closeDetails')).click();
+    await flushPromises();
+    waiting.resolve(undefined);
+    await flushPromises();
+    expect(document.body.querySelector('[data-testid="iop-order-public-detail-error"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('FICTIONAL-TRACK-BETA');
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Fictional Buyer Alpha');
+    });
+    expect(document.body.querySelector('[data-testid="iop-order-public-detail-error"]')).toBeNull();
+    expect(detailElement('order-logistics').textContent).toContain('FICTIONAL-TRACK-ALPHA');
   });
 });
 

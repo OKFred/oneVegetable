@@ -137,3 +137,24 @@ The latest scope check supersedes earlier broad photo-list acceptance: transport
 - 上批 CI 的 118 条 Web/插件 E2E 中，117 条通过，双授权图片选路的旧断言失败。断言现与共享安全策略一致：无论全部图片或指定分组，双授权均在请求前选择 TOP；不在 IOP 失败后重试 TOP，不修改或虚构商家绑定信息。
 
 Eleven bounded, read-only probes show the same incorrect photo-group scope across form POST, JSON POST, GET and a different real root group. No transport change, filtering, mutation or credential replacement is justified. The MV3 dual-profile regression now expects the intentional pre-dispatch TOP choice rather than obsolete IOP scope acceptance.
+
+## IOP 公开订单详情（Node 与正式 MV3 只读通过）
+
+- 使用公开原生路径 `/alibaba/order/get`，不将其冒充旧版 `alibaba.seller.order.get` 或聚石塔受限详情。`TradeOrderAggregate` 兼容增加独立 `publicDetail/publicDetailError`，现有路由和写白名单不变；原 TOP 聚合和双授权请求前选路保持原样。
+- IOP 订单抽屉现可展示平台真实返回的状态、买家名称、订单总金额及商品行。买家名称不当作登录名，总金额、预付款和手续费均不当作已付金额；IOP 资金仍明确不可用，物流与公开详情各自成功或失败，不互相隐藏。
+- 只保留必要字段，不输出地址、邮箱、联系方式、附件或完整原始响应。订单 ID 保持不透明字符串并与签名请求严格关联；不安全的数字商品 ID、错误金额类型和畸形商品数组不静默修正。字段未返回显示未知，未返回商品行与明确空数组分别处理。
+- 请求使用独立的 Alibaba 接口语言，不使用界面语言。缓存按账号、凭据上下文和接口语言隔离 5 分钟；完整公开详情与物流可共用缓存，不要求伪造资金数据。部分失败不缓存为成功，回写前核对账号，拒绝迟到的异账号结果。
+- 远程 Node 网关使用隔离 IOP 授权完成一次列表及同一订单详情、物流查询：3 次只读请求，详情、金额、商品行与物流返回有效；0 TOP、Token 和写请求。回执：`artifacts/iop-feature-parity/2026-10-21-order-aggregate-node.json`，只保存字段存在性、数量、指纹和请求标识。
+- 最终正式 MV3 构建复制到隔离 Profile，导入后刷新，再执行订单列表和聚合：3 次 IOP 请求通过，0 TOP、Token、写入及越界请求，未替换当前配置。回执：`artifacts/iop-workbench-read-validation/22d2463d-3a4a-463d-aa23-656d346a56d0-aPGyqn/report.json`。仅隔离 Manifest 预授予 IOP Origin，不代表原生权限弹窗验收；生产代码副本未改。
+- 仅提升原生订单详情的 IOP 只读验收标记，不声称所有账号有权限，也不开放受限资金或交易写入。独立复查命令：
+
+  ```powershell
+  pnpm exec tsx scripts/smoke-iop-workbench-real.ts --confirm-readonly --credential=artifacts/local-dual-authorization/iop-credentials.json --orders-only
+  ```
+
+- Windows `pnpm check` 通过 341 个测试文件、3,016 项单测、格式、Lint、i18n、契约漂移、类型、三端构建及商店检查。最终只读验收标记更新后再次构建并复核覆盖注册表及正式 MV3。脚本独立类型检查通过。
+- 最终 ZIP 仅在内存测量：1,279,396 字节；解包 4,384,176 字节，options eager JS 248,854 字节，i18n 309,955 字节。预算未提高，既有发布包未覆盖；未合并、部署或上架。
+- 原上下架样本另作一次精确 ID 的 IOP 只读复查，`total=1` 且唯一记录仍为上架，与原基线一致；未重复上下架、改写恢复回执或当前配置。回执：`artifacts/iop-feature-parity/2026-10-21-display-readback-recheck.json`。
+- 另外通过 24 项 Worker 隔离测试、2 条 Worker/D1/BFF 回放 E2E，以及完整 118 条 Web/正式 MV3 E2E；回放回归与上述真实 IOP 查询分别计验收。首次并行运行两套 Playwright 共用默认输出目录，BFF 启动清理了插件测试的下载临时文件；改用独立 `--output=artifacts/iop-order-web-e2e` 后全量重跑通过，未因此修改产品下载逻辑。
+
+The public native IOP order detail is now independent of restricted TOP/Jushita detail. It supplies real order totals and line items without fabricating paid amounts, timestamps or missing data. Detail and logistics degrade independently; account/language-scoped caching rejects late results after credential changes. Isolated remote Node and formal MV3 each passed three correlated, read-only IOP requests with no TOP fallback, token refresh or mutation. Only the native read is promoted; permission grants and transaction writes are not implied. Photo-group scope remains a separate unresolved platform limitation.

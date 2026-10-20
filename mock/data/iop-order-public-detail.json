@@ -1,0 +1,144 @@
+{
+  "ready": {
+    "order": {
+      "id": "910000000000000001",
+      "buyerLoginId": "fictional-login-alpha",
+      "status": "PAID",
+      "amount": "80.00",
+      "currency": "EUR",
+      "createdAt": "2026-02-03T04:05:06Z",
+      "modifiedAt": "2026-02-04T07:08:09Z"
+    },
+    "fund": null,
+    "logistics": {
+      "orderId": "910000000000000001",
+      "status": "SHIPPED",
+      "carrier": "Fictional Carrier Alpha",
+      "trackingNumber": "FICTIONAL-TRACK-ALPHA"
+    },
+    "availability": {
+      "order": "available",
+      "fund": "unavailable",
+      "logistics": "available",
+      "fullDetail": "jushita-only"
+    },
+    "publicDetail": {
+      "source": "iop-public",
+      "orderId": "910000000000000001",
+      "status": "DELIVERING",
+      "buyerName": "Fictional Buyer Alpha",
+      "totalAmount": { "amount": "124.500", "currency": "CAD" },
+      "products": [
+        {
+          "lineId": "fictional-line-alpha",
+          "productId": "920000000000000001",
+          "name": "Fictional reusable sample box",
+          "quantity": "2.50",
+          "unit": "cartons",
+          "unitPrice": { "amount": "49.800", "currency": "CAD" }
+        },
+        {
+          "lineId": null,
+          "productId": null,
+          "name": null,
+          "quantity": null,
+          "unit": null,
+          "unitPrice": null
+        },
+        {
+          "lineId": "fictional-line-zero",
+          "productId": "920000000000000003",
+          "name": "Fictional zero-price sample",
+          "quantity": "0",
+          "unit": null,
+          "unitPrice": { "amount": "0", "currency": "JPY" }
+        }
+      ]
+    }
+  },
+  "failed": {
+    "order": {
+      "id": "910000000000000002",
+      "buyerLoginId": "fictional-login-beta",
+      "status": "UNPAY",
+      "amount": null,
+      "currency": null,
+      "createdAt": null,
+      "modifiedAt": null
+    },
+    "fund": null,
+    "logistics": {
+      "orderId": "910000000000000002",
+      "status": "WAITING",
+      "carrier": "Fictional Carrier Beta",
+      "trackingNumber": "FICTIONAL-TRACK-BETA"
+    },
+    "availability": {
+      "order": "available",
+      "fund": "unavailable",
+      "logistics": "available",
+      "fullDetail": "jushita-only"
+    },
+    "publicDetail": null,
+    "publicDetailError": {
+      "code": "ALIBABA_IOP_API_REJECTED",
+      "message": "FICTIONAL_IOP_PUBLIC_DETAIL_REJECTED",
+      "traceId": "fictional-public-detail-trace",
+      "retryable": false
+    }
+  },
+  "sparse": {
+    "order": {
+      "id": "910000000000000003",
+      "buyerLoginId": "fictional-login-gamma",
+      "status": "UNPAY",
+      "amount": "300.00",
+      "currency": "USD",
+      "createdAt": null,
+      "modifiedAt": null
+    },
+    "fund": null,
+    "logistics": null,
+    "availability": {
+      "order": "available",
+      "fund": "unavailable",
+      "logistics": "unavailable",
+      "fullDetail": "jushita-only"
+    },
+    "publicDetail": {
+      "source": "iop-public",
+      "orderId": "910000000000000003",
+      "status": null,
+      "buyerName": null,
+      "totalAmount": null,
+      "products": null
+    }
+  },
+  "emptyProducts": {
+    "order": {
+      "id": "910000000000000004",
+      "buyerLoginId": null,
+      "status": "CLOSED",
+      "amount": null,
+      "currency": null,
+      "createdAt": null,
+      "modifiedAt": null
+    },
+    "fund": null,
+    "logistics": null,
+    "availability": {
+      "order": "available",
+      "fund": "unavailable",
+      "logistics": "unavailable",
+      "fullDetail": "jushita-only"
+    },
+    "publicDetail": {
+      "source": "iop-public",
+      "orderId": "910000000000000004",
+      "status": "CLOSED",
+      "buyerName": null,
+      "totalAmount": { "amount": "0", "currency": "GBP" },
+      "products": []
+    }
+  }
+}

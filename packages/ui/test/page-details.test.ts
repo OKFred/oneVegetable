@@ -49,6 +49,55 @@ describe('page details', () => {
     await third;
     expect(spy).toHaveBeenCalledTimes(2);
   });
+  it('shares valid IOP detail without requiring unavailable TOP fund data, but does not cache detail errors', async () => {
+    const gateway = new MockGatewayClient(0);
+    const order = {
+      id: 'fixture-order',
+      buyerLoginId: null,
+      status: 'unknown',
+      amount: null,
+      currency: null,
+      createdAt: null,
+      modifiedAt: null
+    };
+    const aggregate = {
+      order,
+      fund: null,
+      logistics: { orderId: order.id, status: 'WAIT_SHIP', carrier: null, trackingNumber: null },
+      publicDetail: {
+        source: 'iop-public' as const,
+        orderId: order.id,
+        status: null,
+        buyerName: null,
+        totalAmount: null,
+        products: null
+      },
+      availability: {
+        order: 'available' as const,
+        fund: 'unavailable' as const,
+        logistics: 'available' as const,
+        fullDetail: 'jushita-only' as const
+      }
+    };
+    const spy = vi.spyOn(gateway, 'request').mockResolvedValue(aggregate);
+    const request = { kind: 'order' as const, order };
+    await requestPageDetail(gateway, 'extension', 'zh_CN', request);
+    await requestPageDetail(gateway, 'extension', 'zh_CN', request);
+    expect(spy).toHaveBeenCalledOnce();
+    expect(spy).toHaveBeenCalledWith(
+      'getTradeOrderAggregate',
+      { order, language: 'zh_CN' },
+      expect.anything()
+    );
+    spy.mockResolvedValue({
+      ...aggregate,
+      publicDetail: null,
+      publicDetailError: { code: 'ALIBABA_IOP_API_REJECTED', message: 'Permission denied', retryable: false }
+    });
+    await requestPageDetail(gateway, 'extension', 'en_US', request);
+    await requestPageDetail(gateway, 'extension', 'en_US', request);
+    expect(spy).toHaveBeenCalledTimes(3);
+  });
   it('does not send a request until manually started; discards late results after a page change', async () => {
     let resolve: ((value: { productId: string; score: number; issues: string[] }) => void) | undefined;
     const query = vi.fn(

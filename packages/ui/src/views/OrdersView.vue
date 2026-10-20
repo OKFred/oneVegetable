@@ -18,11 +18,12 @@ import {
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
-import type {
-  TradeOrderDraft,
-  TradeOrderSummary,
-  TradeOrderAggregate,
-  TradeOrderListQuery
+import {
+  GatewayException,
+  type TradeOrderDraft,
+  type TradeOrderSummary,
+  type TradeOrderAggregate,
+  type TradeOrderListQuery
 } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
@@ -161,6 +162,23 @@ const aggregate = useQuery({
     );
   }
 });
+const drawerAggregate = computed(() => {
+  const data = aggregate.data.value;
+  return orderSheetOpen.value && data?.order.id === selectedOrderId.value ? data : null;
+});
+const publicDetail = computed(() => {
+  const detail = drawerAggregate.value?.publicDetail;
+  return detail?.source === 'iop-public' && detail.orderId === selectedOrderId.value ? detail : null;
+});
+const publicDetailError = computed(() => {
+  const error = drawerAggregate.value?.publicDetailError;
+  return error ? new GatewayException(error) : null;
+});
+const hasPublicDetailSource = computed(
+  () =>
+    Boolean(publicDetailError.value) ||
+    (drawerAggregate.value !== null && Object.hasOwn(drawerAggregate.value, 'publicDetail'))
+);
 const orderDetailColumns = ['paidAmount', 'paymentStatus', 'logisticsStatus', 'carrier', 'trackingNumber'];
 const orderDetails = ref<Record<string, TradeOrderAggregate>>({});
 const accountContext = useGalleryTransfers()?.currentContext;
@@ -471,7 +489,10 @@ onBeforeUnmount(() => {
 
 <template>
   <PageHeader :title="t('orders.title')" :description="t('orders.description')" />
-  <Card class="mb-4 flex items-start gap-3 border-amber-200 bg-amber-50 p-4 text-amber-900">
+  <Card
+    v-if="!hasPublicDetailSource"
+    class="mb-4 flex items-start gap-3 border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+  >
     <ShieldAlert class="mt-0.5 size-4 shrink-0" />
     <p class="text-sm leading-5">
       {{ t('orders.jushitaNotice') }}
@@ -763,8 +784,13 @@ onBeforeUnmount(() => {
     <template #toolbar>
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <Badge v-if="selectedOrder" variant="warning">{{ selectedOrder.status }}</Badge>
-          <Badge variant="outline">fullDetail: jushita-only</Badge>
+          <Badge v-if="selectedOrder" variant="warning">{{
+            publicDetail?.status ?? selectedOrder.status
+          }}</Badge>
+          <Badge v-if="hasPublicDetailSource" variant="outline" data-testid="iop-order-public-source">
+            IOP · /alibaba/order/get
+          </Badge>
+          <Badge v-else-if="drawerAggregate" variant="outline">fullDetail: jushita-only</Badge>
         </div>
         <div class="flex items-center gap-1">
           <Button
@@ -816,7 +842,7 @@ onBeforeUnmount(() => {
         class="space-y-4"
         :aria-label="t('orders.drawer.overviewLabel')"
       >
-        <Card class="p-4">
+        <Card class="p-4" data-testid="order-summary">
           <div class="flex items-start gap-3">
             <ClipboardList class="mt-0.5 size-5 text-primary" />
             <div class="grid flex-1 gap-3 sm:grid-cols-2">
@@ -831,7 +857,7 @@ onBeforeUnmount(() => {
                 </p>
               </div>
               <div>
-                <p class="text-xs text-muted-foreground">{{ t('orders.drawer.buyer') }}</p>
+                <p class="text-xs text-muted-foreground">{{ t('orders.columns.buyer') }}</p>
                 <p class="mt-1 font-medium" data-feedback-redact>
                   {{ selectedOrder.buyerLoginId ?? t('orders.notReturned') }}
                 </p>
@@ -854,28 +880,108 @@ onBeforeUnmount(() => {
           retryable
           @retry="aggregate.refetch()"
         >
+          <Card
+            v-if="publicDetail"
+            class="space-y-4 p-4"
+            data-testid="iop-order-public-detail"
+            data-feedback-redact
+          >
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="font-medium">{{ t('orders.drawer.overview') }}</h3>
+              <Badge variant="outline">IOP · /alibaba/order/get</Badge>
+            </div>
+            <dl class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt class="text-xs text-muted-foreground">{{ t('orders.columns.orderId') }}</dt>
+                <dd class="mt-1 break-all text-sm">{{ publicDetail.orderId }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted-foreground">{{ t('orders.columns.status') }}</dt>
+                <dd class="mt-1 text-sm">{{ publicDetail.status ?? t('orders.notReturned') }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted-foreground">{{ t('orders.drawer.buyer') }}</dt>
+                <dd class="mt-1 break-words font-medium">
+                  {{ publicDetail.buyerName ?? t('orders.notReturned') }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted-foreground">{{ t('orders.drawer.orderAmount') }}</dt>
+                <dd class="mt-1 font-semibold">
+                  {{
+                    publicDetail.totalAmount
+                      ? `${publicDetail.totalAmount.currency} ${publicDetail.totalAmount.amount}`
+                      : t('orders.notReturned')
+                  }}
+                </dd>
+              </div>
+            </dl>
+            <div v-if="publicDetail.products?.length" class="max-h-80 overflow-auto">
+              <table class="w-full text-left text-sm" :aria-label="t('orders.assurance.subject')">
+                <thead class="whitespace-nowrap border-b text-xs text-muted-foreground">
+                  <tr>
+                    <th class="p-2 font-medium">{{ t('orders.assurance.productId') }}</th>
+                    <th class="p-2 font-medium">{{ t('orders.assurance.subject') }}</th>
+                    <th class="p-2 font-medium">{{ t('orders.assurance.quantity') }}</th>
+                    <th class="p-2 font-medium">{{ t('orders.assurance.unitPrice') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(product, index) in publicDetail.products"
+                    :key="`${product.lineId ?? 'line'}-${index}`"
+                    class="border-b last:border-0"
+                  >
+                    <td class="p-2 align-top">{{ product.productId ?? t('orders.notReturned') }}</td>
+                    <td class="p-2 align-top">{{ product.name ?? t('orders.notReturned') }}</td>
+                    <td class="p-2 align-top">
+                      {{ product.quantity ?? t('orders.notReturned')
+                      }}<span v-if="product.unit"> {{ product.unit }}</span>
+                    </td>
+                    <td class="p-2 align-top">
+                      {{
+                        product.unitPrice
+                          ? `${product.unitPrice.currency} ${product.unitPrice.amount}`
+                          : t('orders.notReturned')
+                      }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p v-else class="text-sm text-muted-foreground" data-testid="iop-order-public-products-empty">
+              {{ t(publicDetail.products === null ? 'orders.documentNotReturned' : 'common.data.empty') }}
+            </p>
+          </Card>
+          <ErrorNotice
+            v-if="publicDetailError"
+            class="my-4"
+            :error="publicDetailError"
+            data-testid="iop-order-public-detail-error"
+            compact
+          />
           <div class="grid gap-4 sm:grid-cols-2">
-            <Card class="p-4">
+            <Card class="p-4" data-testid="order-funds">
               <Banknote class="mb-2 size-5 text-primary" />
               <p class="text-xs text-muted-foreground">{{ t('orders.drawer.funds') }}</p>
-              <template v-if="aggregate.data.value?.fund">
+              <template v-if="drawerAggregate?.fund">
                 <p class="mt-1 font-semibold">
-                  {{ aggregate.data.value.fund.currency }} {{ aggregate.data.value.fund.paidAmount }}
+                  {{ drawerAggregate.fund.currency }} {{ drawerAggregate.fund.paidAmount }}
                 </p>
-                <p class="mt-1 text-sm">{{ aggregate.data.value.fund.status }}</p>
+                <p class="mt-1 text-sm">{{ drawerAggregate.fund.status }}</p>
               </template>
               <Badge v-else variant="warning" class="mt-2">{{ t('orders.drawer.apiUnavailable') }}</Badge>
             </Card>
-            <Card class="p-4">
+            <Card class="p-4" data-testid="order-logistics">
               <Truck class="mb-2 size-5 text-primary" />
               <p class="text-xs text-muted-foreground">{{ t('orders.drawer.logistics') }}</p>
-              <template v-if="aggregate.data.value?.logistics">
-                <p class="mt-1 font-semibold">{{ aggregate.data.value.logistics.status }}</p>
+              <template v-if="drawerAggregate?.logistics">
+                <p class="mt-1 font-semibold">{{ drawerAggregate.logistics.status }}</p>
                 <p class="mt-1 text-sm">
-                  {{ aggregate.data.value.logistics.carrier ?? t('orders.drawer.carrierMissing') }}
+                  {{ drawerAggregate.logistics.carrier ?? t('orders.drawer.carrierMissing') }}
                 </p>
                 <code class="mt-1 block text-xs text-muted-foreground">
-                  {{ aggregate.data.value.logistics.trackingNumber ?? t('orders.drawer.trackingMissing') }}
+                  {{ drawerAggregate.logistics.trackingNumber ?? t('orders.drawer.trackingMissing') }}
                 </code>
               </template>
               <Badge v-else variant="warning" class="mt-2">{{ t('orders.drawer.apiUnavailable') }}</Badge>
@@ -883,8 +989,13 @@ onBeforeUnmount(() => {
           </div>
         </QueryState>
 
-        <Card class="border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p class="font-medium">{{ t('orders.drawer.fullDetailUnavailable') }}</p>
+        <Card
+          class="border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+          data-testid="order-full-detail-restriction"
+        >
+          <p class="font-medium">
+            <span v-if="hasPublicDetailSource">TOP · </span>{{ t('orders.drawer.fullDetailUnavailable') }}
+          </p>
           <p class="mt-1 leading-6">
             {{ t('orders.drawer.fullDetailReason') }}
           </p>

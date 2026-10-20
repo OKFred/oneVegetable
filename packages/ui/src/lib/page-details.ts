@@ -87,7 +87,11 @@ export async function requestPageDetail(
           )
         : request.kind === 'score'
           ? await gateway.request('getProductScore', { productId: request.id }, options)
-          : await gateway.request('getTradeOrderAggregate', { order: request.order }, options);
+          : await gateway.request(
+              'getTradeOrderAggregate',
+              { order: request.order, language: language === 'zh_CN' ? 'zh_CN' : 'en_US' },
+              options
+            );
     const latest = await gateway.galleryTransferContext?.();
     if (context && JSON.stringify([latest?.identity, latest?.gateway]) !== identity)
       throw new Error('GALLERY_CONTEXT_CHANGED');
@@ -95,7 +99,8 @@ export async function requestPageDetail(
       if (Date.now() - entry.at >= 300_000) capturedStore.cache.delete(oldKey);
     if (capturedStore.cache.size >= 500) capturedStore.cache.clear();
     if (
-      (!('order' in data) || (data.fund && data.logistics)) &&
+      (!('order' in data) ||
+        ((data.fund || data.publicDetail) && data.logistics && !data.publicDetailError)) &&
       (!('records' in data) || data.status === 'ready' || data.status === 'no-data')
     )
       capturedStore.cache.set(key, { at: Date.now(), data });

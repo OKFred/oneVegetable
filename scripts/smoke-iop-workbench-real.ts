@@ -17,7 +17,7 @@ import { requireProductOperationContext } from '../packages/core/src/product-ope
 import { gatewayCredentials as credentialsZh } from '../packages/ui/src/i18n/messages/zh-CN/gatewayCredentials';
 import { atomicWriteJson } from './openapi-auth/storage';
 
-// Deliberately independent of the expanding core allowlist: no mutation, token or aggregate paths.
+// Deliberately independent of the expanding core allowlist: no mutation or token paths.
 // getProduct would issue list + render; use the single-request render operation instead.
 export const READ_PATHS = {
   listProducts: '/rest/alibaba/icbu/product/list',
@@ -26,6 +26,7 @@ export const READ_PATHS = {
   listPhotos: '/rest/icbu/product/photobank/list',
   renderProductSchema: '/rest/icbu/product/schema/render',
   listTradeOrders: '/rest/alibaba/order/list',
+  getTradeOrderAggregate: '/rest/alibaba/order/get',
   getTradeOrderLogistics: '/rest/order/logistics/query',
   getProductInventory: '/rest/icbu/product/inventory/get'
 } as const;
@@ -33,7 +34,13 @@ export type ReadOperation = keyof typeof READ_PATHS;
 // Reading a group tree includes its root and bounded, unique child lookups.
 const MAX_GROUP_READS = 30;
 function requestLimit(operation: ReadOperation): number {
-  return operation === 'listProductGroups' ? MAX_GROUP_READS : 1;
+  return operation === 'listProductGroups' ? MAX_GROUP_READS : operation === 'getTradeOrderAggregate' ? 2 : 1;
+}
+function allowedReadPath(operation: ReadOperation, path: string): boolean {
+  return (
+    path === READ_PATHS[operation] ||
+    (operation === 'getTradeOrderAggregate' && path === READ_PATHS.getTradeOrderLogistics)
+  );
 }
 type Payload = Record<string, unknown>;
 export interface ReadRecord {
@@ -50,6 +57,7 @@ export function parseOptions(args: readonly string[]): {
   productId?: string;
   photoGroupId?: string;
   nativeHostConsent?: true;
+  ordersOnly?: true;
 } {
   const inputs = args.filter((arg) => arg.startsWith('--credential='));
   const products = args.filter((arg) => arg.startsWith('--product-id='));
@@ -58,6 +66,7 @@ export function parseOptions(args: readonly string[]): {
     inputs.length !== 1 ||
     args.filter((arg) => arg === '--confirm-readonly').length !== 1 ||
     args.filter((arg) => arg === '--native-host-consent').length > 1 ||
+    args.filter((arg) => arg === '--orders-only').length > 1 ||
     products.length > 1 ||
     photoGroups.length > 1 ||
     args.some(
@@ -66,7 +75,8 @@ export function parseOptions(args: readonly string[]): {
         !arg.startsWith('--product-id=') &&
         !arg.startsWith('--photo-group-id=') &&
         arg !== '--confirm-readonly' &&
-        arg !== '--native-host-consent'
+        arg !== '--native-host-consent' &&
+        arg !== '--orders-only'
     )
   )
     throw new Error('READ_ONLY_ARGUMENTS_REQUIRED');
@@ -80,7 +90,8 @@ export function parseOptions(args: readonly string[]): {
     credential,
     ...(productId ? { productId } : {}),
     ...(photoGroupId ? { photoGroupId } : {}),
-    ...(args.includes('--native-host-consent') ? { nativeHostConsent: true as const } : {})
+    ...(args.includes('--native-host-consent') ? { nativeHostConsent: true as const } : {}),
+    ...(args.includes('--orders-only') ? { ordersOnly: true as const } : {})
   };
 }
 
@@ -145,7 +156,19 @@ function items(value: unknown): Record<string, unknown>[] {
 }
 
 export function summarizeRead(operation: ReadOperation, value: unknown): number {
-  if (operation === 'listProductGroups' || operation === 'listPhotoGroups') {
+  if (operation === 'getTradeOrderAggregate') {
+    if (
+      isRecord(value) &&
+      isRecord(value.order) &&
+      isRecord(value.publicDetail) &&
+      value.publicDetail.source === 'iop-public' &&
+      value.publicDetail.orderId === value.order.id &&
+      value.fund === null &&
+      !value.publicDetailError &&
+      (value.publicDetail.products === null || Array.isArray(value.publicDetail.products))
+    )
+      return 1;
+  } else if (operation === 'listProductGroups' || operation === 'listPhotoGroups') {
     if (Array.isArray(value) && value.every(isRecord)) return value.length;
   } else if (['listProducts', 'listPhotos', 'listTradeOrders'].includes(operation)) {
     if (isRecord(value) && Array.isArray(value.items) && value.items.every(isRecord))
@@ -174,39 +197,47 @@ export async function runReadPlan(
   call: (operation: ReadOperation, payload: Payload) => Promise<unknown>,
   skip: (operation: ReadOperation, reason: string) => void,
   productId?: string,
-  photoGroupId?: string
+  photoGroupId?: string,
+  ordersOnly = false
 ): Promise<void> {
-  const products = await call('listProducts', {
-    page: 1,
-    pageSize: 1,
-    language: 'en_US',
-    ...(productId ? { productId } : {})
-  });
-  await call('listProductGroups', {});
-  const groups = await call('listPhotoGroups', photoGroupId ? { parentId: photoGroupId } : {});
-  const group = items(groups).find(
-    (entry) => positiveId(entry.id) && (!photoGroupId || entry.id === photoGroupId)
-  );
-  if (group) await call('listPhotos', { groupId: group.id, page: 1, pageSize: 1 });
-  else skip('listPhotos', 'NO_VALID_PHOTO_GROUP');
-  const product = items(products).find(
-    (entry) => safeNumericId(entry.id) && (!productId || entry.id === productId)
-  );
-  if (product) {
-    const category = product.categoryId;
-    if (typeof category === 'number' && Number.isSafeInteger(category) && category > 0)
-      await call('renderProductSchema', { productId: product.id, categoryId: category, language: 'en_US' });
-    else skip('renderProductSchema', 'NO_VALID_PRODUCT_CATEGORY');
-    await call('getProductInventory', { productId: product.id, source: 'product', language: 'en_US' });
-  } else {
-    skip('renderProductSchema', 'NO_VALID_PRODUCT');
-    skip('getProductInventory', 'NO_VALID_PRODUCT');
+  if (!ordersOnly) {
+    const products = await call('listProducts', {
+      page: 1,
+      pageSize: 1,
+      language: 'en_US',
+      ...(productId ? { productId } : {})
+    });
+    await call('listProductGroups', {});
+    const groups = await call('listPhotoGroups', photoGroupId ? { parentId: photoGroupId } : {});
+    const group = items(groups).find(
+      (entry) => positiveId(entry.id) && (!photoGroupId || entry.id === photoGroupId)
+    );
+    if (group) await call('listPhotos', { groupId: group.id, page: 1, pageSize: 1 });
+    else skip('listPhotos', 'NO_VALID_PHOTO_GROUP');
+    const product = items(products).find(
+      (entry) => safeNumericId(entry.id) && (!productId || entry.id === productId)
+    );
+    if (product) {
+      const category = product.categoryId;
+      if (typeof category === 'number' && Number.isSafeInteger(category) && category > 0)
+        await call('renderProductSchema', { productId: product.id, categoryId: category, language: 'en_US' });
+      else skip('renderProductSchema', 'NO_VALID_PRODUCT_CATEGORY');
+      await call('getProductInventory', { productId: product.id, source: 'product', language: 'en_US' });
+    } else {
+      skip('renderProductSchema', 'NO_VALID_PRODUCT');
+      skip('getProductInventory', 'NO_VALID_PRODUCT');
+    }
   }
   const orders = await call('listTradeOrders', { page: 1, pageSize: 1 });
   // Order IDs stay strings even beyond Number.MAX_SAFE_INTEGER.
   const order = items(orders).find((entry) => positiveId(entry.id));
-  if (order) await call('getTradeOrderLogistics', { orderId: order.id });
-  else skip('getTradeOrderLogistics', 'NO_VALID_ORDER');
+  if (order) {
+    if (!ordersOnly) await call('getTradeOrderLogistics', { orderId: order.id });
+    await call('getTradeOrderAggregate', { order, language: 'zh_CN' });
+  } else {
+    if (!ordersOnly) skip('getTradeOrderLogistics', 'NO_VALID_ORDER');
+    skip('getTradeOrderAggregate', 'NO_VALID_ORDER');
+  }
 }
 
 export interface WorkerGuard {
@@ -226,8 +257,16 @@ export function installReadOnlyGuard(config: {
   const host = globalThis as GuardGlobal;
   if (host.__iopReadSmokeGuard) throw new Error('READ_GUARD_ALREADY_INSTALLED');
   const originalFetch = host.fetch.bind(host);
-  let active: { path: string; requestId: string; sent: number; limit: number; groups: Set<string> } | null =
-    null;
+  let active: {
+    path: string;
+    requestId: string;
+    sent: number;
+    limit: number;
+    groups: Set<string>;
+    aggregate: boolean;
+    paths: Set<string>;
+    orderId: string | null;
+  } | null = null;
   let queue: Promise<void> = Promise.resolve();
   let busy = false;
   let lastStarted = 0;
@@ -240,8 +279,16 @@ export function installReadOnlyGuard(config: {
         path: config.paths[operation],
         requestId,
         sent: 0,
-        limit: operation === 'listProductGroups' ? (config.maxGroupReads ?? 1) : 1,
-        groups: new Set()
+        limit:
+          operation === 'listProductGroups'
+            ? (config.maxGroupReads ?? 1)
+            : operation === 'getTradeOrderAggregate'
+              ? 2
+              : 1,
+        groups: new Set(),
+        aggregate: operation === 'getTradeOrderAggregate',
+        paths: new Set(),
+        orderId: null
       };
     },
     disarm() {
@@ -263,7 +310,9 @@ export function installReadOnlyGuard(config: {
       !current ||
       current.sent >= current.limit ||
       url.origin !== config.origin ||
-      url.pathname !== current.path ||
+      (url.pathname !== current.path &&
+        !(current.aggregate && url.pathname === config.paths.getTradeOrderLogistics)) ||
+      (current.aggregate && current.paths.has(url.pathname)) ||
       url.search ||
       url.username ||
       url.password ||
@@ -273,6 +322,7 @@ export function installReadOnlyGuard(config: {
       return deny();
     // Reserve before the first await: a concurrent duplicate cannot get through.
     current.sent++;
+    current.paths.add(url.pathname);
     busy = true;
     const previous = queue;
     const completed = Promise.withResolvers<undefined>();
@@ -294,6 +344,12 @@ export function installReadOnlyGuard(config: {
         const id = parameters.get('group_id') ?? '';
         if (!/^(?:-1|[1-9][0-9]*)$/u.test(id) || current.groups.has(id)) return deny();
         current.groups.add(id);
+      }
+      if (current.aggregate) {
+        const orderId = parameters.get(url.pathname === current.path ? 'e_trade_id' : 'trade_id');
+        if (!orderId || orderId.length > 128 || (current.orderId !== null && orderId !== current.orderId))
+          return deny();
+        current.orderId = orderId;
       }
       const wait = Math.max(0, config.intervalMs - (Date.now() - lastStarted));
       if (wait) await new Promise<void>((done) => setTimeout(done, wait));
@@ -374,7 +430,7 @@ export async function main(args: readonly string[]): Promise<void> {
     topRequests: 0,
     networkRequests: 0,
     blockedRequests: 0,
-    maxRequestsPerOperation: { default: 1, listProductGroups: MAX_GROUP_READS },
+    maxRequestsPerOperation: { default: 1, listProductGroups: MAX_GROUP_READS, getTradeOrderAggregate: 2 },
     minimumIntervalMs: 350,
     noFullResponses: true,
     records
@@ -427,7 +483,7 @@ export async function main(args: readonly string[]): Promise<void> {
         routeBusy ||
         current.count >= requestLimit(current.operation) ||
         url.origin !== IOP_API_ORIGIN ||
-        url.pathname !== READ_PATHS[current.operation] ||
+        !allowedReadPath(current.operation, url.pathname) ||
         url.search ||
         request.method() !== 'POST' ||
         request.headers()['x-request-id'] !== current.requestId ||
@@ -631,7 +687,8 @@ export async function main(args: readonly string[]): Promise<void> {
           networkRequests: 0
         }),
       options.productId,
-      options.photoGroupId
+      options.photoGroupId,
+      options.ordersOnly
     );
     report.status =
       report.blockedRequests || records.some((entry) => entry.status === 'failed')
