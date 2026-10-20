@@ -12,6 +12,7 @@ import {
   type Photo
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
 
 import PhotoBankPicker from '../src/components/PhotoBankPicker.vue';
 import { provideServices } from '../src/lib/services';
@@ -21,6 +22,21 @@ afterEach(() => {
 });
 
 describe('PhotoBankPicker', () => {
+  it('uses a concrete group for an IOP-only image selection', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountPicker(ref<Photo[]>([]), 1, gateway, true);
+    await wrapper.get('button').trigger('click');
+    await vi.waitFor(() => {
+      const calls = request.mock.calls.filter(([operation]) => operation === 'listPhotos');
+      expect(calls.length).toBeGreaterThan(0);
+      for (const [, payload] of calls) {
+        expect(payload).toHaveProperty('groupId');
+        expect(payload).not.toHaveProperty('groupId', '-1');
+      }
+    });
+    wrapper.unmount();
+  });
   it('keeps uploading separate from selecting a product image', async () => {
     const selected = ref<Photo[]>([]);
     const wrapper = mountPicker(selected);
@@ -64,11 +80,16 @@ describe('PhotoBankPicker', () => {
   });
 });
 
-function mountPicker(selected: Ref<Photo[]>, max = 1): VueWrapper {
+function mountPicker(
+  selected: Ref<Photo[]>,
+  max = 1,
+  gateway = new MockGatewayClient(0),
+  iopOnly = false
+): VueWrapper {
   const Host = defineComponent({
     setup() {
       provideServices({
-        gateway: new MockGatewayClient(0),
+        gateway,
         settings: {
           load: () =>
             Promise.resolve({
@@ -80,7 +101,19 @@ function mountPicker(selected: Ref<Photo[]>, max = 1): VueWrapper {
             }),
           save: () => Promise.resolve()
         },
-        operationAvailability: new StaticOperationAvailabilityClient(new Set(OPERATION_IDS)),
+        operationAvailability: iopOnly
+          ? {
+              get: (operations) =>
+                Promise.resolve({
+                  items: operations.map((operation) => ({
+                    operation,
+                    allowed: true,
+                    reasonCode: null,
+                    protocolSupport: { protocol: 'iop', ...getIopOperationSupport(operation) }
+                  }))
+                })
+            }
+          : new StaticOperationAvailabilityClient(new Set(OPERATION_IDS)),
         mode: 'mock'
       });
       return () =>

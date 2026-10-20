@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OPERATION_IDS, StaticOperationAvailabilityClient, type OperationId } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
+import type { OperationAvailabilityClient } from '@one-vegetable/core';
 
 import { provideServices } from '../src/lib/services';
 import PhotosView from '../src/views/PhotosView.vue';
@@ -20,14 +22,16 @@ const mounted: VueWrapper[] = [];
 function mountView(
   mode: 'mock' | 'extension' = 'mock',
   allowedOperations: ReadonlySet<OperationId> = new Set(OPERATION_IDS),
-  gateway = new MockGatewayClient(0)
+  gateway = new MockGatewayClient(0),
+  operationAvailability?: OperationAvailabilityClient
 ) {
   const Host = defineComponent({
     setup() {
       provideServices({
         gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
-        operationAvailability: new StaticOperationAvailabilityClient(allowedOperations),
+        operationAvailability:
+          operationAvailability ?? new StaticOperationAvailabilityClient(allowedOperations),
         mode
       });
       return () => h(PhotosView);
@@ -63,6 +67,30 @@ async function applyLowResolution(wrapper: ReturnType<typeof mountView>) {
 }
 
 describe('PhotosView', () => {
+  it('waits for IOP scope and selects a real group before querying photos', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    mountView('extension', new Set(OPERATION_IDS), gateway, {
+      get: (operations) =>
+        Promise.resolve({
+          items: operations.map((operation) => ({
+            operation,
+            allowed: true,
+            reasonCode: null,
+            protocolSupport: { protocol: 'iop', ...getIopOperationSupport(operation) }
+          }))
+        })
+    });
+    await vi.waitFor(() => {
+      const calls = request.mock.calls.filter(([operation]) => operation === 'listPhotos');
+      expect(calls.length).toBeGreaterThan(0);
+      for (const [, payload] of calls) {
+        expect(payload).toHaveProperty('groupId');
+        expect(payload).not.toHaveProperty('groupId', '-1');
+        expect(payload).not.toHaveProperty('ungrouped', true);
+      }
+    });
+  });
   beforeEach(() => {
     vi.stubGlobal(
       'ResizeObserver',

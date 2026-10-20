@@ -16,6 +16,7 @@ import Card from './ui/Card.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import { useListIdentityScope } from '../lib/list-identity-scope';
+import { useOperationAvailability } from '../composables/use-operation-availability';
 
 const props = withDefaults(
   defineProps<{
@@ -32,6 +33,11 @@ const identityScope = useListIdentityScope();
 const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const open = ref(false);
+const photoAccess = useOperationAvailability(['listPhotos'], { enabled: open });
+const requiresPhotoGroup = computed(
+  () =>
+    photoAccess.decision('listPhotos').protocolSupport?.constraints.includes('photo-group-required') === true
+);
 const uploadDialogOpen = ref(false);
 const selectedGroup = ref('-1');
 const selectedGroupName = ref(t('photos.allPhotos'));
@@ -50,7 +56,12 @@ const photos = useQuery({
       pageSize: pageSize.value,
       groupId: selectedGroup.value
     }),
-  enabled: open
+  enabled: computed(
+    () =>
+      open.value &&
+      !photoAccess.isPending.value &&
+      (!requiresPhotoGroup.value || selectedGroup.value !== '-1')
+  )
 });
 const selectedIds = computed(() => new Set(props.modelValue.map((photo) => photo.id)));
 watch(pageSize, () => {
@@ -216,6 +227,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
               <aside class="overflow-auto border-r p-3">
                 <PhotoGroupNavigation
                   :model-value="selectedGroup"
+                  :allow-all="!requiresPhotoGroup"
                   @update:model-value="changeGroup"
                   @select="selectGroup"
                 />
@@ -224,6 +236,9 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                     {{ t('photos.picker.currentGroup', { name: selectedGroupName }) }}
                   </p>
                   <p class="mt-1">{{ t('photos.picker.selectionOnly') }}</p>
+                  <p v-if="requiresPhotoGroup && selectedGroup === '-1'" class="mt-1">
+                    {{ t('errors.codes.ALIBABA_IOP_PHOTO_GROUP_REQUIRED') }}
+                  </p>
                 </div>
               </aside>
               <main class="min-h-0 overflow-auto p-4">
@@ -234,7 +249,10 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
                 >
                   {{ uploadNotice }}
                 </p>
-                <QueryState :loading="photos.isPending.value" :error="photos.error.value">
+                <QueryState
+                  :loading="photos.isFetching.value || photoAccess.isPending.value"
+                  :error="photos.error.value"
+                >
                   <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                     <div
                       v-for="photo in photos.data.value?.items ?? []"

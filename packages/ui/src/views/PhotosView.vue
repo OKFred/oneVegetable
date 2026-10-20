@@ -146,7 +146,20 @@ const groupSidebarCollapsed = ref(false);
 const groupNavigation = ref<{ refresh: () => Promise<void> } | null>(null);
 const refreshPending = ref(false);
 const selectedPhotoIds = ref<string[]>([]);
-const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl']);
+const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl', 'listPhotos']);
+const requiresPhotoGroup = computed(
+  () =>
+    photoMutations.decision('listPhotos').protocolSupport?.constraints.includes('photo-group-required') ===
+    true
+);
+const canLoadPhotos = computed(
+  () =>
+    !photoMutations.isPending.value &&
+    (!requiresPhotoGroup.value || (selectedGroup.value !== '-1' && filters.value.group === 'selected'))
+);
+watch(requiresPhotoGroup, (required) => {
+  if (required && filters.value.group !== 'selected') filters.value = { ...filters.value, group: 'selected' };
+});
 const uploadDialogBlocked = computed(
   () => !photoMutations.isAllowed('uploadPhoto') && !photoMutations.isAllowed('transferPhotoFromUrl')
 );
@@ -168,9 +181,16 @@ const photos = useQuery({
       pageSize: pageSize.value,
       groupId: filters.value.group === 'selected' ? selectedGroup.value : '-1',
       ...(filters.value.group === 'ungrouped' ? { ungrouped: true } : {})
-    })
+    }),
+  enabled: canLoadPhotos
 });
-const refreshing = computed(() => refreshPending.value || photos.isFetching.value);
+const refreshing = computed(
+  () =>
+    refreshPending.value ||
+    photos.isFetching.value ||
+    photoMutations.isPending.value ||
+    (canLoadPhotos.value && photos.isPending.value)
+);
 
 async function refreshGallery(): Promise<void> {
   if (refreshPending.value) return;
@@ -178,7 +198,7 @@ async function refreshGallery(): Promise<void> {
   try {
     await queryClient.invalidateQueries({ queryKey: ['photo-groups'], refetchType: 'none' });
     await Promise.all([
-      photos.refetch({ cancelRefetch: false }),
+      canLoadPhotos.value ? photos.refetch({ cancelRefetch: false }) : Promise.resolve(),
       groupNavigation.value
         ? groupNavigation.value.refresh()
         : queryClient
@@ -523,6 +543,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         :key="groupNavigationRevision"
         ref="groupNavigation"
         v-model="selectedGroup"
+        :allow-all="!requiresPhotoGroup"
         @select="selectGroupDefinition"
       />
     </GroupSidebar>
@@ -563,8 +584,10 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
                 >{{ t('photos.groups')
                 }}<select v-model="filterDraft.group" class="rounded-md border bg-background p-2">
                   <option value="selected">{{ selectedGroupName }}</option>
-                  <option value="all">{{ t('photos.allPhotos') }}</option>
-                  <option value="ungrouped">{{ t('photos.filters.ungrouped') }}</option>
+                  <option value="all" :disabled="requiresPhotoGroup">{{ t('photos.allPhotos') }}</option>
+                  <option value="ungrouped" :disabled="requiresPhotoGroup">
+                    {{ t('photos.filters.ungrouped') }}
+                  </option>
                 </select></label
               >
             </fieldset>
@@ -651,11 +674,19 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         </template>
       </ListToolbar>
 
+      <p
+        v-if="requiresPhotoGroup && selectedGroup === '-1'"
+        role="status"
+        class="py-6 text-sm text-muted-foreground"
+      >
+        {{ t('errors.codes.ALIBABA_IOP_PHOTO_GROUP_REQUIRED') }}
+      </p>
       <QueryState
-        :loading="photos.isPending.value"
+        v-else
+        :loading="photos.isFetching.value || photoMutations.isPending.value"
         :error="photos.error.value"
         retryable
-        @retry="photos.refetch()"
+        @retry="canLoadPhotos && photos.refetch()"
       >
         <div
           v-if="filteredPhotos.length > 0 && photoViewMode === 'cards'"

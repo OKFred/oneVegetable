@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, LoaderCircle } from '@lucide/vue';
 
@@ -9,7 +9,10 @@ import ErrorNotice from './ErrorNotice.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 
-const props = defineProps<{ modelValue: string; allLabel?: string }>();
+const props = withDefaults(defineProps<{ modelValue: string; allLabel?: string; allowAll?: boolean }>(), {
+  allowAll: true,
+  allLabel: ''
+});
 const emit = defineEmits<{
   'update:modelValue': [groupId: string];
   select: [group: PhotoGroup];
@@ -24,7 +27,7 @@ const loadingRootIds = ref<string[]>([]);
 const error = ref('');
 const allGroup = computed<PhotoGroup>(() => ({
   id: '-1',
-  name: props.allLabel ?? t('photos.allPhotos'),
+  name: props.allLabel || t('photos.allPhotos'),
   photoCount: 0,
   parentId: null,
   level: 1
@@ -37,12 +40,20 @@ const rootGroups = computed(() =>
   (roots.data.value ?? []).filter((group) => group.id !== '-1' && group.parentId === null)
 );
 const visibleGroups = computed(() => [
-  allGroup.value,
+  ...(!props.allowAll ? [] : [allGroup.value]),
   ...rootGroups.value.flatMap((root) => [
     root,
     ...(expandedRootIds.value.includes(root.id) ? (descendants.value[root.id] ?? []) : [])
   ])
 ]);
+watch(
+  [() => props.allowAll, () => props.modelValue, rootGroups],
+  () => {
+    const first = rootGroups.value[0];
+    if (!props.allowAll && props.modelValue === '-1' && first) void selectGroup(first);
+  },
+  { immediate: true }
+);
 
 async function selectGroup(group: PhotoGroup): Promise<void> {
   emit('update:modelValue', group.id);
