@@ -4,6 +4,28 @@ export type ManualGatewayCredentialInput = components['schemas']['ManualGatewayC
 export type GatewayCredentialTestResult = components['schemas']['GatewayCredentialTestResult'];
 export type AlibabaAuthorizationsSummary = components['schemas']['AlibabaAuthorizationsSummary'];
 
+/** Return stable codes only; provider messages and payloads never enter connection summaries. */
+export function credentialTestFailure(
+  code: string,
+  configurationError = false
+): Pick<GatewayCredentialTestResult, 'status' | 'errorCode'> {
+  const safeCode = /^[A-Za-z0-9._:-]{1,128}$/u.test(code) ? code : 'GATEWAY_CONNECTION_FAILED';
+  const status =
+    configurationError ||
+    /TOKEN|CREDENTIAL|SIGNATURE|invalid-session|invalid-signature|invalid-app-?key|invalid-app-secret/iu.test(
+      safeCode
+    )
+      ? 'credentials-invalid'
+      : /PERMISSION|AUTHORITY|ACCESS_DENIED|insufficient-isv-permissions|insufficient-user-permissions/iu.test(
+            safeCode
+          )
+        ? 'permission-denied'
+        : /CONTRACT|RESPONSE_INVALID/iu.test(safeCode)
+          ? 'contract-drift'
+          : 'network-error';
+  return { status, errorCode: safeCode };
+}
+
 export function parseManualGatewayCredential(value: unknown): ManualGatewayCredentialInput {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('INVALID_CREDENTIAL_INPUT');

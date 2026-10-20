@@ -34,6 +34,7 @@ import {
   ALIBABA_GATEWAY,
   ALIBABA_SYNC_GATEWAY,
   createCredentialVault,
+  credentialTestFailure,
   CredentialVaultError,
   DashboardAdapter,
   downloadProductAsset,
@@ -76,6 +77,7 @@ import {
   type ExtensionProductMutationJobResponse,
   type ExtensionProductUpdateReadbackResult,
   type GatewaySettings,
+  type GatewayCredentialTestResult,
   type OperationId,
   type ProductMutationJobListInput,
   type ProductMutationFingerprintSet,
@@ -596,7 +598,7 @@ async function handleCredentialVaultRequest(
     validateCredentialVaultPayload(message.operation, message.payload);
     await storageAccessReady;
     const data = await serializeVaultOperation(() =>
-      executeCredentialVaultOperation(message.operation, message.payload)
+      executeCredentialVaultOperation(message.operation, message.payload, message.requestId)
     );
     return { requestId: message.requestId, ok: true, data };
   } catch (error: unknown) {
@@ -611,7 +613,11 @@ function serializeVaultOperation<T>(action: () => Promise<T>): Promise<T> {
   return pending;
 }
 
-async function executeCredentialVaultOperation(operation: string, payload: unknown): Promise<unknown> {
+async function executeCredentialVaultOperation(
+  operation: string,
+  payload: unknown,
+  requestId: string = crypto.randomUUID()
+): Promise<unknown> {
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
@@ -692,6 +698,53 @@ async function executeCredentialVaultOperation(operation: string, payload: unkno
         clearAuthorizationProfile(current.settings, requiredAuthorizationProtocol(asRecord(payload).protocol))
       );
       return null;
+    }
+    case 'test-authorization': {
+      const started = Date.now();
+      let configurationId: string | null = null;
+      try {
+        const current = await getUnlockedVault(state);
+        const protocol = requiredAuthorizationProtocol(asRecord(payload).protocol);
+        const profile = authorizationProfiles(current.settings)[protocol];
+        if (!profile) throw gatewayFailure('CREDENTIAL_VAULT_EMPTY', 'CREDENTIAL_VAULT_EMPTY');
+        configurationId = profile.configurationId ?? null;
+        assertCredentials(profile);
+        if (!(await browser.permissions.contains({ origins: [new URL(profile.endpoint).origin + '/*'] })))
+          throw gatewayFailure('HOST_PERMISSION_REQUIRED', 'HOST_PERMISSION_REQUIRED');
+        const client = AlibabaClient.create(profile, { maxAttempts: 1, requestId });
+        const page = await new ProductAdapter({
+          async call(method, parameters) {
+            const result = await client.call(method, parameters);
+            const raw = asRecord(result.data);
+            const root = asRecord(raw[method.replaceAll('.', '_') + '_response'] ?? result.data);
+            const products = Array.isArray(root.products) ? root.products : asRecord(root.products).product;
+            const checked = { ...root, ...(Array.isArray(products) ? { products } : {}) };
+            if (
+              (!Array.isArray(products) && root.total_item !== 0) ||
+              (await validateCapabilityResponse(method, checked)).length
+            )
+              throw gatewayFailure('RESPONSE_CONTRACT_INVALID', 'RESPONSE_CONTRACT_INVALID');
+            return { ...result, data: { [method.replaceAll('.', '_') + '_response']: checked } };
+          }
+        }).list({ page: 1, pageSize: 1 });
+        return {
+          status: page.items.length ? 'passed' : 'no-data',
+          requestId,
+          checkedAtUtc: Date.now(),
+          durationMilliseconds: Math.max(0, Date.now() - started),
+          configurationId,
+          errorCode: null
+        } satisfies GatewayCredentialTestResult;
+      } catch (error: unknown) {
+        const normalized = normalizeGatewayError(error);
+        return {
+          ...credentialTestFailure(normalized.subCode ?? normalized.code),
+          requestId,
+          checkedAtUtc: Date.now(),
+          durationMilliseconds: Math.max(0, Date.now() - started),
+          configurationId
+        } satisfies GatewayCredentialTestResult;
+      }
     }
     case 'refresh-authorization': {
       const current = await getUnlockedVault(state);
@@ -1541,7 +1594,8 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     value.operation !== 'confirm-authorizations' &&
     value.operation !== 'set-default-authorization' &&
     value.operation !== 'clear-authorization' &&
-    value.operation !== 'refresh-authorization'
+    value.operation !== 'refresh-authorization' &&
+    value.operation !== 'test-authorization'
   ) {
     return null;
   }
@@ -1648,7 +1702,11 @@ function validateCredentialVaultPayload(
     validateProfileInput(input.settings);
     return;
   }
-  if (['get-authorization', 'clear-authorization', 'refresh-authorization'].includes(operation)) {
+  if (
+    ['get-authorization', 'clear-authorization', 'refresh-authorization', 'test-authorization'].includes(
+      operation
+    )
+  ) {
     requiredAuthorizationProtocol(requireOnlyKeys(payload, ['protocol']).protocol);
     return;
   }

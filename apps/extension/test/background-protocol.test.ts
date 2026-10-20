@@ -21,6 +21,7 @@ import { createProductOperationContext } from '../../../packages/core/src/produc
 import { installNodeXmlDomGlobals } from '../../../scripts/node-xml-dom';
 import business from '../../../mock/data/alibaba-auth/iop-business-responses.json';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
+import connection from '../../../mock/data/alibaba-auth/credential-connection.json';
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
@@ -878,6 +879,72 @@ describe('extension background protocol persistence and dispatch', () => {
       href: `${IOP_BUSINESS_ENDPOINT}/icbu/product/schema/add/draft`
     });
   });
+  it.each(['top', 'iop'] as const)(
+    'tests only the selected %s grant without changing credentials',
+    async (protocol) => {
+      await createPair();
+      const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+      vi.mocked(fetch).mockResolvedValue(
+        Response.json(protocol === 'iop' ? business.products : connection.top)
+      );
+      const response = await send('credential-vault-request', 'test-authorization', { protocol });
+      expect(response).toMatchObject({ ok: true, data: { status: 'passed', errorCode: null } });
+      expect(fetch).toHaveBeenCalledOnce();
+      const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+      expect(url).toMatchObject({
+        href: protocol === 'iop' ? IOP_BUSINESS_ENDPOINT + '/alibaba/icbu/product/list' : ALIBABA_GATEWAY
+      });
+      const body = init?.body;
+      expect(typeof body === 'string' || body instanceof URLSearchParams).toBe(true);
+      const parameters = new URLSearchParams(
+        typeof body === 'string' || body instanceof URLSearchParams ? body : ''
+      );
+      expect(parameters.get(protocol === 'iop' ? 'access_token' : 'session')).toBe(
+        protocol === 'iop' ? settings.accessToken : topSettings.accessToken
+      );
+      expect(parameters.get('page_size')).toBe('1');
+      expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+      expect(JSON.stringify(response)).not.toContain(settings.accessToken);
+      expect(JSON.stringify(response)).not.toContain(topSettings.appSecret);
+    }
+  );
+
+  it('distinguishes a valid empty connection result from malformed provider data', async () => {
+    await createPair();
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json(connection.topEmpty));
+    expect(await send('credential-vault-request', 'test-authorization', { protocol: 'top' })).toMatchObject({
+      ok: true,
+      data: { status: 'no-data' }
+    });
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({}));
+    expect(await send('credential-vault-request', 'test-authorization', { protocol: 'top' })).toMatchObject({
+      ok: true,
+      data: { status: 'contract-drift' }
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a connection failure using the other grant', async () => {
+    await createPair();
+    vi.mocked(fetch).mockResolvedValue(Response.json(connection.permissionDenied));
+    expect(await send('credential-vault-request', 'test-authorization', { protocol: 'top' })).toMatchObject({
+      ok: true,
+      data: { status: 'permission-denied' }
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('rejects malformed connection-test runtime messages before network access', async () => {
+    await createPair();
+    expect(
+      await send('credential-vault-request', 'test-authorization', { protocol: 'iop', method: 'mutation' })
+    ).toMatchObject({ ok: false });
+    expect(
+      await send('credential-vault-request', 'test-authorization', { protocol: 'invalid' })
+    ).toMatchObject({ ok: false });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('refreshes only IOP, preserving both configuration IDs and user confirmation', async () => {
     const summary = await createPair();
     const refresh = vi.spyOn(AlibabaIopTokenClient.prototype, 'request').mockResolvedValue({

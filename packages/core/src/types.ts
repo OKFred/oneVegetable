@@ -1,6 +1,9 @@
 import type { GalleryRequestOptions } from './gallery-transfer-context';
 import type { AlibabaProtocol, AlibabaAuthorizationBinding } from './alibaba-protocol-routing';
-import type { AlibabaAuthorizationsSummary } from './gateway-credential-management';
+import type {
+  AlibabaAuthorizationsSummary,
+  GatewayCredentialTestResult
+} from './gateway-credential-management';
 import type { GalleryTransferContext } from './gallery-transfer-task';
 import type { ProductOperationContext, ProductOperationOptions } from './product-operation-context';
 import type { components } from './generated/api';
@@ -425,6 +428,7 @@ export interface SettingsRepository {
   ): Promise<AlibabaAuthorizationsSummary>;
   clearAuthorization?(protocol: AlibabaProtocol): Promise<void>;
   refreshAuthorization?(protocol: AlibabaProtocol): Promise<AlibabaAuthorizationsSummary>;
+  testAuthorization?(protocol: AlibabaProtocol): Promise<GatewayCredentialTestResult>;
 }
 
 export type CredentialVaultState = 'empty' | 'legacy' | 'locked' | 'unlocked' | 'invalid';
@@ -477,7 +481,8 @@ export type CredentialVaultOperation =
   | 'set-default-authorization'
   | 'confirm-authorizations'
   | 'clear-authorization'
-  | 'refresh-authorization';
+  | 'refresh-authorization'
+  | 'test-authorization';
 
 export interface CredentialVaultRequest {
   requestId: string;

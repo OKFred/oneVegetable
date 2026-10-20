@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import type { GatewayCredentialTestResult } from '@one-vegetable/core';
 import {
   IOP_VAULT_KEY,
   IOP_RECEIPT_KEY,
@@ -18,6 +19,7 @@ import {
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
   BffControlClient,
+  ALIBABA_GATEWAY,
   GatewayException,
   CHROME_WEB_STORE_REVIEW_URL,
   ExtensionProductMutationJobClient,
@@ -221,6 +223,13 @@ const settings: SettingsRepository = {
     );
     return requestVault('refresh-authorization', { protocol });
   },
+  async testAuthorization(protocol) {
+    await ensureOptionalHostPermission(
+      protocol === 'iop' ? IOP_API_ORIGIN : ALIBABA_GATEWAY,
+      translateUi('settings.extensionRuntime.permissionPurposes.customGateway')
+    );
+    return requestVault('test-authorization', { protocol });
+  },
   async save(value) {
     await ensureOptionalHostPermission(
       value.protocol === 'iop' ? IOP_API_ORIGIN : value.endpoint,
@@ -404,6 +413,10 @@ interface VaultOperationMap {
   };
   'clear-authorization': { request: { protocol: 'top' | 'iop' }; response: null };
   'refresh-authorization': { request: { protocol: 'top' | 'iop' }; response: AlibabaAuthorizationsSummary };
+  'test-authorization': {
+    request: { protocol: 'top' | 'iop' };
+    response: GatewayCredentialTestResult;
+  };
   status: { request: undefined; response: CredentialVaultStatus & AuthorizationStatus };
   'prepare-authorization': { request: { passphrase: string }; response: CredentialVaultStatus };
   'get-settings': { request: undefined; response: GatewaySettings };

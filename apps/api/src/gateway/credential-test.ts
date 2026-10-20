@@ -1,4 +1,4 @@
-import { GatewayException } from '@one-vegetable/core';
+import { credentialTestFailure, GatewayException } from '@one-vegetable/core';
 import { galleryGatewayId } from '@one-vegetable/core/gallery-transfer-context';
 import { GatewayConfigurationError } from './credentials';
 import { AlibabaReadGatewayClient } from './alibaba-read-gateway';
@@ -37,27 +37,12 @@ export async function testGatewayCredential(
         : error instanceof GatewayException
           ? (error.gatewayError.subCode ?? error.gatewayError.code)
           : 'GATEWAY_CONNECTION_FAILED';
-    const safeCode = /^[A-Za-z0-9._:-]{1,128}$/u.test(code) ? code : 'GATEWAY_CONNECTION_FAILED';
-    const status =
-      error instanceof GatewayConfigurationError ||
-      /TOKEN|CREDENTIAL|SIGNATURE|invalid-session|invalid-signature|invalid-app-?key|invalid-app-secret/iu.test(
-        safeCode
-      )
-        ? 'credentials-invalid'
-        : /PERMISSION|AUTHORITY|ACCESS_DENIED|insufficient-isv-permissions|insufficient-user-permissions/iu.test(
-              safeCode
-            )
-          ? 'permission-denied'
-          : /CONTRACT|RESPONSE_INVALID/iu.test(safeCode)
-            ? 'contract-drift'
-            : 'network-error';
     return {
-      status,
+      ...credentialTestFailure(code, error instanceof GatewayConfigurationError),
       requestId,
       checkedAtUtc: clock(),
       durationMilliseconds: Math.max(0, clock() - started),
-      configurationId,
-      errorCode: safeCode
+      configurationId
     };
   }
 }
