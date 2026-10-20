@@ -23,6 +23,36 @@
     }
   },
   "delete": { "code": "0", "result": { "success": true, "error_code": "" } },
+  "scopedPhotos": {
+    "code": "0",
+    "request_id": "fixture-photo-scope-trace",
+    "result": {
+      "error_code": "",
+      "pagination_query_list": {
+        "list": [
+          {
+            "id": 1002,
+            "group_id": 1001,
+            "file_name": "fixture.png",
+            "url": "https://sc04.alicdn.com/kf/fixture.png"
+          }
+        ]
+      }
+    }
+  },
+  "photoScopeCases": [
+    { "name": "different group", "groupId": 2001 },
+    { "name": "missing group" },
+    { "name": "unsafe numeric group", "groupId": 9007199254740992 },
+    { "name": "invalid group", "groupId": "not-a-group" }
+  ],
+  "deleteProofGroups": [
+    { "id": "1001", "name": "Fixture parent", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "1003", "name": "Fixture child", "parentId": "1001", "level": 2, "photoCount": 0 }
+  ],
+  "deleteProofDescendants": [
+    { "id": "1004", "name": "Fixture grandchild", "parentId": "1003", "level": 3, "photoCount": 0 }
+  ],
   "bytes": [137, 80, 78, 71, 13, 10, 26, 10],
   "availabilityItem": {
     "operation": "listPhotos",
@@ -30,10 +60,10 @@
     "reasonCode": null,
     "protocolSupport": {
       "protocol": "iop",
-      "state": "supported",
+      "state": "partial",
       "methods": ["alibaba.icbu.photobank.list"],
-      "constraints": ["photo-group-required"],
-      "verification": "account-verified",
+      "constraints": ["photo-group-required", "photo-group-scope-unverified"],
+      "verification": "documented",
       "fallbackProtocol": "top"
     }
   }

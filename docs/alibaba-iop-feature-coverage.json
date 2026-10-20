@@ -42,7 +42,7 @@
       "path": "/icbu/product/photobank/list",
       "risk": "read",
       "adapted": true,
-      "accountVerified": true,
+      "accountVerified": false,
       "authorizationRequired": true
     },
     "alibaba.icbu.category.get.new": {
@@ -255,7 +255,7 @@
       "state": "partial",
       "methods": ["alibaba.icbu.product.list", "alibaba.icbu.photobank.list", "alibaba.seller.order.list"],
       "constraints": ["photo-group-required"],
-      "verification": "account-verified",
+      "verification": "documented",
       "fallbackProtocol": "top"
     },
     {
@@ -356,10 +356,10 @@
     },
     {
       "operation": "listPhotos",
-      "state": "supported",
+      "state": "partial",
       "methods": ["alibaba.icbu.photobank.list"],
-      "constraints": ["photo-group-required"],
-      "verification": "account-verified",
+      "constraints": ["photo-group-required", "photo-group-scope-unverified"],
+      "verification": "documented",
       "fallbackProtocol": "top"
     },
     {

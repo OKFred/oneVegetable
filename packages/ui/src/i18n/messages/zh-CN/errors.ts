@@ -1,12 +1,13 @@
+const authorizationChanged = '授权已变化，请重新读取两份配置并核对未完成任务；不会自动重试操作。';
+
 export const errors = {
   codes: {
     TOP_APPLICATION_REQUIRED:
       '未发现可用的旧版 TOP 应用。此应用中心是新版 IOP，请使用 IOP 授权工具；已有 TOP 凭据可在设置中导入或手动填写。',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
       '请检查 TOP 和 IOP 授权是否配置齐全，并在凭据设置中重新读取状态。',
-    ALIBABA_AUTHORIZATION_BINDING_CHANGED:
-      '授权已变化，请重新读取两份配置并核对未完成任务；不会自动重试操作。',
-    ALIBABA_AUTHORIZATION_BINDING_STALE: '授权已变化，请重新读取两份配置并核对未完成任务；不会自动重试操作。',
+    ALIBABA_AUTHORIZATION_BINDING_CHANGED: authorizationChanged,
+    ALIBABA_AUTHORIZATION_BINDING_STALE: authorizationChanged,
     ALIBABA_PROTOCOL_SELECTION_REQUIRED: '更换凭据前请明确选择 TOP 或 IOP，另一份授权必须保留。',
     ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:
       '请求协议尚未配置凭据，请配置对应授权；不能混用另一协议的授权。',
@@ -16,6 +17,7 @@ export const errors = {
     ALIBABA_IOP_MUTATION_UNVERIFIED: '此 IOP 写方法尚未完成账号验收，保持禁用。',
     ALIBABA_IOP_BUSINESS_REJECTED: '平台明确拒绝了此 IOP 操作，请核对业务条件，不要重复提交。',
     ALIBABA_IOP_PHOTO_GROUP_REQUIRED: 'IOP 图片查询需要具体分组，请选择分组；不支持全部图片或未分组。',
+    ALIBABA_IOP_PHOTO_SCOPE_MISMATCH: 'IOP 返回图片的分组不符，已停止。可补充 TOP 授权。',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH: '协议与网关地址不匹配，请核对 TOP 或 IOP 配置。',
     ALIBABA_IOP_RESPONSE_INVALID: 'IOP 响应格式不符合预期，请核对配置和接口；不会回退 TOP。',
     ALIBABA_IOP_API_REJECTED: 'Alibaba IOP 拒绝了请求，请核对授权和接口权限。',

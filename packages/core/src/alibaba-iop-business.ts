@@ -229,7 +229,8 @@ export async function createIopBusinessRequest(
 export function normalizeIopBusinessResponse(
   value: unknown,
   method: string,
-  credentials: GatewayCredentials
+  credentials: GatewayCredentials,
+  request?: Readonly<Record<string, string>>
 ): unknown {
   if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string')) throw failure();
   if (value.code !== '0' && value.code !== 0)
@@ -409,6 +410,50 @@ export function normalizeIopBusinessResponse(
     (!isRecord(result.pagination_query_list) || !records(result.pagination_query_list.list))
   )
     throw failure();
+  if (method === 'alibaba.icbu.photobank.list') {
+    // Use the signed request snapshot, not mutable caller input. Never filter a wrong-group
+    // response into an apparently empty group: deletion and transfer reconciliation depend on it.
+    const groupId = String(positiveInteger(request?.groupId));
+    const page = positiveInteger(request?.currentPage);
+    const pageSize = positiveInteger(request?.pageSize);
+    const pagination = result.pagination_query_list as Record<string, unknown>;
+    const items = pagination.list as Record<string, unknown>[];
+    if (
+      items.some(
+        (item) => !validTotal(item.group_id) || Number(item.group_id) < 1 || String(item.group_id) !== groupId
+      )
+    )
+      throw providerFailure(
+        'PHOTO_GROUP_MISMATCH',
+        'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
+        value.request_id,
+        credentials,
+        'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH'
+      );
+    if (
+      items.length > pageSize ||
+      (pagination.current_page !== undefined &&
+        (!validTotal(pagination.current_page) || Number(pagination.current_page) !== page)) ||
+      (pagination.page_size !== undefined &&
+        (!validTotal(pagination.page_size) || Number(pagination.page_size) !== pageSize)) ||
+      (pagination.total !== undefined &&
+        (!validTotal(pagination.total) ||
+          (items.length === 0 && Number(pagination.total) > (page - 1) * pageSize) ||
+          (items.length > 0 && Number(pagination.total) < (page - 1) * pageSize + items.length)))
+    )
+      throw failure();
+    const next = pagination.has_next_page;
+    if (next !== undefined) {
+      if (next !== true && next !== false && next !== 'true' && next !== 'false') throw failure();
+      const hasNext = next === true || next === 'true';
+      if (
+        pagination.total !== undefined
+          ? hasNext !== page * pageSize < Number(pagination.total)
+          : hasNext && items.length < pageSize
+      )
+        throw failure();
+    }
+  }
   if (
     (method.includes('schema.render') ||
       method.endsWith('schema.get') ||
@@ -550,6 +595,12 @@ function providerFailure(
     subCode,
     message: text.replace(/[\r\n]/gu, ' ').slice(0, 300),
     retryable: false,
-    ...(typeof trace === 'string' && /^[\w-]{1,128}$/u.test(trace) ? { traceId: trace } : {})
+    ...(typeof trace === 'string' &&
+    /^[\w-]{1,128}$/u.test(trace) &&
+    ![credentials.appKey, credentials.appSecret, credentials.accessToken].some(
+      (secret) => secret && trace.includes(secret)
+    )
+      ? { traceId: trace }
+      : {})
   });
 }

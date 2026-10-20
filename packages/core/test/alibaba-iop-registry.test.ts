@@ -71,7 +71,15 @@ describe('shared IOP coverage registry', () => {
     expect(selectAlibabaOperationProtocol('operatePhotoGroup', { operation: 'delete' }, pool)).toBe('top');
     expect(selectAlibabaOperationProtocol('listPhotoGroups', { parentId: '1001' }, pool)).toBe('iop');
     expect(selectAlibabaOperationProtocol('listPhotos', {}, pool)).toBe('top');
-    expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1001' }, pool)).toBe('iop');
+    expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1001' }, pool)).toBe('top');
+    expect(getIopOperationSupport('listPhotos')).toMatchObject({
+      state: 'partial',
+      verification: 'documented',
+      constraints: ['photo-group-required', 'photo-group-scope-unverified']
+    });
+    expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1001' }, { ...pool, top: false })).toBe(
+      'iop'
+    );
   });
   it('checks the exact generic-call suboperation before choosing a protocol', () => {
     const pool = { top: true, iop: true, defaultProtocol: 'top', bindingConfirmed: true } as const;

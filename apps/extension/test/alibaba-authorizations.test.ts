@@ -131,11 +131,13 @@ describe('extension encrypted protocol profiles', () => {
     const settings = pair();
     for (const payload of [{}, { groupId: '-1' }, { ungrouped: true }])
       expect((await resolveAuthorization(settings, 'listPhotos', payload)).accessToken).toBe(top.accessToken);
-    expect((await resolveAuthorization(settings, 'listPhotos', { groupId: '123' })).protocol).toBe('iop');
+    expect((await resolveAuthorization(settings, 'listPhotos', { groupId: '123' })).accessToken).toBe(
+      top.accessToken
+    );
     const unconfirmed = { ...settings };
     delete unconfirmed.authorizationBinding;
     expect((await resolveAuthorization(unconfirmed, 'listPhotos', { groupId: '123' })).accessToken).toBe(
-      iop.accessToken
+      top.accessToken
     );
     expect((await resolveAuthorization(unconfirmed, 'listProducts')).protocol).toBe('iop');
     expect(summarizeAuthorizations(unconfirmed).binding.confirmed).toBe(false);
@@ -144,6 +146,27 @@ describe('extension encrypted protocol profiles', () => {
     expect((await resolveAuthorization(settings, 'getTradeOrderAggregate')).accessToken).toBe(
       top.accessToken
     );
+  });
+  it('keeps dedicated and generic photo routing compatible for paired and IOP-only profiles', async () => {
+    const settings = pair();
+    const profiles = authorizationProfiles(settings);
+    if (!profiles.iop?.configurationId) throw new Error('Missing fixture IOP identity');
+    const preferredIop = setDefaultAuthorization(settings, 'iop', profiles.iop.configurationId);
+    const iopOnly = clearAuthorizationProfile(settings, 'top');
+    const capability = {
+      method: 'alibaba.icbu.photobank.list',
+      parameters: { group_id: '1001', location_type: 'SUB_GROUP', current_page: 1, page_size: 1 }
+    };
+    for (const paired of [settings, preferredIop]) {
+      expect((await resolveAuthorization(paired, 'listPhotos', { groupId: '1001' })).accessToken).toBe(
+        top.accessToken
+      );
+      expect((await resolveAuthorization(paired, 'callCapability', capability)).accessToken).toBe(
+        top.accessToken
+      );
+    }
+    expect((await resolveAuthorization(iopOnly, 'listPhotos', { groupId: '1001' })).protocol).toBe('iop');
+    expect((await resolveAuthorization(iopOnly, 'callCapability', capability)).protocol).toBe('iop');
   });
   it('matches exact saved contexts ahead of preference and rejects removed contexts without rebinding', async () => {
     const settings = pair();
@@ -156,6 +179,9 @@ describe('extension encrypted protocol profiles', () => {
       top.accessToken
     );
     expect((await resolveAuthorization(settings, 'uploadPhoto', {}, iopId)).protocol).toBe('iop');
+    expect((await resolveAuthorization(settings, 'listPhotos', { groupId: '1001' }, iopId)).protocol).toBe(
+      'iop'
+    );
     await expect(
       resolveAuthorization(clearAuthorizationProfile(settings, 'iop'), 'updateProduct', {}, iopId)
     ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_CONTEXT_CHANGED' } });

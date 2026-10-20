@@ -9,7 +9,7 @@ describe('Alibaba protocol routing before dispatch', () => {
       const available = { ...both, bindingConfirmed };
       expect(selectAlibabaOperationProtocol('listProducts', {}, available)).toBe('iop');
       expect(selectAlibabaOperationProtocol('listPhotos', {}, available)).toBe('top');
-      expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1' }, available)).toBe('iop');
+      expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1' }, available)).toBe('top');
       expect(selectAlibabaOperationProtocol('updateProduct', {}, available)).toBe('iop');
       expect(selectAlibabaOperationProtocol('updateProductDisplay', {}, available)).toBe('iop');
     }
@@ -24,10 +24,39 @@ describe('Alibaba protocol routing before dispatch', () => {
       selectAlibabaOperationProtocol('listPhotos', {}, { ...both, top: false, defaultProtocol: 'iop' })
     ).toBe('iop');
   });
-  it('routes whole-bank and ungrouped queries to TOP while verified specific groups use IOP', () => {
-    for (const query of [{}, { groupId: '-1' }, { groupId: '1', ungrouped: true }])
-      expect(selectAlibabaOperationProtocol('listPhotos', query, both)).toBe('top');
-    expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1' }, both)).toBe('iop');
+  it.each(['top', 'iop'] as const)(
+    'routes all paired photo queries to TOP before dispatch with default %s',
+    (defaultProtocol) => {
+      const available = { ...both, defaultProtocol };
+      for (const query of [{}, { groupId: '-1' }, { groupId: '1', ungrouped: true }, { groupId: '1' }])
+        expect(selectAlibabaOperationProtocol('listPhotos', query, available)).toBe('top');
+      for (const parameters of [
+        { location_type: 'ALL_GROUP' },
+        { location_type: 'UNGROUP' },
+        { location_type: 'SUB_GROUP', group_id: '1', current_page: 1, page_size: 1 }
+      ])
+        expect(
+          selectAlibabaOperationProtocol(
+            'callCapability',
+            { method: 'alibaba.icbu.photobank.list', parameters },
+            available
+          )
+        ).toBe('top');
+    }
+  );
+  it('preserves IOP-only selection for dedicated and generic scoped photo queries', () => {
+    const available = { ...both, top: false };
+    expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1' }, available)).toBe('iop');
+    expect(
+      selectAlibabaOperationProtocol(
+        'callCapability',
+        {
+          method: 'alibaba.icbu.photobank.list',
+          parameters: { location_type: 'SUB_GROUP', group_id: '1', current_page: 1, page_size: 1 }
+        },
+        available
+      )
+    ).toBe('iop');
   });
   it('does not claim unsupported composites, SKU or category markets are equivalent', () => {
     for (const operation of ['getDashboard', 'getTradeOrderAggregate', 'getProduct', 'listRfqs'] as const)

@@ -91,7 +91,7 @@ export class AlibabaClient {
         const transport = getTransportError(response);
         if (transport) throw new GatewayException(transport);
         const data = iop
-          ? normalizeIopBusinessResponse(response.data, method, this.#credentials)
+          ? normalizeIopBusinessResponse(response.data, method, this.#credentials, iopRequest?.parameters)
           : response.data;
         const apiError = getAlibabaError(data);
         if (apiError) throw new GatewayException(apiError);

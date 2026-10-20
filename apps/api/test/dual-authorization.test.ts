@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/node-gateway-credentials.json';
+import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
 import { galleryGatewayId } from '@one-vegetable/core/gallery-transfer-context';
 import { validateAlibabaAuthorizationsSummary } from '@one-vegetable/core/gateway-credential-validators';
 import { applyNodeMigrations, openNodeDatabase, type NodeDatabaseHandle } from '../src/db/node-database';
@@ -87,7 +88,13 @@ describe('independent TOP and IOP credentials', () => {
     });
     expect(await dual.selectProtocol('listProducts', {})).toBe('iop');
     expect(await dual.selectProtocol('listPhotos', {})).toBe('top');
-    expect(await dual.selectProtocol('listPhotos', { groupId: 'group-a' })).toBe('iop');
+    expect(await dual.selectProtocol('listPhotos', { groupId: '1001' })).toBe('top');
+    expect(
+      await dual.selectProtocol('callCapability', {
+        method: 'alibaba.icbu.photobank.list',
+        parameters: { group_id: '1001', location_type: 'SUB_GROUP', current_page: 1, page_size: 1 }
+      })
+    ).toBe('top');
     expect(await dual.selectProtocol('listPhotos', { ungrouped: true })).toBe('top');
     expect(await dual.selectProtocol('getTradeOrderAggregate', { orderId: 'test' })).toBe('top');
     expect(await dual.selectProtocol('uploadPhoto', {})).toBe('iop');
@@ -95,6 +102,53 @@ describe('independent TOP and IOP credentials', () => {
     expect(await repository.find()).toEqual(row);
     expect(await service.status()).toMatchObject({ configured: true, revision: 1 });
   });
+  it('keeps dedicated and generic photo queries on IOP when TOP is not configured', async () => {
+    const { dual } = await harness();
+    await (await dual.service('top')).clear(1);
+    const query = { groupId: '1001', page: 1, pageSize: 1 };
+    const capability = {
+      method: 'alibaba.icbu.photobank.list',
+      parameters: { group_id: '1001', location_type: 'SUB_GROUP', current_page: 1, page_size: 1 }
+    };
+    expect(await dual.selectProtocol('listPhotos', query)).toBe('iop');
+    expect(await dual.selectProtocol('callCapability', capability)).toBe('iop');
+    expect((await dual.resolveForOperation('listPhotos', query)).protocol).toBe('iop');
+    expect((await dual.resolveForOperation('callCapability', capability)).protocol).toBe('iop');
+  });
+  it.each(['dedicated', 'capability'] as const)(
+    'propagates IOP photo scope errors through the %s gateway without retry or TOP fallback',
+    async (route) => {
+      const { dual } = await harness();
+      await (await dual.service('top')).clear(1);
+      const send = vi.fn<NetworkTransport['send']>(() =>
+        Promise.resolve(Response.json(photoFixture.scopedPhotos))
+      );
+      const gateway = new CredentialBackedAlibabaGatewayClient(dual, {
+        transport: { send },
+        maxAttempts: 3
+      });
+      const request =
+        route === 'dedicated'
+          ? gateway.request('listPhotos', { groupId: '2001', page: 1, pageSize: 1 })
+          : gateway.request('callCapability', {
+              method: 'alibaba.icbu.photobank.list',
+              parameters: { group_id: '2001', location_type: 'SUB_GROUP', current_page: 1, page_size: 1 }
+            });
+      await expect(request).rejects.toMatchObject({
+        gatewayError: {
+          code: 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
+          subCode: 'PHOTO_GROUP_MISMATCH',
+          traceId: photoFixture.scopedPhotos.request_id,
+          retryable: false
+        }
+      });
+      expect(send).toHaveBeenCalledOnce();
+      const input = send.mock.calls[0]?.[0];
+      expect(input instanceof Request ? input.url : input instanceof URL ? input.href : input).toBe(
+        'https://openapi-api.alibaba.com/rest/icbu/product/photobank/list'
+      );
+    }
+  );
   it('isolates refresh leases and ciphertext AAD by protocol', async () => {
     const { db, repository, cipher } = await harness();
     const iop = new SqlGatewayCredentialRepository(db.executor, 'iop');
@@ -166,6 +220,15 @@ describe('independent TOP and IOP credentials', () => {
       await galleryGatewayId(top)
     );
     expect(await gateway.productGatewayContextId()).toBe(await galleryGatewayId(iop));
+    expect(
+      (
+        await dual.resolveForOperation(
+          'listPhotos',
+          { groupId: '1001' },
+          { galleryContext: { identity: 'identity', gateway: await galleryGatewayId(iop), storage: null } }
+        )
+      ).protocol
+    ).toBe('iop');
     await (await dual.service('top')).clear(1);
     expect((await dual.authorizations()).iop?.configured).toBe(true);
     await expect(

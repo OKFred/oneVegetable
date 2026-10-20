@@ -41,7 +41,8 @@ export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>
   'alibaba.icbu.product.schema.render': read('/icbu/product/schema/render', true),
   'alibaba.icbu.product.schema.render.draft': read('/icbu/product/schema/render/draft', true),
   'alibaba.icbu.photobank.group.list': read('/icbu/product/photobank/group/list', true),
-  'alibaba.icbu.photobank.list': read('/icbu/product/photobank/list', true),
+  // Live reads returned photos from another group. Transport is adapted, scope is not verified.
+  'alibaba.icbu.photobank.list': read('/icbu/product/photobank/list'),
   'alibaba.icbu.category.get.new': read('/icbu/product/category/get', true),
   'alibaba.icbu.category.id.mapping': read('/alibaba/icbu/category/id/mapping', false, false),
   'alibaba.icbu.category.schema.level.get': read('/icbu/product/schema/level/get', false, false),
@@ -105,7 +106,11 @@ const OPERATIONS: Partial<Record<OperationId, OperationDefinition>> = {
     constraints: ['product-inventory-only']
   },
   listPhotoGroups: { methods: ['alibaba.icbu.photobank.group.list'] },
-  listPhotos: { methods: ['alibaba.icbu.photobank.list'], constraints: ['photo-group-required'] },
+  listPhotos: {
+    methods: ['alibaba.icbu.photobank.list'],
+    partial: true,
+    constraints: ['photo-group-required', 'photo-group-scope-unverified']
+  },
   operatePhotoGroup: {
     methods: ['alibaba.icbu.photobank.group.operate'],
     partial: true,

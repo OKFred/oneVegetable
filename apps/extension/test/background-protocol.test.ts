@@ -22,6 +22,7 @@ import {
 import { createProductOperationContext } from '../../../packages/core/src/product-operation-context';
 import { installNodeXmlDomGlobals } from '../../../scripts/node-xml-dom';
 import business from '../../../mock/data/alibaba-auth/iop-business-responses.json';
+import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 import connection from '../../../mock/data/alibaba-auth/credential-connection.json';
 import displayFixture from '../../../mock/data/iop-display-extension.json';
@@ -1019,42 +1020,65 @@ describe('extension background protocol persistence and dispatch', () => {
     });
     expect(fetch).not.toHaveBeenCalled();
   });
-  it('routes all and ungrouped photos to TOP, a specific group to IOP, with no error fallback', async () => {
+  it('routes all paired photo queries to TOP before dispatch, with no error fallback', async () => {
     await createPair();
-    for (const [payload, protocol] of [
-      [{}, 'top'],
-      [{ groupId: '-1' }, 'top'],
-      [{ ungrouped: true }, 'top'],
-      [{ groupId: '123' }, 'iop']
-    ] as const) {
+    for (const payload of [{}, { groupId: '-1' }, { ungrouped: true }, { groupId: '123' }]) {
       vi.mocked(fetch).mockClear();
-      vi.mocked(fetch).mockImplementation(() =>
-        Promise.resolve(
-          Response.json(
-            protocol === 'iop'
-              ? { code: '0', result: { pagination_query_list: { list: [], total: 0 } } }
-              : { images: [], total: 0 }
-          )
-        )
-      );
+      vi.mocked(fetch).mockImplementation(() => Promise.resolve(Response.json({ images: [], total: 0 })));
       const result = await send('gateway-request', 'listPhotos', payload);
       expect(result.error).toBeUndefined();
       expect(result).toMatchObject({ ok: true });
       expect(fetch).toHaveBeenCalledOnce();
       const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
       const parameters = new URLSearchParams(init?.body as string);
-      expect(url).toMatchObject({
-        href: protocol === 'iop' ? `${IOP_BUSINESS_ENDPOINT}/icbu/product/photobank/list` : ALIBABA_GATEWAY
-      });
-      expect(parameters.get(protocol === 'iop' ? 'access_token' : 'session')).toBe(
-        protocol === 'iop' ? settings.accessToken : topSettings.accessToken
-      );
+      expect(url).toMatchObject({ href: ALIBABA_GATEWAY });
+      expect(parameters.get('session')).toBe(topSettings.accessToken);
+      expect(parameters.get('method')).toBe('alibaba.icbu.photobank.list');
+      expect(parameters.has('access_token')).toBe(false);
     }
     vi.mocked(fetch).mockClear();
-    vi.mocked(fetch).mockResolvedValue(Response.json({ code: 'InvalidAccessToken' }));
+    vi.mocked(fetch).mockRejectedValue(new TypeError('fixture read failure'));
     expect(await send('gateway-request', 'listPhotos', { groupId: '123' })).toMatchObject({ ok: false });
     expect(fetch).toHaveBeenCalledOnce();
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({ href: ALIBABA_GATEWAY });
   });
+  it.each(['listPhotos', 'callCapability'] as const)(
+    'propagates IOP-only photo scope errors through background %s without retry or TOP fallback',
+    async (operation) => {
+      await create();
+      const saved = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+      const client = vi.spyOn(AlibabaClient, 'create');
+      vi.mocked(fetch).mockResolvedValue(Response.json(photoFixture.scopedPhotos));
+      const payload =
+        operation === 'listPhotos'
+          ? { groupId: '2001', page: 1, pageSize: 1 }
+          : {
+              method: 'alibaba.icbu.photobank.list',
+              parameters: { group_id: '2001', location_type: 'SUB_GROUP', current_page: 1, page_size: 1 }
+            };
+      const result = await send('gateway-request', operation, payload);
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH', retryable: false }
+      });
+      expect(result.data).toBeUndefined();
+      expect(client).toHaveBeenCalledOnce();
+      expect(fetch).toHaveBeenCalledOnce();
+      const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+      expect(url).toMatchObject({ href: `${IOP_BUSINESS_ENDPOINT}/icbu/product/photobank/list` });
+      const parameters = new URLSearchParams(init?.body as string);
+      expect(parameters.get('groupId')).toBe('2001');
+      expect(parameters.get('currentPage')).toBe('1');
+      expect(parameters.get('pageSize')).toBe('1');
+      expect(parameters.get('access_token')).toBe(settings.accessToken);
+      expect(parameters.has('method')).toBe(false);
+      expect(parameters.has('session')).toBe(false);
+      expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(saved);
+      expect(await send('credential-vault-request', 'get-settings')).toMatchObject({
+        data: { protocol: 'iop', endpoint: IOP_BUSINESS_ENDPOINT }
+      });
+    }
+  );
   it('generates operation-specific contexts and honors the pinned profile before preferred routing', async () => {
     await createPair();
     const product = await sendEnvelope({ kind: 'product-operation-context' });

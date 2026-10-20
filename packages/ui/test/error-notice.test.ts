@@ -76,6 +76,7 @@ describe('ErrorNotice', () => {
     'ALIBABA_IOP_MUTATION_UNVERIFIED',
     'ALIBABA_IOP_BUSINESS_REJECTED',
     'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',
+    'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
     'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
     'ALIBABA_IOP_RESPONSE_INVALID',
     'ALIBABA_IOP_API_REJECTED'
@@ -86,12 +87,21 @@ describe('ErrorNotice', () => {
     );
     expect(wrapper.text()).not.toContain('errors.codes.');
     const chinese = wrapper.text();
+    if (code === 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH') {
+      expect(chinese).toContain('分组不符');
+      expect(chinese).toContain('已停止');
+      expect(chinese).toContain('TOP');
+    }
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
     expect(wrapper.text()).not.toBe(chinese);
     expect(wrapper.text()).not.toContain('errors.codes.');
     if (code === 'ALIBABA_IOP_PHOTO_GROUP_REQUIRED')
       expect(wrapper.text()).toContain('Choose a specific group');
+    if (code === 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH') {
+      expect(wrapper.text()).toContain('another group');
+      expect(wrapper.text()).toContain('TOP authorization');
+    }
     if (code === 'ALIBABA_IOP_PARAMETER_UNSUPPORTED')
       expect(wrapper.text()).toContain('never silently ignored');
     if (code === 'ALIBABA_IOP_MUTATION_UNVERIFIED') expect(wrapper.text()).toContain('remains disabled');

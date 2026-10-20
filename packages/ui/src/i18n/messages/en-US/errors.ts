@@ -1,13 +1,14 @@
+const authorizationChanged =
+  'An authorization changed. Reload both profiles and review unfinished tasks; nothing was automatically retried.';
+
 export const errors = {
   codes: {
     TOP_APPLICATION_REQUIRED:
       'No usable legacy TOP application was found. This console is for IOP: use the IOP authorization tool, or import or enter existing TOP credentials in Settings.',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
       'Check that both TOP and IOP authorizations are configured, then reload their status in credential settings.',
-    ALIBABA_AUTHORIZATION_BINDING_CHANGED:
-      'An authorization changed. Reload both profiles and review unfinished tasks; nothing was automatically retried.',
-    ALIBABA_AUTHORIZATION_BINDING_STALE:
-      'An authorization changed. Reload both profiles and review unfinished tasks; nothing was automatically retried.',
+    ALIBABA_AUTHORIZATION_BINDING_CHANGED: authorizationChanged,
+    ALIBABA_AUTHORIZATION_BINDING_STALE: authorizationChanged,
     ALIBABA_PROTOCOL_SELECTION_REQUIRED:
       'Choose TOP or IOP explicitly before replacing credentials. The other authorization must be preserved.',
     ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:
@@ -23,6 +24,8 @@ export const errors = {
       'The platform explicitly rejected this IOP operation. Check business conditions; do not resubmit.',
     ALIBABA_IOP_PHOTO_GROUP_REQUIRED:
       'Choose a specific group for IOP photos; all photos and ungrouped photos are unsupported.',
+    ALIBABA_IOP_PHOTO_SCOPE_MISMATCH:
+      'IOP returned images from another group. Stopped safely; consider adding TOP authorization.',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH:
       'The protocol and gateway endpoint do not match. Check the TOP or IOP configuration.',
     ALIBABA_IOP_RESPONSE_INVALID:
