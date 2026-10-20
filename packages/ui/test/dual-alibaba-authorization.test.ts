@@ -29,9 +29,26 @@ import { uiI18n } from '../src/i18n';
 import { provideServices } from '../src/lib/services';
 import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
 import { GATEWAY_CONFIGURATION_EVENT } from '../src/lib/gateway-configuration-events';
+import { CREDENTIAL_VAULT_CHANGED_EVENT } from '../src/lib/credential-vault-events';
 
 vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 const wrappers: VueWrapper[] = [];
+it('disables configuration with general busy state unless metadata-only loading explicitly overrides it', async () => {
+  const wrapper = mount(AlibabaAuthorizationsPanel as Component, {
+    props: {
+      summary: dualSummary(),
+      selectedProtocol: 'top',
+      busy: true,
+      configureActions: true,
+      canSetDefault: true
+    }
+  });
+  wrappers.push(wrapper as VueWrapper);
+  expect(wrapper.get('[data-testid="select-authorization-iop"]').attributes('disabled')).toBeDefined();
+  await wrapper.setProps({ configureBusy: false });
+  expect(wrapper.get('[data-testid="select-authorization-iop"]').attributes('disabled')).toBeUndefined();
+  expect(wrapper.get('[data-testid="default-authorization-iop"]').attributes('disabled')).toBeDefined();
+});
 it('saves the extension default and keeps form editing separate from the saved choice', async () => {
   const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
   expect(view.wrapper.get('[data-testid="default-authorization-top"]').text()).toContain('已选择');
@@ -777,6 +794,30 @@ describe('protocol-targeted BFF credential actions', () => {
 });
 
 describe('extension settings profile isolation', () => {
+  it('keeps configuration usable during a passive metadata reload without enabling default writes', async () => {
+    vi.useFakeTimers();
+    const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
+    const pending = Promise.withResolvers<AlibabaAuthorizationsSummary>();
+    view.settingsSummary.mockReturnValueOnce(pending.promise);
+    globalThis.dispatchEvent(new Event(CREDENTIAL_VAULT_CHANGED_EVENT));
+    await vi.advanceTimersByTimeAsync(60);
+    await flushPromises();
+    expect(view.wrapper.get('[data-testid="alibaba-authorizations-panel"]').attributes('aria-busy')).toBe(
+      'true'
+    );
+    expect(
+      view.wrapper.get('[data-testid="default-authorization-iop"]').attributes('disabled')
+    ).toBeDefined();
+    expect(
+      view.wrapper.get('[data-testid="select-authorization-iop"]').attributes('disabled')
+    ).toBeUndefined();
+    await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
+    await flushPromises();
+    expect(view.wrapper.text()).toContain('IOP 授权配置');
+    pending.resolve(view.current());
+    await flushPromises();
+    expect(view.setDefaultAuthorization).not.toHaveBeenCalled();
+  });
   it('waits for imported profile metadata before allowing another configuration to open', async () => {
     const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
     const pending = Promise.withResolvers<GatewaySettings>();

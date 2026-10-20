@@ -1063,6 +1063,7 @@ function confirmLanguagePreference(): void {
           :summary="authorizationSummary"
           :selected-protocol="selectedProtocol"
           :busy="authorizationBusy || credentialActionBusy"
+          :configure-busy="credentialActionBusy"
           :can-confirm="canConfirm"
           :can-set-default="Boolean(settings.setDefaultAuthorization)"
           compact

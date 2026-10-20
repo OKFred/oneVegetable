@@ -7,18 +7,22 @@ import AlibabaAuthorizationProfile from './AlibabaAuthorizationProfile.vue';
 import Card from './ui/Card.vue';
 import Button from './ui/Button.vue';
 
-const props = defineProps<{
-  summary: AlibabaAuthorizationsSummary;
-  selectedProtocol: 'top' | 'iop';
-  busy?: boolean;
-  canConfirm?: boolean;
-  extension?: boolean;
-  canRenew?: boolean;
-  canClear?: boolean;
-  canSetDefault?: boolean;
-  compact?: boolean;
-  configureActions?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    summary: AlibabaAuthorizationsSummary;
+    selectedProtocol: 'top' | 'iop';
+    busy?: boolean;
+    configureBusy?: boolean | undefined;
+    canConfirm?: boolean;
+    extension?: boolean;
+    canRenew?: boolean;
+    canClear?: boolean;
+    canSetDefault?: boolean;
+    compact?: boolean;
+    configureActions?: boolean;
+  }>(),
+  { configureBusy: undefined }
+);
 const emit = defineEmits<{
   select: [protocol: 'top' | 'iop'];
   setDefault: [protocol: 'top' | 'iop'];
@@ -71,7 +75,7 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
           <Button
             v-if="!canSetDefault || configureActions"
             variant="outline"
-            :disabled="busy"
+            :disabled="configureBusy ?? busy"
             :aria-pressed="configureActions ? undefined : selectedProtocol === protocol"
             :data-testid="`select-authorization-${protocol}`"
             @click="emit('select', protocol)"

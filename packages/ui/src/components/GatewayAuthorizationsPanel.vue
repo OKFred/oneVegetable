@@ -26,7 +26,7 @@ onMounted(async () => {
   ready.value = true;
 });
 async function select(protocol: 'top' | 'iop'): Promise<void> {
-  if (busy.value) return;
+  if (configurationBusy.value || (!props.dialogConfiguration && busy.value)) return;
   if (props.dialogConfiguration) {
     selectedProtocol.value = protocol;
     configurationOpen.value = true;
@@ -66,6 +66,7 @@ defineExpose({ reload });
       :summary="summary"
       :selected-protocol="selectedProtocol"
       :busy="busy"
+      :configure-busy="dialogConfiguration ? configurationBusy : undefined"
       :can-confirm="canConfirm"
       :compact="dialogConfiguration"
       :configure-actions="dialogConfiguration"
