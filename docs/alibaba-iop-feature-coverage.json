@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogCheckedAt": "2026-10-12T13:58:11.194Z",
+  "catalogCheckedAt": "2026-10-20T17:30:48.044Z",
   "note": "Protocol coverage is not application permission, business qualification or runtime write authorization.",
   "methods": {
     "alibaba.icbu.product.list": {
@@ -175,7 +175,7 @@
     "alibaba.icbu.video.query": {
       "path": "/alibaba/icbu/video/query",
       "risk": "read",
-      "adapted": false,
+      "adapted": true,
       "accountVerified": false,
       "authorizationRequired": true
     },
@@ -220,7 +220,7 @@
     },
     {
       "operation": "listVideos",
-      "state": "not-adapted",
+      "state": "supported",
       "methods": ["alibaba.icbu.video.query"],
       "constraints": ["video-title-page-filter-only"],
       "verification": "documented",

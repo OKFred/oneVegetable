@@ -40,6 +40,10 @@ export class AlibabaClient {
     this.#options = options;
   }
 
+  get protocol(): 'top' | 'iop' {
+    return this.#credentials.protocol ?? 'top';
+  }
+
   static create(credentials: GatewayCredentials, options: AlibabaClientOptions = {}): AlibabaClient {
     return new AlibabaClient(
       credentials,

@@ -13,6 +13,7 @@ const INVENTORY = 'alibaba.icbu.product.inventory.get';
 const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
 const PHOTO_UPLOAD = 'alibaba.icbu.photobank.upload';
 const PHOTO_GROUP = 'alibaba.icbu.photobank.group.operate';
+const VIDEO_QUERY = 'alibaba.icbu.video.query';
 
 export function iopOperationReason(operation: OperationId, method?: unknown): string | null {
   return iopRegisteredOperationReason(operation, method);
@@ -76,6 +77,14 @@ export async function createIopBusinessRequest(
     };
     if (request.operation !== 'add' && request.group_id === undefined)
       throw failure('REQUEST_CONTRACT_INVALID');
+  } else if (method === VIDEO_QUERY) {
+    if (Object.keys(input).some((key) => !['current_page', 'page_size', 'id'].includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = {
+      current_page: positiveInteger(input.current_page),
+      page_size: positiveInteger(input.page_size),
+      ...(input.id === undefined ? {} : { video_id: positiveInteger(input.id) })
+    };
   } else if (method === INVENTORY || method === ENCRYPT) {
     if (Object.keys(input).some((key) => key !== 'product_id' && key !== 'language'))
       throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
@@ -183,6 +192,26 @@ export function normalizeIopBusinessResponse(
   }
   const root = value.result;
   if (!isRecord(root)) throw failure();
+  if (method === VIDEO_QUERY) {
+    const model = root.model;
+    if (root.msg_code !== undefined && root.msg_code !== '200' && root.msg_code !== 200)
+      throw providerFailure(root.msg_code, root.msg_info, value.request_id, credentials);
+    if (
+      !isRecord(model) ||
+      !validTotal(model.current_page) ||
+      Number(model.current_page) < 1 ||
+      !validTotal(model.page_size) ||
+      Number(model.page_size) < 1 ||
+      !validTotal(model.total_count) ||
+      (model.list === undefined ? Number(model.total_count) !== 0 : !records(model.list)) ||
+      (Array.isArray(model.list) &&
+        model.list.some((row) => !isRecord(row) || !validTotal(row.video_id) || Number(row.video_id) < 1)) ||
+      root.success === false ||
+      root.success === 'false'
+    )
+      throw failure();
+    return { alibaba_icbu_video_query_response: { result: root, request_id: value.request_id } };
+  }
   const inventory = method === INVENTORY;
   const result = inventory && Object.hasOwn(root, 'result') ? root.result : root;
   if (!isRecord(result)) throw failure();

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-10-12T13:58:11.194Z",
+  "checkedAt": "2026-10-20T17:30:48.044Z",
   "catalog": [
     {
       "categoryId": 4,
@@ -3560,6 +3560,358 @@
               "type": "String",
               "required": true,
               "description": "error code"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.query",
+      "path": "/alibaba/icbu/video/query",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Fquery&methodType=GET%2FPOST",
+      "updatedAt": "2024-04-15 19:39:40",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "获取商家下面视频列表",
+      "request": [
+        {
+          "name": "current_page",
+          "type": "Number",
+          "required": true,
+          "description": "current page"
+        },
+        {
+          "name": "page_size",
+          "type": "Number",
+          "required": true,
+          "description": "page size"
+        },
+        {
+          "name": "video_id",
+          "type": "Number",
+          "required": false,
+          "description": "video id"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": false,
+          "description": "result",
+          "children": [
+            {
+              "name": "model",
+              "type": "Object",
+              "required": false,
+              "description": "data entity",
+              "children": [
+                {
+                  "name": "current_page",
+                  "type": "Number",
+                  "required": false,
+                  "description": "current page"
+                },
+                {
+                  "name": "page_size",
+                  "type": "Number",
+                  "required": false,
+                  "description": "page size"
+                },
+                {
+                  "name": "total_count",
+                  "type": "Number",
+                  "required": false,
+                  "description": "total count"
+                },
+                {
+                  "name": "list",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "video list",
+                  "children": [
+                    {
+                      "name": "cover_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "video cover url"
+                    },
+                    {
+                      "name": "video_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "video id"
+                    },
+                    {
+                      "name": "video_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "video resource url"
+                    },
+                    {
+                      "name": "duration",
+                      "type": "Number",
+                      "required": false,
+                      "description": "video duration"
+                    },
+                    {
+                      "name": "file_size",
+                      "type": "Number",
+                      "required": false,
+                      "description": "video file size(bytes)"
+                    },
+                    {
+                      "name": "publish_time",
+                      "type": "Number",
+                      "required": false,
+                      "description": "video publish time(millisecond)"
+                    },
+                    {
+                      "name": "quality",
+                      "type": "String",
+                      "required": false,
+                      "description": "quality level"
+                    },
+                    {
+                      "name": "status",
+                      "type": "String",
+                      "required": false,
+                      "description": "status of video, approved means video is legal afer check"
+                    },
+                    {
+                      "name": "title",
+                      "type": "String",
+                      "required": false,
+                      "description": "title"
+                    },
+                    {
+                      "name": "video_height",
+                      "type": "Number",
+                      "required": false,
+                      "description": "heiht of video(pixel)"
+                    },
+                    {
+                      "name": "video_width",
+                      "type": "Number",
+                      "required": false,
+                      "description": "width of video(pixel)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": false,
+              "description": "error code"
+            },
+            {
+              "name": "msg_info",
+              "type": "String",
+              "required": false,
+              "description": "error msg"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.relation.product.main",
+      "path": "/alibaba/icbu/video/relation/product/main",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Frelation%2Fproduct%2Fmain&methodType=GET%2FPOST",
+      "updatedAt": "2024-04-25 17:48:54",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "build relation as product main video",
+      "request": [
+        {
+          "name": "video_id",
+          "type": "Number",
+          "required": true,
+          "description": "video id"
+        },
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "product id"
+        }
+      ],
+      "response": [
+        {
+          "name": "model",
+          "type": "Boolean",
+          "required": false,
+          "description": "true or false"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": false,
+          "description": "error code"
+        },
+        {
+          "name": "msg_info",
+          "type": "String",
+          "required": false,
+          "description": "error msg"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.upload",
+      "path": "/alibaba/icbu/video/upload",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Fupload&methodType=GET%2FPOST",
+      "updatedAt": "2024-04-25 17:49:24",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "upload video to user's videobank based on video url",
+      "request": [
+        {
+          "name": "video_path",
+          "type": "String",
+          "required": true,
+          "description": "video source url"
+        },
+        {
+          "name": "video_name",
+          "type": "String",
+          "required": true,
+          "description": "name of video"
+        },
+        {
+          "name": "video_cover",
+          "type": "String",
+          "required": false,
+          "description": "cover of video"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": false,
+          "description": "result",
+          "children": [
+            {
+              "name": "model",
+              "type": "Object",
+              "required": false,
+              "description": "model",
+              "children": [
+                {
+                  "name": "req_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "request ID for per request"
+                },
+                {
+                  "name": "video_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "video id"
+                },
+                {
+                  "name": "req_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "code of request. COMPLETE、QUEUE、FAIL. if the code equals QUEUE, means request is processing, should execute alibaba.icbu.video.upload.result to get result by requestId"
+                }
+              ]
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": false,
+              "description": "error code"
+            },
+            {
+              "name": "msg_info",
+              "type": "String",
+              "required": false,
+              "description": "error message"
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 6,
+      "category": "Video",
+      "title": "alibaba.icbu.video.upload.result",
+      "path": "/alibaba/icbu/video/upload/result",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Fupload%2Fresult&methodType=GET%2FPOST",
+      "updatedAt": "2024-04-25 17:49:34",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "get upload result by request id",
+      "request": [
+        {
+          "name": "req_id",
+          "type": "String",
+          "required": true,
+          "description": "request id"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": false,
+          "description": "result",
+          "children": [
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": false,
+              "description": "error code"
+            },
+            {
+              "name": "msg_info",
+              "type": "String",
+              "required": false,
+              "description": "error message"
+            },
+            {
+              "name": "model",
+              "type": "Object",
+              "required": false,
+              "description": "model",
+              "children": [
+                {
+                  "name": "req_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "code of request. COMPLETE、QUEUE、FAIL. if the code equals QUEUE, means request is processing. Then request is COMPLETE, the video_id is available"
+                },
+                {
+                  "name": "req_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "request ID for per request. requestId will expired after 24 hours"
+                },
+                {
+                  "name": "video_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "video id"
+                }
+              ]
             }
           ]
         }

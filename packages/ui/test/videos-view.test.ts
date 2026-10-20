@@ -14,11 +14,37 @@ vi.mock('vue-sonner', () => ({
   toast: { info: vi.fn(), warning: vi.fn(), error: vi.fn(), success: vi.fn() }
 }));
 const mounted: VueWrapper[] = [];
-function mountView(gateway = new MockGatewayClient(0)) {
+function mountView(gateway = new MockGatewayClient(0), iop = false) {
   const wrapper = mount(
     defineComponent({
       setup() {
-        provideServices({ gateway, mode: 'mock', settings: { load: vi.fn(), save: vi.fn() } });
+        provideServices({
+          gateway,
+          mode: 'mock',
+          settings: { load: vi.fn(), save: vi.fn() },
+          ...(iop
+            ? {
+                operationAvailability: {
+                  get: vi.fn().mockResolvedValue({
+                    items: [
+                      {
+                        operation: 'listVideos',
+                        allowed: true,
+                        reasonCode: null,
+                        protocolSupport: {
+                          state: 'supported',
+                          methods: ['alibaba.icbu.video.query'],
+                          constraints: ['video-title-page-filter-only'],
+                          verification: 'documented',
+                          fallbackProtocol: 'top'
+                        }
+                      }
+                    ]
+                  })
+                }
+              }
+            : {})
+        });
         return () => h(VideosView);
       }
     }),
@@ -132,5 +158,26 @@ describe('VideosView search toolbar', () => {
       expect(wrapper.text()).not.toContain('Video read unavailable');
       expect(wrapper.text()).toContain('Example clothing video');
     });
+  });
+  it('labels IOP title matching as current-page filtering and never sends an unsupported title parameter', async () => {
+    const gateway = new MockGatewayClient(0),
+      request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView(gateway, true);
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Example clothing video');
+    });
+    expect(wrapper.text()).toContain('不代表全店结果');
+    const form = wrapper.get('[data-testid="video-toolbar"] form');
+    await form.get('input').setValue('unlinked');
+    request.mockClear();
+    await form.trigger('submit');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Example unlinked video');
+      expect(wrapper.text()).not.toContain('Example clothing video');
+    });
+    expect(request).toHaveBeenCalledWith('listVideos', { page: 1, pageSize: 20 }, expect.anything());
+    uiI18n.global.locale.value = 'en-US';
+    await flushPromises();
+    expect(request.mock.calls.filter(([operation]) => operation === 'listVideos')).toHaveLength(1);
   });
 });

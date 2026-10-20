@@ -1,0 +1,27 @@
+{
+  "code": "0",
+  "request_id": "fixture-iop-video",
+  "result": {
+    "msg_code": "200",
+    "model": {
+      "current_page": 1,
+      "page_size": 20,
+      "total_count": 1,
+      "list": [
+        {
+          "video_id": 900002,
+          "cover_url": "https://sc01.alicdn.com/example-video.png",
+          "video_url": "https://cloud.video.taobao.com/example-video.mp4",
+          "title": "Fixture video",
+          "duration": 12345,
+          "file_size": 12000,
+          "video_width": 640,
+          "video_height": 360,
+          "publish_time": 1780000000000,
+          "status": "approved",
+          "quality": "normal"
+        }
+      ]
+    }
+  }
+}

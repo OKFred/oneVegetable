@@ -58,7 +58,10 @@ const catalog = raw.flatMap((category) => {
   });
 });
 const selected = catalog.filter(
-  (api) => api.categoryId === 1 || (api.categoryId === 8 && /(?:list|get|query)$/u.test(api.path))
+  (api) =>
+    api.categoryId === 1 ||
+    api.categoryId === 6 ||
+    (api.categoryId === 8 && /(?:list|get|query)$/u.test(api.path))
 );
 const documents = [];
 for (const api of selected) {

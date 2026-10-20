@@ -159,6 +159,65 @@ export function adaptVideoPage(
     issues
   };
 }
+
+/** IOP publishes a plain numeric video_id, not TOP's encrypted relation identifier. */
+export function adaptIopVideoPage(data: unknown, request: VideoListRequest, now = Date.now()): VideoPage {
+  const root = rawRoot(data, 'alibaba.icbu.video.query');
+  const result = rec(root.result),
+    model = rec(result?.model);
+  const total = iopNumber(model?.total_count);
+  if (
+    !model ||
+    total === null ||
+    !Number.isSafeInteger(total) ||
+    iopNumber(model.current_page) !== request.page ||
+    iopNumber(model.page_size) !== request.pageSize ||
+    (result?.msg_code !== undefined && result.msg_code !== '200' && result.msg_code !== 200) ||
+    result?.success === false ||
+    result?.success === 'false'
+  )
+    fail('VIDEO_RESPONSE_INVALID');
+  const list = model.list === undefined && total === 0 ? [] : model.list;
+  if (!Array.isArray(list)) fail('VIDEO_RESPONSE_INVALID');
+  const issues: string[] = [];
+  const videos = list.map((value): Video => {
+    const row = rec(value),
+      id = safeVideoId(row?.video_id);
+    if (!row || !id) fail('VIDEO_RESPONSE_INVALID');
+    const videoUrl = safePlaybackUrl(row.video_url);
+    if (row.video_url && !videoUrl) issues.push(`items/${id}/videoUrl:unsafe-url`);
+    return {
+      id,
+      encryptedId: null,
+      title: text(row.title),
+      videoUrl,
+      coverUrl: safeVideoUrl(row.cover_url),
+      width: iopNumber(row.video_width),
+      height: iopNumber(row.video_height),
+      fileSize: iopNumber(row.file_size),
+      durationRaw: iopNumber(row.duration),
+      publishedAt: iopNumber(row.publish_time),
+      status: text(row.status),
+      quality: text(row.quality),
+      relatedProductCount: null,
+      publisher: null
+    };
+  });
+  return {
+    items: videos,
+    page: request.page,
+    pageSize: request.pageSize,
+    total,
+    traceId: text(root.request_id) ?? '',
+    queriedAt: now,
+    issues
+  };
+}
+
+// The public IOP example uses numeric strings; blanks and non-finite values are not zero.
+function iopNumber(value: unknown): number | null {
+  return typeof value === 'string' && /^\d+(?:\.\d+)?$/u.test(value) ? num(Number(value)) : num(value);
+}
 export function adaptVideoRelations(
   data: unknown,
   request: VideoRelationRequest,
@@ -189,7 +248,7 @@ export function adaptVideoRelations(
 }
 export class VideoAdapter {
   constructor(
-    private readonly client: Pick<AlibabaClient, 'call'>,
+    private readonly client: Pick<AlibabaClient, 'call'> & Partial<Pick<AlibabaClient, 'protocol'>>,
     private readonly validateRequest: Validator,
     private readonly validateResponse: Validator,
     private readonly wait: (ms: number) => Promise<void> = (ms) =>
@@ -208,7 +267,10 @@ export class VideoAdapter {
     if ((await this.validateRequest(method, payload)).length) fail('REQUEST_CONTRACT_INVALID');
     const response = await this.client.call(method, payload);
     const root = rawRoot(response.data, method);
-    const issues = (await this.validateResponse(method, root)).map((i) => `${i.instancePath}:${i.keyword}`);
+    const issues =
+      this.client.protocol === 'iop' && method === 'alibaba.icbu.video.query'
+        ? []
+        : (await this.validateResponse(method, root)).map((i) => `${i.instancePath}:${i.keyword}`);
     return {
       root,
       issues,
@@ -218,13 +280,19 @@ export class VideoAdapter {
   async list(request: VideoListRequest): Promise<VideoPage> {
     if (!validateVideoListRequest(request) || (request.id && !safeVideoId(request.id)))
       fail('REQUEST_CONTRACT_INVALID');
+    if (this.client.protocol === 'iop' && request.title) fail('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
     const result = await this.call('alibaba.icbu.video.query', {
       current_page: request.page,
       page_size: request.pageSize,
       ...(request.title ? { title: request.title } : {}),
       ...(request.id ? { id: Number(request.id) } : {})
     });
-    return { ...adaptVideoPage(result.root, request, result.issues), traceId: result.traceId };
+    return {
+      ...(this.client.protocol === 'iop'
+        ? adaptIopVideoPage(result.root, request)
+        : adaptVideoPage(result.root, request, result.issues)),
+      traceId: result.traceId
+    };
   }
   async related(request: VideoRelationRequest): Promise<VideoRelations> {
     if (!validateVideoRelationRequest(request)) fail('REQUEST_CONTRACT_INVALID');

@@ -60,7 +60,7 @@ function setUploadOpen(open: boolean): void {
   uploadTaskId.value = '';
 }
 syncUploadRoute();
-const { gateway, mode } = useServices();
+const { gateway, mode, operationAvailability } = useServices();
 const { alibabaLanguage } = useAppPreferences();
 const vt = useVideoI18n();
 const { t } = useUiI18n();
@@ -106,9 +106,13 @@ const result = shallowRef<VideoPage | null>(null),
   identity = ref('');
 const scope = new VideoReadScope();
 const diagnosticIssues = computed(() => visibleVideoIssues(result.value?.issues ?? []));
+const titlePageFilterOnly = ref(false);
 const rows = computed(() =>
   (result.value?.items ?? []).filter(
     (video) =>
+      (!titlePageFilterOnly.value ||
+        !submitted.value.title ||
+        (video.title ?? '').toLocaleLowerCase().includes(submitted.value.title.toLocaleLowerCase())) &&
       (!filters.value.status || video.status === filters.value.status) &&
       (!filters.value.quality || video.quality === filters.value.quality) &&
       (filters.value.related === 'all' ||
@@ -137,6 +141,12 @@ async function load(refresh = false) {
     const account = await pageDetailIdentity(gateway, mode);
     if (!current()) return;
     identity.value = account;
+    const availability = await operationAvailability?.get(['listVideos']);
+    if (!current()) return;
+    titlePageFilterOnly.value =
+      availability?.items
+        .find((item) => item.operation === 'listVideos')
+        ?.protocolSupport?.constraints.includes('video-title-page-filter-only') ?? false;
     const data = await requestVideo(
       gateway,
       mode,
@@ -145,7 +155,7 @@ async function load(refresh = false) {
       {
         page: page.value,
         pageSize: pageSize.value,
-        ...(submitted.value.title ? { title: submitted.value.title } : {}),
+        ...(submitted.value.title && !titlePageFilterOnly.value ? { title: submitted.value.title } : {}),
         ...(submitted.value.id ? { id: submitted.value.id } : {})
       },
       account,
@@ -384,6 +394,9 @@ onUnmounted(() => {
         />
       </template>
     </ListToolbar>
+    <p v-if="titlePageFilterOnly" class="mb-2 text-xs text-muted-foreground">
+      {{ t('common.filters.pageHint') }}
+    </p>
     <ErrorNotice v-if="error" :error="error" />
     <p v-if="busy" role="status">{{ vt('loading') }}</p>
     <ModalDialog v-model:open="diagnosticsOpen" :title="vt('issues')"
@@ -395,7 +408,7 @@ onUnmounted(() => {
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article
           v-for="(video, index) in rows"
-          :key="video.encryptedId ?? index"
+          :key="video.encryptedId ?? video.id ?? index"
           class="overflow-hidden rounded-lg border bg-card text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring"
         >
           <button

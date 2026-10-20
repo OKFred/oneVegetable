@@ -51,7 +51,10 @@ describe('shared IOP coverage registry', () => {
       state: 'partial',
       constraints: ['photo-group-delete-unverified']
     });
-    expect(getIopOperationSupport('listVideos').state).toBe('not-adapted');
+    expect(getIopOperationSupport('listVideos')).toMatchObject({
+      state: 'supported',
+      verification: 'documented'
+    });
     expect(getIopMethod('toString')).toBeUndefined();
   });
   it('retains historical defaults and chooses only fully verified dependencies before dispatch', () => {

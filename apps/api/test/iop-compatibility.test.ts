@@ -11,6 +11,7 @@ import credentialFixture from '../../../mock/data/node-gateway-credentials.json'
 import tokenFixture from '../../../mock/data/alibaba-auth/iop-token-responses.json';
 import fixture from '../../../mock/data/api-iop-compatibility.json';
 import tradeFixture from '../../../mock/data/trades.json';
+import iopVideoFixture from '../../../mock/data/video/iop.json';
 import { credentialDocumentFromBundle, parseCredentialDocument } from '../src/gateway/credential-document';
 import { EnvironmentAlibabaCredentialProvider } from '../src/gateway/credentials';
 import {
@@ -644,7 +645,26 @@ describe('IOP API gateway integration without external networking', () => {
     }
     expect(send).not.toHaveBeenCalled();
   });
-  it.each(['updateProductDisplay', 'listVideos', 'getRfq'] satisfies OperationId[])(
+  it('adapts IOP video reads without fabricating TOP encrypted relation IDs', async () => {
+    const send = vi.fn<NetworkTransport['send']>((input, init) => {
+      expect(transportUrl(input)).toBe(`${IOP_BUSINESS_ENDPOINT}/alibaba/icbu/video/query`);
+      if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form');
+      expect(init.body.get('current_page')).toBe('1');
+      expect(init.body.get('page_size')).toBe('20');
+      expect(init.body.has('session')).toBe(false);
+      return Promise.resolve(Response.json(iopVideoFixture));
+    });
+    const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+    expect(await gateway.request('listVideos', { page: 1, pageSize: 20 })).toMatchObject({
+      items: [{ id: '900002', encryptedId: null }],
+      total: 1
+    });
+    await expect(
+      gateway.request('listVideos', { page: 1, pageSize: 20, title: 'Fixture' })
+    ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED' } });
+    expect(send).toHaveBeenCalledOnce();
+  });
+  it.each(['updateProductDisplay', 'getRfq'] satisfies OperationId[])(
     'rejects %s before any gateway network call',
     async (operation) => {
       const send = vi.fn<NetworkTransport['send']>();
