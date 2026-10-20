@@ -40,14 +40,15 @@ describe('native IOP display adapter', () => {
     });
     expect(JSON.parse(signed.parameters.product_id_list ?? 'null') as unknown).toEqual([700001]);
   });
-  it.each([[], ['fixture-cipher'], ['9007199254740993'], [700001, 700001], '700001,700002'])(
-    'does not guess encrypted identities or discard invalid targets %#',
-    async (product_id_list) => {
-      await expect(
-        createIopBusinessRequest(credentials, method, { product_id_list, new_display: 'off' })
-      ).rejects.toThrow();
-    }
-  );
+  it.each(
+    [[], ['fixture-cipher'], ['9007199254740993'], [700001, 700001], '700001,700002'].map(
+      (product_id_list) => ({ product_id_list })
+    )
+  )('does not guess encrypted identities or discard invalid targets %#', async ({ product_id_list }) => {
+    await expect(
+      createIopBusinessRequest(credentials, method, { product_id_list, new_display: 'off' })
+    ).rejects.toThrow();
+  });
   it('requires the native failure map, error field and trace instead of HTTP or a guessed success flag', () => {
     for (const result of [
       {},

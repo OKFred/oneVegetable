@@ -71,8 +71,16 @@ describe('IOP inventory and product identity gateway integration', () => {
       h.client.request('getProductInventory', { ...request, productId: 'invalid' })
     ).rejects.toMatchObject({ gatewayError: { code: 'REQUEST_CONTRACT_INVALID' } });
     await expect(
-      h.client.request('callCapability', { method: 'alibaba.icbu.product.inventory.update', parameters: {} })
-    ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED' } });
+      h.client.request('callCapability', {
+        method: 'alibaba.icbu.product.inventory.update',
+        parameters: {
+          request_param: {
+            product_id: Number(request.productId),
+            inventory_list: [{ sku_id: 1001, inventory_code: 'FIXTURE_WH', inventory: 1, operate: 'plus' }]
+          }
+        }
+      })
+    ).rejects.toMatchObject({ gatewayError: { code: 'REAL_MUTATION_DISABLED' } });
     expect(h.send).not.toHaveBeenCalled();
   });
 
