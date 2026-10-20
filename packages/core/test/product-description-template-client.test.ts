@@ -8,8 +8,53 @@ import {
 } from '../src/product-description-template-client';
 
 import type { NetworkTransport } from '../src/network';
+import iop from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
 
 describe('product description template clients', () => {
+  it.each([undefined, iop.availabilityItem.protocolSupport])(
+    'accepts legacy availability or valid optional IOP coverage',
+    async (protocolSupport) => {
+      const send: NetworkTransport['send'] = (_input, init) => {
+        if (typeof init.body !== 'string') throw new Error('Expected JSON request');
+        const envelope = JSON.parse(init.body) as { requestId: string };
+        return Promise.resolve(
+          Response.json({
+            requestId: envelope.requestId,
+            ok: true,
+            data: { items: [{ ...iop.availabilityItem, protocolSupport }] }
+          })
+        );
+      };
+      const client = new BffProductDescriptionTemplateClient({
+        baseUrl: 'https://staging.example.com',
+        transport: { send }
+      });
+      await expect(client.get(['listPhotos'])).resolves.toMatchObject({ items: [{ allowed: true }] });
+    }
+  );
+  it.each([null, {}, { ...iop.availabilityItem.protocolSupport, constraints: null }])(
+    'rejects malformed optional protocol metadata before UI access',
+    async (protocolSupport) => {
+      const send: NetworkTransport['send'] = (_input, init) => {
+        if (typeof init.body !== 'string') throw new Error('Expected JSON request');
+        const envelope = JSON.parse(init.body) as { requestId: string };
+        return Promise.resolve(
+          Response.json({
+            requestId: envelope.requestId,
+            ok: true,
+            data: { items: [{ ...iop.availabilityItem, protocolSupport }] }
+          })
+        );
+      };
+      const client = new BffProductDescriptionTemplateClient({
+        baseUrl: 'https://staging.example.com',
+        transport: { send }
+      });
+      await expect(client.get(['listPhotos'])).rejects.toMatchObject({
+        gatewayError: { code: 'INVALID_BFF_RESPONSE' }
+      });
+    }
+  );
   it('uses centralized JSON POST transport, requestId and CSRF for the BFF client', async () => {
     const send = vi.fn<NetworkTransport['send']>((input, init) => {
       const url =

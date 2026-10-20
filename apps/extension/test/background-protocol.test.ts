@@ -424,9 +424,9 @@ describe('extension background protocol persistence and dispatch', () => {
   it('rejects unmapped IOP writes and targeted reads before creating a network client', async () => {
     await create();
     const client = vi.spyOn(AlibabaClient, 'create');
-    for (const operation of ['uploadPhoto', 'createProductGroup'] as const) {
+    for (const operation of ['updateProductDisplay', 'createProductGroup'] as const) {
       const reason = iopOperationReason(operation);
-      expect(reason).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
+      expect(reason).toBe('ALIBABA_IOP_MUTATION_UNVERIFIED');
       expect(await send('gateway-request', operation, {})).toMatchObject({
         ok: false,
         error: { code: reason }
@@ -835,7 +835,7 @@ describe('extension background protocol persistence and dispatch', () => {
     const product = await sendEnvelope({ kind: 'product-operation-context' });
     const gallery = await sendEnvelope({ kind: 'gallery-transfer-context' });
     expect(product.data).toMatchObject(await fixtureContext());
-    expect(gallery.data).toMatchObject(await fixtureContext(topSettings));
+    expect(gallery.data).toMatchObject(await fixtureContext());
     // listPhotoGroups normally prefers IOP, but this request is pinned to TOP.
     vi.mocked(fetch).mockResolvedValue(Response.json({ groups: [] }));
     expect(

@@ -19,10 +19,10 @@
 
 ## 边界与后续小批次
 
-- 当前图片查询必须指定分组；不猜全部/未分组 ID，不扫描整库。图片分组子级参数仍需专门适配。
+- 当前图片查询必须指定分组；不猜全部/未分组 ID，不扫描整库。图片分组支持通过文档中的 `id` 查询父级及其子分组，不再强制转 TOP。
 - 订单聚合保留物流；新版手续费不能冒充已付金额。RFQ、橱窗、排名等缺口可提示补充 TOP，不做失败后的跨协议重试。
 - 下载商品素材、本地诊断与目录操作不应被 TOP/IOP 协议闸门误拦截。
-- 图片文件上传、分组操作、商品分组新增、上下架、库存写入和视频方法按批次适配，未经真实回读不自动开放写入。
+- 图片文件上传与分组新增、改名已完成 IOP 真实回读；分组删除仍未验收，单独拦截并在双授权时选 TOP。商品分组新增、上下架、库存写入和视频方法继续按批次适配，未经真实回读不自动开放写入。
 - 新版 Product V2 不替换现有 Schema 内容语义。采购和销售订单分开，不把 BuyNow 创建采购订单当作卖家起草订单。
 - 第二阶段先补订单详情、物流轨迹、运费、仓库和运费模板，再为采购下单、取消、GGS 物流下单和发货设计独立持久回执；不执行付款。
 - ZIP 2,000,000 字节、解包 5,470,000 字节及其他现有门禁不放宽。真实验收回执放忽略目录，不保存明文密钥或完整业务响应。
@@ -30,3 +30,14 @@
 ## English
 
 IOP-only coverage is expanded before new procurement, sales and fulfillment features. TOP, historical unmarked bundles and dual-profile defaults remain compatible. The shared registry describes protocol coverage, not granted application permissions, qualifications or runtime mutation approval. Local functionality does not require TOP. Partial aggregates keep available sections; fees never substitute for paid amounts. Unverified writes stay blocked, and failed calls never switch protocol. Public-API gaps may recommend optional TOP authorization. Live receipt, readback and recovery are separate acceptance results. No deployment, release or payment is performed by this development batch.
+
+## 2026-10-21 真实验收
+
+- 隔离 IOP 只读：11 项通过、1 项合法空数据，商品 ID 加密返回平台 `InternalError`，不标为成功或权限不足。
+- 只在新建测试分组操作：根分组新增、改名、子分组新增及按父 ID 回读已确认；新增一张项目图标，fileId 与目标分组回读匹配，CDN 下载 SHA-256 与源文件一致。
+- 首轮工具错误地只在根层核对子分组，已安全停止；修复后复用已确认的分组，未重复创建、改名或上传。
+- 新建空子分组查询得到意外素材记录，因此没有执行删除。子分组保留，删除仍受 IOP 子操作验证闸门限制；不把上传成功扩大解释为删除通过。
+- Node 脱敏回执：`artifacts/iop-feature-parity/2026-10-21-photobank.json`。不修改当前凭据、商品或既有素材。
+- 正式 MV3 构建复制到隔离 Profile，仅导入 IOP：商品、分组、图片、Schema、订单查询通过，库存和订单物流为合法空结果。28 次真实只读请求、0 次 TOP 请求、0 次 Token 请求及写入；刷新后协议与加密授权仍保留。原生权限确认未测试，仅隔离副本预授予精确 IOP 域名；不修改日常插件。回执：`artifacts/iop-workbench-read-validation/dcdf1f9d-66be-41d9-a06c-c8bdd16c58ae-Rjb22s/report.json`。
+- 图片选择、模板组合/携图、ZIP 传输任务及独立插件本地模板共 7 条 E2E 通过；Worker 24 项隔离测试通过。这些回放回归不等于 IOP 模板携图或 S3 全链路已完成真实写入验收。
+- 旧 MV3 验收脚本仍依赖已移除的内联导入表单，首次运行在读取授权文件前超时，未发出平台请求。已改为实际的“连接账号 → 本机保护 → 文件导入并保存”入口，重跑通过，不绕开当前 UI。

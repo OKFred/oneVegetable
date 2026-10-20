@@ -4,11 +4,17 @@ import {
   getIopMethod,
   getIopOperationSupport,
   iopRegisteredOperationReason,
-  listIopOperationCoverage
+  listIopOperationCoverage,
+  IOP_METHODS
 } from '../src/alibaba-iop-registry';
+import report from '../../../docs/alibaba-iop-feature-coverage.json';
 import { selectAlibabaOperationProtocol } from '../src/alibaba-protocol-routing';
 
 describe('shared IOP coverage registry', () => {
+  it('keeps the checked-in coverage report synchronized with the shared registry', () => {
+    expect(report.methods).toEqual(IOP_METHODS);
+    expect(report.operations).toEqual(listIopOperationCoverage());
+  });
   it('provides a conclusion for every current operation without claiming application permissions', () => {
     const coverage = listIopOperationCoverage();
     expect(coverage.map((entry) => entry.operation)).toEqual(OPERATION_IDS);
@@ -33,14 +39,18 @@ describe('shared IOP coverage registry', () => {
   it('does not promote public candidate writes before protocol-specific live acceptance', () => {
     expect(getIopMethod('alibaba.icbu.photobank.upload')).toMatchObject({
       risk: 'mutation',
-      adapted: false,
-      accountVerified: false
+      adapted: true,
+      accountVerified: true
     });
-    expect(getIopOperationSupport('uploadPhoto')).toMatchObject({
+    expect(getIopOperationSupport('updateProductDisplay')).toMatchObject({
       state: 'unverified-write',
       verification: 'documented'
     });
-    expect(iopRegisteredOperationReason('uploadPhoto')).toBe('ALIBABA_IOP_MUTATION_UNVERIFIED');
+    expect(iopRegisteredOperationReason('updateProductDisplay')).toBe('ALIBABA_IOP_MUTATION_UNVERIFIED');
+    expect(getIopOperationSupport('operatePhotoGroup')).toMatchObject({
+      state: 'partial',
+      constraints: ['photo-group-delete-unverified']
+    });
     expect(getIopOperationSupport('listVideos').state).toBe('not-adapted');
     expect(getIopMethod('toString')).toBeUndefined();
   });
@@ -48,8 +58,21 @@ describe('shared IOP coverage registry', () => {
     const pool = { top: true, iop: true, defaultProtocol: 'top', bindingConfirmed: true } as const;
     expect(selectAlibabaOperationProtocol('getProduct', {}, pool)).toBe('top');
     expect(selectAlibabaOperationProtocol('getTradeOrderAggregate', {}, pool)).toBe('top');
-    expect(selectAlibabaOperationProtocol('uploadPhoto', {}, pool)).toBe('top');
+    expect(selectAlibabaOperationProtocol('uploadPhoto', {}, pool)).toBe('iop');
+    expect(selectAlibabaOperationProtocol('operatePhotoGroup', { operation: 'add' }, pool)).toBe('iop');
+    expect(selectAlibabaOperationProtocol('operatePhotoGroup', { operation: 'delete' }, pool)).toBe('top');
+    expect(selectAlibabaOperationProtocol('listPhotoGroups', { parentId: '1001' }, pool)).toBe('iop');
     expect(selectAlibabaOperationProtocol('listPhotos', {}, pool)).toBe('top');
     expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1001' }, pool)).toBe('iop');
+  });
+  it('checks the exact generic-call suboperation before choosing a protocol', () => {
+    const pool = { top: true, iop: true, defaultProtocol: 'top', bindingConfirmed: true } as const;
+    const input = (operation: string) => ({
+      method: 'alibaba.icbu.photobank.group.operate',
+      parameters: { photo_group_operation_request: { operation, group_id: 1001, group_name: 'fixture' } }
+    });
+    expect(selectAlibabaOperationProtocol('callCapability', input('add'), pool)).toBe('iop');
+    expect(selectAlibabaOperationProtocol('callCapability', input('rename'), pool)).toBe('iop');
+    expect(selectAlibabaOperationProtocol('callCapability', input('delete'), pool)).toBe('top');
   });
 });

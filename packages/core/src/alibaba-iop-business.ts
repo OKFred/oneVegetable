@@ -11,13 +11,18 @@ import {
 
 const INVENTORY = 'alibaba.icbu.product.inventory.get';
 const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
+const PHOTO_UPLOAD = 'alibaba.icbu.photobank.upload';
+const PHOTO_GROUP = 'alibaba.icbu.photobank.group.operate';
 
 export function iopOperationReason(operation: OperationId, method?: unknown): string | null {
   return iopRegisteredOperationReason(operation, method);
 }
 
-export function iopMethodReason(method: unknown): string | null {
-  return iopMethodAvailabilityReason(method);
+export function iopMethodReason(
+  method: unknown,
+  parameters?: Readonly<Record<string, unknown>>
+): string | null {
+  return iopMethodAvailabilityReason(method, parameters);
 }
 
 export function isAccountVerifiedIopMethod(method: string): boolean {
@@ -49,7 +54,29 @@ export async function createIopBusinessRequest(
   if (!path) throw failure('ALIBABA_IOP_METHOD_UNSUPPORTED');
   if (!definition.adapted) throw failure(iopMethodReason(method) ?? 'ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
-  if (method === INVENTORY || method === ENCRYPT) {
+  if (method === PHOTO_UPLOAD) {
+    if (Object.keys(input).some((key) => !['file_name', 'group_id'].includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = {
+      file_name: requiredText(input.file_name),
+      ...(input.group_id === undefined ? {} : { group_id: String(positiveInteger(input.group_id)) })
+    };
+  } else if (method === PHOTO_GROUP) {
+    const request = input.photo_group_operation_request;
+    if (!isRecord(request) || Object.keys(input).length !== 1) throw failure('REQUEST_CONTRACT_INVALID');
+    if (Object.keys(request).some((key) => !['operation', 'group_id', 'group_name'].includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    if (!['add', 'rename', 'delete'].includes(String(request.operation)))
+      throw failure('REQUEST_CONTRACT_INVALID');
+    const rootAdd = request.operation === 'add' && String(request.group_id) === '-1';
+    business = {
+      operation: request.operation,
+      ...(request.group_id === undefined || rootAdd ? {} : { group_id: positiveInteger(request.group_id) }),
+      ...(request.operation === 'delete' ? {} : { group_name: requiredText(request.group_name) })
+    };
+    if (request.operation !== 'add' && request.group_id === undefined)
+      throw failure('REQUEST_CONTRACT_INVALID');
+  } else if (method === INVENTORY || method === ENCRYPT) {
     if (Object.keys(input).some((key) => key !== 'product_id' && key !== 'language'))
       throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
     business = { product_id: positiveInteger(input.product_id), language: requiredText(input.language) };
@@ -109,10 +136,13 @@ export async function createIopBusinessRequest(
     )
       throw failure('ALIBABA_IOP_PHOTO_GROUP_REQUIRED');
     business = {
-      groupId: String(input.group_id),
-      currentPage: input.current_page,
-      pageSize: input.page_size
+      groupId: String(positiveInteger(input.group_id)),
+      currentPage: positiveInteger(input.current_page),
+      pageSize: positiveInteger(input.page_size)
     };
+  } else if (method === 'alibaba.icbu.photobank.group.list') {
+    if (Object.keys(input).some((key) => key !== 'id')) throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = input.id === undefined ? {} : { id: positiveInteger(input.id) };
   }
   const parameters = serializeAlibabaParameters({
     ...business,
@@ -193,7 +223,24 @@ export function normalizeIopBusinessResponse(
   )
     throw failure();
   let normalized = result;
-  if (inventory) {
+  if (method === PHOTO_UPLOAD) {
+    const image = result.response_object;
+    if (
+      !isRecord(image) ||
+      !validTotal(image.file_id) ||
+      Number(image.file_id) <= 0 ||
+      typeof image.photobank_url !== 'string' ||
+      !image.photobank_url.trim()
+    )
+      throw failure();
+    normalized = {
+      ...result,
+      upload_image_response: { ...image, photobank_url: uploadedPhotoUrl(image.photobank_url) }
+    };
+  } else if (method === PHOTO_GROUP) {
+    if (!success) throw failure();
+    if (result.photobank_group !== undefined && !isRecord(result.photobank_group)) throw failure();
+  } else if (inventory) {
     if (!success || !records(result.data_list)) throw failure();
     const { message_info, ...data } = result;
     normalized = {
@@ -235,6 +282,27 @@ export function normalizeIopBusinessResponse(
     if (result.success !== true || !isRecord(result.data)) throw failure();
   }
   return { [`${method.replaceAll('.', '_')}_response`]: normalized };
+}
+
+function uploadedPhotoUrl(value: string): string {
+  try {
+    const url = new URL(value.startsWith('//') ? `https:${value}` : value);
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.port ||
+      url.hash ||
+      !['alicdn.com', 'alibaba.com'].some(
+        (host) => url.hostname === host || url.hostname.endsWith(`.${host}`)
+      )
+    )
+      throw failure();
+    url.protocol = 'https:';
+    return url.href;
+  } catch {
+    throw failure();
+  }
 }
 
 function requiredText(value: unknown): string {

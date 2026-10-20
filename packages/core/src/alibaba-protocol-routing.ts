@@ -30,15 +30,17 @@ export function selectAlibabaOperationProtocol(
   // Preserve existing composite routing until all dependencies and parameter variants are accepted.
   if (
     operation === 'getProduct' ||
-    (operation !== 'callCapability' && getIopOperationSupport(operation).state === 'partial')
+    (operation !== 'callCapability' &&
+      getIopOperationSupport(operation).state === 'partial' &&
+      operation !== 'operatePhotoGroup')
   )
     return 'top';
+  if (operation === 'operatePhotoGroup' && input.operation === 'delete') return 'top';
   if (
     operation === 'listPhotos' &&
     (input.ungrouped === true || input.groupId === undefined || input.groupId === '-1')
   )
     return 'top';
-  if (operation === 'listPhotoGroups' && input.parentId !== undefined) return 'top';
   if (operation === 'getProductInventory' && input.source === 'sku') return 'top';
   // TOP can render a draft by ID alone; the verified IOP path requires its category.
   if (operation === 'getProductDraft' && input.categoryId === undefined) return 'top';
@@ -64,7 +66,12 @@ export function selectAlibabaOperationProtocol(
       return 'top';
   }
   return methods.length > 0 &&
-    methods.every((target) => isAccountVerifiedIopMethod(target) && iopMethodReason(target) === null)
+    methods.every(
+      (target) =>
+        isAccountVerifiedIopMethod(target) &&
+        iopMethodReason(target, operation === 'callCapability' ? record(input.parameters) : undefined) ===
+          null
+    )
     ? 'iop'
     : 'top';
 }

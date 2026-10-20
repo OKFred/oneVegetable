@@ -10,6 +10,7 @@ export interface IopMethodDefinition {
   adapted: boolean;
   accountVerified: boolean;
   authorizationRequired: boolean;
+  verifiedActions?: readonly string[];
 }
 export interface IopOperationSupport {
   state: IopSupportState;
@@ -54,8 +55,11 @@ export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>
   'alibaba.icbu.product.schema.add': write('/icbu/product/schema/add', true),
   'alibaba.icbu.product.schema.add.draft': write('/icbu/product/schema/add/draft', true),
   'alibaba.icbu.product.schema.update': write('/icbu/product/schema/update', true),
-  'alibaba.icbu.photobank.group.operate': write('/icbu/product/photobank/group/operate'),
-  'alibaba.icbu.photobank.upload': write('/alibaba/icbu/photobank/upload'),
+  'alibaba.icbu.photobank.group.operate': {
+    ...write('/icbu/product/photobank/group/operate', true),
+    verifiedActions: ['add', 'rename']
+  },
+  'alibaba.icbu.photobank.upload': write('/alibaba/icbu/photobank/upload', true),
   'alibaba.icbu.product.group.add': write('/icbu/product/group/add'),
   'alibaba.icbu.product.batch.update.display': write('/icbu/product/update/display'),
   'alibaba.icbu.product.inventory.update': write('/icbu/product/inventory/update'),
@@ -100,9 +104,13 @@ const OPERATIONS: Partial<Record<OperationId, OperationDefinition>> = {
     methods: ['alibaba.icbu.product.inventory.get'],
     constraints: ['product-inventory-only']
   },
-  listPhotoGroups: { methods: ['alibaba.icbu.photobank.group.list'], constraints: ['root-groups-only'] },
+  listPhotoGroups: { methods: ['alibaba.icbu.photobank.group.list'] },
   listPhotos: { methods: ['alibaba.icbu.photobank.list'], constraints: ['photo-group-required'] },
-  operatePhotoGroup: { methods: ['alibaba.icbu.photobank.group.operate'] },
+  operatePhotoGroup: {
+    methods: ['alibaba.icbu.photobank.group.operate'],
+    partial: true,
+    constraints: ['photo-group-delete-unverified']
+  },
   uploadPhoto: { methods: ['alibaba.icbu.photobank.upload'] },
   transferPhotoFromUrl: { methods: ['alibaba.icbu.photobank.upload'] },
   createProductGroup: { methods: ['alibaba.icbu.product.group.add'] },
@@ -127,9 +135,23 @@ export function getIopMethod(method: string): Readonly<IopMethodDefinition> | un
   return Object.hasOwn(IOP_METHODS, method) ? IOP_METHODS[method] : undefined;
 }
 
-export function iopMethodAvailabilityReason(method: unknown): string | null {
+export function iopMethodAvailabilityReason(
+  method: unknown,
+  parameters?: Readonly<Record<string, unknown>>
+): string | null {
   const definition = typeof method === 'string' ? getIopMethod(method) : undefined;
   if (!definition) return 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+  if (definition.verifiedActions && parameters) {
+    const request = parameters.photo_group_operation_request;
+    if (
+      typeof request === 'object' &&
+      request !== null &&
+      'operation' in request &&
+      request.operation === 'delete' &&
+      !definition.verifiedActions.includes('delete')
+    )
+      return 'ALIBABA_IOP_MUTATION_UNVERIFIED';
+  }
   if (definition.risk === 'mutation' && !definition.accountVerified) return 'ALIBABA_IOP_MUTATION_UNVERIFIED';
   return definition.adapted ? null : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
 }

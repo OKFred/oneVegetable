@@ -14,7 +14,6 @@ import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { parseAlibabaOpenApiCredentialBundle } from '../packages/core/src/alibaba-credential-bundle';
 import { IOP_API_ORIGIN, IOP_BUSINESS_ENDPOINT } from '../packages/core/src/alibaba-iop';
 import { requireProductOperationContext } from '../packages/core/src/product-operation-context';
-import { settings as settingsZh } from '../packages/ui/src/i18n/messages/zh-CN/settings';
 import { gatewayCredentials as credentialsZh } from '../packages/ui/src/i18n/messages/zh-CN/gatewayCredentials';
 import { atomicWriteJson } from './openapi-auth/storage';
 
@@ -469,40 +468,25 @@ export async function main(args: readonly string[]): Promise<void> {
     });
     if (!isRecord(empty) || empty.ok !== true || !isRecord(empty.data) || empty.data.state !== 'empty')
       throw new Error('ISOLATED_EMPTY_VAULT_REQUIRED');
+    const passphrase = randomBytes(24).toString('base64url');
     report.stage = 'import-bundle';
-    await page.getByLabel(settingsZh.credentials.importLabel).setInputFiles({
+    await page.getByTestId('get-alibaba-credentials').click();
+    const importDialog = page.getByRole('dialog', { name: credentialsZh.chooseAcquireProtocol, exact: true });
+    await importDialog.getByTestId('authorization-protection-passphrase').fill(passphrase);
+    await importDialog.getByTestId('continue-authorization-protection').click();
+    await importDialog.getByTestId('authorization-method-file').click();
+    await importDialog.getByLabel(credentialsZh.offlineChooseFile, { exact: true }).setInputFiles({
       name: 'credentialInfo.json',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(bundle))
     });
-    await page.waitForFunction(
-      ({ protocolLabel, endpointLabel, endpoint }) => {
-        const field = (label: string) =>
-          document.querySelector<HTMLInputElement | HTMLSelectElement>(`[aria-label="${label}"]`);
-        return field(protocolLabel)?.value === 'iop' && field(endpointLabel)?.value === endpoint;
-      },
-      {
-        protocolLabel: credentialsZh.protocol,
-        endpointLabel: settingsZh.credentials.gateway,
-        endpoint: IOP_BUSINESS_ENDPOINT
-      }
-    );
+    await importDialog.getByTestId('authorization-file-preview').waitFor({ state: 'visible' });
     report.stage = 'save-vault';
-    const passphrase = randomBytes(24).toString('base64url');
-    await page.getByLabel(settingsZh.vault.setPassphrase, { exact: true }).fill(passphrase);
-    await page.getByLabel(settingsZh.vault.confirmPassphrase, { exact: true }).fill(passphrase);
-    await page.getByRole('button', { name: settingsZh.credentials.save, exact: true }).click();
+    await importDialog.getByTestId('confirm-authorization-file-import').click();
     if (options.nativeHostConsent)
       process.stdout.write('Please allow openapi-api.alibaba.com in this isolated Chromium window.\n');
     // Only a boolean crosses back; no plaintext/ciphertext/settings dumps are retained.
-    await page.waitForFunction(
-      () => {
-        const input = document.querySelector<HTMLInputElement>('[aria-label="Access Token"]');
-        return input?.value === '';
-      },
-      undefined,
-      { timeout: options.nativeHostConsent ? 600_000 : 20_000 }
-    );
+    await importDialog.waitFor({ state: 'hidden', timeout: options.nativeHostConsent ? 600_000 : 20_000 });
     if (options.nativeHostConsent) {
       report.nativePermissionConsentTested = await worker.evaluate(async (origin) => {
         const chrome = (

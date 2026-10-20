@@ -72,7 +72,7 @@ describe('IOP inventory and product identity gateway integration', () => {
     ).rejects.toMatchObject({ gatewayError: { code: 'REQUEST_CONTRACT_INVALID' } });
     await expect(
       h.client.request('callCapability', { method: 'alibaba.icbu.product.inventory.update', parameters: {} })
-    ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' } });
+    ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED' } });
     expect(h.send).not.toHaveBeenCalled();
   });
 

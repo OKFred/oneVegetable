@@ -63,7 +63,7 @@ export class AlibabaClient {
   async call(method: string, parameters: Readonly<Record<string, unknown>>): Promise<AlibabaCallResult> {
     this.assertProtocol();
     const iop = this.#credentials.protocol === 'iop';
-    const reason = iop ? iopMethodReason(method) : null;
+    const reason = iop ? iopMethodReason(method, parameters) : null;
     if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
     const maxAttempts = iop ? 1 : Math.max(1, Math.min(3, this.#options.maxAttempts ?? 1));
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -111,19 +111,14 @@ export class AlibabaClient {
     file: AlibabaFilePart
   ): Promise<AlibabaCallResult> {
     this.assertProtocol();
-    if (this.#credentials.protocol === 'iop')
-      throw new GatewayException({
-        code: 'ALIBABA_IOP_METHOD_UNSUPPORTED',
-        message: 'ALIBABA_IOP_METHOD_UNSUPPORTED',
-        retryable: false
-      });
-    const bytes = new Uint8Array(file.bytes);
-    const signedParameters = createAlibabaRequest(this.#credentials, method, parameters);
-    const multipart = encodeMultipartBody(signedParameters, file, bytes);
+    const iop = this.#credentials.protocol === 'iop';
+    const reason = iop ? iopMethodReason(method, parameters) : null;
+    if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
+    const multipart = await createAlibabaFileRequest(this.#credentials, method, parameters, file);
 
     const response = await this.#network.request({
       service: 'alibaba',
-      url: this.#credentials.endpoint,
+      url: multipart.url,
       method: 'POST',
       headers: { 'Content-Type': multipart.contentType },
       body: multipart.body,
@@ -132,11 +127,16 @@ export class AlibabaClient {
       ...(this.#options.requestId ? { requestId: this.#options.requestId } : {})
     });
     if (!response.ok) {
+      if (iop) {
+        const error = getTransportError(response);
+        if (error) throw new GatewayException(error);
+      }
       throw multipartTransportError(response);
     }
     const transport = getTransportError(response);
     if (transport) throw new GatewayException(transport);
-    const data = parseMultipartJson(response.data, response.headers);
+    const raw = parseMultipartJson(response.data, response.headers);
+    const data = iop ? normalizeIopBusinessResponse(raw, method, this.#credentials) : raw;
     const apiError = getAlibabaError(data);
     if (apiError) throw new GatewayException(apiError);
     return { method, data };
@@ -157,6 +157,28 @@ export class AlibabaClient {
         retryable: false
       });
   }
+}
+
+/** Shared signing/encoding; dispatch authorization remains in AlibabaClient and the runtime policy. */
+export async function createAlibabaFileRequest(
+  credentials: GatewayCredentials,
+  method: string,
+  parameters: Readonly<Record<string, unknown>>,
+  file: AlibabaFilePart
+): Promise<{ url: string; body: ArrayBuffer; contentType: string }> {
+  const iop = credentials.protocol === 'iop';
+  if (iop && (method !== 'alibaba.icbu.photobank.upload' || file.fieldName !== 'image_bytes'))
+    throw new GatewayException({
+      code: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED',
+      message: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED',
+      retryable: false
+    });
+  const request = iop ? await createIopBusinessRequest(credentials, method, parameters) : null;
+  const signed = request?.parameters ?? createAlibabaRequest(credentials, method, parameters);
+  return {
+    url: request?.url ?? credentials.endpoint,
+    ...encodeMultipartBody(signed, file, new Uint8Array(file.bytes))
+  };
 }
 
 function encodeMultipartBody(

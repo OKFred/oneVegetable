@@ -494,7 +494,7 @@ describe('account-accepted IOP draft routing (no verification mock)', () => {
     const response = await h.call('updateProductDisplay', payload('updateProductDisplay'));
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
-      error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
+      error: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED', retryable: false }
     });
     for (const register of h.registrations) expect(register).not.toHaveBeenCalled();
     expect(request).not.toHaveBeenCalled();

@@ -139,15 +139,16 @@
     "alibaba.icbu.photobank.group.operate": {
       "path": "/icbu/product/photobank/group/operate",
       "risk": "mutation",
-      "adapted": false,
-      "accountVerified": false,
-      "authorizationRequired": true
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true,
+      "verifiedActions": ["add", "rename"]
     },
     "alibaba.icbu.photobank.upload": {
       "path": "/alibaba/icbu/photobank/upload",
       "risk": "mutation",
-      "adapted": false,
-      "accountVerified": false,
+      "adapted": true,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "alibaba.icbu.product.group.add": {
@@ -341,16 +342,16 @@
       "operation": "listPhotoGroups",
       "state": "supported",
       "methods": ["alibaba.icbu.photobank.group.list"],
-      "constraints": ["root-groups-only"],
+      "constraints": [],
       "verification": "account-verified",
-      "fallbackProtocol": "top"
+      "fallbackProtocol": null
     },
     {
       "operation": "operatePhotoGroup",
-      "state": "unverified-write",
+      "state": "partial",
       "methods": ["alibaba.icbu.photobank.group.operate"],
-      "constraints": [],
-      "verification": "documented",
+      "constraints": ["photo-group-delete-unverified"],
+      "verification": "account-verified",
       "fallbackProtocol": "top"
     },
     {
@@ -363,19 +364,19 @@
     },
     {
       "operation": "uploadPhoto",
-      "state": "unverified-write",
+      "state": "supported",
       "methods": ["alibaba.icbu.photobank.upload"],
       "constraints": [],
-      "verification": "documented",
-      "fallbackProtocol": "top"
+      "verification": "account-verified",
+      "fallbackProtocol": null
     },
     {
       "operation": "transferPhotoFromUrl",
-      "state": "unverified-write",
+      "state": "supported",
       "methods": ["alibaba.icbu.photobank.upload"],
       "constraints": [],
-      "verification": "documented",
-      "fallbackProtocol": "top"
+      "verification": "account-verified",
+      "fallbackProtocol": null
     },
     {
       "operation": "downloadProductAsset",

@@ -418,11 +418,7 @@ describe('explicit IOP business compatibility', () => {
   });
   it('fails unmapped methods and writes before network; never derives a path from the TOP method', async () => {
     const { client, send } = createClient();
-    for (const method of [
-      'alibaba.seller.trade.order.list',
-      'alibaba.icbu.product.display.update',
-      'alibaba.icbu.photobank.group.operate'
-    ]) {
+    for (const method of ['alibaba.seller.trade.order.list', 'alibaba.icbu.product.display.update']) {
       const reason =
         method === 'alibaba.icbu.photobank.group.operate'
           ? 'ALIBABA_IOP_MUTATION_UNVERIFIED'
@@ -444,7 +440,7 @@ describe('explicit IOP business compatibility', () => {
           contentType: 'image/png'
         }
       )
-    ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' } });
+    ).rejects.toMatchObject({ gatewayError: { code: 'REQUEST_CONTRACT_INVALID' } });
     expect(send).not.toHaveBeenCalled();
     expect(iopOperationReason('updateProduct')).toBeNull();
     expect(iopOperationReason('getProductDraft')).toBeNull();

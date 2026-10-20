@@ -644,7 +644,7 @@ describe('IOP API gateway integration without external networking', () => {
     }
     expect(send).not.toHaveBeenCalled();
   });
-  it.each(['updateProductDisplay', 'uploadPhoto', 'listVideos', 'getRfq'] satisfies OperationId[])(
+  it.each(['updateProductDisplay', 'listVideos', 'getRfq'] satisfies OperationId[])(
     'rejects %s before any gateway network call',
     async (operation) => {
       const send = vi.fn<NetworkTransport['send']>();

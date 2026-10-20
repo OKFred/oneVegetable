@@ -90,7 +90,7 @@ describe('independent TOP and IOP credentials', () => {
     expect(await dual.selectProtocol('listPhotos', { groupId: 'group-a' })).toBe('iop');
     expect(await dual.selectProtocol('listPhotos', { ungrouped: true })).toBe('top');
     expect(await dual.selectProtocol('getTradeOrderAggregate', { orderId: 'test' })).toBe('top');
-    expect(await dual.selectProtocol('uploadPhoto', {})).toBe('top');
+    expect(await dual.selectProtocol('uploadPhoto', {})).toBe('iop');
     expect((await dual.authorizations()).binding.confirmed).toBe(false);
     expect(await repository.find()).toEqual(row);
     expect(await service.status()).toMatchObject({ configured: true, revision: 1 });
@@ -161,7 +161,10 @@ describe('independent TOP and IOP credentials', () => {
       (await dual.resolveForOperation('renderProductSchema', {}, { productContext: expected })).protocol
     ).toBe('top');
     const gateway = new CredentialBackedAlibabaGatewayClient(dual);
-    expect(await gateway.galleryGatewayContextId()).toBe(await galleryGatewayId(top));
+    expect(await gateway.galleryGatewayContextId()).toBe(await galleryGatewayId(iop));
+    expect(await gateway.galleryGatewayContextId(await galleryGatewayId(top))).toBe(
+      await galleryGatewayId(top)
+    );
     expect(await gateway.productGatewayContextId()).toBe(await galleryGatewayId(iop));
     await (await dual.service('top')).clear(1);
     expect((await dual.authorizations()).iop?.configured).toBe(true);

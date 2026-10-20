@@ -359,8 +359,25 @@ function isAvailabilityResult(value: unknown): value is OperationAvailabilityRes
         isRecord(item) &&
         typeof item.operation === 'string' &&
         typeof item.allowed === 'boolean' &&
-        (item.reasonCode === null || typeof item.reasonCode === 'string')
+        (item.reasonCode === null || typeof item.reasonCode === 'string') &&
+        (item.protocolSupport === undefined || isProtocolSupport(item.protocolSupport))
     )
+  );
+}
+
+function isProtocolSupport(value: unknown): boolean {
+  const strings = (items: unknown): boolean =>
+    Array.isArray(items) &&
+    items.length <= 100 &&
+    items.every((item: unknown) => typeof item === 'string' && item.length > 0 && item.length <= 200);
+  return (
+    isRecord(value) &&
+    value.protocol === 'iop' &&
+    isEnum(value.state, ['supported', 'partial', 'local', 'not-adapted', 'not-public', 'unverified-write']) &&
+    isEnum(value.verification, ['account-verified', 'documented', 'not-applicable']) &&
+    (value.fallbackProtocol === null || value.fallbackProtocol === 'top') &&
+    strings(value.methods) &&
+    strings(value.constraints)
   );
 }
 
