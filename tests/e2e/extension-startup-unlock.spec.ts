@@ -7,6 +7,10 @@ import { createCredentialVault } from '../../packages/core/src/credential-vault'
 import { completeOnboarding, ONBOARDING_STORAGE_KEY } from '../../packages/core/src/privacy';
 import { SETTINGS_STORAGE_KEY } from '../../packages/core/src/settings-storage';
 import {
+  openExtensionCredentialEditor,
+  closeExtensionCredentialConfiguration
+} from './helpers/extension-credentials';
+import {
   EXTENSION_REVIEW_PROMPT_INTERVAL_MILLISECONDS,
   EXTENSION_REVIEW_PROMPT_STORAGE_KEY
 } from '../../packages/core/src/extension-review-prompt';
@@ -170,7 +174,13 @@ test('wrong password stays local; unlock proceeds directly to review and survive
     await page.evaluate(() => localStorage.getItem('one-vegetable:legacy-editor-drafts:notice:v1'))
   ).toBeNull();
   await page.reload();
+  await openExtensionCredentialEditor(page);
   await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(credentialFixture.manual.appKey);
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
   await expect(dialog).toBeHidden();
   await expect(cleanup).toBeHidden();
   await expect(review).toBeHidden();
@@ -193,7 +203,13 @@ test('wrong password stays local; unlock proceeds directly to review and survive
   });
   expect(status).toMatchObject({ ok: true, data: { state: 'unlocked' } });
   await page.reload();
+  await openExtensionCredentialEditor(page);
   await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(credentialFixture.manual.appKey);
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
   await expect(dialog).toBeHidden();
   const persisted = await page.evaluate(async () => {
     const chrome = (globalThis as unknown as { chrome: TestChrome }).chrome;
@@ -258,6 +274,12 @@ test('a second workbench unlocking closes the first startup prompt on focus with
     0
   );
   await first.reload();
+  await openExtensionCredentialEditor(first);
   await expect(first.getByLabel('App Key', { exact: true })).toHaveValue(credentialFixture.manual.appKey);
+  await first
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(first);
   await expect(first.getByRole('dialog', { name: unlockTitle, exact: true })).toBeHidden();
 });

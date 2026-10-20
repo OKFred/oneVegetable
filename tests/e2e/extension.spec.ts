@@ -2,6 +2,12 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+import {
+  prepareExtensionVault,
+  openExtensionCredentialEditor,
+  closeExtensionCredentialConfiguration,
+  importExtensionAuthorization
+} from './helpers/extension-credentials';
 import { settings as settingsZh } from '../../packages/ui/src/i18n/messages/zh-CN/settings';
 import { zipSync } from 'fflate';
 import galleryFixture from '../../mock/data/gallery-extension-transfer.json' with { type: 'json' };
@@ -67,25 +73,30 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
-  await page.getByLabel('导入授权包 JSON', { exact: true }).setInputFiles({
-    name: 'credentials.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(
-      JSON.stringify({
-        ...credentialFixture.oauthBundle,
-        application: { ...credentialFixture.oauthBundle.application, permissions: permissionFixture.active },
-        oauth: { ...credentialFixture.oauthBundle.oauth, expiresAtUtc: credentialFixture.knownExpiry }
-      })
-    )
-  });
+  await importExtensionAuthorization(
+    page,
+    {
+      ...credentialFixture.oauthBundle,
+      application: { ...credentialFixture.oauthBundle.application, permissions: permissionFixture.active },
+      oauth: { ...credentialFixture.oauthBundle.oauth, expiresAtUtc: credentialFixture.knownExpiry }
+    },
+    '123456'
+  );
+  await page.getByTestId('select-authorization-top').click();
   await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
-  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('123456');
-  await page.getByLabel('确认保护口令').fill('123456');
-  await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
   await page.reload();
+  await page.getByTestId('select-authorization-top').click();
   await expect(page.getByTestId('credential-expiry')).toContainText('2030-01-02');
+  await page
+    .getByRole('dialog', { name: 'TOP 授权配置', exact: true })
+    .getByRole('button', { name: '手动填写', exact: true })
+    .click();
   await expect(page.getByLabel('Access Token')).toHaveValue('');
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
   await expect(page.getByTestId('dashboard-authorization-card').getByRole('status')).toContainText('天');
   await expect(page.getByTestId('dashboard-authorization-card').getByRole('button')).toHaveCount(0);
@@ -93,10 +104,12 @@ test('formal MV3 preserves imported token expiry through vault save and page rel
     page.getByTestId('dashboard-authorization-card').getByTestId('authorization-details')
   ).toHaveAttribute('aria-label', /2030-01-02/);
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/settings`);
+  await openExtensionCredentialEditor(page);
   await page.getByLabel('Access Token').fill(credentialFixture.manual.accessToken);
-  await expect(page.getByTestId('credential-expiry')).toContainText('未知，不代表永久有效');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
+  await expect(page.getByTestId('credential-expiry')).toContainText('未知，不代表永久有效');
+  await closeExtensionCredentialConfiguration(page);
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/dashboard`);
   await expect(
     page.getByTestId('dashboard-authorization-card').getByTestId('authorization-details')
@@ -215,11 +228,16 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
           chrome: {
             permissions: {
               contains(query: { origins?: string[]; permissions?: string[] }): Promise<boolean>;
+              request(query: { origins?: string[]; permissions?: string[] }): Promise<boolean>;
             };
           };
         }
       ).chrome.permissions;
       const nativeContains = permissions.contains.bind(permissions);
+      permissions.request = (query) =>
+        Promise.resolve(
+          query.origins?.length === 1 && query.origins[0] === iopPermission && !query.permissions?.length
+        );
       permissions.contains = (query) =>
         query.origins?.length === 1 && query.origins[0] === iopPermission && !query.permissions?.length
           ? Promise.resolve(true)
@@ -231,20 +249,18 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
-  const importInput = page.getByLabel('导入授权包 JSON', { exact: true });
-  await importInput.setInputFiles({
-    name: 'top-fixture.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(topBundle))
-  });
-  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-dual-vault-password');
-  await page.getByLabel('确认保护口令').fill('e2e-dual-vault-password');
-  await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  await importExtensionAuthorization(page, topBundle, 'e2e-dual-vault-password');
   const panel = page.getByTestId('alibaba-authorizations-panel');
-  await expect(panel.getByTestId('authorization-top')).toContainText(
-    credentialFixture.knownExpiry.slice(0, 10)
-  );
+  const expectProfileExpiry = async (protocol: 'top' | 'iop', expires: string) => {
+    await page.getByTestId(`select-authorization-${protocol}`).click();
+    const configuration = page.getByRole('dialog', {
+      name: `${protocol.toUpperCase()} 授权配置`,
+      exact: true
+    });
+    await expect(configuration.getByTestId('credential-expiry')).toContainText(expires.slice(0, 10));
+    await closeExtensionCredentialConfiguration(page, protocol);
+  };
+  await expectProfileExpiry('top', credentialFixture.knownExpiry);
   await expect(panel.getByTestId('authorization-iop')).toContainText('尚未配置');
   const readAuthorizations = async () => {
     const requestId = crypto.randomUUID();
@@ -270,15 +286,15 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
   const topOnly = await readAuthorizations();
   expect(topOnly).toMatchObject({ defaultProtocol: 'top', iop: null, binding: { confirmed: false } });
   expect(topOnly.top?.configurationId).toEqual(expect.any(String));
-  await importInput.setInputFiles({
-    name: 'iop-fixture.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(iopBundle))
-  });
+  await importExtensionAuthorization(page, iopBundle);
+  await openExtensionCredentialEditor(page, 'iop');
   await expect(page.getByLabel('App Key', { exact: true })).toHaveValue(iopBundle.application.appKey);
-  await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
-  await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page, 'iop');
+  await expectProfileExpiry('iop', iopExpiry);
   const configuredPair = await readAuthorizations();
   expect(configuredPair.top).toEqual(topOnly.top);
   expect(configuredPair).toMatchObject({ defaultProtocol: 'top', binding: { confirmed: false } });
@@ -325,14 +341,18 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
   // Routing is automatic; it never fabricates a user confirmation or ownership verification.
   expect(await readAuthorizations()).toEqual(configuredPair);
   await page.reload();
-  await expect(panel.getByTestId('authorization-top')).toContainText(
-    credentialFixture.knownExpiry.slice(0, 10)
-  );
-  await expect(panel.getByTestId('authorization-iop')).toContainText(iopExpiry.slice(0, 10));
+  await expectProfileExpiry('top', credentialFixture.knownExpiry);
+  await expectProfileExpiry('iop', iopExpiry);
   await expect(panel.getByTestId('authorization-binding')).toContainText('已默认启用按能力自动路由');
   expect(await readAuthorizations()).toEqual(configuredPair);
+  await openExtensionCredentialEditor(page);
   await expect(page.getByLabel('App Secret', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('Access Token', { exact: true })).toHaveValue('');
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
   const encrypted = await readExtensionLocalValue(page, 'gatewaySettings');
   expect(encrypted).toMatchObject({ version: 2, format: 'PBKDF2-HMAC-SHA256/AES-256-GCM' });
   for (const secret of [
@@ -385,13 +405,14 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await prepareExtensionVault(page);
+  await openExtensionCredentialEditor(page);
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
-  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
+  await closeExtensionCredentialConfiguration(page);
   const invoke = async (method: string, parameters: unknown) => {
     const requestId = crypto.randomUUID();
     const response: unknown = await page.evaluate(
@@ -577,13 +598,14 @@ test('formal MV3 showcase uses the actual worker with isolated TOP responses', a
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await prepareExtensionVault(page);
+  await openExtensionCredentialEditor(page);
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
-  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
+  await closeExtensionCredentialConfiguration(page);
   await page.goto(`${origin}/options.html#/products`);
   await page.getByRole('button', { name: '更多', exact: true }).click();
   await page.getByRole('menuitem', { name: '橱窗管理', exact: true }).click();
@@ -786,13 +808,14 @@ test('formal MV3 dedicated inventory survives worker restart with no writes', as
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await prepareExtensionVault(page);
+  await openExtensionCredentialEditor(page);
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
-  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
+  await closeExtensionCredentialConfiguration(page);
   async function query(source: 'product' | 'sku', productId = '10000001') {
     return page.evaluate(
       async (payload) => {
@@ -868,13 +891,14 @@ test('formal MV3 video workspace isolates public reads and survives worker resta
   const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await prepareExtensionVault(page);
+  await openExtensionCredentialEditor(page);
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
-  await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
-  await page.getByLabel('确认保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.vault.saveEncrypted).first()).toBeVisible();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
+  await closeExtensionCredentialConfiguration(page);
   await page.goto(`${base}#/photos/videos`);
   const library = page.getByTestId('video-library');
   await library.getByRole('button', { name: '查看: Example video' }).click();
@@ -1148,10 +1172,14 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await expect(page.getByRole('heading', { name: '开放平台凭证保护' })).toBeVisible();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
   await expect(page.getByText('未创建', { exact: true })).toHaveCount(0);
+  await openExtensionCredentialEditor(page);
   await page.getByLabel('App Key').fill('e2e-app-key');
   await page.getByLabel('App Secret').fill('e2e-secret');
   await page.getByLabel('Access Token').fill('e2e-token');
   await expect(page.getByLabel('App Key')).toHaveAttribute('data-feedback-redact', '');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
+  await closeExtensionCredentialConfiguration(page);
   await page.getByTestId('feedback-launcher').click();
   const feedbackDialog = page.getByRole('dialog', { name: '提交产品反馈' });
   await expect(feedbackDialog).toBeVisible();
@@ -1168,8 +1196,6 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await feedbackDialog.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(feedbackDialog).toHaveCount(0);
   await expect(page.getByTestId('vault-passphrase-setup')).toHaveCount(0);
-  await page.getByRole('button', { name: '保存设置', exact: true }).click();
-  await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback).first()).toBeVisible();
   const encryptedSettings = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -1190,9 +1216,15 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   expect(JSON.stringify(encryptedSettings)).not.toContain('e2e-token');
   await page.reload();
   await page.getByRole('link', { name: '设置', exact: true }).click();
+  await openExtensionCredentialEditor(page);
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
   await expect(page.getByLabel('App Secret')).toHaveValue('');
   await expect(page.getByLabel('Access Token')).toHaveValue('');
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
   await page.getByRole('link', { name: '日志', exact: true }).click();
   await expect(page.getByRole('heading', { name: '主机权限' })).toBeVisible();
   await expect(page.getByText('当前没有额外主机权限。')).toBeVisible();
@@ -1293,7 +1325,13 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.reload();
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await openExtensionCredentialEditor(page);
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
   const sessionStorageAfterRestart = await page.evaluate(async () => {
     const extension = (
       globalThis as unknown as {
@@ -1317,7 +1355,13 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('保护口令').fill('e2e-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await openExtensionCredentialEditor(page);
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
 
   await expect(page.getByLabel('空闲自动锁定时间')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '保存锁定策略' })).toHaveCount(0);
@@ -1343,7 +1387,13 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   await page.getByLabel('保护口令').fill('e2e-rotated-vault-password');
   await page.getByRole('button', { name: '解锁' }).click();
   await expect(page.getByText('已解锁', { exact: true })).toBeVisible();
+  await openExtensionCredentialEditor(page);
   await expect(page.getByLabel('App Key')).toHaveValue('e2e-app-key');
+  await page
+    .getByRole('dialog', { name: '手动填写', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
+  await closeExtensionCredentialConfiguration(page);
   await expect(page.getByLabel('空闲自动锁定时间')).toHaveCount(0);
 
   await page.getByRole('link', { name: 'API 能力' }).click();

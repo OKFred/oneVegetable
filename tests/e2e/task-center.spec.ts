@@ -2,6 +2,11 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { settings as settingsZh } from '../../packages/ui/src/i18n/messages/zh-CN/settings';
+import {
+  prepareExtensionVault,
+  openExtensionCredentialEditor,
+  closeExtensionCredentialConfiguration
+} from './helpers/extension-credentials';
 import { chromium, expect, test, type Page } from '@playwright/test';
 import galleryFixture from '../../mock/data/gallery-transfer-task.json' with { type: 'json' };
 import associationFixture from '../../mock/data/video/association-core.json' with { type: 'json' };
@@ -174,13 +179,14 @@ test('formal MV3 task center keeps uncertain receipts and reuses the original ta
     const guide = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
     await guide.getByRole('checkbox').check();
     await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+    await prepareExtensionVault(page);
+    await openExtensionCredentialEditor(page);
     await page.getByLabel('App Key').fill('e2e-app-key');
     await page.getByLabel('App Secret').fill('e2e-secret');
     await page.getByLabel('Access Token').fill('e2e-token');
-    await page.getByTestId('vault-passphrase-setup').locator('input').nth(0).fill('e2e-vault-password');
-    await page.getByLabel('确认保护口令').fill('e2e-vault-password');
     await page.getByRole('button', { name: '保存设置', exact: true }).click();
-    await expect(page.getByText(settingsZh.vault.saveEncrypted)).toBeVisible();
+    await expect(page.getByText(settingsZh.credentials.encryptedSavedFeedback)).toBeVisible();
+    await closeExtensionCredentialConfiguration(page);
     await seedReceipts(page);
     const baseline = externalRequests.length;
     await checkCenter(page);

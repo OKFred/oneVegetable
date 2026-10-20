@@ -39,30 +39,25 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     });
     await page.goto('/#/settings');
     const panel = page.getByTestId('gateway-credential-panel');
-    await expect(panel).toBeVisible();
+    await expect(panel).toBeHidden();
     const en = locale === 'en-US';
+    const configuration = page.getByRole('dialog', {
+      name: en ? 'TOP authorization settings' : 'TOP 授权配置',
+      exact: true
+    });
     await page.getByTestId('select-authorization-top').click();
-    await expect(
-      page.getByText(
-        en
-          ? 'Already configuring TOP. Import or enter credentials below.'
-          : '当前正在配置 TOP，请在下方导入或填写。',
-        { exact: true }
-      )
-    ).toBeVisible();
+    await expect(configuration).toBeVisible();
+    await configuration.getByRole('button', { name: en ? 'Done' : '完成', exact: true }).click();
     await page.getByTestId('select-authorization-iop').click();
-    await expect(
-      page.getByText(
-        en
-          ? 'Switched to IOP settings. Import or enter credentials below; the default protocol is unchanged.'
-          : '已切换到 IOP 配置，请在下方导入或填写；默认协议未改变。',
-        { exact: true }
-      )
-    ).toBeVisible();
-    await expect(page.getByTestId('select-authorization-iop')).toHaveAttribute('aria-pressed', 'true');
+    const iopConfiguration = page.getByRole('dialog', {
+      name: en ? 'IOP authorization settings' : 'IOP 授权配置',
+      exact: true
+    });
+    await expect(iopConfiguration).toBeVisible();
     expect(writes).toEqual([]);
+    await iopConfiguration.getByRole('button', { name: en ? 'Done' : '完成', exact: true }).click();
     await page.getByTestId('select-authorization-top').click();
-    await expect(page.getByTestId('select-authorization-top')).toHaveAttribute('aria-pressed', 'true');
+    await expect(configuration).toBeVisible();
     expect(writes).toEqual([]);
     const manual = panel.getByRole('button', { name: en ? 'Enter manually' : '手动填写', exact: true });
     await expect(manual).toBeVisible();
@@ -81,7 +76,11 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       else if (action === 'close')
         await form.getByRole('button', { name: en ? 'Close Enter manually' : '关闭手动填写' }).click();
       else if (action === 'escape') await page.keyboard.press('Escape');
-      else await page.locator('.ov-dialog-overlay').click({ position: { x: 5, y: 5 } });
+      else
+        await page
+          .locator('.ov-dialog-overlay')
+          .last()
+          .click({ position: { x: 5, y: 5 } });
       await expect(form).toBeHidden();
       await expect(discard).toBeHidden();
     }
@@ -93,7 +92,11 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       else if (action === 'close')
         await form.getByRole('button', { name: en ? 'Close Enter manually' : '关闭手动填写' }).click();
       else if (action === 'escape') await page.keyboard.press('Escape');
-      else await page.locator('.ov-dialog-overlay').click({ position: { x: 5, y: 5 } });
+      else
+        await page
+          .locator('.ov-dialog-overlay')
+          .last()
+          .click({ position: { x: 5, y: 5 } });
       await expect(discard).toBeVisible();
       // The discard dialog must own focus and accept keyboard interaction, not sit behind the form.
       await expect(discard).toContainText(en ? 'Continue editing' : '继续编辑');
@@ -122,7 +125,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         .getByRole('button', { name: en ? 'Discard changes and leave' : '放弃修改并离开', exact: true })
         .click();
       await expect(form).toBeHidden();
-      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByRole('dialog')).toHaveCount(1);
       expect(writes).toEqual([]);
     }
     await manual.click();
@@ -140,7 +143,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     });
     await expect(confirm).toBeVisible();
     await confirm.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(1);
     await expect(
       panel.getByText(en ? 'Encrypted SQLite configuration' : 'SQLite 加密配置', { exact: true })
     ).toBeVisible();
@@ -178,6 +181,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       .click();
     await expect(page).toHaveURL(/\/#\/settings$/u);
     await expect(renewal).toBeHidden();
+    await page.getByTestId('select-authorization-top').click();
     await expect(panel).toBeVisible();
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     const clear = page.getByRole('dialog', {
@@ -188,9 +192,10 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     expect(writes.some((path) => path.endsWith('/clear'))).toBe(false);
     await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
     await clear.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(1);
     await expect(panel.getByText(en ? 'Not configured' : '尚未配置', { exact: true })).toBeVisible();
     await page.reload();
+    await page.getByTestId('select-authorization-top').click();
     await expect(panel.getByText(en ? 'Not configured' : '尚未配置', { exact: true })).toBeVisible();
     await panel.locator('input[type="file"]').setInputFiles({
       name: 'credentialInfo.json',
@@ -209,10 +214,11 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await expect(confirm).toBeVisible();
     expect(writes.some((path) => path.endsWith('/import'))).toBe(false);
     await confirm.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(1);
     await expect(panel).toContainText(fixture.oauthBundle.application.appName);
     await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     await page.reload();
+    await page.getByTestId('select-authorization-top').click();
     await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     await expect(panel).not.toContainText(fixture.manual.accessToken);
 
@@ -243,6 +249,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
       .getByRole('link', { name: en ? 'Credential settings' : '前往凭据配置', exact: true })
       .click();
     await expect(page).toHaveURL(/\/#\/settings$/u);
+    await page.getByTestId('select-authorization-top').click();
     await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     expect(renewalRequests).toBe(1);
 

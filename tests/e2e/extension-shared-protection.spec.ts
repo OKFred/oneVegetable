@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { chromium, expect, test, type Page } from '@playwright/test';
 import fixture from '../../mock/data/node-gateway-credentials.json' with { type: 'json' };
+import { importExtensionAuthorization } from './helpers/extension-credentials';
 
 async function invoke(page: Page, kind: string, operation: string, payload: unknown = {}) {
   return page.evaluate(
@@ -88,12 +89,7 @@ for (const passphrase of ['', fixture.workbench.password]) {
           })
         ).toMatchObject({ ok: true, data: { state: 'ready' } });
         await settings.bringToFront();
-        await settings.getByLabel('导入授权包 JSON', { exact: true }).setInputFiles({
-          name: 'credentialInfo.json',
-          mimeType: 'application/json',
-          buffer: Buffer.from(JSON.stringify(fixture.oauthBundle))
-        });
-        await settings.getByRole('button', { name: '保存设置', exact: true }).click();
+        await importExtensionAuthorization(settings, fixture.oauthBundle);
         await expect
           .poll(() => invoke(settings, 'credential-vault-request', 'status'))
           .toMatchObject({
