@@ -51,3 +51,9 @@ IOP-only coverage is expanded before new procurement, sales and fulfillment feat
 - 视频上传的排队结果及主视频关联仍未完成 IOP 适配和受控回读，保持关闭；不以 TOP 的上传成功规则替代。
 - 额外按官方示例使用 `page_size=10` 的单次只读探测同样返回 `10000002`，不能简单归因于默认每页 20 条。没有尝试虚构视频 ID；精确 ID 回读及实际播放仍待可用样本。
 - 视频搜索、预览释放、关联二次确认和上传暂停/恢复共 10 条 Web E2E 回归通过，均使用隔离样本，不代表上面失败的真实查询已通过。
+
+## 商品分组新增批次（未开放）
+
+- 按公开文档将 TOP `parent_id` 映射到 IOP `parent_group_id`，不传 TOP `extra_context`，响应要求明确的分组 ID、名称和父级；缺失或冲突不算成功。
+- 单次受控新增保存发送前回执后执行，平台返回业务错误；没有再次发送，回执保守保留 `unknown`。随后 21 次限速只读请求核对根层分组，未发现本次唯一测试名称，仍不能排除平台延迟或其他差异，不自动重试。
+- 回执：`artifacts/iop-feature-parity/2026-10-21-product-group.json`；只读核对：`2026-10-21-product-group-reconciliation.json`。未修改商品，不回退 TOP；该方法继续为 `unverified-write`，未开放生产入口。

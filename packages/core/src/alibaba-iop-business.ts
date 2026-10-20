@@ -14,6 +14,7 @@ const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
 const PHOTO_UPLOAD = 'alibaba.icbu.photobank.upload';
 const PHOTO_GROUP = 'alibaba.icbu.photobank.group.operate';
 const VIDEO_QUERY = 'alibaba.icbu.video.query';
+const PRODUCT_GROUP_ADD = 'alibaba.icbu.product.group.add';
 
 export function iopOperationReason(operation: OperationId, method?: unknown): string | null {
   return iopRegisteredOperationReason(operation, method);
@@ -77,6 +78,17 @@ export async function createIopBusinessRequest(
     };
     if (request.operation !== 'add' && request.group_id === undefined)
       throw failure('REQUEST_CONTRACT_INVALID');
+  } else if (method === PRODUCT_GROUP_ADD) {
+    if (
+      Object.keys(input).some((key) => !['group_name', 'parent_id', 'extra_context'].includes(key)) ||
+      (input.extra_context !== undefined &&
+        (!isRecord(input.extra_context) || Object.keys(input.extra_context).length))
+    )
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = {
+      group_name: requiredText(input.group_name),
+      parent_group_id: String(input.parent_id) === '-1' ? -1 : positiveInteger(input.parent_id)
+    };
   } else if (method === VIDEO_QUERY) {
     if (Object.keys(input).some((key) => !['current_page', 'page_size', 'id'].includes(key)))
       throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
@@ -189,6 +201,37 @@ export function normalizeIopBusinessResponse(
     )
       throw failure();
     return { [`${method.replaceAll('.', '_')}_response`]: { value: data } };
+  }
+  if (method === PRODUCT_GROUP_ADD) {
+    if (
+      value.error_code !== undefined &&
+      value.error_code !== '' &&
+      value.error_code !== '0' &&
+      value.error_code !== 0
+    )
+      throw providerFailure(
+        value.error_code,
+        value.error_msg,
+        value.request_id,
+        credentials,
+        'ALIBABA_IOP_BUSINESS_REJECTED'
+      );
+    const group = value.product_group;
+    if (
+      !isRecord(group) ||
+      !validTotal(group.group_id) ||
+      Number(group.group_id) <= 0 ||
+      typeof group.group_name !== 'string' ||
+      !group.group_name.trim() ||
+      !/^(?:-1|[1-9][0-9]*)$/u.test(String(group.parent_id)) ||
+      !Number.isSafeInteger(Number(group.parent_id)) ||
+      value.success === false ||
+      value.success === 'false'
+    )
+      throw failure();
+    return {
+      alibaba_icbu_product_group_add_response: { product_group: group, request_id: value.request_id }
+    };
   }
   const root = value.result;
   if (!isRecord(root)) throw failure();

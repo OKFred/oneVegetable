@@ -1,0 +1,10 @@
+{
+  "code": "0",
+  "request_id": "fixture-iop-product-group",
+  "product_group": {
+    "group_id": 700001,
+    "group_name": "Fixture group",
+    "parent_id": -1,
+    "children_id_list": []
+  }
+}

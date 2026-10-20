@@ -154,7 +154,7 @@
     "alibaba.icbu.product.group.add": {
       "path": "/icbu/product/group/add",
       "risk": "mutation",
-      "adapted": false,
+      "adapted": true,
       "accountVerified": false,
       "authorizationRequired": true
     },
