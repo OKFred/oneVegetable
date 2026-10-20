@@ -77,3 +77,14 @@ The isolated remote Node IOP inventory experiment passed: one plus-one request, 
 - 远程 IOP 真实列表抽样返回商品及明文 ID，但没有加密 ID；现有上下架任务的目标核对仍依赖该标识。该任务链路尚待补齐，因此本批只交付有测试的协议适配，继续 `unverified-write`，没有发送上下架写入，双授权继续选择 TOP。
 
 IOP display transport now separates numeric IDs from TOP encrypted identifiers. Live IOP listing did not supply the encrypted identity required by the existing task workflow, so runtime display mutation remains gated. No display mutation was sent, and no production acceptance is claimed.
+
+## 本批远程回归与原生订单探测
+
+- Windows 完整 `pnpm check` 通过：336 个测试文件、2,918 项单测、格式、Lint、i18n、契约漂移、类型、三端构建、包体和商店合规。另有 24 项 Worker 隔离测试、26 条授权 E2E、7 条库存及批量维护 Web E2E 通过；不是声称重跑了所有 Web E2E。
+- 新构建的正式 MV3 在隔离 Profile 只导入 IOP：28 次真实读取、0 TOP、0 Token 请求、0 写入。商品、分组、图片、Schema、8 条真实库存及订单读取通过；订单物流是合法空结果，不当作完整物流验收。刷新后的协议和保险库状态保留。
+- MV3 回执：`artifacts/iop-workbench-read-validation/a800f326-8e7f-4813-a0fc-a006cf25e13a-lGLGNp/report.json`。仅测试副本预授予精确 IOP 域名；未验收原生权限弹窗，不替换日常插件或当前配置。
+- ZIP 仅在内存实测为 1,275,860 字节，解包 4,371,171 字节；未覆盖既有发布包。没有增加依赖或扩展权限，版本仍为 2.16.1，不部署、不合并、不发版。
+- 额外只读探测：销售、采购列表分别成功，使用销售列表真实标识查询 `/alibaba/order/get` 成功且返回标识一致。只记录字段名称与结果，不保存买家、地址等字段值。该探测尚未接入业务页面或扩展为生产能力。
+- 当前返回的订单标识不满足轨迹接口文档中的数值要求，跳过 `/order/logistics/tracking/get`，未强行数值化或猜转换；这不是“没有物流”。回执：`artifacts/iop-order-native-validation/55e25d39-4549-488c-9765-d29de5c9e067.json`；列表的 `observationId` 是本地观察标识，不冒充出网 requestId。
+
+Remote Windows checks passed (2,918 unit tests, 24 isolated Worker tests and 33 related browser E2Es). The isolated production MV3 build made 28 real IOP reads with no TOP, token or mutation requests; inventory contained eight valid records and order logistics was explicitly empty. Native sales/buyer lists and one correlated order-detail read also passed a bounded probe, not a shipped UI integration. Tracking was skipped rather than coercing an incompatible identifier. Existing credentials, release archives, deployment and main branches were not changed.
