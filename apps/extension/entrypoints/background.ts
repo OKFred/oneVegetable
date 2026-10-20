@@ -1335,7 +1335,10 @@ async function executeOperation(
     case 'listTradeOrders':
       return trades.list(payload as RequestOf<'listTradeOrders'>);
     case 'getTradeOrderAggregate':
-      return trades.getAggregate((payload as RequestOf<'getTradeOrderAggregate'>).order);
+      return trades.getAggregate(
+        (payload as RequestOf<'getTradeOrderAggregate'>).order,
+        (payload as RequestOf<'getTradeOrderAggregate'>).language
+      );
     case 'getTradeOrderFund':
       return trades.getFund(requiredString(request, 'orderId'));
     case 'getTradeOrderLogistics':

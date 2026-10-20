@@ -589,6 +589,12 @@ describe('IOP API gateway integration without external networking', () => {
       const order = fixtureTradeOrder();
       const logistics = tradeFixture.responses.getTradeOrderLogistics;
       const send = vi.fn<NetworkTransport['send']>((input, init) => {
+        if (transportUrl(input) === `${IOP_BUSINESS_ENDPOINT}/alibaba/order/get`) {
+          if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form');
+          expect(init.body.get('e_trade_id')).toBe(order.id);
+          expect(init.body.get('language')).toBe('en_US');
+          return Promise.resolve(Response.json({ code: 0, value: { trade_id: order.id } }));
+        }
         expect(transportUrl(input)).toBe(`${IOP_BUSINESS_ENDPOINT}/order/logistics/query`);
         if (!(init.body instanceof URLSearchParams)) throw new Error('Expected form');
         expect(init.body.get('trade_id')).toBe(order.id);
@@ -608,6 +614,14 @@ describe('IOP API gateway integration without external networking', () => {
       const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
       expect(await gateway.request('getTradeOrderAggregate', { order })).toEqual({
         order,
+        publicDetail: {
+          source: 'iop-public',
+          orderId: order.id,
+          status: null,
+          buyerName: null,
+          totalAmount: null,
+          products: null
+        },
         fund: null,
         logistics: valid ? logistics : null,
         availability: {
@@ -617,8 +631,8 @@ describe('IOP API gateway integration without external networking', () => {
           fullDetail: 'jushita-only'
         }
       });
-      // No fund network call and no retry/replacement request for malformed logistics.
-      expect(send).toHaveBeenCalledOnce();
+      // One native detail and one logistics call; no funds, retry or replacement for malformed logistics.
+      expect(send).toHaveBeenCalledTimes(2);
     }
   );
   it('keeps standalone funds and RFQ dedicated/capability calls uniformly unsupported', async () => {

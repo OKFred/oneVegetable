@@ -385,7 +385,10 @@ export class AlibabaReadGatewayClient implements GatewayClient {
       case 'listTradeOrders':
         return await trades.list(request as RequestOf<'listTradeOrders'>);
       case 'getTradeOrderAggregate':
-        return await trades.getAggregate((request as RequestOf<'getTradeOrderAggregate'>).order);
+        return await trades.getAggregate(
+          (request as RequestOf<'getTradeOrderAggregate'>).order,
+          (request as RequestOf<'getTradeOrderAggregate'>).language
+        );
       case 'getTradeOrderFund':
         return await trades.getFund(requiredString(record, 'orderId'));
       case 'getTradeOrderLogistics':

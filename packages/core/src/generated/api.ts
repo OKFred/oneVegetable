@@ -9888,6 +9888,27 @@ export interface components {
             /** @enum {string|null} */
             fallbackProtocol: "top" | null;
         };
+        IopOrderMoney: {
+            amount: string;
+            currency: string;
+        };
+        IopOrderProduct: {
+            lineId: string | null;
+            productId: string | null;
+            name: string | null;
+            quantity: string | null;
+            unit: string | null;
+            unitPrice: components["schemas"]["IopOrderMoney"] | null;
+        };
+        IopPublicOrderDetail: {
+            /** @enum {string} */
+            source: "iop-public";
+            orderId: string;
+            status: string | null;
+            buyerName: string | null;
+            totalAmount: components["schemas"]["IopOrderMoney"] | null;
+            products: components["schemas"]["IopOrderProduct"][] | null;
+        };
         LogisticsAddress: {
             countryCode: string;
             provinceCode: string | null;
@@ -10934,6 +10955,8 @@ export interface components {
             order: components["schemas"]["TradeOrderSummary"];
             fund: components["schemas"]["TradeFund"] | null;
             logistics: components["schemas"]["TradeLogistics"] | null;
+            publicDetail?: components["schemas"]["IopPublicOrderDetail"] | null;
+            publicDetailError?: components["schemas"]["GatewayError"];
             availability: {
                 /** @enum {string} */
                 order: "available" | "unavailable";

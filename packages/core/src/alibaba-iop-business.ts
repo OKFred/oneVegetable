@@ -175,6 +175,18 @@ export async function createIopBusinessRequest(
         : method.endsWith('schema.add.draft')
           ? { param_product_top_publish_request: data }
           : data;
+  } else if (method === '/alibaba/order/get') {
+    if (Object.keys(input).some((key) => !['e_trade_id', 'language'].includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    if (
+      typeof input.e_trade_id !== 'string' ||
+      !input.e_trade_id.trim() ||
+      input.e_trade_id.length > 128 ||
+      /\p{Cc}/u.test(input.e_trade_id) ||
+      (input.language !== undefined && input.language !== 'zh_CN' && input.language !== 'en_US')
+    )
+      throw failure('REQUEST_CONTRACT_INVALID');
+    business = { e_trade_id: input.e_trade_id, ...(input.language ? { language: input.language } : {}) };
   } else if (method === 'alibaba.seller.order.list') {
     const query = input.param_trade_ecology_order_list_query;
     if (!isRecord(query)) throw failure('REQUEST_CONTRACT_INVALID');
@@ -235,6 +247,13 @@ export function normalizeIopBusinessResponse(
   if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string')) throw failure();
   if (value.code !== '0' && value.code !== 0)
     throw providerFailure(value.code, value.message, value.request_id, credentials);
+  if (method === '/alibaba/order/get') {
+    const data = value.value;
+    if (!isRecord(data) || typeof data.trade_id !== 'string' || data.trade_id !== request?.e_trade_id)
+      throw failure();
+    // Keep native IOP semantics; this is not the restricted TOP/Jushita order detail DTO.
+    return { value: data };
+  }
   if (method === 'alibaba.seller.order.list' || method === 'alibaba.seller.order.logistics.get') {
     const data = value.value;
     if (

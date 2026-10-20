@@ -53,6 +53,7 @@ export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>
   'alibaba.icbu.product.id.encrypt': read('/alibaba/icbu/product/id/encrypt'),
   'alibaba.seller.order.list': read('/alibaba/order/list', true),
   'alibaba.seller.order.logistics.get': read('/order/logistics/query', true),
+  '/alibaba/order/get': read('/alibaba/order/get', true),
   'alibaba.icbu.product.schema.add': write('/icbu/product/schema/add', true),
   'alibaba.icbu.product.schema.add.draft': write('/icbu/product/schema/add/draft', true),
   'alibaba.icbu.product.schema.update': write('/icbu/product/schema/update', true),
@@ -130,7 +131,7 @@ const OPERATIONS: Partial<Record<OperationId, OperationDefinition>> = {
   getOrderLogistics: { methods: ['alibaba.seller.order.logistics.get'] },
   getTradeOrderLogistics: { methods: ['alibaba.seller.order.logistics.get'] },
   getTradeOrderAggregate: {
-    methods: ['alibaba.seller.order.fund.get', 'alibaba.seller.order.logistics.get'],
+    methods: ['/alibaba/order/get', 'alibaba.seller.order.fund.get', 'alibaba.seller.order.logistics.get'],
     partial: true,
     constraints: ['paid-amount-unavailable']
   }

@@ -285,6 +285,45 @@ document.components.schemas.TradeLogistics = {
     trackingNumber: { type: ['string', 'null'] }
   }
 };
+document.components.schemas.IopOrderMoney = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['amount', 'currency'],
+  properties: {
+    amount: { ...decimalString, maxLength: 128 },
+    currency: { type: 'string', minLength: 1, maxLength: 16 }
+  }
+};
+document.components.schemas.IopOrderProduct = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['lineId', 'productId', 'name', 'quantity', 'unit', 'unitPrice'],
+  properties: {
+    lineId: { type: ['string', 'null'], minLength: 1, maxLength: 128 },
+    productId: { type: ['string', 'null'], pattern: '^[1-9][0-9]*$', maxLength: 128 },
+    name: { type: ['string', 'null'], maxLength: 4096 },
+    quantity: { ...decimalString, type: ['string', 'null'], maxLength: 128 },
+    unit: { type: ['string', 'null'], maxLength: 128 },
+    unitPrice: { oneOf: [{ $ref: '#/components/schemas/IopOrderMoney' }, { type: 'null' }] }
+  }
+};
+document.components.schemas.IopPublicOrderDetail = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['source', 'orderId', 'status', 'buyerName', 'totalAmount', 'products'],
+  properties: {
+    source: { type: 'string', enum: ['iop-public'] },
+    orderId: { type: 'string', minLength: 1, maxLength: 128 },
+    status: { type: ['string', 'null'], maxLength: 128 },
+    buyerName: { type: ['string', 'null'], maxLength: 4096 },
+    totalAmount: { oneOf: [{ $ref: '#/components/schemas/IopOrderMoney' }, { type: 'null' }] },
+    products: {
+      type: ['array', 'null'],
+      maxItems: 500,
+      items: { $ref: '#/components/schemas/IopOrderProduct' }
+    }
+  }
+};
 document.components.schemas.TradeOrderAggregate = {
   type: 'object',
   additionalProperties: false,
@@ -293,6 +332,8 @@ document.components.schemas.TradeOrderAggregate = {
     order: { $ref: '#/components/schemas/TradeOrderSummary' },
     fund: { oneOf: [{ $ref: '#/components/schemas/TradeFund' }, { type: 'null' }] },
     logistics: { oneOf: [{ $ref: '#/components/schemas/TradeLogistics' }, { type: 'null' }] },
+    publicDetail: { oneOf: [{ $ref: '#/components/schemas/IopPublicOrderDetail' }, { type: 'null' }] },
+    publicDetailError: { $ref: '#/components/schemas/GatewayError' },
     availability: {
       type: 'object',
       additionalProperties: false,
@@ -476,7 +517,10 @@ document.paths['/trade-orders/{orderId}'] = {
   get: {
     summary: 'Get an aggregate order detail without the Jushita-only API',
     operationId: 'getTradeOrderAggregate',
-    parameters: [{ name: 'orderId', in: 'path', required: true, schema: { type: 'string' } }],
+    parameters: [
+      { name: 'orderId', in: 'path', required: true, schema: { type: 'string' } },
+      { name: 'language', in: 'query', required: false, schema: { type: 'string', enum: ['zh_CN', 'en_US'] } }
+    ],
     responses: {
       '200': jsonResponse('Aggregate trade order', {
         $ref: '#/components/schemas/TradeOrderAggregate'

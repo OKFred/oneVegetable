@@ -115,6 +115,13 @@
       "accountVerified": true,
       "authorizationRequired": true
     },
+    "/alibaba/order/get": {
+      "path": "/alibaba/order/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
     "alibaba.icbu.product.schema.add": {
       "path": "/icbu/product/schema/add",
       "risk": "mutation",
@@ -597,7 +604,11 @@
     {
       "operation": "getTradeOrderAggregate",
       "state": "partial",
-      "methods": ["alibaba.seller.order.fund.get", "alibaba.seller.order.logistics.get"],
+      "methods": [
+        "/alibaba/order/get",
+        "alibaba.seller.order.fund.get",
+        "alibaba.seller.order.logistics.get"
+      ],
       "constraints": ["paid-amount-unavailable"],
       "verification": "documented",
       "fallbackProtocol": "top"

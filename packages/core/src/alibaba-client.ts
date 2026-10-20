@@ -67,6 +67,12 @@ export class AlibabaClient {
   async call(method: string, parameters: Readonly<Record<string, unknown>>): Promise<AlibabaCallResult> {
     this.assertProtocol();
     const iop = this.#credentials.protocol === 'iop';
+    if (!iop && method.startsWith('/'))
+      throw new GatewayException({
+        code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        message: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        retryable: false
+      });
     const reason = iop ? iopMethodReason(method, parameters) : null;
     if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
     const maxAttempts = iop ? 1 : Math.max(1, Math.min(3, this.#options.maxAttempts ?? 1));

@@ -1,4 +1,6 @@
 import type { AlibabaClient } from './alibaba-client';
+import { getIopPublicOrderDetail } from './iop-order-detail';
+import { normalizeGatewayError } from './errors';
 import type {
   RequestOf,
   TradeAddress,
@@ -14,7 +16,9 @@ import type {
 } from './types';
 
 export class TradeAdapter {
-  constructor(private readonly client: Pick<AlibabaClient, 'call'>) {}
+  constructor(
+    private readonly client: Pick<AlibabaClient, 'call'> & Partial<Pick<AlibabaClient, 'protocol'>>
+  ) {}
 
   async list(request: RequestOf<'listTradeOrders'>): Promise<TradeOrderPage> {
     const page = request.page ?? 1;
@@ -91,7 +95,29 @@ export class TradeAdapter {
     };
   }
 
-  async getAggregate(order: TradeOrderSummary): Promise<TradeOrderAggregate> {
+  async getAggregate(
+    order: TradeOrderSummary,
+    language: 'zh_CN' | 'en_US' = 'en_US'
+  ): Promise<TradeOrderAggregate> {
+    if (this.client.protocol === 'iop') {
+      const [detail, logistics] = await Promise.allSettled([
+        getIopPublicOrderDetail(this.client, order.id, language),
+        this.getLogistics(order.id)
+      ]);
+      return {
+        order,
+        publicDetail: detail.status === 'fulfilled' ? detail.value : null,
+        ...(detail.status === 'rejected' ? { publicDetailError: normalizeGatewayError(detail.reason) } : {}),
+        fund: null,
+        logistics: logistics.status === 'fulfilled' ? logistics.value : null,
+        availability: {
+          order: 'available',
+          fund: 'unavailable',
+          logistics: logistics.status === 'fulfilled' ? 'available' : 'unavailable',
+          fullDetail: 'jushita-only'
+        }
+      };
+    }
     const [fund, logistics] = await Promise.allSettled([this.getFund(order.id), this.getLogistics(order.id)]);
     return {
       order,

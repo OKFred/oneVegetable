@@ -98,6 +98,7 @@ export type TradeOrderPage = components['schemas']['TradeOrderPage'];
 export type TradeFund = components['schemas']['TradeFund'];
 export type TradeLogistics = components['schemas']['TradeLogistics'];
 export type TradeOrderAggregate = components['schemas']['TradeOrderAggregate'];
+export type IopPublicOrderDetail = components['schemas']['IopPublicOrderDetail'];
 export type TradeFulfillmentChannel = components['schemas']['TradeFulfillmentChannel'];
 export type TradeServiceCharge = components['schemas']['TradeServiceCharge'];
 export type TradeTtAccount = components['schemas']['TradeTtAccount'];
@@ -300,7 +301,7 @@ export interface OperationMap {
   submitRfqQuotation: { request: RfqQuotationRequest; response: RfqQuotationResult };
   listTradeOrders: { request: TradeOrderListQuery; response: TradeOrderPage };
   getTradeOrderAggregate: {
-    request: { order: TradeOrderSummary };
+    request: { order: TradeOrderSummary; language?: AlibabaLanguage };
     response: TradeOrderAggregate;
   };
   getTradeOrderFund: { request: { orderId: string }; response: TradeFund };
