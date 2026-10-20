@@ -69,7 +69,7 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
             }}
           </Button>
           <Button
-            v-else
+            v-if="!canSetDefault || configureActions"
             variant="outline"
             :disabled="busy"
             :aria-pressed="configureActions ? undefined : selectedProtocol === protocol"

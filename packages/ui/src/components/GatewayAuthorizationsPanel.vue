@@ -8,8 +8,7 @@ import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import AlibabaAuthorizationsPanel from './AlibabaAuthorizationsPanel.vue';
 import GatewayCredentialPanel from './GatewayCredentialPanel.vue';
 import ErrorNotice from './ErrorNotice.vue';
-import ModalDialog from './ui/ModalDialog.vue';
-import Button from './ui/Button.vue';
+import CredentialConfigurationDialog from './CredentialConfigurationDialog.vue';
 
 const props = defineProps<{ dialogConfiguration?: boolean }>();
 const authorizations = useAlibabaAuthorizations();
@@ -84,13 +83,11 @@ defineExpose({ reload });
     >
       <slot :protocol="summary ? selectedProtocol : undefined" />
     </GatewayCredentialPanel>
-    <ModalDialog
+    <CredentialConfigurationDialog
       v-if="summary && dialogConfiguration"
       :open="configurationOpen"
-      :title="t('configurationTitle', { protocol: selectedProtocol.toUpperCase() })"
-      :description="t('configurationDescription', { protocol: selectedProtocol.toUpperCase() })"
-      size="lg"
-      :dismissible="!configurationBusy"
+      :protocol="selectedProtocol"
+      :busy="configurationBusy"
       @update:open="closeConfiguration"
     >
       <GatewayCredentialPanel
@@ -105,11 +102,6 @@ defineExpose({ reload });
       >
         <slot :protocol="selectedProtocol" />
       </GatewayCredentialPanel>
-      <template #footer>
-        <Button variant="outline" :disabled="configurationBusy" @click="closeConfiguration(false)">
-          {{ t('closeConfiguration') }}
-        </Button>
-      </template>
-    </ModalDialog>
+    </CredentialConfigurationDialog>
   </div>
 </template>

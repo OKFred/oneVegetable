@@ -180,6 +180,7 @@ export const gatewayCredentials = {
   remark: 'Remark (no secrets)',
   confirmSave: 'Replace server credentials?',
   confirmClear: 'Clear server credentials?',
+  confirmLocalClear: 'Clear this local authorization?',
   confirmBody:
     'This affects all users of this Node/BFF server. Old account queries become stale and transfers need review. Alibaba products will not be changed.',
   clearBody:

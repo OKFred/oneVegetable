@@ -47,6 +47,34 @@ async function dialog(
 }
 
 describe('Alibaba authorization protocol selection', () => {
+  it.each(['top', 'iop'] as const)(
+    'keeps scoped %s online acquisition on the click stack without a second protocol choice',
+    async (protocol) => {
+      const view = await dialog('acquire', testVault('unlocked'), testAcquisition());
+      await view.wrapper.setProps({ protocol });
+      await view.body.get('[data-testid="authorization-method-online"]').trigger('click');
+      expect(view.select).toHaveBeenCalledExactlyOnceWith(protocol);
+      expect(view.body.find('[data-testid="alibaba-authorization-protocol-choices"]').exists()).toBe(false);
+    }
+  );
+
+  it('rejects the other protocol or a dual array inside a scoped import before writing', async () => {
+    const acquisition = { ...testAcquisition(), importBundles: vi.fn() };
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    await view.wrapper.setProps({ protocol: 'iop' });
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    for (const source of [
+      fixture.oauthBundle,
+      [fixture.oauthBundle, { ...fixture.oauthBundle, protocol: 'iop' }]
+    ]) {
+      await selectFile(view.body, JSON.stringify(source));
+      expect(view.body.find('[data-testid="authorization-file-preview"]').exists()).toBe(false);
+      expect(toast.error).toHaveBeenLastCalledWith(expect.stringContaining('属于另一协议'));
+    }
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+    expect(acquisition.importBundles).not.toHaveBeenCalled();
+  });
+
   it('previews both protocols and saves a JSON array in one call', async () => {
     const acquisition = {
       ...testAcquisition(),

@@ -24,6 +24,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from './CredentialExpiryNotice.vue';
 import GatewayProtocolNotice from './settings/GatewayProtocolNotice.vue';
+import CredentialActionsSection from './CredentialActionsSection.vue';
 
 const props = defineProps<{ protocol?: 'top' | 'iop' | undefined; embedded?: boolean }>();
 const { control, runtime } = useServices();
@@ -292,8 +293,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
           :aria-label="t('import')"
           @change="chooseFile"
         />
-        <section class="space-y-3 rounded-lg border p-4" data-testid="credential-import-actions">
-          <h3 class="text-sm font-medium">{{ t('importActions') }}</h3>
+        <CredentialActionsSection kind="import">
           <div class="flex flex-wrap gap-2">
             <Button variant="outline" :disabled="busy" @click="fileInput?.click()"
               ><Upload class="size-4" />{{ t('import') }}</Button
@@ -309,7 +309,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
             >
             <slot />
           </div>
-        </section>
+        </CredentialActionsSection>
         <p class="text-sm font-medium">{{ summary?.configured ? t('configured') : t('empty') }}</p>
         <p class="text-sm" data-testid="gateway-protocol-summary">
           {{ t('protocol') }}:
@@ -352,8 +352,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
         <p v-if="managed && !summary?.canRefresh" class="text-sm text-muted-foreground">
           {{ t('noRefresh') }}
         </p>
-        <section class="space-y-3 rounded-lg border p-4" data-testid="credential-connection-actions">
-          <h3 class="text-sm font-medium">{{ t('connectionActions') }}</h3>
+        <CredentialActionsSection kind="connection">
           <p class="text-xs text-muted-foreground">{{ t('testNotice') }}</p>
           <div class="flex flex-wrap gap-2">
             <Button
@@ -377,7 +376,7 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
               {{ latestTest.requestId }} <span v-if="latestTest.errorCode">· {{ latestTest.errorCode }}</span>
             </p>
           </div>
-        </section>
+        </CredentialActionsSection>
         <div class="flex justify-end border-t pt-4">
           <Button variant="outline" :disabled="busy || !summary?.configured" @click="confirmation = 'clear'"
             ><Trash2 class="size-4" />{{ t('clear') }}</Button

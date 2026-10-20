@@ -28,6 +28,14 @@ AES-GCM 同时验证密文完整性。错误口令、被修改的密文和不合
 
 扩展启动时把 `chrome.storage.local` 和 `chrome.storage.session` 的访问级别设置为 `TRUSTED_CONTEXTS`，阻止网页及扩展内容脚本通过 Storage API 读取。由于该 API 自 Chrome 102 起提供，manifest 明确设置最低 Chrome 版本为 102。参考 [Chrome Storage API](https://developer.chrome.com/docs/extensions/reference/api/storage) 和 [扩展 service worker 生命周期](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)。
 
+## 配置入口与连接检查
+
+工作台授权摘要为 TOP 和 IOP 分别提供「配置／更新」入口，在独立、限高可滚动的弹窗中集中显示获取、导入、手动填写、连接测试和续期。手动填写使用子弹窗，关闭时保留未保存修改确认。全局连接入口仍可导入 TOP + IOP JSON 数组；从单协议配置中导入时只接受该协议，不会静默覆盖另一份授权。
+
+「设为默认／已选择」与配置入口独立：打开配置不会改变默认授权，设置默认也不会打开编辑器。插件的测试连接仅在用户点击时，使用指定协议查询一条商品；不自动重试、不切换另一份授权、不修改或续期凭据。结果只包含分类、检查时间、耗时、配置标识和 requestId，不返回商品内容或密钥；它仅证明该次商品列表调用，不代表其他 API 权限。结果只驻当前页面内存，更换配置后失效。
+
+配置弹窗、操作分区与 Node/Cloudflare 共用，但插件不因此依赖 BFF，域名授权、本机存储及保护口令逻辑保持不变。
+
 ## 升级、轮换与恢复
 
 旧版明文设置被识别为“待迁移”后不再参与真实请求。迁移由 service worker 读取旧记录、使用用户新口令加密并原位覆盖；options 页面不会收到旧 App Secret 或 Access Token。

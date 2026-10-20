@@ -8,9 +8,13 @@ import {
   KeyRound,
   LoaderCircle,
   LockKeyhole,
+  PlugZap,
+  RefreshCw,
+  RotateCw,
   RotateCcw,
   Save,
   ShieldCheck,
+  Trash2,
   UnlockKeyhole,
   WandSparkles
 } from '@lucide/vue';
@@ -26,6 +30,7 @@ import {
   validateVaultPassphrase,
   type CredentialVaultStatus,
   type GatewaySettings,
+  type GatewayCredentialTestResult,
   type SignMethod
 } from '@one-vegetable/core';
 
@@ -33,6 +38,8 @@ import AlibabaCredentialAcquisitionDialog from '../components/AlibabaCredentialA
 import AlibabaAuthorizationProtocolDialog from '../components/AlibabaAuthorizationProtocolDialog.vue';
 import AlibabaIndependentNotice from '../components/AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from '../components/CredentialExpiryNotice.vue';
+import CredentialConfigurationDialog from '../components/CredentialConfigurationDialog.vue';
+import CredentialActionsSection from '../components/CredentialActionsSection.vue';
 import AlibabaAuthorizationsPanel from '../components/AlibabaAuthorizationsPanel.vue';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import GatewayProtocolNotice from '../components/settings/GatewayProtocolNotice.vue';
@@ -42,6 +49,7 @@ import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
+import ModalDialog from '../components/ui/ModalDialog.vue';
 import { useUiI18n } from '../i18n';
 import { useGatewayCredentialsI18n } from '../i18n/gateway-credentials';
 import { useServices } from '../lib/services';
@@ -51,6 +59,7 @@ import { parseAuthorizationSummary, useAlibabaAuthorizations } from '../lib/alib
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import { openAlibabaAuthorizationTool } from '../lib/alibaba-authorization-tool';
 import { CREDENTIAL_VAULT_CHANGED_EVENT } from '../lib/credential-vault-events';
+import { formatDateTime } from '../lib/date-time';
 
 const {
   settings,
@@ -73,6 +82,11 @@ const {
 } = authorizations;
 const switchingAuthorization = ref(false);
 const clearingAuthorization = ref<'top' | 'iop' | null>(null);
+const configurationOpen = ref(false);
+const manualConfigurationOpen = ref(false);
+const testingAuthorization = ref(false);
+const applyingAcquiredCredentials = ref(false);
+const connectionTests = ref<Partial<Record<'top' | 'iop', GatewayCredentialTestResult>>>({});
 const dualSettings = computed(
   () =>
     mode === 'extension' &&
@@ -112,6 +126,19 @@ const selectedProtocol = computed({
   }
 });
 const saving = ref(false);
+const credentialActionBusy = computed(
+  () =>
+    saving.value ||
+    vaultBusy.value ||
+    switchingAuthorization.value ||
+    testingAuthorization.value ||
+    applyingAcquiredCredentials.value
+);
+const configuredProfile = computed(() => authorizationSummary.value?.[selectedProtocol.value] ?? null);
+const latestConnectionTest = computed(() => {
+  const result = connectionTests.value[selectedProtocol.value];
+  return result?.configurationId === configuredProfile.value?.configurationId ? result : null;
+});
 const feedback = ref('');
 const vaultStatus = ref<CredentialVaultStatus | null>(null);
 const vaultPassphrase = ref('');
@@ -171,13 +198,7 @@ function scheduleVaultReload(): void {
 
 async function reloadExternalVault(): Promise<void> {
   if (!viewAlive || !vault) return;
-  if (
-    !settingsLoaded.value ||
-    vaultReloading ||
-    vaultBusy.value ||
-    saving.value ||
-    switchingAuthorization.value
-  ) {
+  if (!settingsLoaded.value || vaultReloading || vaultOperationPending()) {
     scheduleVaultReload();
     return;
   }
@@ -221,7 +242,7 @@ function hasVaultEdits(): boolean {
   );
 }
 function vaultOperationPending(): boolean {
-  return vaultBusy.value || saving.value || switchingAuthorization.value;
+  return credentialActionBusy.value;
 }
 
 function handleProtectionPrepared(status: CredentialVaultStatus): void {
@@ -277,6 +298,7 @@ async function save(): Promise<void> {
         mode === 'mock' ? t('settings.credentials.mockSavedToast') : t('settings.credentials.savedToast')
       );
     }
+    manualConfigurationOpen.value = false;
     if (mode === 'extension') {
       authorizations.invalidateBinding();
       await authorizations.reload();
@@ -302,17 +324,25 @@ async function importCredentialBundle(event: Event): Promise<void> {
     if (!(await credentialEditing.confirmLeave())) return;
     if (file.size > 256 * 1024) throw new Error(t('settings.credentials.bundleTooLarge'));
     const parsed = JSON.parse(await file.text()) as unknown;
-    if (Array.isArray(parsed) && alibabaCredentialAcquisition?.importBundles) {
-      parseAlibabaCredentialImport(parsed);
+    if (alibabaCredentialAcquisition?.importBundles && (Array.isArray(parsed) || configurationOpen.value)) {
+      const bundles = parseAlibabaCredentialImport(parsed);
+      if (
+        configurationOpen.value &&
+        bundles.some((bundle) => (bundle.protocol ?? 'top') !== selectedProtocol.value)
+      )
+        throw new Error(credentialText('profileMismatch'));
       protocolImportFile.value = file;
       protocolDialogPurpose.value = 'acquire';
       return;
     }
     const imported = readImportedCredentials(parsed);
+    if (configurationOpen.value && imported.protocol !== selectedProtocol.value)
+      throw new Error(credentialText('profileMismatch'));
     if (dualSettings.value && settings.loadAuthorization) {
       const target = await settings.loadAuthorization(imported.protocol ?? 'top');
       model.value = { ...target, ...readImportedCredentials(parsed, target) };
     } else model.value = { ...model.value, ...imported };
+    if (configurationOpen.value) manualConfigurationOpen.value = true;
     feedback.value = credentialText('protectionBundleLoaded');
   } catch (error: unknown) {
     credentialImportError.value = userVisibleCause(error, t('settings.credentials.bundleImportError'));
@@ -322,15 +352,28 @@ async function importCredentialBundle(event: Event): Promise<void> {
 }
 
 async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Promise<void> {
-  applyVaultStatus(status);
-  model.value = await settings.load();
-  if (mode === 'extension') {
-    authorizations.invalidateBinding();
-    await authorizations.reload();
-    notifyGatewayConfigurationChanged();
+  applyingAcquiredCredentials.value = true;
+  try {
+    const protocol = selectedProtocol.value;
+    applyVaultStatus(status);
+    model.value =
+      configurationOpen.value && settings.loadAuthorization
+        ? await settings.loadAuthorization(protocol)
+        : await settings.load();
+    if (mode === 'extension') {
+      authorizations.invalidateBinding();
+      await authorizations.reload();
+      notifyGatewayConfigurationChanged();
+    }
+    credentialEditing.markClean();
+    feedback.value = t('settings.credentials.acquired');
+  } catch (cause) {
+    const error = userVisibleCause(cause, credentialText('error'));
+    vaultError.value = error;
+    toast.error(error.message);
+  } finally {
+    applyingAcquiredCredentials.value = false;
   }
-  credentialEditing.markClean();
-  feedback.value = t('settings.credentials.acquired');
 }
 
 function readImportedCredentials(
@@ -509,10 +552,11 @@ async function loadSelectedAuthorization(): Promise<GatewaySettings> {
     : settings.load();
 }
 
-async function selectAuthorization(protocol: 'top' | 'iop'): Promise<void> {
-  if (!settings.loadAuthorization || switchingAuthorization.value || saving.value || vaultBusy.value) return;
+async function selectAuthorization(protocol: 'top' | 'iop', openConfiguration = false): Promise<void> {
+  if (!settings.loadAuthorization || credentialActionBusy.value) return;
   if (selectedProtocol.value === protocol) {
-    toast.info(credentialText('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
+    if (openConfiguration) configurationOpen.value = true;
+    else toast.info(credentialText('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
     return;
   }
   if (!(await credentialEditing.confirmLeave())) return;
@@ -522,11 +566,91 @@ async function selectAuthorization(protocol: 'top' | 'iop'): Promise<void> {
     model.value = await settings.loadAuthorization(protocol);
     credentialEditing.markClean();
     feedback.value = '';
-    toast.info(credentialText('profileSelected', { protocol: protocol.toUpperCase() }));
+    if (openConfiguration) configurationOpen.value = true;
+    else toast.info(credentialText('profileSelected', { protocol: protocol.toUpperCase() }));
   } catch (cause) {
     credentialImportError.value = userVisibleCause(cause, credentialText('error'));
   } finally {
     switchingAuthorization.value = false;
+  }
+}
+
+function configureAuthorization(protocol: 'top' | 'iop'): void {
+  void selectAuthorization(protocol, true);
+}
+
+async function closeCredentialConfiguration(open: boolean): Promise<void> {
+  if (
+    open ||
+    credentialActionBusy.value ||
+    manualConfigurationOpen.value ||
+    protocolDialogPurpose.value ||
+    clearingAuthorization.value
+  )
+    return;
+  if (!(await discardCredentialEdits())) return;
+  configurationOpen.value = false;
+}
+
+async function closeManualConfiguration(open: boolean): Promise<void> {
+  if (open || credentialActionBusy.value) return;
+  if (!(await discardCredentialEdits())) return;
+  manualConfigurationOpen.value = false;
+}
+
+async function discardCredentialEdits(): Promise<boolean> {
+  if (!credentialEditing.dirty.value) return true;
+  if (!(await credentialEditing.confirmLeave())) return false;
+  try {
+    model.value = await loadSelectedAuthorization();
+    credentialEditing.markClean();
+    return true;
+  } catch (cause) {
+    credentialImportError.value = userVisibleCause(cause, credentialText('error'));
+    return false;
+  }
+}
+
+async function reloadSelectedProfile(): Promise<void> {
+  if (credentialActionBusy.value || !(await discardCredentialEdits())) return;
+  switchingAuthorization.value = true;
+  credentialImportError.value = null;
+  try {
+    model.value = await loadSelectedAuthorization();
+    credentialEditing.markClean();
+    await authorizations.reload();
+  } catch (cause) {
+    credentialImportError.value = userVisibleCause(cause, credentialText('error'));
+  } finally {
+    switchingAuthorization.value = false;
+  }
+}
+
+async function testSelectedAuthorization(): Promise<void> {
+  if (!settings.testAuthorization || credentialActionBusy.value || !configuredProfile.value?.configured)
+    return;
+  const protocol = selectedProtocol.value;
+  const configurationId = configuredProfile.value.configurationId;
+  testingAuthorization.value = true;
+  credentialImportError.value = null;
+  try {
+    const result = await settings.testAuthorization(protocol);
+    if (
+      !isViewAlive() ||
+      selectedProtocol.value !== protocol ||
+      authorizationSummary.value?.[protocol]?.configurationId !== configurationId
+    )
+      return;
+    connectionTests.value[protocol] = result;
+    if (result.status === 'passed' || result.status === 'no-data')
+      toast.success(credentialText(result.status));
+    else toast.error(credentialText(result.status));
+  } catch (cause) {
+    const error = userVisibleCause(cause, credentialText('error'));
+    credentialImportError.value = error;
+    toast.error(error.message);
+  } finally {
+    testingAuthorization.value = false;
   }
 }
 
@@ -718,14 +842,18 @@ function confirmLanguagePreference(): void {
         :aria-label="t('settings.sections.credentials')"
       >
         <Button
-          v-if="mode === 'extension' && !settingsEditable && alibabaCredentialAcquisition"
+          v-if="mode === 'extension' && (!settingsEditable || dualSettings) && alibabaCredentialAcquisition"
           size="sm"
           type="button"
           data-testid="get-alibaba-credentials"
+          :disabled="credentialActionBusy"
           @click="protocolDialogPurpose = 'acquire'"
           ><WandSparkles class="size-3.5" />{{ credentialText('acquireCredentials') }}</Button
         >
-        <GatewayAuthorizationsPanel v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'" />
+        <GatewayAuthorizationsPanel
+          v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'"
+          dialog-configuration
+        />
         <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
           <h2 class="flex items-center gap-2 font-semibold">
             <KeyRound class="size-4 text-primary" />{{ t('settings.credentials.title') }}
@@ -934,13 +1062,13 @@ function confirmLanguagePreference(): void {
           v-if="settingsEditable && dualSettings && authorizationSummary"
           :summary="authorizationSummary"
           :selected-protocol="selectedProtocol"
-          :busy="authorizationBusy || switchingAuthorization || saving || vaultBusy"
+          :busy="authorizationBusy || credentialActionBusy"
           :can-confirm="canConfirm"
-          :can-renew="Boolean(settings.refreshAuthorization)"
-          :can-clear="Boolean(settings.clearAuthorization)"
           :can-set-default="Boolean(settings.setDefaultAuthorization)"
+          compact
+          configure-actions
           extension
-          @select="selectAuthorization"
+          @select="configureAuthorization"
           @set-default="chooseDefaultAuthorization"
           @confirm="confirmAuthorizations"
           @renew="protocolDialogPurpose = 'renew'"
@@ -951,14 +1079,26 @@ function confirmLanguagePreference(): void {
           :error="authorizationError"
           :fallback="credentialText('error')"
         />
-        <Card v-if="settingsEditable" class="p-5">
-          <div class="mb-4 flex items-center gap-2">
+        <CredentialConfigurationDialog
+          v-if="settingsEditable && (!dualSettings || configurationOpen)"
+          :open="configurationOpen"
+          :protocol="selectedProtocol"
+          :busy="credentialActionBusy"
+          :inline="!dualSettings"
+          @update:open="closeCredentialConfiguration"
+        >
+          <div v-if="!dualSettings" class="mb-4 flex items-center gap-2">
             <KeyRound class="size-4 text-primary" />
             <h2 class="font-semibold">{{ t('settings.credentials.title') }}</h2>
           </div>
-          <AlibabaIndependentNotice class="mb-4" />
-          <div class="mb-4 rounded-lg border bg-muted/40 p-4 text-sm leading-6">
-            <p class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
+          <AlibabaIndependentNotice v-if="!dualSettings" class="mb-4" />
+          <component
+            :is="dualSettings ? CredentialActionsSection : 'div'"
+            kind="import"
+            class="mb-4 text-sm leading-6"
+            :class="dualSettings ? undefined : 'rounded-lg border bg-muted/40 p-4'"
+          >
+            <p v-if="!dualSettings" class="font-medium">{{ t('settings.credentials.guideTitle') }}</p>
             <p class="mt-1 text-muted-foreground" data-testid="alibaba-credential-acquisition-guide">
               {{
                 mode === 'extension'
@@ -970,12 +1110,22 @@ function confirmLanguagePreference(): void {
               <Button
                 v-if="mode === 'extension' && alibabaCredentialAcquisition"
                 size="sm"
+                variant="outline"
                 type="button"
-                data-testid="get-alibaba-credentials"
+                :data-testid="dualSettings ? 'configure-acquire-credentials' : 'get-alibaba-credentials'"
+                :disabled="credentialActionBusy"
                 @click="protocolDialogPurpose = 'acquire'"
               >
                 <WandSparkles class="size-3.5" />{{ credentialText('acquireCredentials') }}
               </Button>
+              <Button
+                v-if="dualSettings"
+                size="sm"
+                variant="outline"
+                :disabled="credentialActionBusy"
+                @click="manualConfigurationOpen = true"
+                ><KeyRound class="size-3.5" />{{ credentialText('manual') }}</Button
+              >
               <a
                 href="https://i.alibaba.com/explore/open-api"
                 target="_blank"
@@ -993,111 +1143,209 @@ function confirmLanguagePreference(): void {
                   type="file"
                   accept="application/json,.json"
                   :aria-label="t('settings.credentials.importLabel')"
+                  :disabled="credentialActionBusy"
                   @change="importCredentialBundle"
                 />
               </label>
             </div>
             <ErrorNotice v-if="credentialImportError" class="mt-3" :error="credentialImportError" compact />
-          </div>
+          </component>
           <CredentialExpiryNotice
-            v-if="mode === 'extension' && (vaultStatus?.hasAccessToken || model.accessToken)"
+            v-if="
+              mode === 'extension' &&
+              (dualSettings
+                ? configuredProfile?.configured
+                : vaultStatus?.hasAccessToken || model.accessToken)
+            "
             :expires="model.accessTokenExpiresTimeUtc"
+            :captured-time="model.accessTokenCapturedTimeUtc"
+            :refresh-expires="model.refreshTokenExpiresTimeUtc"
             extension
           />
-          <p v-if="dualSettings" class="my-3 text-sm font-medium">
-            {{ credentialText('selectedProfile', { protocol: selectedProtocol.toUpperCase() }) }}
-          </p>
-          <label class="mt-4 block text-sm font-medium">
-            {{ credentialText('protocol') }}
-            <select
-              v-model="selectedProtocol"
-              data-testid="authorization-profile-editor"
-              :aria-label="credentialText('protocol')"
-              class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="top">{{ credentialText('protocolTop') }}</option>
-              <option value="iop">{{ credentialText('protocolIop') }}</option>
-            </select>
-          </label>
-          <GatewayProtocolNotice class="mt-2" :protocol="selectedProtocol" />
-          <div class="grid gap-4 sm:grid-cols-2">
-            <label class="text-sm font-medium"
-              >App Key<Input
-                v-model="model.appKey"
-                @update:model-value="clearAuthorizationMetadata"
-                class="mt-2"
-                autocomplete="off"
-                aria-label="App Key"
-                data-feedback-redact
-            /></label>
-            <label class="text-sm font-medium"
-              >App Secret<Input
-                v-model="model.appSecret"
-                @update:model-value="clearAuthorizationMetadata"
-                class="mt-2"
-                type="password"
-                aria-label="App Secret"
-                autocomplete="new-password"
-                :placeholder="
-                  vaultStatus?.hasAppSecret ? t('settings.credentials.encryptedPlaceholder') : ''
-                "
-            /></label>
-            <label class="text-sm font-medium sm:col-span-2"
-              >Access Token<Input
-                v-model="model.accessToken"
-                @update:model-value="clearAuthorizationMetadata"
-                class="mt-2"
-                type="password"
-                aria-label="Access Token"
-                autocomplete="new-password"
-                :placeholder="
-                  vaultStatus?.hasAccessToken ? t('settings.credentials.encryptedPlaceholder') : ''
-                "
-            /></label>
-            <label v-if="dualSettings" class="text-sm font-medium sm:col-span-2">
-              Refresh Token ({{ credentialText('optional') }})
-              <Input
-                :model-value="model.refreshToken ?? ''"
-                type="password"
-                class="mt-2"
-                autocomplete="new-password"
-                aria-label="Refresh Token"
-                data-feedback-redact
-                @update:model-value="setRefreshToken"
-              />
-            </label>
-            <label class="text-sm font-medium sm:col-span-2"
-              >{{ t('settings.credentials.gateway')
-              }}<Input
-                v-model="model.endpoint"
-                class="mt-2"
-                :aria-label="t('settings.credentials.gateway')"
-                :readonly="selectedProtocol === 'iop'"
-            /></label>
-            <label class="text-sm font-medium"
-              >{{ t('settings.credentials.signMethod')
-              }}<select
-                v-model="model.signMethod"
-                :disabled="selectedProtocol === 'iop'"
-                class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+          <template v-if="dualSettings">
+            <ErrorNotice v-if="vaultError" :error="vaultError" :fallback="credentialText('error')" compact />
+            <CredentialActionsSection kind="connection" class="mt-4">
+              <p class="text-xs text-muted-foreground">{{ credentialText('testNotice') }}</p>
+              <div class="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  :disabled="
+                    credentialActionBusy || !configuredProfile?.configured || !settings.testAuthorization
+                  "
+                  @click="testSelectedAuthorization"
+                >
+                  <LoaderCircle v-if="testingAuthorization" class="size-4 animate-spin" />
+                  <PlugZap v-else class="size-4" />{{ credentialText('test') }}
+                </Button>
+                <Button
+                  variant="outline"
+                  :disabled="
+                    credentialActionBusy || !configuredProfile?.canRefresh || !settings.refreshAuthorization
+                  "
+                  @click="renewAuthorization(selectedProtocol)"
+                >
+                  <RotateCw class="size-4" />{{ credentialText('refresh') }}
+                </Button>
+                <Button variant="outline" :disabled="credentialActionBusy" @click="reloadSelectedProfile">
+                  <RefreshCw class="size-4" />{{ credentialText('reload') }}
+                </Button>
+              </div>
+              <p
+                v-if="configuredProfile?.configured && !configuredProfile.canRefresh"
+                class="text-xs text-muted-foreground"
               >
-                <option v-for="item in signMethods" :key="item" :value="item">{{ item }}</option>
-              </select></label
-            >
-          </div>
-          <Button
-            class="mt-4"
-            :disabled="saving || switchingAuthorization || authorizationBusy || vaultBusy"
-            @click="save"
+                {{ credentialText('noRefresh') }}
+              </p>
+              <div class="rounded-md bg-muted p-3 text-sm" aria-live="polite">
+                <p>
+                  {{ credentialText('lastTest') }}：{{
+                    latestConnectionTest
+                      ? credentialText(latestConnectionTest.status)
+                      : credentialText('notTested')
+                  }}
+                </p>
+                <p v-if="latestConnectionTest" class="mt-1 break-all text-xs">
+                  {{ formatDateTime(latestConnectionTest.checkedAtUtc) }} ·
+                  {{ latestConnectionTest.durationMilliseconds }} ms · {{ latestConnectionTest.requestId }}
+                  <span v-if="latestConnectionTest.errorCode">· {{ latestConnectionTest.errorCode }}</span>
+                </p>
+              </div>
+            </CredentialActionsSection>
+            <div class="mt-4 flex justify-end border-t pt-4">
+              <Button
+                variant="outline"
+                :disabled="
+                  credentialActionBusy || !configuredProfile?.configured || !settings.clearAuthorization
+                "
+                @click="requestClearAuthorization(selectedProtocol)"
+              >
+                <Trash2 class="size-4" />{{ credentialText('clear') }}
+              </Button>
+            </div>
+          </template>
+          <component
+            :is="dualSettings ? ModalDialog : 'div'"
+            v-bind="
+              dualSettings
+                ? {
+                    open: manualConfigurationOpen,
+                    title: credentialText('manual'),
+                    description: credentialText('profileIsolation'),
+                    dismissible: !credentialActionBusy
+                  }
+                : {}
+            "
+            @update:open="closeManualConfiguration"
           >
-            <LoaderCircle v-if="saving" class="size-4 animate-spin" />
-            <Save v-else class="size-4" />
-            {{ saving ? t('settings.credentials.saving') : t('settings.credentials.save') }}
-          </Button>
-        </Card>
+            <form v-if="!dualSettings || manualConfigurationOpen" data-feedback-redact @submit.prevent="save">
+              <ErrorNotice
+                v-if="vaultError"
+                :error="vaultError"
+                :fallback="credentialText('error')"
+                compact
+              />
+              <label class="mt-4 block text-sm font-medium">
+                {{ credentialText('protocol') }}
+                <select
+                  v-model="selectedProtocol"
+                  :disabled="dualSettings"
+                  data-testid="authorization-profile-editor"
+                  :aria-label="credentialText('protocol')"
+                  class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+                >
+                  <option value="top">{{ credentialText('protocolTop') }}</option>
+                  <option value="iop">{{ credentialText('protocolIop') }}</option>
+                </select>
+              </label>
+              <GatewayProtocolNotice class="mt-2" :protocol="selectedProtocol" />
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="text-sm font-medium"
+                  >App Key<Input
+                    v-model="model.appKey"
+                    @update:model-value="clearAuthorizationMetadata"
+                    class="mt-2"
+                    autocomplete="off"
+                    aria-label="App Key"
+                    data-feedback-redact
+                /></label>
+                <label class="text-sm font-medium"
+                  >App Secret<Input
+                    v-model="model.appSecret"
+                    @update:model-value="clearAuthorizationMetadata"
+                    class="mt-2"
+                    type="password"
+                    aria-label="App Secret"
+                    autocomplete="new-password"
+                    :placeholder="
+                      vaultStatus?.hasAppSecret ? t('settings.credentials.encryptedPlaceholder') : ''
+                    "
+                /></label>
+                <label class="text-sm font-medium sm:col-span-2"
+                  >Access Token<Input
+                    v-model="model.accessToken"
+                    @update:model-value="clearAuthorizationMetadata"
+                    class="mt-2"
+                    type="password"
+                    aria-label="Access Token"
+                    autocomplete="new-password"
+                    :placeholder="
+                      vaultStatus?.hasAccessToken ? t('settings.credentials.encryptedPlaceholder') : ''
+                    "
+                /></label>
+                <label v-if="dualSettings" class="text-sm font-medium sm:col-span-2">
+                  Refresh Token ({{ credentialText('optional') }})
+                  <Input
+                    :model-value="model.refreshToken ?? ''"
+                    type="password"
+                    class="mt-2"
+                    autocomplete="new-password"
+                    aria-label="Refresh Token"
+                    data-feedback-redact
+                    @update:model-value="setRefreshToken"
+                  />
+                </label>
+                <label class="text-sm font-medium sm:col-span-2"
+                  >{{ t('settings.credentials.gateway')
+                  }}<Input
+                    v-model="model.endpoint"
+                    class="mt-2"
+                    :aria-label="t('settings.credentials.gateway')"
+                    :readonly="selectedProtocol === 'iop'"
+                /></label>
+                <label class="text-sm font-medium"
+                  >{{ t('settings.credentials.signMethod')
+                  }}<select
+                    v-model="model.signMethod"
+                    :disabled="selectedProtocol === 'iop'"
+                    class="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm"
+                  >
+                    <option v-for="item in signMethods" :key="item" :value="item">{{ item }}</option>
+                  </select></label
+                >
+              </div>
+              <div class="mt-4 flex justify-end gap-2">
+                <Button
+                  v-if="dualSettings"
+                  type="button"
+                  variant="outline"
+                  :disabled="credentialActionBusy"
+                  @click="closeManualConfiguration(false)"
+                >
+                  {{ credentialText('cancel') }}
+                </Button>
+                <Button type="submit" :disabled="credentialActionBusy || authorizationBusy">
+                  <LoaderCircle v-if="saving" class="size-4 animate-spin" />
+                  <Save v-else class="size-4" />
+                  {{ saving ? t('settings.credentials.saving') : t('settings.credentials.save') }}
+                </Button>
+              </div>
+            </form>
+          </component>
+          <AlibabaIndependentNotice v-if="dualSettings" class="mt-4" />
+        </CredentialConfigurationDialog>
         <ConfirmActionDialog
           :open="clearingAuthorization !== null"
-          :title="credentialText('confirmClear')"
+          :title="credentialText('confirmLocalClear')"
           :description="
             credentialText('profileClearBody', { protocol: clearingAuthorization?.toUpperCase() ?? '' })
           "
@@ -1122,6 +1370,7 @@ function confirmLanguagePreference(): void {
           :vault="vault"
           :acquisition="alibabaCredentialAcquisition"
           :initial-file="protocolImportFile"
+          :protocol="dualSettings && configurationOpen ? selectedProtocol : undefined"
           :before-import="hasVaultEdits() ? credentialEditing.confirmLeave : undefined"
           @prepared="handleProtectionPrepared"
           @imported="handleAcquiredCredentialsSaved"

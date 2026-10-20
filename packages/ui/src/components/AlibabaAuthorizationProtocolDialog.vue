@@ -26,13 +26,15 @@ const props = withDefaults(
     acquisition?: ExtensionAlibabaCredentialAcquisitionRepository | undefined;
     beforeImport?: (() => Promise<boolean>) | undefined;
     initialFile?: File | undefined;
+    protocol?: 'top' | 'iop' | undefined;
   }>(),
   {
     purpose: 'acquire',
     vault: undefined,
     acquisition: undefined,
     beforeImport: undefined,
-    initialFile: undefined
+    initialFile: undefined,
+    protocol: undefined
   }
 );
 const emit = defineEmits<{
@@ -154,6 +156,8 @@ async function readCredentialFile(file: File | undefined): Promise<void> {
   try {
     if (file.size > 256 * 1024) throw new Error('FILE_TOO_LARGE');
     const bundles = parseAlibabaCredentialImport(JSON.parse(await file.text()) as unknown);
+    if (props.protocol && bundles.some((bundle) => (bundle.protocol ?? 'top') !== props.protocol))
+      throw new Error('AUTH_IMPORT_PROTOCOL_MISMATCH');
     if (bundles.length > 1 && !props.acquisition?.importBundles) throw new Error('AUTH_IMPORT_UNAVAILABLE');
     if (current !== generation || !props.open) return;
     pendingBundles.value = bundles;
@@ -162,9 +166,11 @@ async function readCredentialFile(file: File | undefined): Promise<void> {
     if (current === generation && props.open)
       toast.error(
         text(
-          error instanceof Error && error.message === 'AUTH_IMPORT_DUPLICATE_PROTOCOL'
-            ? 'offlineDuplicate'
-            : 'offlineInvalid'
+          error instanceof Error && error.message === 'AUTH_IMPORT_PROTOCOL_MISMATCH'
+            ? 'profileMismatch'
+            : error instanceof Error && error.message === 'AUTH_IMPORT_DUPLICATE_PROTOCOL'
+              ? 'offlineDuplicate'
+              : 'offlineInvalid'
         )
       );
   } finally {
@@ -213,10 +219,15 @@ function close(open: boolean): void {
 }
 
 function select(protocol: 'top' | 'iop'): void {
-  if (phase.value !== 'choices') return;
+  if (phase.value !== 'choices' || (props.protocol && props.protocol !== protocol)) return;
   // Keep the selection handler on the click stack for Chrome's optional-permission prompt.
   emit('select', protocol);
   close(false);
+}
+
+function chooseOnline(): void {
+  phase.value = 'choices';
+  if (props.protocol) select(props.protocol);
 }
 </script>
 
@@ -288,7 +299,7 @@ function select(protocol: 'top' | 'iop'): void {
         variant="outline"
         class="h-auto justify-start gap-3 whitespace-normal p-4 text-left"
         data-testid="authorization-method-online"
-        @click="phase = 'choices'"
+        @click="chooseOnline"
       >
         <Globe class="size-5 shrink-0" aria-hidden="true" />
         <span
@@ -334,6 +345,7 @@ function select(protocol: 'top' | 'iop'): void {
       data-testid="alibaba-authorization-protocol-choices"
     >
       <Button
+        v-if="!protocol || protocol === 'iop'"
         class="h-auto justify-between gap-3 whitespace-normal p-4 text-left"
         variant="outline"
         data-testid="choose-authorization-iop"
@@ -350,6 +362,7 @@ function select(protocol: 'top' | 'iop'): void {
         <ArrowRight class="size-4 shrink-0" aria-hidden="true" />
       </Button>
       <Button
+        v-if="!protocol || protocol === 'top'"
         class="h-auto justify-between gap-3 whitespace-normal p-4 text-left"
         variant="outline"
         data-testid="choose-authorization-top"

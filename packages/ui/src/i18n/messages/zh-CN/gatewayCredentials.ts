@@ -152,6 +152,7 @@ export const gatewayCredentials = {
   remark: '备注（请勿填写密钥）',
   confirmSave: '确认更换服务端凭据？',
   confirmClear: '确认清除服务端凭据？',
+  confirmLocalClear: '确认清除此本机授权？',
   confirmBody:
     '影响当前 Node/BFF 服务的所有用户。更换后旧账号查询会失效，传输任务需要重新核对；不会修改 Alibaba 商品。',
   clearBody: '清除后停止真实调用，不会重新使用旧文件或环境变量。此操作不撤销 Alibaba 平台授权。',
