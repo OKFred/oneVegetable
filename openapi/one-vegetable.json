@@ -17911,6 +17911,26 @@
           "latestPercent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
         }
       },
+      "IopOperationSupport": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["protocol", "state", "methods", "constraints", "verification", "fallbackProtocol"],
+        "properties": {
+          "protocol": { "type": "string", "const": "iop" },
+          "state": {
+            "type": "string",
+            "enum": ["supported", "partial", "local", "not-adapted", "not-public", "unverified-write"]
+          },
+          "methods": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "constraints": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "verification": { "type": "string", "enum": ["account-verified", "documented", "not-applicable"] },
+          "fallbackProtocol": { "type": ["string", "null"], "enum": ["top", null] }
+        }
+      },
       "LogisticsAddress": {
         "type": "object",
         "additionalProperties": false,
@@ -18317,7 +18337,8 @@
         "properties": {
           "operation": { "type": "string", "minLength": 1 },
           "allowed": { "type": "boolean" },
-          "reasonCode": { "type": ["string", "null"] }
+          "reasonCode": { "type": ["string", "null"] },
+          "protocolSupport": { "$ref": "#/components/schemas/IopOperationSupport" }
         }
       },
       "OperationAvailabilityRequest": {

@@ -28,6 +28,7 @@ import {
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
+import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
 import {
   authorizeOperation,
   extensionAdminPrincipal,
@@ -496,15 +497,30 @@ export function createApiApp(options: ApiAppOptions): Hono {
               ? await dynamicGateway.operationProtocol(operation, {})
               : await activeGatewayProtocol(options, dynamicGateway);
           const protocolReason = protocol === 'iop' ? iopOperationReason(operation) : null;
-          if (protocolReason) return { operation, allowed: false, reasonCode: protocolReason };
+          const protocolMetadata =
+            protocol === 'iop'
+              ? { protocolSupport: { protocol: 'iop' as const, ...getIopOperationSupport(operation) } }
+              : {};
+          if (protocolReason)
+            return { operation, allowed: false, reasonCode: protocolReason, ...protocolMetadata };
           if (options.gatewayMode !== 'mock' && operation === 'associateProductVideo') {
-            return { operation, allowed: false, reasonCode: 'REAL_MUTATION_DISABLED' };
+            return { operation, allowed: false, reasonCode: 'REAL_MUTATION_DISABLED', ...protocolMetadata };
           }
           if (options.gatewayMode !== 'mock' && QUALIFICATION_GATED_OPERATION_IDS.has(operation)) {
-            return { operation, allowed: false, reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED' };
+            return {
+              operation,
+              allowed: false,
+              reasonCode: 'LOGISTICS_QUALIFICATION_REQUIRED',
+              ...protocolMetadata
+            };
           }
           const decision = authorizeOperation(principal, operation, {}, featureFlags);
-          return { operation, allowed: decision.allowed, reasonCode: decision.reasonCode };
+          return {
+            operation,
+            allowed: decision.allowed,
+            reasonCode: decision.reasonCode,
+            ...protocolMetadata
+          };
         })
       );
       logRequest(

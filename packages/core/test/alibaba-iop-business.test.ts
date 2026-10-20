@@ -405,9 +405,13 @@ describe('explicit IOP business compatibility', () => {
       'alibaba.icbu.product.sku.inventory.get',
       'alibaba.icbu.product.id.decrypt'
     ]) {
-      expect(iopOperationReason('callCapability', method)).toBe('ALIBABA_IOP_METHOD_UNSUPPORTED');
+      const reason =
+        method === 'alibaba.icbu.product.inventory.update'
+          ? 'ALIBABA_IOP_MUTATION_UNVERIFIED'
+          : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+      expect(iopOperationReason('callCapability', method)).toBe(reason);
       await expect(client.call(method, {})).rejects.toMatchObject({
-        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+        gatewayError: { code: reason }
       });
     }
     expect(send).not.toHaveBeenCalled();
@@ -419,9 +423,13 @@ describe('explicit IOP business compatibility', () => {
       'alibaba.icbu.product.display.update',
       'alibaba.icbu.photobank.group.operate'
     ]) {
+      const reason =
+        method === 'alibaba.icbu.photobank.group.operate'
+          ? 'ALIBABA_IOP_MUTATION_UNVERIFIED'
+          : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
       await expect(client.call(method, {})).rejects.toMatchObject({
         gatewayError: {
-          code: 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+          code: reason
         }
       });
     }

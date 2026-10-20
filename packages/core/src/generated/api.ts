@@ -9876,6 +9876,18 @@ export interface components {
             items: components["schemas"]["InsightsSupplierRankPoint"][];
             latestPercent: number | null;
         };
+        IopOperationSupport: {
+            /** @constant */
+            protocol: "iop";
+            /** @enum {string} */
+            state: "supported" | "partial" | "local" | "not-adapted" | "not-public" | "unverified-write";
+            methods: string[];
+            constraints: string[];
+            /** @enum {string} */
+            verification: "account-verified" | "documented" | "not-applicable";
+            /** @enum {string|null} */
+            fallbackProtocol: "top" | null;
+        };
         LogisticsAddress: {
             countryCode: string;
             provinceCode: string | null;
@@ -10067,6 +10079,7 @@ export interface components {
             operation: string;
             allowed: boolean;
             reasonCode: string | null;
+            protocolSupport?: components["schemas"]["IopOperationSupport"];
         };
         OperationAvailabilityRequest: {
             requestId: components["schemas"]["RequestId"];

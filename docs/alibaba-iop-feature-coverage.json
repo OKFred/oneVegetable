@@ -1,0 +1,781 @@
+{
+  "schemaVersion": 1,
+  "catalogCheckedAt": "2026-10-12T13:58:11.194Z",
+  "note": "Protocol coverage is not application permission, business qualification or runtime write authorization.",
+  "methods": {
+    "alibaba.icbu.product.list": {
+      "path": "/alibaba/icbu/product/list",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.group.get": {
+      "path": "/alibaba/icbu/product/group/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.schema.render": {
+      "path": "/icbu/product/schema/render",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.schema.render.draft": {
+      "path": "/icbu/product/schema/render/draft",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.photobank.group.list": {
+      "path": "/icbu/product/photobank/group/list",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.photobank.list": {
+      "path": "/icbu/product/photobank/list",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.category.get.new": {
+      "path": "/icbu/product/category/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.category.id.mapping": {
+      "path": "/alibaba/icbu/category/id/mapping",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": false
+    },
+    "alibaba.icbu.category.schema.level.get": {
+      "path": "/icbu/product/schema/level/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": false
+    },
+    "alibaba.icbu.product.schema.get": {
+      "path": "/alibaba/icbu/product/schema/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.score.get": {
+      "path": "/icbu/product/score/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.type.available.get": {
+      "path": "/icbu/product/other/available/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.inventory.get": {
+      "path": "/icbu/product/inventory/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.id.encrypt": {
+      "path": "/alibaba/icbu/product/id/encrypt",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.seller.order.list": {
+      "path": "/alibaba/order/list",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.seller.order.logistics.get": {
+      "path": "/order/logistics/query",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.schema.add": {
+      "path": "/icbu/product/schema/add",
+      "risk": "mutation",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.schema.add.draft": {
+      "path": "/icbu/product/schema/add/draft",
+      "risk": "mutation",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.schema.update": {
+      "path": "/icbu/product/schema/update",
+      "risk": "mutation",
+      "adapted": true,
+      "accountVerified": true,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.photobank.group.operate": {
+      "path": "/icbu/product/photobank/group/operate",
+      "risk": "mutation",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.photobank.upload": {
+      "path": "/alibaba/icbu/photobank/upload",
+      "risk": "mutation",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.group.add": {
+      "path": "/icbu/product/group/add",
+      "risk": "mutation",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.batch.update.display": {
+      "path": "/icbu/product/update/display",
+      "risk": "mutation",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.product.inventory.update": {
+      "path": "/icbu/product/inventory/update",
+      "risk": "mutation",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.video.query": {
+      "path": "/alibaba/icbu/video/query",
+      "risk": "read",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.video.upload": {
+      "path": "/alibaba/icbu/video/upload",
+      "risk": "mutation",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.video.upload.result": {
+      "path": "/alibaba/icbu/video/upload/result",
+      "risk": "read",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "alibaba.icbu.video.relation.product.main": {
+      "path": "/alibaba/icbu/video/relation/product/main",
+      "risk": "mutation",
+      "adapted": false,
+      "accountVerified": false,
+      "authorizationRequired": true
+    }
+  },
+  "operations": [
+    {
+      "operation": "associateProductVideo",
+      "state": "unverified-write",
+      "methods": ["alibaba.icbu.video.relation.product.main"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "verifyProductVideoAssociation",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listVideos",
+      "state": "not-adapted",
+      "methods": ["alibaba.icbu.video.query"],
+      "constraints": ["video-title-page-filter-only"],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listVideoRelatedProducts",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "resolveVideoRelatedProduct",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getProductInventory",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.inventory.get"],
+      "constraints": ["product-inventory-only"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getDashboard",
+      "state": "partial",
+      "methods": ["alibaba.icbu.product.list", "alibaba.icbu.photobank.list", "alibaba.seller.order.list"],
+      "constraints": ["photo-group-required"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getDiagnostics",
+      "state": "local",
+      "methods": [],
+      "constraints": [],
+      "verification": "not-applicable",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "clearDiagnostics",
+      "state": "local",
+      "methods": [],
+      "constraints": [],
+      "verification": "not-applicable",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "listProducts",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.list"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "getProduct",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.list", "alibaba.icbu.product.schema.render"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "getProductSchema",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.schema.get"],
+      "constraints": ["wholesale-only"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "renderProductSchema",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.schema.render"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "publishProduct",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.schema.add"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "saveProductDraft",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.schema.add.draft"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "updateProduct",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.schema.update"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "updateProductDisplay",
+      "state": "unverified-write",
+      "methods": ["alibaba.icbu.product.batch.update.display"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listPhotoGroups",
+      "state": "supported",
+      "methods": ["alibaba.icbu.photobank.group.list"],
+      "constraints": ["root-groups-only"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "operatePhotoGroup",
+      "state": "unverified-write",
+      "methods": ["alibaba.icbu.photobank.group.operate"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listPhotos",
+      "state": "supported",
+      "methods": ["alibaba.icbu.photobank.list"],
+      "constraints": ["photo-group-required"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "uploadPhoto",
+      "state": "unverified-write",
+      "methods": ["alibaba.icbu.photobank.upload"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "transferPhotoFromUrl",
+      "state": "unverified-write",
+      "methods": ["alibaba.icbu.photobank.upload"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "downloadProductAsset",
+      "state": "local",
+      "methods": [],
+      "constraints": [],
+      "verification": "not-applicable",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "listOrders",
+      "state": "supported",
+      "methods": ["alibaba.seller.order.list"],
+      "constraints": ["buyer-filter-unsupported"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getOrderFund",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getOrderLogistics",
+      "state": "supported",
+      "methods": ["alibaba.seller.order.logistics.get"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "listCapabilities",
+      "state": "local",
+      "methods": [],
+      "constraints": [],
+      "verification": "not-applicable",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "getCapabilityDefinition",
+      "state": "local",
+      "methods": [],
+      "constraints": [],
+      "verification": "not-applicable",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "callCapability",
+      "state": "partial",
+      "methods": [],
+      "constraints": ["target-method-required"],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listProductCategories",
+      "state": "supported",
+      "methods": ["alibaba.icbu.category.get.new"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "mapProductCategory",
+      "state": "supported",
+      "methods": ["alibaba.icbu.category.id.mapping"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "getProductLevelSchema",
+      "state": "supported",
+      "methods": ["alibaba.icbu.category.schema.level.get"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "getProductDraft",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.schema.render.draft"],
+      "constraints": ["draft-category-required"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listProductGroups",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.group.get"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "getProductShowcase",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "addShowcaseProducts",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "removeShowcaseProducts",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "sortShowcaseProduct",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "replaceShowcaseProduct",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "createProductGroup",
+      "state": "unverified-write",
+      "methods": ["alibaba.icbu.product.group.add"],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getProductScore",
+      "state": "supported",
+      "methods": ["alibaba.icbu.product.score.get"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "listRfqs",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listRecommendedRfqs",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getRfq",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getRfqEquity",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getRfqReadStatus",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "uploadRfqAttachment",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "submitRfqQuotation",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listTradeOrders",
+      "state": "supported",
+      "methods": ["alibaba.seller.order.list"],
+      "constraints": ["buyer-filter-unsupported"],
+      "verification": "account-verified",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getTradeOrderAggregate",
+      "state": "partial",
+      "methods": ["alibaba.seller.order.fund.get", "alibaba.seller.order.logistics.get"],
+      "constraints": ["paid-amount-unavailable"],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getTradeOrderFund",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getTradeOrderLogistics",
+      "state": "supported",
+      "methods": ["alibaba.seller.order.logistics.get"],
+      "constraints": [],
+      "verification": "account-verified",
+      "fallbackProtocol": null
+    },
+    {
+      "operation": "listTradeFulfillmentChannels",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getTradeServiceCharge",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getTradeTtAccount",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getTradeAddressSchema",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listTradeAddresses",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "saveTradeAddress",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "deleteTradeAddress",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "createTradeOrder",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "modifyTradeOrder",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listLogisticsAddressNodes",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listLogisticsSpecialProductTypes",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listLogisticsProducts",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "calculateLogisticsQuote",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listLogisticsOrders",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getLogisticsOrder",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listShippingTemplates",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "createLogisticsOrder",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "getInsightsSupplierRank",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listInsightsSuppliers",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    },
+    {
+      "operation": "listInsightsSupplierProducts",
+      "state": "not-public",
+      "methods": [],
+      "constraints": [],
+      "verification": "documented",
+      "fallbackProtocol": "top"
+    }
+  ]
+}

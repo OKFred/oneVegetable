@@ -1,5 +1,6 @@
 import { GatewayException } from './errors';
 import { iopMethodReason, isAccountVerifiedIopMethod } from './alibaba-iop-business';
+import { getIopOperationSupport, iopOperationMethods } from './alibaba-iop-registry';
 import type { GatewayCredentials, OperationId } from './types';
 
 export type AlibabaProtocol = 'top' | 'iop';
@@ -10,24 +11,6 @@ export interface AlibabaProtocolAvailability {
   /** Legacy confirmation metadata. Routing now activates whenever both profiles are configured. */
   bindingConfirmed: boolean;
 }
-
-const VERIFIED_OPERATIONS: Partial<Record<OperationId, string>> = {
-  listProducts: 'alibaba.icbu.product.list',
-  listProductGroups: 'alibaba.icbu.product.group.get',
-  renderProductSchema: 'alibaba.icbu.product.schema.render',
-  getProductDraft: 'alibaba.icbu.product.schema.render.draft',
-  getProductSchema: 'alibaba.icbu.product.schema.get',
-  getProductScore: 'alibaba.icbu.product.score.get',
-  listProductCategories: 'alibaba.icbu.category.get.new',
-  listPhotoGroups: 'alibaba.icbu.photobank.group.list',
-  listPhotos: 'alibaba.icbu.photobank.list',
-  getProductInventory: 'alibaba.icbu.product.inventory.get',
-  listTradeOrders: 'alibaba.seller.order.list',
-  getTradeOrderLogistics: 'alibaba.seller.order.logistics.get',
-  publishProduct: 'alibaba.icbu.product.schema.add',
-  saveProductDraft: 'alibaba.icbu.product.schema.add.draft',
-  updateProduct: 'alibaba.icbu.product.schema.update'
-};
 
 /** Decide before dispatch. Never call this in an error handler to retry on another protocol. */
 export function selectAlibabaOperationProtocol(
@@ -44,6 +27,12 @@ export function selectAlibabaOperationProtocol(
           ? 'iop'
           : available.defaultProtocol;
   const input = record(payload);
+  // Preserve existing composite routing until all dependencies and parameter variants are accepted.
+  if (
+    operation === 'getProduct' ||
+    (operation !== 'callCapability' && getIopOperationSupport(operation).state === 'partial')
+  )
+    return 'top';
   if (
     operation === 'listPhotos' &&
     (input.ungrouped === true || input.groupId === undefined || input.groupId === '-1')
@@ -55,12 +44,13 @@ export function selectAlibabaOperationProtocol(
   if (operation === 'getProductDraft' && input.categoryId === undefined) return 'top';
   if (operation === 'getProductSchema' && input.market !== undefined && input.market !== 'wholesale')
     return 'top';
-  const method =
+  const methods =
     operation === 'callCapability'
       ? typeof input.method === 'string'
-        ? input.method
-        : ''
-      : VERIFIED_OPERATIONS[operation];
+        ? [input.method]
+        : []
+      : iopOperationMethods(operation);
+  const method = methods[0];
   if (operation === 'callCapability' && method === 'alibaba.icbu.photobank.list') {
     const parameters = record(input.parameters);
     if (parameters.location_type !== 'SUB_GROUP' || parameters.group_id === undefined) return 'top';
@@ -73,7 +63,10 @@ export function selectAlibabaOperationProtocol(
     )
       return 'top';
   }
-  return method && isAccountVerifiedIopMethod(method) && iopMethodReason(method) === null ? 'iop' : 'top';
+  return methods.length > 0 &&
+    methods.every((target) => isAccountVerifiedIopMethod(target) && iopMethodReason(target) === null)
+    ? 'iop'
+    : 'top';
 }
 
 export interface AlibabaAuthorizationBinding {

@@ -6,6 +6,7 @@ import {
   type OperationId
 } from '@one-vegetable/core/runtime';
 import { applyIopCapabilityProtocol, iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
+import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
 import {
   selectAlibabaOperationProtocol,
   type AlibabaProtocolAvailability
@@ -105,13 +106,18 @@ export function createExtensionOperationAvailabilityClient(
         )
           throw new Error('OPERATION_AVAILABILITY_UNAVAILABLE');
         return {
-          items: operations.map((operation) => ({
-            operation,
-            ...resolveExtensionStaticOperationAvailability(
+          items: operations.map((operation) => {
+            const selected = status.pool
+              ? selectAlibabaOperationProtocol(operation, {}, status.pool)
+              : protocol;
+            return {
               operation,
-              status.pool ? selectAlibabaOperationProtocol(operation, {}, status.pool) : protocol
-            )
-          }))
+              ...resolveExtensionStaticOperationAvailability(operation, selected),
+              ...(selected === 'iop'
+                ? { protocolSupport: { protocol: 'iop' as const, ...getIopOperationSupport(operation) } }
+                : {})
+            };
+          })
         };
       } catch {
         return {

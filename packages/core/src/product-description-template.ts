@@ -1,4 +1,5 @@
 import type { EntityAuditFields } from './audit';
+import type { IopOperationSupport } from './alibaba-iop-registry';
 
 export const PRODUCT_DESCRIPTION_TEMPLATE_CATEGORIES = [
   'company',
@@ -69,6 +70,7 @@ export interface OperationAvailability {
   operation: string;
   allowed: boolean;
   reasonCode: string | null;
+  protocolSupport?: IopOperationSupport & { protocol: 'iop' };
 }
 
 export interface OperationAvailabilityResult {

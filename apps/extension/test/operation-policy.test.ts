@@ -100,6 +100,7 @@ describe('extension operation policy', () => {
     expect(runtimeImports('../lib/operation-availability.ts')).toEqual([
       '@one-vegetable/core/runtime',
       '@one-vegetable/core/alibaba-iop-business',
+      '@one-vegetable/core/alibaba-iop-registry',
       '@one-vegetable/core/alibaba-protocol-routing'
     ]);
   });

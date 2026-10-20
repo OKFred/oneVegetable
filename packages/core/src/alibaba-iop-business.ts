@@ -3,86 +3,25 @@ import { IOP_BUSINESS_ENDPOINT, isRecord, signIopRequest } from './alibaba-iop';
 import { serializeAlibabaParameters } from './signing';
 import { assertAlibabaBusinessParameters } from './transport-security';
 import type { GatewayCredentials, OperationId } from './types';
+import {
+  getIopMethod,
+  iopMethodAvailabilityReason,
+  iopRegisteredOperationReason
+} from './alibaba-iop-registry';
 
-/** Explicit mappings, not method.replaceAll('.', '/'). Unmapped methods never go to TOP. */
-type BusinessPath = `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`;
 const INVENTORY = 'alibaba.icbu.product.inventory.get';
 const ENCRYPT = 'alibaba.icbu.product.id.encrypt';
-// Second tuple entry is IOP-specific live acceptance, never inherited from TOP metadata.
-const READ_PATHS: Readonly<Record<string, readonly [BusinessPath, boolean]>> = {
-  'alibaba.icbu.product.list': ['/alibaba/icbu/product/list', true],
-  'alibaba.icbu.product.group.get': ['/alibaba/icbu/product/group/get', true],
-  'alibaba.icbu.product.schema.render': ['/icbu/product/schema/render', true],
-  'alibaba.icbu.product.schema.render.draft': ['/icbu/product/schema/render/draft', true],
-  'alibaba.icbu.photobank.group.list': ['/icbu/product/photobank/group/list', true],
-  'alibaba.icbu.photobank.list': ['/icbu/product/photobank/list', true],
-  'alibaba.icbu.category.get.new': ['/icbu/product/category/get', true],
-  'alibaba.icbu.category.id.mapping': ['/alibaba/icbu/category/id/mapping', false],
-  'alibaba.icbu.category.schema.level.get': ['/icbu/product/schema/level/get', false],
-  'alibaba.icbu.product.schema.get': ['/alibaba/icbu/product/schema/get', true],
-  'alibaba.icbu.product.score.get': ['/icbu/product/score/get', true],
-  'alibaba.icbu.product.type.available.get': ['/icbu/product/other/available/get', true],
-  [INVENTORY]: ['/icbu/product/inventory/get', true],
-  [ENCRYPT]: ['/alibaba/icbu/product/id/encrypt', false],
-  'alibaba.seller.order.list': ['/alibaba/order/list', true],
-  'alibaba.seller.order.logistics.get': ['/order/logistics/query', true]
-};
-const WRITE_PATHS: Readonly<Record<string, BusinessPath>> = {
-  'alibaba.icbu.product.schema.add': '/icbu/product/schema/add',
-  'alibaba.icbu.product.schema.add.draft': '/icbu/product/schema/add/draft',
-  'alibaba.icbu.product.schema.update': '/icbu/product/schema/update'
-};
-// Separate IOP acceptance from the existing TOP allowlist. No runtime bypass switch.
-// Live creation/readback and incremental update/restoration confirmed on 2026-10-12.
-const VERIFIED_WRITES: readonly string[] = [
-  'alibaba.icbu.product.schema.add.draft',
-  'alibaba.icbu.product.schema.add',
-  'alibaba.icbu.product.schema.update'
-];
-const WRITE_OPERATIONS: Partial<Record<OperationId, string>> = {
-  publishProduct: 'alibaba.icbu.product.schema.add',
-  saveProductDraft: 'alibaba.icbu.product.schema.add.draft',
-  updateProduct: 'alibaba.icbu.product.schema.update'
-};
-const READ_OPERATIONS: readonly OperationId[] = [
-  'getDashboard',
-  'listCapabilities',
-  'getCapabilityDefinition',
-  'listProducts',
-  'getProduct',
-  'listProductGroups',
-  'renderProductSchema',
-  'getProductDraft',
-  'listPhotoGroups',
-  'listPhotos',
-  'getProductSchema',
-  'getProductLevelSchema',
-  'listProductCategories',
-  'mapProductCategory',
-  'getProductScore',
-  'getProductInventory',
-  'listTradeOrders',
-  'getTradeOrderLogistics',
-  'getTradeOrderAggregate'
-];
 
 export function iopOperationReason(operation: OperationId, method?: unknown): string | null {
-  if (operation === 'callCapability') return iopMethodReason(method);
-  const write = WRITE_OPERATIONS[operation];
-  if (write) return iopMethodReason(write);
-  return READ_OPERATIONS.includes(operation) ? null : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+  return iopRegisteredOperationReason(operation, method);
 }
 
 export function iopMethodReason(method: unknown): string | null {
-  if (typeof method !== 'string') return 'ALIBABA_IOP_METHOD_UNSUPPORTED';
-  if (Object.hasOwn(READ_PATHS, method) || VERIFIED_WRITES.includes(method)) return null;
-  return Object.hasOwn(WRITE_PATHS, method)
-    ? 'ALIBABA_IOP_MUTATION_UNVERIFIED'
-    : 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+  return iopMethodAvailabilityReason(method);
 }
 
 export function isAccountVerifiedIopMethod(method: string): boolean {
-  return READ_PATHS[method]?.[1] === true || VERIFIED_WRITES.includes(method);
+  return getIopMethod(method)?.accountVerified === true;
 }
 
 export function applyIopCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(
@@ -91,10 +30,7 @@ export function applyIopCapabilityProtocol<T extends { method: string; realCallE
   return {
     ...capability,
     realCallEnabled: capability.realCallEnabled && iopMethodReason(capability.method) === null,
-    verification:
-      READ_PATHS[capability.method]?.[1] || VERIFIED_WRITES.includes(capability.method)
-        ? 'account-verified'
-        : 'documented'
+    verification: getIopMethod(capability.method)?.accountVerified ? 'account-verified' : 'documented'
   };
 }
 
@@ -108,12 +44,10 @@ export async function createIopBusinessRequest(
     throw failure('ALIBABA_PROTOCOL_ENDPOINT_MISMATCH');
   assertAlibabaBusinessParameters(input);
   if (Object.hasOwn(input, 'access_token')) throw failure('CAPABILITY_TRANSPORT_PARAMETER_FORBIDDEN');
-  const path = Object.hasOwn(READ_PATHS, method)
-    ? READ_PATHS[method]?.[0]
-    : Object.hasOwn(WRITE_PATHS, method)
-      ? WRITE_PATHS[method]
-      : undefined;
+  const definition = getIopMethod(method);
+  const path = definition?.path;
   if (!path) throw failure('ALIBABA_IOP_METHOD_UNSUPPORTED');
+  if (!definition.adapted) throw failure(iopMethodReason(method) ?? 'ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
   if (method === INVENTORY || method === ENCRYPT) {
     if (Object.keys(input).some((key) => key !== 'product_id' && key !== 'language'))
@@ -183,9 +117,7 @@ export async function createIopBusinessRequest(
   const parameters = serializeAlibabaParameters({
     ...business,
     app_key: credentials.appKey,
-    ...(['alibaba.icbu.category.id.mapping', 'alibaba.icbu.category.schema.level.get'].includes(method)
-      ? {}
-      : { access_token: credentials.accessToken }),
+    ...(!definition.authorizationRequired ? {} : { access_token: credentials.accessToken }),
     timestamp: String(now),
     sign_method: 'sha256',
     simplify: 'true'
@@ -240,7 +172,9 @@ export function normalizeIopBusinessResponse(
         data.error_msg ?? data.msg ?? data.message_info ?? data.response_msg,
         data.trace_id ?? value.request_id,
         credentials,
-        Object.hasOwn(WRITE_PATHS, method) ? 'ALIBABA_IOP_BUSINESS_REJECTED' : 'ALIBABA_IOP_API_REJECTED'
+        getIopMethod(method)?.risk === 'mutation'
+          ? 'ALIBABA_IOP_BUSINESS_REJECTED'
+          : 'ALIBABA_IOP_API_REJECTED'
       );
   if (method === 'alibaba.icbu.product.list' && (!records(result.products) || !validTotal(result.total_item)))
     throw failure();
@@ -279,7 +213,7 @@ export function normalizeIopBusinessResponse(
     )
       throw failure();
     normalized = { secret_id: result.secret_id };
-  } else if (Object.hasOwn(WRITE_PATHS, method)) {
+  } else if (method.startsWith('alibaba.icbu.product.schema.') && getIopMethod(method)?.risk === 'mutation') {
     if (!success) throw failure();
     const id = method.endsWith('schema.add') ? result.data : result.product_id;
     if (!validTotal(id) || Number(id) <= 0) throw failure();

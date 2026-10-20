@@ -644,18 +644,24 @@ describe('IOP API gateway integration without external networking', () => {
     }
     expect(send).not.toHaveBeenCalled();
   });
-  it.each([
-    'updateProductDisplay',
-    'uploadPhoto',
-    'listVideos',
-    'getRfq',
-    'downloadProductAsset'
-  ] satisfies OperationId[])('rejects %s before any gateway network call', async (operation) => {
+  it.each(['updateProductDisplay', 'uploadPhoto', 'listVideos', 'getRfq'] satisfies OperationId[])(
+    'rejects %s before any gateway network call',
+    async (operation) => {
+      const send = vi.fn<NetworkTransport['send']>();
+      const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
+      await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
+        gatewayError: { code: iopBusiness.iopOperationReason(operation), retryable: false }
+      });
+      expect(send).not.toHaveBeenCalled();
+    }
+  );
+  it('allows asset-download validation independently of the Alibaba protocol', async () => {
     const send = vi.fn<NetworkTransport['send']>();
     const gateway = new AlibabaReadGatewayClient(gatewayCredentials(), { transport: { send } });
-    await expect(gateway.request<OperationId>(operation, {})).rejects.toMatchObject({
-      gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED', retryable: false }
-    });
+    expect(iopBusiness.iopOperationReason('downloadProductAsset')).toBeNull();
+    await expect(
+      gateway.request('downloadProductAsset', { url: 'https://example.com/private.png' })
+    ).rejects.toThrow('商品资源导出仅允许国际站图库地址');
     expect(send).not.toHaveBeenCalled();
   });
   it.each([
@@ -758,19 +764,28 @@ describe('IOP API gateway integration without external networking', () => {
         ok: true,
         data: {
           items: [
-            { operation: 'listProducts', allowed: true },
+            {
+              operation: 'listProducts',
+              allowed: true,
+              protocolSupport: { protocol: 'iop', state: 'supported', verification: 'account-verified' }
+            },
             { operation: 'publishProduct', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
             { operation: 'saveProductDraft', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
             { operation: 'updateProduct', allowed: false, reasonCode: 'MUTATION_FLAG_DISABLED' },
             {
               operation: 'updateProductDisplay',
               allowed: false,
-              reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED'
+              reasonCode: 'ALIBABA_IOP_MUTATION_UNVERIFIED',
+              protocolSupport: { state: 'unverified-write', fallbackProtocol: 'top' }
             },
             { operation: 'getRfq', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' },
             { operation: 'getProductSchema', allowed: true },
             { operation: 'listTradeOrders', allowed: true },
-            { operation: 'getTradeOrderAggregate', allowed: true },
+            {
+              operation: 'getTradeOrderAggregate',
+              allowed: true,
+              protocolSupport: { state: 'partial', constraints: ['paid-amount-unavailable'] }
+            },
             { operation: 'getTradeOrderFund', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
           ]
         }
