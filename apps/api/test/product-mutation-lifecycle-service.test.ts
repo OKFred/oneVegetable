@@ -38,6 +38,125 @@ afterEach(() => {
 });
 
 describe('product mutation lifecycle service', () => {
+  it('pins IOP plain-ID receipts and persists recovery intent before dispatch, including restart and timeout', async () => {
+    const { service, gateway } = createService();
+    const productContext = { identity: await opaqueGalleryId(ACTOR.actorId), gateway: 'b'.repeat(64) };
+    const page = productPage('online');
+    const item = required(page.items[0]);
+    item.encryptedId = null;
+    gateway.list.mockResolvedValue(page);
+    gateway.updateDisplay.mockResolvedValue({
+      encryptedProductIds: [],
+      display: 'offline',
+      traceId: 'iop-accepted',
+      success: true
+    });
+    const result = await service.submitDisplay({
+      actor: ACTOR,
+      requestId: crypto.randomUUID(),
+      protocol: 'iop',
+      options: { productContext },
+      request: {
+        protocol: 'iop',
+        productIds: [REQUEST.productId],
+        encryptedProductIds: [],
+        display: 'offline'
+      }
+    });
+    const job = required(result.jobs[0]);
+    expect(job).toMatchObject({
+      protocol: 'iop',
+      productContext,
+      encryptedProductId: null,
+      status: 'verifying'
+    });
+    expect(gateway.list).toHaveBeenCalledWith(
+      { productId: REQUEST.productId, page: 1, pageSize: 1, language: 'en_US' },
+      expect.any(String),
+      { productContext }
+    );
+    item.status = 'offline';
+    const recoveryRequestId = crypto.randomUUID();
+    gateway.updateDisplay.mockImplementationOnce(async () => {
+      const stored = await service.get(job.id, ACTOR);
+      expect(stored).toMatchObject({ status: 'recovering', recoveryRequestId });
+      throw new GatewayException({ code: 'REQUEST_TIMEOUT', message: 'timeout', retryable: true });
+    });
+    await expect(
+      service.recover({
+        actor: ACTOR,
+        requestId: recoveryRequestId,
+        id: job.id,
+        expectedRevision: job.revision
+      })
+    ).rejects.toThrow();
+    const uncertain = await service.get(job.id, ACTOR);
+    expect(uncertain).toMatchObject({ status: 'recovery-required', recoveryRequestId });
+    const restarted = new ProductMutationLifecycleService(
+      new SqlProductMutationJobRepository(required(handle).executor),
+      gateway
+    );
+    await expect(
+      restarted.recover({
+        actor: ACTOR,
+        requestId: crypto.randomUUID(),
+        id: job.id,
+        expectedRevision: uncertain.revision
+      })
+    ).rejects.toThrow();
+    expect(gateway.updateDisplay).toHaveBeenCalledTimes(2);
+    item.status = 'online';
+    const recovered = await restarted.refresh({
+      actor: ACTOR,
+      requestId: crypto.randomUUID(),
+      id: job.id,
+      expectedRevision: uncertain.revision
+    });
+    expect(recovered.status).toBe('recovered');
+    expect(gateway.updateDisplay).toHaveBeenCalledTimes(2);
+  });
+  it('does not write when already restored or when recovery intent cannot be persisted', async () => {
+    const { service, gateway } = createService();
+    gateway.list.mockResolvedValue(productPage('online'));
+    gateway.updateDisplay.mockResolvedValue({
+      encryptedProductIds: ['encrypted-1'],
+      display: 'offline',
+      traceId: 'accepted',
+      success: true
+    });
+    const result = await service.submitDisplay({
+      actor: ACTOR,
+      requestId: crypto.randomUUID(),
+      request: { productIds: [REQUEST.productId], encryptedProductIds: ['encrypted-1'], display: 'offline' }
+    });
+    const job = required(result.jobs[0]);
+    const recovered = await service.recover({
+      actor: ACTOR,
+      requestId: crypto.randomUUID(),
+      id: job.id,
+      expectedRevision: job.revision
+    });
+    expect(recovered.status).toBe('recovered');
+    expect(gateway.updateDisplay).toHaveBeenCalledOnce();
+    const next = await service.submitDisplay({
+      actor: ACTOR,
+      requestId: crypto.randomUUID(),
+      request: { productIds: [REQUEST.productId], encryptedProductIds: ['encrypted-1'], display: 'offline' }
+    });
+    gateway.list.mockResolvedValue(productPage('offline'));
+    required(handle).connection.exec(
+      "CREATE TRIGGER fail_recovery BEFORE UPDATE ON product_mutation_jobs WHEN NEW.recovery_request_id IS NOT NULL BEGIN SELECT RAISE(ABORT, 'disk full'); END;"
+    );
+    await expect(
+      service.recover({
+        actor: ACTOR,
+        requestId: crypto.randomUUID(),
+        id: required(next.jobs[0]).id,
+        expectedRevision: required(next.jobs[0]).revision
+      })
+    ).rejects.toThrow('disk full');
+    expect(gateway.updateDisplay).toHaveBeenCalledTimes(2);
+  });
   it('retains batch ownership and pins readback to the submitted credential context', async () => {
     const { service, gateway } = createService();
     const productContext = { identity: await opaqueGalleryId(ACTOR.actorId), gateway: 'b'.repeat(64) };
@@ -367,6 +486,7 @@ describe('product mutation lifecycle service', () => {
       expectedRevision: job.revision
     });
     expect(uncertain).toMatchObject({ status: 'recovery-required' });
+    gateway.list.mockResolvedValue(productPage('offline'));
 
     gateway.updateDisplay.mockResolvedValueOnce({
       encryptedProductIds: ['encrypted-1'],
@@ -381,6 +501,7 @@ describe('product mutation lifecycle service', () => {
       expectedRevision: uncertain.revision
     });
     expect(recovering).toMatchObject({ status: 'recovering', traceId: 'recovery-trace' });
+    gateway.list.mockResolvedValue(productPage('online'));
     await expect(
       service.refresh({
         requestId: '42d0480f-0fe9-4a1a-a465-70a13841fbe2',
@@ -434,6 +555,7 @@ describe('product mutation lifecycle service', () => {
       traceId: 'early-recovery-trace',
       success: true
     });
+    gateway.list.mockResolvedValue(productPage('offline'));
     await expect(
       service.recover({
         requestId: '08005235-3034-4bf9-a87e-7699c511125d',
@@ -444,6 +566,11 @@ describe('product mutation lifecycle service', () => {
     ).resolves.toMatchObject({ status: 'recovering', originalDisplay: 'online' });
   });
 });
+
+function required<T>(value: T | undefined | null): T {
+  if (value == null) throw new Error('Missing test prerequisite');
+  return value;
+}
 
 function createService(clock: () => number = Date.now): {
   service: ProductMutationLifecycleService;

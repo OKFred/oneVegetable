@@ -133,6 +133,8 @@ export const productMutationJobs = sqliteTable(
     batchId: text('batch_id'),
     productIdentity: text('product_identity'),
     productGateway: text('product_gateway'),
+    authorizationProtocol: text('authorization_protocol', { enum: ['top', 'iop'] }),
+    recoveryRequestId: text('recovery_request_id'),
     id: text('id').primaryKey(),
     requestId: text('request_id').notNull(),
     productId: text('product_id').notNull(),
@@ -582,4 +584,4 @@ export const s3StorageConfigurations = sqliteTable('s3_storage_configurations', 
   remark: text('remark')
 });
 
-export const CURRENT_SCHEMA_VERSION = 16;
+export const CURRENT_SCHEMA_VERSION = 17;

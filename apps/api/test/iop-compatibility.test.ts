@@ -664,7 +664,7 @@ describe('IOP API gateway integration without external networking', () => {
     ).rejects.toMatchObject({ gatewayError: { code: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED' } });
     expect(send).toHaveBeenCalledOnce();
   });
-  it.each(['updateProductDisplay', 'getRfq'] satisfies OperationId[])(
+  it.each(['createProductGroup', 'getRfq'] satisfies OperationId[])(
     'rejects %s before any gateway network call',
     async (operation) => {
       const send = vi.fn<NetworkTransport['send']>();
@@ -709,10 +709,7 @@ describe('IOP API gateway integration without external networking', () => {
       status: () => Promise.resolve(provider.status()),
       requireCredentials
     });
-    for (const method of [
-      'alibaba.icbu.product.batch.update.display',
-      'alibaba.icbu.product.country.getcountrylist'
-    ])
+    for (const method of ['alibaba.icbu.product.group.add', 'alibaba.icbu.product.country.getcountrylist'])
       await expect(gateway.request('callCapability', { method, parameters: {} })).rejects.toMatchObject({
         gatewayError: { code: iopBusiness.iopOperationReason('callCapability', method) }
       });
@@ -795,8 +792,8 @@ describe('IOP API gateway integration without external networking', () => {
             {
               operation: 'updateProductDisplay',
               allowed: false,
-              reasonCode: 'ALIBABA_IOP_MUTATION_UNVERIFIED',
-              protocolSupport: { state: 'unverified-write', fallbackProtocol: 'top' }
+              reasonCode: 'MUTATION_FLAG_DISABLED',
+              protocolSupport: { state: 'supported', fallbackProtocol: null }
             },
             { operation: 'getRfq', allowed: false, reasonCode: 'ALIBABA_IOP_METHOD_UNSUPPORTED' },
             { operation: 'getProductSchema', allowed: true },

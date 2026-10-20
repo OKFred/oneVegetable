@@ -132,6 +132,11 @@ export function isProductMutationJobPage(value: unknown): value is ProductMutati
 export function isProductMutationJob(value: unknown): value is ProductMutationJob {
   return (
     isRecord(value) &&
+    (value.protocol === undefined || isEnum(value.protocol, ['top', 'iop'])) &&
+    (value.recoveryRequestId == null || isRequestId(value.recoveryRequestId)) &&
+    (value.protocol !== 'iop' ||
+      value.operation !== 'updateProductDisplay' ||
+      isProductOperationContext(value.productContext)) &&
     (value.batchId == null || isRequestId(value.batchId)) &&
     (value.productContext == null || isProductOperationContext(value.productContext)) &&
     typeof value.id === 'string' &&

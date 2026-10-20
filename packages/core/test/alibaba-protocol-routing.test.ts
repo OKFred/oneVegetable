@@ -11,7 +11,7 @@ describe('Alibaba protocol routing before dispatch', () => {
       expect(selectAlibabaOperationProtocol('listPhotos', {}, available)).toBe('top');
       expect(selectAlibabaOperationProtocol('listPhotos', { groupId: '1' }, available)).toBe('iop');
       expect(selectAlibabaOperationProtocol('updateProduct', {}, available)).toBe('iop');
-      expect(selectAlibabaOperationProtocol('updateProductDisplay', {}, available)).toBe('top');
+      expect(selectAlibabaOperationProtocol('updateProductDisplay', {}, available)).toBe('iop');
     }
   );
   it('preserves single-profile behavior and uses the remaining profile when the default is absent', () => {
@@ -51,7 +51,7 @@ describe('Alibaba protocol routing before dispatch', () => {
       )
     ).toBe('top');
     expect(selectAlibabaOperationProtocol('publishProduct', {}, both)).toBe('iop');
-    expect(selectAlibabaOperationProtocol('updateProductDisplay', {}, both)).toBe('top');
+    expect(selectAlibabaOperationProtocol('updateProductDisplay', {}, both)).toBe('iop');
   });
   it('retains TOP-only draft/category request semantics before dispatch', () => {
     expect(selectAlibabaOperationProtocol('getProductDraft', { productId: '123' }, both)).toBe('top');

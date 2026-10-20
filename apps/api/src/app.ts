@@ -188,6 +188,30 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ? new ProductMutationLifecycleService(
           options.productMutationJobs,
           {
+            async displayContext(protocol, actorId) {
+              if (!dynamicGateway.operationGatewayContextId && options.gatewayMode === 'real') {
+                if (!dynamicGateway.credentialProtocol)
+                  throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
+                if ((await dynamicGateway.credentialProtocol()) !== protocol)
+                  throw new GatewayException({
+                    code: 'PRODUCT_CONTEXT_CHANGED',
+                    message: 'PRODUCT_CONTEXT_CHANGED',
+                    retryable: false
+                  });
+              }
+              const gateway = dynamicGateway.operationGatewayContextId
+                ? await dynamicGateway.operationGatewayContextId('updateProductDisplay', { protocol })
+                : dynamicGateway.galleryGatewayContextId
+                  ? await dynamicGateway.galleryGatewayContextId()
+                  : await opaqueGalleryId(`local:${options.gatewayMode}`);
+              if (
+                options.gatewayMode === 'real' &&
+                !dynamicGateway.operationGatewayContextId &&
+                !dynamicGateway.galleryGatewayContextId
+              )
+                throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
+              return { identity: await opaqueGalleryId(actorId), gateway };
+            },
             async assertProductContext(expected) {
               if (!dynamicGateway.galleryGatewayContextId && options.gatewayMode === 'real')
                 throw new AuthError('PRODUCT_CONTEXT_UNAVAILABLE', 'PRODUCT_CONTEXT_UNAVAILABLE', 503);
@@ -257,9 +281,14 @@ export function createApiApp(options: ApiAppOptions): Hono {
                 { ...boundOptions, ...operationOptions, requestId }
               )) as ProductDetail;
             },
-            async updateDisplay(request: ProductDisplayRequest, requestId: string) {
+            async updateDisplay(
+              request: ProductDisplayRequest,
+              requestId: string,
+              operationOptions?: ProductOperationOptions
+            ) {
               return (await dynamicGateway.request('updateProductDisplay', request, {
                 ...boundOptions,
+                ...operationOptions,
                 requestId
               })) as ProductDisplayMutationResult;
             },
@@ -796,6 +825,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
               })
             : parsed.body.operation === 'updateProductDisplay'
               ? await submissionMutations.submitDisplay({
+                  protocol,
+                  options: transferOptions,
                   requestId: parsed.requestId,
                   actor: authenticated?.principal ?? extensionAdminPrincipal(),
                   request: parsed.body.payload as unknown as ProductDisplayRequest

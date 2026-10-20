@@ -230,7 +230,18 @@ export class ProductAdapter {
   async updateDisplay(request: RequestOf<'updateProductDisplay'>): Promise<ProductDisplayMutationResult> {
     const method = 'alibaba.icbu.product.batch.update.display';
     const iop = this.client.protocol === 'iop';
-    if (iop && request.productIds.length !== request.encryptedProductIds.length)
+    if (request.protocol && request.protocol !== (iop ? 'iop' : 'top'))
+      throw new GatewayException({
+        code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        message: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        retryable: false
+      });
+    if (
+      request.productIds.length === 0 ||
+      (iop && request.productIds.length > 30) ||
+      (request.productIds.length !== request.encryptedProductIds.length &&
+        !(iop && request.encryptedProductIds.length === 0))
+    )
       throw new GatewayException({
         code: 'REQUEST_CONTRACT_INVALID',
         message: 'REQUEST_CONTRACT_INVALID',

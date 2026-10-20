@@ -8,9 +8,11 @@ import {
   unlockCredentialVault,
   type AlibabaAuthorizationsSummary,
   type CredentialVaultRecord,
-  type GatewaySettings
+  type GatewaySettings,
+  type ProductMutationJob
 } from '@one-vegetable/core';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
+import type * as IopRegistry from '@one-vegetable/core/alibaba-iop-registry';
 import { AlibabaIopTokenClient } from '@one-vegetable/core/alibaba-iop';
 import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import {
@@ -22,6 +24,8 @@ import { installNodeXmlDomGlobals } from '../../../scripts/node-xml-dom';
 import business from '../../../mock/data/alibaba-auth/iop-business-responses.json';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 import connection from '../../../mock/data/alibaba-auth/credential-connection.json';
+import displayFixture from '../../../mock/data/iop-display-extension.json';
+import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../lib/product-display-mutation-storage';
 import { ExtensionAlibabaCredentialAcquisitionController } from '../lib/alibaba-credential-acquisition';
 import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session';
 import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
@@ -29,6 +33,27 @@ import { s3LocalStore } from '../lib/s3-local-store';
 import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
 
 const setSyncAccessLevel = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const displayGate = vi.hoisted(() => ({ enabled: false }));
+// Compatibility tests may simulate an accepted capability, without changing production verification flags.
+vi.mock('@one-vegetable/core/alibaba-iop-registry', async (importOriginal) => {
+  const original = await importOriginal<typeof IopRegistry>();
+  const displayMethod = 'alibaba.icbu.product.batch.update.display';
+  return {
+    ...original,
+    getIopMethod: (method: string) => {
+      const definition = original.getIopMethod(method);
+      return displayGate.enabled && method === displayMethod && definition
+        ? { ...definition, accountVerified: true }
+        : definition;
+    },
+    iopMethodAvailabilityReason: (...args: Parameters<typeof original.iopMethodAvailabilityReason>) =>
+      displayGate.enabled && args[0] === displayMethod ? null : original.iopMethodAvailabilityReason(...args),
+    iopRegisteredOperationReason: (...args: Parameters<typeof original.iopRegisteredOperationReason>) =>
+      displayGate.enabled && args[0] === 'updateProductDisplay'
+        ? null
+        : original.iopRegisteredOperationReason(...args)
+  };
+});
 
 const state = vi.hoisted<{
   local: Record<string, unknown>;
@@ -122,6 +147,59 @@ function resultJob(result: Result) {
   if (!isProductMutationJob(job)) throw new Error('Expected a fixture mutation receipt');
   return job;
 }
+function displayJob(result: Result): ProductMutationJob {
+  const jobs = result.data?.jobs;
+  const job: unknown = Array.isArray(jobs) ? jobs[0] : undefined;
+  if (!isProductMutationJob(job)) throw new Error('Expected a display fixture receipt');
+  return job;
+}
+function mockDisplayGateway() {
+  displayGate.enabled = true;
+  let status: 'online' | 'offline' = 'online';
+  let beforeWrite: (() => void) | undefined;
+  let afterList: (() => Promise<void>) | undefined;
+  const writes: URLSearchParams[] = [];
+  vi.mocked(fetch).mockImplementation(async (url, init) => {
+    const target = new URL(url instanceof URL ? url.href : typeof url === 'string' ? url : url.url);
+    const parameters = new URLSearchParams(init?.body as string);
+    const iop = target.origin === new URL(IOP_BUSINESS_ENDPOINT).origin;
+    const list = iop
+      ? target.pathname === '/rest/alibaba/icbu/product/list'
+      : parameters.get('method') === 'alibaba.icbu.product.list';
+    if (list) {
+      expect(parameters.get('id')).toBe('100001');
+      expect(parameters.get('current_page')).toBe('1');
+      expect(parameters.get('page_size')).toBe('1');
+      await afterList?.();
+      return Response.json(
+        iop
+          ? displayFixture.api[status]
+          : displayFixture.api[status === 'online' ? 'topOnline' : 'topOffline']
+      );
+    }
+    if (
+      (iop && target.pathname === '/rest/icbu/product/update/display') ||
+      (!iop && parameters.get('method') === 'alibaba.icbu.product.batch.update.display')
+    ) {
+      beforeWrite?.();
+      writes.push(parameters);
+      return Response.json(iop ? displayFixture.api.accepted : displayFixture.api.topAccepted);
+    }
+    throw new Error('Unexpected display fixture request');
+  });
+  return {
+    writes,
+    status: (value: 'online' | 'offline') => {
+      status = value;
+    },
+    beforeWrite: (hook: () => void) => {
+      beforeWrite = hook;
+    },
+    afterList: (hook: () => Promise<void>) => {
+      afterList = hook;
+    }
+  };
+}
 const schemaXml = business.schema.result.data;
 const schemaWrites = [
   ['publishProduct', '/icbu/product/schema/add', 'publish_request'],
@@ -170,6 +248,7 @@ async function fixtureContext(value = settings) {
   });
 }
 beforeEach(() => {
+  displayGate.enabled = false;
   restoreXmlGlobals = installNodeXmlDomGlobals();
   state.local = {};
   state.session = {};
@@ -424,7 +503,7 @@ describe('extension background protocol persistence and dispatch', () => {
   it('rejects unmapped IOP writes and targeted reads before creating a network client', async () => {
     await create();
     const client = vi.spyOn(AlibabaClient, 'create');
-    for (const operation of ['updateProductDisplay', 'createProductGroup'] as const) {
+    for (const operation of ['createProductGroup'] as const) {
       const reason = iopOperationReason(operation);
       expect(reason).toBe('ALIBABA_IOP_MUTATION_UNVERIFIED');
       expect(await send('gateway-request', operation, {})).toMatchObject({
@@ -437,6 +516,152 @@ describe('extension background protocol persistence and dispatch', () => {
     ).toMatchObject({ ok: false, error: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' } });
     expect(client).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
+  });
+  it('binds empty-cipher IOP display and restore to persisted context before each write', async () => {
+    await create();
+    const gateway = mockDisplayGateway();
+    const productContext = await fixtureContext();
+    gateway.beforeWrite(() => {
+      const stored = state.local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY] as {
+        jobs: ProductMutationJob[];
+      };
+      expect(stored.jobs[0]).toMatchObject({
+        protocol: 'iop',
+        productContext,
+        encryptedProductId: null,
+        originalDisplay: 'online',
+        targetDisplay: 'offline',
+        status: gateway.writes.length === 0 ? 'submitted' : 'recovering'
+      });
+      if (gateway.writes.length > 0) expect(stored.jobs[0]?.recoveryRequestId).toEqual(expect.any(String));
+    });
+    // The background binds the selected protocol even for older callers that omit it.
+    const { protocol: _protocol, ...payload } = displayFixture.request;
+    const response = await send('gateway-request', 'updateProductDisplay', payload);
+    expect(response).toMatchObject({ ok: true });
+    const job = displayJob(response);
+    expect(job).toMatchObject({ protocol: 'iop', productContext, encryptedProductId: null });
+    gateway.status('offline');
+    background.main();
+    const recovery = await send('product-mutation-job-request', 'recover', {
+      id: job.id,
+      revision: job.revision
+    });
+    expect(recovery).toMatchObject({
+      ok: true,
+      data: { status: 'recovering' }
+    });
+    expect(recovery.data?.recoveryRequestId).toEqual(expect.any(String));
+    expect(gateway.writes.map((value) => [value.get('product_id_list'), value.get('new_display')])).toEqual([
+      ['[100001]', 'off'],
+      ['[100001]', 'on']
+    ]);
+    gateway.status('online');
+    expect(
+      await send('product-mutation-job-request', 'refresh', { id: job.id, revision: recovery.data?.revision })
+    ).toMatchObject({ ok: true, data: { status: 'recovered', protocol: 'iop', productContext } });
+    expect(gateway.writes).toHaveLength(2);
+  });
+
+  it('keeps IOP display readback pinned when the default changes to TOP', async () => {
+    const summary = await createPair();
+    const gateway = mockDisplayGateway();
+    const job = displayJob(await send('gateway-request', 'updateProductDisplay', displayFixture.request));
+    expect(
+      await send('credential-vault-request', 'set-default-authorization', {
+        protocol: 'top',
+        configurationId: summary.top?.configurationId
+      })
+    ).toMatchObject({ ok: true });
+    gateway.status('offline');
+    vi.mocked(fetch).mockClear();
+    background.main();
+    expect(
+      await send('product-mutation-job-request', 'refresh', { id: job.id, revision: job.revision })
+    ).toMatchObject({ ok: true, data: { status: 'verified', protocol: 'iop' } });
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({
+      href: `${IOP_BUSINESS_ENDPOINT}/alibaba/icbu/product/list`
+    });
+    expect(gateway.writes).toHaveLength(1);
+  });
+
+  it('keeps legacy display jobs on TOP even when the current default is IOP', async () => {
+    await createPair();
+    const gateway = mockDisplayGateway();
+    const response = await sendEnvelope({
+      kind: 'gateway-request',
+      operation: 'updateProductDisplay',
+      payload: displayFixture.topRequest,
+      productContext: await fixtureContext(topSettings)
+    });
+    expect(response).toMatchObject({ ok: true });
+    const job = displayJob(response);
+    const stored = state.local[EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY] as { jobs: ProductMutationJob[] };
+    const saved = stored.jobs[0];
+    if (!saved) throw new Error('Expected saved legacy display fixture');
+    delete saved.protocol;
+    delete saved.productContext;
+    gateway.status('offline');
+    vi.mocked(fetch).mockClear();
+    background.main();
+    expect(
+      await send('product-mutation-job-request', 'refresh', { id: job.id, revision: job.revision })
+    ).toMatchObject({ ok: true, data: { status: 'verified', encryptedProductId: 'fixture-top-cipher' } });
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({ href: ALIBABA_GATEWAY });
+    expect(gateway.writes).toHaveLength(1);
+  });
+
+  it('rejects wrong actual protocol or untrusted supplied context without outbound traffic', async () => {
+    await create();
+    expect(
+      await send('gateway-request', 'updateProductDisplay', { ...displayFixture.request, protocol: 'top' })
+    ).toMatchObject({ ok: false, error: { code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH' } });
+    expect(
+      await sendEnvelope(
+        {
+          kind: 'gateway-request',
+          operation: 'updateProductDisplay',
+          payload: displayFixture.request,
+          productContext: await fixtureContext()
+        },
+        { ...sender, url: 'https://untrusted.example/' }
+      )
+    ).toMatchObject({ ok: false });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('aborts before dispatch when configuration changes during baseline readback', async () => {
+    await create();
+    const gateway = mockDisplayGateway();
+    gateway.afterList(async () => {
+      expect(
+        await send('credential-vault-request', 'clear-authorization', { protocol: 'iop' })
+      ).toMatchObject({ ok: true });
+    });
+    expect(await send('gateway-request', 'updateProductDisplay', displayFixture.request)).toMatchObject({
+      ok: false,
+      error: { code: 'PRODUCT_CONTEXT_CHANGED' }
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(gateway.writes).toEqual([]);
+  });
+
+  it('stops refresh and recovery before outbound after the saved configuration is removed', async () => {
+    await createPair();
+    const gateway = mockDisplayGateway();
+    const job = displayJob(await send('gateway-request', 'updateProductDisplay', displayFixture.request));
+    expect(await send('credential-vault-request', 'clear-authorization', { protocol: 'iop' })).toMatchObject({
+      ok: true
+    });
+    vi.mocked(fetch).mockClear();
+    background.main();
+    for (const operation of ['refresh', 'recover']) {
+      expect(
+        await send('product-mutation-job-request', operation, { id: job.id, revision: job.revision })
+      ).toMatchObject({ ok: false, error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(gateway.writes).toHaveLength(1);
   });
   it.each(schemaWrites)(
     'dispatches verified %s with IOP parameters, pinned context and successful readback',

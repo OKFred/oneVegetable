@@ -409,6 +409,7 @@ document.components.schemas.ProductDisplayRequest = {
   additionalProperties: false,
   required: ['productIds', 'encryptedProductIds', 'display'],
   properties: {
+    protocol: { type: 'string', enum: ['top', 'iop'] },
     productIds: {
       type: 'array',
       minItems: 1,
@@ -418,13 +419,20 @@ document.components.schemas.ProductDisplayRequest = {
     },
     encryptedProductIds: {
       type: 'array',
-      minItems: 1,
+      minItems: 0,
       maxItems: 100,
       uniqueItems: true,
       items: { type: 'string', minLength: 1 }
     },
     display: { type: 'string', enum: ['online', 'offline'] }
-  }
+  },
+  allOf: [
+    {
+      if: { required: ['protocol'], properties: { protocol: { const: 'iop' } } },
+      then: { properties: { productIds: { type: 'array', maxItems: 30 } } },
+      else: { properties: { encryptedProductIds: { type: 'array', minItems: 1 } } }
+    }
+  ]
 };
 document.components.schemas.ProductDisplayMutationResult = {
   type: 'object',

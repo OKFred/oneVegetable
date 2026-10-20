@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
 
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import { EntityVersionConflictError } from '../src/db/repository';
@@ -17,6 +18,45 @@ afterEach(() => {
 });
 
 describe('product mutation job repository', () => {
+  it('upgrades historical TOP receipts without inventing a protocol or an account binding', async () => {
+    handle = openNodeDatabase(':memory:');
+    const directory = new URL('../drizzle/', import.meta.url);
+    for (const name of readdirSync(directory)
+      .filter((name) => /^00(?:0[1-9]|1[0-6])_/u.test(name))
+      .sort()) {
+      handle.connection.exec(readFileSync(new URL(name, directory), 'utf8'));
+    }
+    handle.connection
+      .exec(`INSERT INTO product_mutation_jobs (id,request_id,product_id,operation,status,payload_fingerprint,field_expectations_json,encrypted_product_id,target_display,original_display,submitted_time_utc,create_time_utc,update_time_utc,creator_id,updater_id,revision)
+      VALUES ('legacy','legacy-request','301','updateProductDisplay','verifying','${'c'.repeat(64)}','[]','legacy-cipher','offline','online',1,1,1,'legacy-admin','legacy-admin',2)`);
+    applyNodeMigrations(handle);
+    const repository = new SqlProductMutationJobRepository(handle.executor);
+    const legacy = await repository.get('legacy');
+    expect(legacy).toMatchObject({
+      encryptedProductId: 'legacy-cipher',
+      revision: 2,
+      productContext: null,
+      recoveryRequestId: null
+    });
+    expect(legacy?.protocol).toBeUndefined();
+    const input = {
+      requestId: crypto.randomUUID(),
+      productId: '302',
+      protocol: 'iop' as const,
+      encryptedProductId: null,
+      productContext: { identity: 'a'.repeat(64), gateway: 'b'.repeat(64) },
+      targetDisplay: 'offline' as const,
+      originalDisplay: 'online' as const,
+      payloadFingerprint: 'd'.repeat(64),
+      actorId: 'admin'
+    };
+    expect(await repository.createDisplay(input)).toMatchObject({
+      protocol: 'iop',
+      encryptedProductId: null,
+      productContext: input.productContext
+    });
+    await expect(repository.createDisplay({ ...input, productId: '303', protocol: 'top' })).rejects.toThrow();
+  });
   it('persists an audited lifecycle without storing the schema XML', async () => {
     handle = openNodeDatabase(':memory:');
     applyNodeMigrations(handle);

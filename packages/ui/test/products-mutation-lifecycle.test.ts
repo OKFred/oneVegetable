@@ -6,6 +6,7 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
 
 import { provideServices } from '../src/lib/services';
 import { uiI18n } from '../src/i18n';
@@ -67,40 +68,52 @@ describe('ProductsView product mutation lifecycle', () => {
     wrapper.unmount();
   });
 
-  it('shows durable display jobs and allows explicit original-state recovery', async () => {
-    const job = displayJobFixture();
-    const recover = vi.fn(() => Promise.resolve({ ...job, status: 'recovering' as const, revision: 4 }));
-    const productMutationJobs: ProductMutationJobClient = {
-      list: vi.fn(() => Promise.resolve({ items: [job], page: 1, pageSize: 100, total: 1 })),
-      get: vi.fn(() => Promise.resolve(job)),
-      refresh: vi.fn(() => Promise.resolve(job)),
-      recover
-    };
-    const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension');
-    await flushPromises();
-    expect(wrapper.text()).not.toContain('最近上下架任务');
-    const tasks = wrapper.findAll('button').find((button) => button.text().trim() === '任务中心');
-    await tasks?.trigger('click');
-    await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('需要人工恢复');
-    });
-    const recovery = wrapper.findAll('button').find((button) => button.text().includes('恢复原状态'));
-    if (!recovery) throw new Error('Missing display recovery button');
-    await recovery.trigger('click');
-    await flushPromises();
-    await vi.waitFor(() => {
-      expect(document.body.textContent).toContain('确认恢复商品状态');
-    });
-    const confirm = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent.trim() === '确认继续'
-    );
-    if (!confirm) throw new Error('Missing recovery confirmation button');
-    confirm.click();
-    await vi.waitFor(() => {
-      expect(recover).toHaveBeenCalledWith(job.id, job.revision);
-    });
-    wrapper.unmount();
-  });
+  it.each(['top', 'iop'] as const)(
+    'shows durable %s display jobs and allows explicit original-state recovery',
+    async (protocol) => {
+      const job = {
+        ...displayJobFixture(),
+        protocol,
+        ...(protocol === 'iop'
+          ? {
+              encryptedProductId: null,
+              productContext: { identity: 'a'.repeat(64), gateway: 'b'.repeat(64) }
+            }
+          : {})
+      };
+      const recover = vi.fn(() => Promise.resolve({ ...job, status: 'recovering' as const, revision: 4 }));
+      const productMutationJobs: ProductMutationJobClient = {
+        list: vi.fn(() => Promise.resolve({ items: [job], page: 1, pageSize: 100, total: 1 })),
+        get: vi.fn(() => Promise.resolve(job)),
+        refresh: vi.fn(() => Promise.resolve(job)),
+        recover
+      };
+      const wrapper = mountProductsView(productMutationJobs, 'updateProductDisplay', 'extension', protocol);
+      await flushPromises();
+      expect(wrapper.text()).not.toContain('最近上下架任务');
+      const tasks = wrapper.findAll('button').find((button) => button.text().trim() === '任务中心');
+      await tasks?.trigger('click');
+      await vi.waitFor(() => {
+        expect(wrapper.text()).toContain('需要人工恢复');
+      });
+      const recovery = wrapper.findAll('button').find((button) => button.text().includes('恢复原状态'));
+      if (!recovery) throw new Error('Missing display recovery button');
+      await recovery.trigger('click');
+      await flushPromises();
+      await vi.waitFor(() => {
+        expect(document.body.textContent).toContain('确认恢复商品状态');
+      });
+      const confirm = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+        (button) => button.textContent.trim() === '确认继续'
+      );
+      if (!confirm) throw new Error('Missing recovery confirmation button');
+      confirm.click();
+      await vi.waitFor(() => {
+        expect(recover).toHaveBeenCalledWith(job.id, job.revision);
+      });
+      wrapper.unmount();
+    }
+  );
 
   it('localizes durable job reasons without exposing the stored Chinese project message', async () => {
     globalThis.localStorage.setItem(
@@ -169,7 +182,8 @@ describe('ProductsView product mutation lifecycle', () => {
 function mountProductsView(
   productMutationJobs: ProductMutationJobClient,
   allowedOperation: 'publishProduct' | 'updateProduct' | 'updateProductDisplay',
-  mode: 'bff' | 'extension' = 'bff'
+  mode: 'bff' | 'extension' = 'bff',
+  protocol: 'top' | 'iop' = 'top'
 ) {
   const Host = defineComponent({
     setup() {
@@ -181,6 +195,9 @@ function mountProductsView(
             Promise.resolve({
               items: operations.map((operation) => ({
                 operation,
+                ...(protocol === 'iop'
+                  ? { protocolSupport: { ...getIopOperationSupport(operation), protocol: 'iop' as const } }
+                  : {}),
                 allowed: operation === allowedOperation,
                 reasonCode: operation === allowedOperation ? 'TEST_ALLOWED' : 'TEST_DISABLED'
               }))

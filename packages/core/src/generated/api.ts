@@ -10417,11 +10417,13 @@ export interface components {
             jobs?: components["schemas"]["ProductMutationJob"][];
         };
         ProductDisplayRequest: {
+            /** @enum {string} */
+            protocol?: "top" | "iop";
             productIds: string[];
             encryptedProductIds: string[];
             /** @enum {string} */
             display: "online" | "offline";
-        };
+        } & unknown;
         ProductDraftRenderRequest: {
             productId: string;
             /** @enum {string} */
@@ -10481,6 +10483,10 @@ export interface components {
             fingerprint: string;
         };
         ProductMutationJob: {
+            /** @enum {string} */
+            protocol?: "top" | "iop";
+            /** Format: uuid */
+            recoveryRequestId?: string | null;
             /** Format: uuid */
             batchId?: string | null;
             productContext?: components["schemas"]["ProductOperationContext"] | null;

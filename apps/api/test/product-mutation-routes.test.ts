@@ -63,7 +63,9 @@ describe('product mutation lifecycle routes', () => {
       database: 'sqlite',
       environment: 'test',
       gatewayMode: 'real',
-      gateway: { request: gatewayRequest as GatewayClient['request'] },
+      gateway: {
+        request: gatewayRequest as GatewayClient['request']
+      },
       authService,
       adminService: new AdminService(authRepository),
       featureFlags: new StaticOperationFeatureFlags(new Set(['operation:saveProductDraft'])),
@@ -233,12 +235,17 @@ describe('product mutation lifecycle routes', () => {
       }
       return Promise.reject(new Error(`unexpected operation: ${operation}`));
     });
+    const gateway = {
+      request: gatewayRequest as GatewayClient['request'],
+      credentialProtocol: () => Promise.resolve('top' as const),
+      galleryGatewayContextId: () => Promise.resolve('f'.repeat(64))
+    };
     const app = createApiApp({
       runtime: 'node',
       database: 'sqlite',
       environment: 'test',
       gatewayMode: 'real',
-      gateway: { request: gatewayRequest as GatewayClient['request'] },
+      gateway,
       authService,
       adminService: new AdminService(authRepository),
       featureFlags: new StaticOperationFeatureFlags(new Set(['operation:updateProductDisplay'])),

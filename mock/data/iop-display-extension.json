@@ -1,0 +1,116 @@
+{
+  "request": {
+    "productIds": ["100001"],
+    "encryptedProductIds": [],
+    "display": "offline",
+    "protocol": "iop"
+  },
+  "topRequest": {
+    "productIds": ["100001"],
+    "encryptedProductIds": ["fixture-top-cipher"],
+    "display": "offline"
+  },
+  "context": {
+    "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "page": {
+    "page": 1,
+    "pageSize": 1,
+    "total": 1,
+    "items": [
+      {
+        "id": "100001",
+        "encryptedId": null,
+        "detailUrl": null,
+        "subject": "Offline display fixture",
+        "groupName": "Default",
+        "status": "online",
+        "score": 0,
+        "imageUrl": null,
+        "updatedAt": "2026-10-21T00:00:00.000Z",
+        "categoryId": 123
+      }
+    ]
+  },
+  "accepted": {
+    "encryptedProductIds": [],
+    "display": "offline",
+    "traceId": "fixture-iop-display-write",
+    "success": true
+  },
+  "restoreAccepted": {
+    "encryptedProductIds": [],
+    "display": "online",
+    "traceId": "fixture-iop-display-restore",
+    "success": true
+  },
+  "errors": {
+    "unknown": { "code": "NETWORK_TIMEOUT", "message": "Fixture unknown outcome", "retryable": false },
+    "rejected": { "code": "ALIBABA_IOP_BUSINESS_REJECTED", "message": "Fixture rejected", "retryable": false }
+  },
+  "api": {
+    "online": {
+      "code": "0",
+      "request_id": "fixture-display-online",
+      "result": {
+        "products": [
+          {
+            "id": 100001,
+            "subject": "Fixture display",
+            "category_id": 123,
+            "display": "online",
+            "status": "approved"
+          }
+        ],
+        "total_item": 1
+      }
+    },
+    "offline": {
+      "code": "0",
+      "request_id": "fixture-display-offline",
+      "result": {
+        "products": [
+          {
+            "id": 100001,
+            "subject": "Fixture display",
+            "category_id": 123,
+            "display": "offline",
+            "status": "approved"
+          }
+        ],
+        "total_item": 1
+      }
+    },
+    "topOnline": {
+      "products": [
+        {
+          "id": 100001,
+          "product_id": "fixture-top-cipher",
+          "subject": "Fixture display",
+          "display": "online",
+          "status": "approved"
+        }
+      ],
+      "total_item": 1
+    },
+    "topOffline": {
+      "products": [
+        {
+          "id": 100001,
+          "product_id": "fixture-top-cipher",
+          "subject": "Fixture display",
+          "display": "offline",
+          "status": "approved"
+        }
+      ],
+      "total_item": 1
+    },
+    "topAccepted": { "sub_success": true, "trace_id": "fixture-top-display" },
+    "accepted": {
+      "code": "0",
+      "request_id": "fixture-iop-display",
+      "result": { "fail_id_map": {}, "trace_id": "fixture-display-trace", "error_code": "", "error_msg": "" }
+    }
+  }
+}

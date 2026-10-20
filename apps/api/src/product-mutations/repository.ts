@@ -38,6 +38,7 @@ export interface ProductMutationJobCreateInput {
 }
 
 export interface ProductMutationJobTransitionInput {
+  recoveryRequestId?: string;
   id: string;
   expectedRevision: number;
   status: ProductMutationJobStatus;
@@ -61,9 +62,11 @@ export interface ProductCreationMutationJobCreateInput {
 }
 
 export interface ProductDisplayMutationJobCreateInput {
+  protocol?: 'top' | 'iop';
+  productContext?: ProductOperationContext;
   requestId: string;
   productId: string;
-  encryptedProductId: string;
+  encryptedProductId: string | null;
   targetDisplay: 'online' | 'offline';
   originalDisplay: 'online' | 'offline';
   payloadFingerprint: string;
@@ -289,11 +292,16 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
   }
 
   async createDisplay(input: ProductDisplayMutationJobCreateInput): Promise<ProductMutationJob> {
+    const protocol = input.protocol ?? 'top';
+    if (protocol === 'iop') requireProductOperationContext(input.productContext);
+    else if (!input.encryptedProductId) throw new Error('商品上下架标识无效');
+    if (input.productContext) requireProductOperationContext(input.productContext);
     const now = this.#clock();
     const audit = createEntityAuditFields(input.actorId, now, input.remark);
     const id = crypto.randomUUID();
     const productId = normalizeProductId(input.productId);
-    const encryptedProductId = normalizeEncryptedProductId(input.encryptedProductId);
+    const encryptedProductId =
+      input.encryptedProductId === null ? null : normalizeEncryptedProductId(input.encryptedProductId);
     if (!FINGERPRINT_PATTERN.test(input.payloadFingerprint)) throw new Error('写入载荷指纹无效');
     try {
       await this.#executor.execute(
@@ -303,9 +311,10 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           encrypted_product_id, target_display, original_display,
           trace_id, reason_code, message,
           submitted_time_utc, last_checked_time_utc, completed_time_utc,
-          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
+          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark,
+          authorization_protocol, product_identity, product_gateway
         ) VALUES (?, ?, ?, 'updateProductDisplay', 'submitted', NULL, NULL, ?, '[]', ?, ?, ?,
-          NULL, NULL, NULL, ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+          NULL, NULL, NULL, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           input.requestId,
@@ -320,7 +329,10 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           audit.creatorId,
           audit.updaterId,
           audit.revision,
-          audit.remark
+          audit.remark,
+          protocol,
+          input.productContext?.identity ?? null,
+          input.productContext?.gateway ?? null
         ]
       );
     } catch (error: unknown) {
@@ -340,6 +352,8 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
   async transition(input: ProductMutationJobTransitionInput): Promise<ProductMutationJob> {
     const current = await this.#require(input.id);
     if (current.revision !== input.expectedRevision) throw new EntityVersionConflictError();
+    if (input.recoveryRequestId && (current.recoveryRequestId || input.status !== 'recovering'))
+      throw new EntityVersionConflictError();
     assertStatus(input.status);
     assertTransition(current.status, input.status);
     const now = this.#clock();
@@ -347,7 +361,7 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
     const terminal = input.status === 'verified' || input.status === 'recovered' || input.status === 'failed';
     const result = await this.#executor.execute(
       `UPDATE product_mutation_jobs SET status = ?, product_id = ?, trace_id = ?, reason_code = ?, message = ?,
-       last_checked_time_utc = ?, completed_time_utc = ?, update_time_utc = ?, updater_id = ?, revision = ?
+       last_checked_time_utc = ?, completed_time_utc = ?, update_time_utc = ?, updater_id = ?, revision = ?, recovery_request_id = ?
        WHERE id = ? AND revision = ?`,
       [
         input.status,
@@ -360,6 +374,7 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
         audit.updateTimeUtc,
         audit.updaterId,
         audit.revision,
+        input.recoveryRequestId ?? current.recoveryRequestId ?? null,
         current.id,
         input.expectedRevision
       ]
@@ -377,11 +392,11 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
 
 function assertTransition(from: ProductMutationJobStatus, to: ProductMutationJobStatus): void {
   const allowed: Record<ProductMutationJobStatus, readonly ProductMutationJobStatus[]> = {
-    submitted: ['auditing', 'verifying', 'recovery-required', 'recovering', 'failed'],
+    submitted: ['auditing', 'verifying', 'recovery-required', 'recovering', 'recovered', 'failed'],
     auditing: ['auditing', 'verified', 'recovery-required'],
-    verifying: ['auditing', 'verifying', 'verified', 'recovery-required', 'recovering'],
+    verifying: ['auditing', 'verifying', 'verified', 'recovery-required', 'recovering', 'recovered'],
     verified: [],
-    'recovery-required': ['auditing', 'recovery-required', 'verified', 'recovering', 'failed'],
+    'recovery-required': ['auditing', 'recovery-required', 'verified', 'recovering', 'recovered', 'failed'],
     recovering: ['recovering', 'recovered', 'recovery-required'],
     recovered: [],
     failed: []
@@ -438,6 +453,10 @@ function normalizeNullable(value: string | null, maxLength: number): string | nu
 
 function toEntity(row: Record<string, unknown>): ProductMutationJob {
   return {
+    ...(row.authorization_protocol == null
+      ? {}
+      : { protocol: readEnum(row, 'authorization_protocol', ['top', 'iop']) }),
+    recoveryRequestId: readNullableString(row, 'recovery_request_id'),
     batchId: readNullableString(row, 'batch_id'),
     productContext:
       row.product_identity === null || row.product_identity === undefined

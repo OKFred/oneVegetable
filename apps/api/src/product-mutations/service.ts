@@ -10,6 +10,10 @@ import type {
   ProductOperationOptions
 } from '@one-vegetable/core/product-operation-context';
 import { opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
+import {
+  displayRequestForJob,
+  readProductDisplayTargets
+} from '@one-vegetable/core/product-display-identity';
 
 import type {
   ProductMutationJob,
@@ -39,6 +43,7 @@ const SERVER_XML_PARSER: ProductSchemaXmlParser = {
 };
 
 export interface ProductMutationGateway {
+  displayContext?(protocol: 'top' | 'iop', actorId: string): Promise<ProductOperationContext>;
   assertProductContext?(context: ProductOperationContext): Promise<void>;
   publish(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
   saveDraft(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
@@ -60,7 +65,11 @@ export interface ProductMutationGateway {
     requestId: string,
     options?: ProductOperationOptions
   ): Promise<ProductSchema>;
-  updateDisplay(request: ProductDisplayRequest, requestId: string): Promise<ProductDisplayMutationResult>;
+  updateDisplay(
+    request: ProductDisplayRequest,
+    requestId: string,
+    options?: ProductOperationOptions
+  ): Promise<ProductDisplayMutationResult>;
   list(request: ProductListQuery, requestId: string, options?: ProductOperationOptions): Promise<ProductPage>;
 }
 
@@ -159,39 +168,51 @@ export class ProductMutationLifecycleService {
     requestId: string;
     actor: AuthPrincipal;
     request: ProductDisplayRequest;
+    protocol?: 'top' | 'iop';
+    options?: ProductOperationOptions;
   }): Promise<ProductDisplayMutationSubmissionResult> {
-    assertDisplayRequestPairing(input.request);
-    const products = await this.#readDisplayProducts(input.request, input.requestId);
+    const protocol = input.protocol ?? input.request.protocol ?? 'top';
+    if (input.request.protocol && input.request.protocol !== protocol)
+      throw new ProductDisplayTargetMismatchError();
+    const request = { ...input.request, protocol };
+    const context =
+      input.options?.productContext ?? (await this.#gateway.displayContext?.(protocol, input.actor.actorId));
+    const options = context ? { ...input.options, productContext: context } : input.options;
+    if (protocol === 'iop' && !context) throw new ProductDisplayTargetMismatchError();
+    if (context) await this.#assertCreationContext({ productContext: context }, input.actor);
+    const products = await this.#readDisplayProducts(request, input.requestId, options);
     for (const product of products) {
       const blocking = await this.#repository.findBlocking(product.id);
       if (blocking) throw new ProductMutationAlreadyInProgressError(blocking);
-      if (product.status === input.request.display) {
-        throw new ProductDisplayNoChangeError(product.id, input.request.display);
+      if (product.status === 'auditing') throw new ProductDisplayTargetMismatchError();
+      if (product.status === request.display) {
+        throw new ProductDisplayNoChangeError(product.id, request.display);
       }
     }
 
     const jobs: ProductMutationJob[] = [];
     try {
       for (const [index, product] of products.entries()) {
-        const encryptedProductId = input.request.encryptedProductIds[index];
-        if (!encryptedProductId) throw new ProductDisplayTargetMismatchError();
+        const encryptedProductId = request.encryptedProductIds[index] ?? null;
         const job = await this.#repository.createDisplay({
+          protocol,
+          ...(context ? { productContext: context } : {}),
           requestId: input.requestId,
           productId: product.id,
           encryptedProductId,
-          targetDisplay: input.request.display,
+          targetDisplay: request.display,
           originalDisplay: product.status as 'online' | 'offline',
           payloadFingerprint: await createDisplayFingerprint(
             product.id,
-            encryptedProductId,
-            input.request.display
+            encryptedProductId ?? `iop:${product.id}`,
+            request.display
           ),
           actorId: input.actor.actorId
         });
         jobs.push(job);
         await this.#audit(job, input.requestId, input.actor.actorId, 'submitted', null);
       }
-      const result = await this.#gateway.updateDisplay(input.request, input.requestId);
+      const result = await this.#gateway.updateDisplay(request, input.requestId, options);
       const verifyingJobs: ProductMutationJob[] = [];
       for (const job of jobs) {
         const verifying = await this.#repository.transition({
@@ -299,7 +320,8 @@ export class ProductMutationLifecycleService {
       });
     if (current.revision !== input.expectedRevision) throw new ProductMutationRevisionConflictError();
     if (current.status === 'verified' || current.status === 'recovered' || current.status === 'failed') {
-      if (isCreationOperation(current.operation)) await this.#assertCreationContext(current, input.actor);
+      if (isCreationOperation(current.operation) || current.operation === 'updateProductDisplay')
+        await this.#assertCreationContext(current, input.actor);
       return current;
     }
     if (current.operation === 'updateProductDisplay') return this.#refreshDisplay(current, input);
@@ -373,23 +395,40 @@ export class ProductMutationLifecycleService {
     if (
       current.operation !== 'updateProductDisplay' ||
       !['submitted', 'verifying', 'recovery-required'].includes(current.status) ||
-      current.encryptedProductId === null ||
+      current.recoveryRequestId ||
       current.originalDisplay === null
     ) {
       throw new ProductMutationRecoveryNotAvailableError();
     }
-    try {
-      const result = await this.#gateway.updateDisplay(
-        {
-          productIds: [current.productId],
-          encryptedProductIds: [current.encryptedProductId],
-          display: current.originalDisplay
-        },
-        input.requestId
-      );
-      const recovering = await this.#repository.transition({
+    await this.#assertCreationContext(current, input.actor);
+    const options = await this.#displayOptions(current, input.actor);
+    const request = displayRequestForJob(current, current.originalDisplay);
+    const product = (await this.#readDisplayProducts(request, input.requestId, options))[0];
+    if (!product || product.status === 'auditing') throw new ProductMutationRecoveryNotAvailableError();
+    if (product.status === current.originalDisplay) {
+      return this.#repository.transition({
         id: current.id,
         expectedRevision: current.revision,
+        status: 'recovered',
+        actorId: input.actor.actorId,
+        checked: true,
+        reasonCode: 'PRODUCT_DISPLAY_RECOVERY_MATCHED',
+        message: '平台原状态已确认，无需重复提交恢复请求'
+      });
+    }
+    if (product.status !== current.targetDisplay) throw new ProductMutationRecoveryNotAvailableError();
+    const intent = await this.#repository.transition({
+      id: current.id,
+      expectedRevision: current.revision,
+      status: 'recovering',
+      actorId: input.actor.actorId,
+      recoveryRequestId: input.requestId
+    });
+    try {
+      const result = await this.#gateway.updateDisplay(request, input.requestId, options);
+      const recovering = await this.#repository.transition({
+        id: current.id,
+        expectedRevision: intent.revision,
         status: 'recovering',
         actorId: input.actor.actorId,
         traceId: result.traceId,
@@ -402,7 +441,7 @@ export class ProductMutationLifecycleService {
       const details = errorDetails(error);
       const updated = await this.#repository.transition({
         id: current.id,
-        expectedRevision: current.revision,
+        expectedRevision: intent.revision,
         status: 'recovery-required',
         actorId: input.actor.actorId,
         traceId: details.traceId,
@@ -439,28 +478,27 @@ export class ProductMutationLifecycleService {
     current: ProductMutationJob,
     input: { requestId: string; actor: AuthPrincipal }
   ): Promise<ProductMutationJob> {
-    if (
-      current.encryptedProductId === null ||
-      current.targetDisplay === null ||
-      current.originalDisplay === null
-    ) {
+    if (current.targetDisplay === null || current.originalDisplay === null) {
       throw new Error('商品上下架任务缺少状态快照');
     }
+    await this.#assertCreationContext(current, input.actor);
+    const restoring = current.status === 'recovering' || Boolean(current.recoveryRequestId);
     try {
       const product = (
         await this.#readDisplayProducts(
-          {
-            productIds: [current.productId],
-            encryptedProductIds: [current.encryptedProductId],
-            display: current.targetDisplay
-          },
-          input.requestId
+          displayRequestForJob(current, current.targetDisplay),
+          input.requestId,
+          await this.#displayOptions(current, input.actor)
         )
       )[0];
       if (!product) throw new ProductDisplayTargetMismatchError();
-      const expected = current.status === 'recovering' ? current.originalDisplay : current.targetDisplay;
+      const expected = restoring ? current.originalDisplay : current.targetDisplay;
       if (product.status === 'auditing') {
-        const status = current.status === 'recovering' ? 'recovering' : 'auditing';
+        const status = restoring
+          ? current.status === 'recovery-required'
+            ? 'recovery-required'
+            : 'recovering'
+          : 'auditing';
         const updated = await this.#repository.transition({
           id: current.id,
           expectedRevision: current.revision,
@@ -479,14 +517,14 @@ export class ProductMutationLifecycleService {
       const matched = product.status === expected;
       const timedOut = this.#clock() - current.submittedTimeUtc >= DISPLAY_VERIFICATION_TIMEOUT_MILLISECONDS;
       const status: ProductMutationJobStatus = matched
-        ? current.status === 'recovering'
+        ? restoring
           ? 'recovered'
           : 'verified'
         : current.status === 'recovery-required' || timedOut
           ? 'recovery-required'
           : current.status;
       const reasonCode = matched
-        ? current.status === 'recovering'
+        ? restoring
           ? 'PRODUCT_DISPLAY_RECOVERY_MATCHED'
           : 'PRODUCT_DISPLAY_READBACK_MATCHED'
         : status === 'recovery-required'
@@ -508,6 +546,7 @@ export class ProductMutationLifecycleService {
       return updated;
     } catch (error: unknown) {
       const details = errorDetails(error);
+      if (details.code === 'PRODUCT_CONTEXT_CHANGED') throw error;
       const timedOut = this.#clock() - current.submittedTimeUtc >= DISPLAY_VERIFICATION_TIMEOUT_MILLISECONDS;
       const status: ProductMutationJobStatus =
         current.status === 'recovery-required' || timedOut ? 'recovery-required' : current.status;
@@ -636,7 +675,10 @@ export class ProductMutationLifecycleService {
     }
   }
 
-  async #assertCreationContext(current: ProductMutationJob, actor: AuthPrincipal): Promise<void> {
+  async #assertCreationContext(
+    current: Pick<ProductMutationJob, 'productContext'>,
+    actor: AuthPrincipal
+  ): Promise<void> {
     if (!current.productContext) return;
     if (current.productContext.identity !== (await opaqueGalleryId(actor.actorId)))
       throw new GatewayException({
@@ -645,6 +687,15 @@ export class ProductMutationLifecycleService {
         retryable: false
       });
     await this.#gateway.assertProductContext?.(current.productContext);
+  }
+
+  async #displayOptions(
+    job: ProductMutationJob,
+    actor: AuthPrincipal
+  ): Promise<ProductOperationOptions | undefined> {
+    const context =
+      job.productContext ?? (await this.#gateway.displayContext?.(job.protocol ?? 'top', actor.actorId));
+    return context ? { productContext: context } : undefined;
   }
 
   async #findProductById(
@@ -667,33 +718,21 @@ export class ProductMutationLifecycleService {
     return null;
   }
 
-  async #readDisplayProducts(request: ProductDisplayRequest, requestId: string): Promise<Product[]> {
-    const expectedByEncryptedId = new Map(
-      request.encryptedProductIds.map((encryptedId, index) => [encryptedId, request.productIds[index]])
-    );
-    const found = new Map<string, Product>();
-    for (let page = 1; page <= 100; page += 1) {
-      const result = await this.#gateway.list({ page, pageSize: 100, language: 'en_US' }, requestId);
-      for (const product of result.items) {
-        if (product.encryptedId && expectedByEncryptedId.has(product.encryptedId)) {
-          found.set(product.encryptedId, product);
-        }
-      }
-      if (found.size === expectedByEncryptedId.size || page * result.pageSize >= result.total) break;
-    }
-    return request.encryptedProductIds.map((encryptedId) => {
-      const product = found.get(encryptedId);
-      const expectedProductId = expectedByEncryptedId.get(encryptedId);
-      if (
-        !product ||
-        !expectedProductId ||
-        product.id !== expectedProductId ||
-        !['online', 'offline', 'auditing'].includes(product.status)
-      ) {
+  async #readDisplayProducts(
+    request: ProductDisplayRequest,
+    requestId: string,
+    options?: ProductOperationOptions
+  ): Promise<Product[]> {
+    try {
+      return await readProductDisplayTargets(
+        (query) => this.#gateway.list(query, requestId, options),
+        request
+      );
+    } catch (error: unknown) {
+      if (error instanceof GatewayException && error.gatewayError.code === 'PRODUCT_DISPLAY_TARGET_MISMATCH')
         throw new ProductDisplayTargetMismatchError();
-      }
-      return product;
-    });
+      throw error;
+    }
   }
 
   #audit(
@@ -805,12 +844,6 @@ function errorDetails(error: unknown): {
     traceId: null,
     retryable: false
   };
-}
-
-function assertDisplayRequestPairing(request: ProductDisplayRequest): void {
-  if (request.productIds.length === 0 || request.productIds.length !== request.encryptedProductIds.length) {
-    throw new ProductDisplayTargetMismatchError();
-  }
 }
 
 async function createDisplayFingerprint(

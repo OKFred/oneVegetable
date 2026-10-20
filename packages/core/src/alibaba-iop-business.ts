@@ -282,18 +282,20 @@ export function normalizeIopBusinessResponse(
   const root = value.result;
   if (!isRecord(root)) throw failure();
   if (method === PRODUCT_DISPLAY) {
+    const traceId = [root.trace_id, value._trace_id_, value.request_id].find(
+      (candidate): candidate is string => typeof candidate === 'string' && candidate.trim().length > 0
+    );
     if (root.error_code !== undefined && !['', '0', 0].includes(root.error_code as string | number))
       throw providerFailure(
         root.error_code,
         root.error_msg,
-        root.trace_id ?? value.request_id,
+        traceId,
         credentials,
         'ALIBABA_IOP_BUSINESS_REJECTED'
       );
     if (
       !isRecord(root.fail_id_map) ||
-      typeof root.trace_id !== 'string' ||
-      !root.trace_id.trim() ||
+      !traceId ||
       root.error_code === undefined ||
       root.success === false ||
       root.success === 'false'
@@ -303,14 +305,14 @@ export function normalizeIopBusinessResponse(
       throw providerFailure(
         'DISPLAY_ITEM_REJECTED',
         'IOP reported failed product IDs; reconcile each item before retrying.',
-        root.trace_id,
+        traceId,
         credentials,
         'ALIBABA_IOP_BUSINESS_REJECTED'
       );
     return {
       alibaba_icbu_product_batch_update_display_response: {
         sub_success: true,
-        trace_id: root.trace_id,
+        trace_id: traceId,
         request_id: value.request_id
       }
     };

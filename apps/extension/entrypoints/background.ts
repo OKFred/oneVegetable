@@ -95,7 +95,11 @@ import { AuthorizationProtection, DEVICE_PROTECTION_KEY } from '../lib/authoriza
 import { executeExtensionCapabilityCall } from '../lib/capability-call';
 import { resolveExtensionOperationAvailability } from '../lib/operation-policy';
 import { applyExtensionCapabilityProtocol, type AuthorizationStatus } from '../lib/operation-availability';
-import { ExtensionProductDisplayMutationLifecycle } from '../lib/product-display-mutation-lifecycle';
+import {
+  ExtensionProductDisplayMutationLifecycle,
+  type ExtensionProductDisplayGateway,
+  type ExtensionProductCreationGateway
+} from '../lib/product-display-mutation-lifecycle';
 import { isTrustedExtensionPageSender } from '../lib/trusted-runtime-sender';
 import { ExtensionS3Service } from '../lib/s3-service';
 import { s3LocalStore } from '../lib/s3-local-store';
@@ -109,6 +113,7 @@ import {
   initializeAuthorizationIdentities,
   replaceAuthorization,
   resolveAuthorization,
+  runtimeAuthorization,
   saveAuthorizationPatch,
   setDefaultAuthorization,
   summarizeAuthorizations
@@ -385,7 +390,10 @@ async function handleProductMutationJobRequest(
       case 'refresh': {
         const job = await productMutations.get(requiredString(payload, 'id'));
         data = await productMutations.refresh(
-          await loadProductAdapter(job.productContext ?? undefined),
+          await loadProductAdapter(
+            job.productContext ?? undefined,
+            job.operation === 'updateProductDisplay' ? (job.protocol ?? 'top') : undefined
+          ),
           requiredString(payload, 'id'),
           requiredNumber(payload, 'revision')
         );
@@ -418,7 +426,7 @@ async function handleProductMutationJobRequest(
       case 'recover': {
         const job = await productMutations.get(requiredString(payload, 'id'));
         data = await productMutations.recover(
-          await loadProductAdapter(job.productContext ?? undefined),
+          await loadProductAdapter(job.productContext ?? undefined, job.protocol ?? 'top'),
           requiredString(payload, 'id'),
           requiredNumber(payload, 'revision')
         );
@@ -1141,6 +1149,7 @@ async function executeOperation(
   const client = AlibabaClient.create(settings, {
     requestId,
     maxAttempts:
+      operation === 'updateProductDisplay' ||
       productOptions?.productContext !== undefined ||
       operation === 'getProductInventory' ||
       operation === 'associateProductVideo' ||
@@ -1262,7 +1271,10 @@ async function executeOperation(
       );
     }
     case 'updateProductDisplay': {
-      const validation = validateProductDisplayInput(payload);
+      if (request.protocol !== undefined && request.protocol !== (settings.protocol ?? 'top')) {
+        throw gatewayFailure('PRODUCT_CONTEXT_CHANGED', 'PRODUCT_CONTEXT_CHANGED');
+      }
+      const validation = validateProductDisplayInput({ ...request, protocol: settings.protocol ?? 'top' });
       if (!validation.valid || !validation.data) {
         throw new GatewayException({
           code: 'REQUEST_CONTRACT_INVALID',
@@ -1270,7 +1282,13 @@ async function executeOperation(
           retryable: false
         });
       }
-      return productMutations.submit(products, requestId, validation.data);
+      const productContext = await createProductOperationContext('extension:local-admin', settings);
+      return productMutations.submit(
+        boundProductDisplayGateway(products, productContext, settings.protocol ?? 'top'),
+        requestId,
+        validation.data,
+        { ...productOptions, productContext }
+      );
     }
     case 'listProductCategories':
       return products.listCategories(readNumber(request, ['parentId']));
@@ -1548,14 +1566,21 @@ async function loadAuthorizationSettings(): Promise<GatewaySettings> {
 }
 
 async function loadProductAdapter(
-  expectedContext?: ProductOperationOptions['productContext']
-): Promise<ProductAdapter> {
-  const settings = await resolveAuthorization(
-    await loadAuthorizationSettings(),
-    undefined,
-    undefined,
-    expectedContext?.gateway
-  );
+  expectedContext?: ProductOperationOptions['productContext'],
+  expectedProtocol?: 'top' | 'iop'
+): Promise<ExtensionProductDisplayGateway & ExtensionProductCreationGateway> {
+  if (expectedProtocol === 'iop') requireProductOperationContext(expectedContext);
+  const savedSettings = await loadAuthorizationSettings();
+  let pinnedGateway = expectedContext?.gateway;
+  if (pinnedGateway === undefined && expectedProtocol !== undefined) {
+    const profile = authorizationProfiles(savedSettings)[expectedProtocol];
+    if (!profile) throw gatewayFailure('PRODUCT_CONTEXT_CHANGED', 'PRODUCT_CONTEXT_CHANGED');
+    pinnedGateway = await galleryGatewayId(runtimeAuthorization(profile));
+  }
+  const settings = await resolveAuthorization(savedSettings, undefined, undefined, pinnedGateway);
+  if (expectedProtocol !== undefined && (settings.protocol ?? 'top') !== expectedProtocol) {
+    throw gatewayFailure('PRODUCT_CONTEXT_CHANGED', 'PRODUCT_CONTEXT_CHANGED');
+  }
   if (expectedContext)
     assertProductOperationContext(
       expectedContext,
@@ -1563,8 +1588,8 @@ async function loadProductAdapter(
     );
   assertCredentials(settings);
   const client = AlibabaClient.create(settings, {
-    maxAttempts: 3,
-    shouldRetry: (_method, error) => error.retryable
+    maxAttempts: 1,
+    shouldRetry: () => false
   });
   const mutationClient =
     settings.protocol === 'iop'
@@ -1573,7 +1598,48 @@ async function loadProductAdapter(
           { ...settings, endpoint: ALIBABA_SYNC_GATEWAY, signMethod: 'hmac-sha256' },
           { maxAttempts: 1, protocol: 'sync', shouldRetry: () => false }
         );
-  return new ProductAdapter(client, mutationClient);
+  const products = new ProductAdapter(client, mutationClient);
+  const context = expectedContext ?? (await createProductOperationContext('extension:local-admin', settings));
+  return {
+    ...boundProductDisplayGateway(products, context, settings.protocol ?? 'top'),
+    get: (...args) => products.get(...args),
+    mutate: (...args) => products.mutate(...args),
+    saveDraft: (request) => products.saveDraft(request)
+  };
+}
+
+function boundProductDisplayGateway(
+  products: ProductAdapter,
+  productContext: NonNullable<ProductOperationOptions['productContext']>,
+  protocol: 'top' | 'iop'
+): ExtensionProductDisplayGateway {
+  // Re-resolve immediately before every outbound read/write, including after job storage awaits.
+  const assertBinding = async (): Promise<void> => {
+    const settings = await resolveAuthorization(
+      await loadAuthorizationSettings(),
+      undefined,
+      undefined,
+      productContext.gateway
+    );
+    if ((settings.protocol ?? 'top') !== protocol) {
+      throw gatewayFailure('PRODUCT_CONTEXT_CHANGED', 'PRODUCT_CONTEXT_CHANGED');
+    }
+    assertProductOperationContext(
+      productContext,
+      await createProductOperationContext('extension:local-admin', settings)
+    );
+  };
+  return {
+    protocol,
+    list: async (request) => {
+      await assertBinding();
+      return products.list(request);
+    },
+    updateDisplay: async (request) => {
+      await assertBinding();
+      return products.updateDisplay(request);
+    }
+  };
 }
 
 function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null {

@@ -61,7 +61,7 @@ export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>
   },
   'alibaba.icbu.photobank.upload': write('/alibaba/icbu/photobank/upload', true),
   'alibaba.icbu.product.group.add': { ...write('/icbu/product/group/add'), adapted: true },
-  'alibaba.icbu.product.batch.update.display': { ...write('/icbu/product/update/display'), adapted: true },
+  'alibaba.icbu.product.batch.update.display': write('/icbu/product/update/display', true),
   'alibaba.icbu.product.inventory.update': write('/icbu/product/inventory/update', true),
   'alibaba.icbu.video.query': read('/alibaba/icbu/video/query'),
   'alibaba.icbu.video.upload': write('/alibaba/icbu/video/upload'),

@@ -27,7 +27,14 @@ import {
 } from '@one-vegetable/core';
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from './product-display-mutation-storage';
 import { productUpdateFailureStatus } from '@one-vegetable/core/product-update-outcome';
-import type { ProductOperationOptions } from '@one-vegetable/core/product-operation-context';
+import {
+  requireProductOperationContext,
+  type ProductOperationOptions
+} from '@one-vegetable/core/product-operation-context';
+import {
+  displayRequestForJob,
+  readProductDisplayTargets
+} from '@one-vegetable/core/product-display-identity';
 
 const STORAGE_SCHEMA_VERSION = 1;
 const ACTOR_ID = 'extension:local-admin';
@@ -46,6 +53,7 @@ export interface ExtensionProductMutationStorage {
 }
 
 export interface ExtensionProductDisplayGateway {
+  readonly protocol?: 'top' | 'iop';
   list(request: ProductListQuery): Promise<ProductPage>;
   updateDisplay(request: ProductDisplayRequest): Promise<ProductDisplayMutationResult>;
 }
@@ -99,14 +107,23 @@ export class ExtensionProductDisplayMutationLifecycle {
   submit(
     gateway: ExtensionProductDisplayGateway,
     requestId: string,
-    request: ProductDisplayRequest
+    request: ProductDisplayRequest,
+    options?: ProductOperationOptions
   ): Promise<ExtensionProductDisplaySubmissionResult> {
     return this.#exclusive(async () => {
-      assertRequestPairing(request);
+      const protocol = gateway.protocol ?? request.protocol ?? 'top';
+      if (request.protocol !== undefined && request.protocol !== protocol) {
+        throw gatewayError('PRODUCT_CONTEXT_CHANGED', 'Product display protocol changed');
+      }
+      if (protocol === 'iop') requireProductOperationContext(options?.productContext);
+      request = { ...request, protocol };
       const products = await readProducts(gateway, request);
       const currentJobs = await this.#readJobs();
       const stableProducts = products.map((product) => {
         const originalDisplay = product.status;
+        if (originalDisplay !== 'online' && originalDisplay !== 'offline' && originalDisplay !== 'auditing') {
+          throw targetMismatch();
+        }
         const blocking = currentJobs.find(
           (job) => job.productId === product.id && productMutationJobIsBlocking(job.status)
         );
@@ -129,9 +146,10 @@ export class ExtensionProductDisplayMutationLifecycle {
       const now = this.clock();
       const jobs = await Promise.all(
         stableProducts.map(async ({ product, originalDisplay }, index) => {
-          const encryptedProductId = request.encryptedProductIds[index];
-          if (!encryptedProductId) throw targetMismatch();
+          const encryptedProductId = request.encryptedProductIds[index] ?? null;
           return createDisplayJob({
+            ...options,
+            protocol,
             requestId,
             productId: product.id,
             encryptedProductId,
@@ -423,26 +441,22 @@ export class ExtensionProductDisplayMutationLifecycle {
       }
       assertDisplayJob(current);
       const displayGateway = requireDisplayGateway(gateway);
+      assertDisplayProtocol(displayGateway, current);
       try {
         const product = (
-          await readProducts(displayGateway, {
-            productIds: [current.productId],
-            encryptedProductIds: [current.encryptedProductId],
-            display: current.targetDisplay
-          })
+          await readProducts(displayGateway, displayRequestForJob(current, current.targetDisplay))
         )[0];
         if (!product) throw targetMismatch();
-        const recovering = current.status === 'recovering';
+        const recovering = current.status === 'recovering' || Boolean(current.recoveryRequestId);
         const expected = recovering ? current.originalDisplay : current.targetDisplay;
         if (product.status === 'auditing') {
           return await this.#transitionOne(
             current,
-            current.status === 'recovering' ? 'recovering' : 'auditing',
+            recovering ? 'recovering' : 'auditing',
             {
-              reasonCode:
-                current.status === 'recovering'
-                  ? 'PRODUCT_DISPLAY_RECOVERY_PLATFORM_AUDITING'
-                  : 'PRODUCT_DISPLAY_PLATFORM_AUDITING',
+              reasonCode: recovering
+                ? 'PRODUCT_DISPLAY_RECOVERY_PLATFORM_AUDITING'
+                : 'PRODUCT_DISPLAY_PLATFORM_AUDITING',
               message: '平台已进入商品审核，等待最终上下架状态；审核完成前不会重复提交'
             },
             true
@@ -591,30 +605,51 @@ export class ExtensionProductDisplayMutationLifecycle {
     return this.#exclusive(async () => {
       const current = await this.#requireRevision(id, expectedRevision);
       assertDisplayJob(current);
-      if (!['submitted', 'verifying', 'recovery-required'].includes(current.status)) {
+      assertDisplayProtocol(gateway, current);
+      if (
+        current.recoveryRequestId ||
+        !['submitted', 'verifying', 'recovery-required'].includes(current.status)
+      ) {
         throw gatewayError('PRODUCT_MUTATION_RECOVERY_UNAVAILABLE', '当前任务不允许执行自动状态恢复');
       }
-      try {
-        const result = await gateway.updateDisplay({
-          productIds: [current.productId],
-          encryptedProductIds: [current.encryptedProductId],
-          display: current.originalDisplay
-        });
+      const request = displayRequestForJob(current, current.originalDisplay);
+      const product = (await readProducts(gateway, request))[0];
+      if (!product) throw targetMismatch();
+      if (product.status === current.originalDisplay) {
         return await this.#transitionOne(
           current,
-          'recovering',
+          'recovered',
           {
-            traceId: result.traceId,
-            reasonCode: 'ALIBABA_DISPLAY_RECOVERY_ACCEPTED',
-            message: 'Alibaba 已接受状态恢复请求，等待商品列表回读确认'
+            reasonCode: 'PRODUCT_DISPLAY_ORIGINAL_STATE_CONFIRMED',
+            message: 'Original display state confirmed; no recovery write was sent'
           },
-          false
+          true
         );
+      }
+      if (product.status !== current.targetDisplay) {
+        throw gatewayError(
+          'PRODUCT_DISPLAY_RECOVERY_STATE_UNEXPECTED',
+          'Recovery requires the exact target state'
+        );
+      }
+      const recovering = await this.#transitionOne(
+        current,
+        'recovering',
+        {
+          recoveryRequestId: crypto.randomUUID(),
+          reasonCode: 'PRODUCT_DISPLAY_RECOVERY_SUBMITTING',
+          message: 'Recovery intent saved; automatic resubmission is disabled'
+        },
+        false
+      );
+      let result: ProductDisplayMutationResult;
+      try {
+        result = await gateway.updateDisplay(request);
       } catch (error: unknown) {
         const details = errorDetails(error);
         await this.#transitionOne(
-          current,
-          'recovery-required',
+          recovering,
+          productUpdateFailureStatus(error),
           {
             traceId: details.traceId,
             reasonCode: details.code,
@@ -624,6 +659,16 @@ export class ExtensionProductDisplayMutationLifecycle {
         );
         throw error;
       }
+      return await this.#transitionOne(
+        recovering,
+        'recovering',
+        {
+          traceId: result.traceId,
+          reasonCode: 'ALIBABA_DISPLAY_RECOVERY_ACCEPTED',
+          message: 'Alibaba 已接受状态恢复请求，等待商品列表回读确认'
+        },
+        false
+      );
     });
   }
 
@@ -646,6 +691,7 @@ export class ExtensionProductDisplayMutationLifecycle {
     status: ProductMutationJobStatus,
     details: {
       productId?: string;
+      recoveryRequestId?: string;
       traceId?: string | null;
       reasonCode: string;
       message: string;
@@ -664,6 +710,7 @@ export class ExtensionProductDisplayMutationLifecycle {
     status: ProductMutationJobStatus,
     details: {
       productId?: string;
+      recoveryRequestId?: string;
       traceId?: string | null;
       reasonCode: string;
       message: string;
@@ -739,16 +786,21 @@ export class ExtensionProductDisplayMutationLifecycle {
   }
 }
 
-function createDisplayJob(input: {
-  requestId: string;
-  productId: string;
-  encryptedProductId: string;
-  originalDisplay: 'online' | 'offline';
-  targetDisplay: 'online' | 'offline';
-  payloadFingerprint: string;
-  now: number;
-}): ProductMutationJob {
+function createDisplayJob(
+  input: ProductOperationOptions & {
+    protocol: 'top' | 'iop';
+    requestId: string;
+    productId: string;
+    encryptedProductId: string | null;
+    originalDisplay: 'online' | 'offline';
+    targetDisplay: 'online' | 'offline';
+    payloadFingerprint: string;
+    now: number;
+  }
+): ProductMutationJob {
   return {
+    protocol: input.protocol,
+    ...(input.productContext ? { productContext: input.productContext } : {}),
     id: crypto.randomUUID(),
     requestId: input.requestId,
     productId: input.productId,
@@ -861,6 +913,7 @@ function transitionJob(
   status: ProductMutationJobStatus,
   details: {
     productId?: string;
+    recoveryRequestId?: string;
     traceId?: string | null;
     reasonCode: string;
     message: string;
@@ -872,6 +925,7 @@ function transitionJob(
   return {
     ...current,
     productId: details.productId ?? current.productId,
+    ...(details.recoveryRequestId ? { recoveryRequestId: details.recoveryRequestId } : {}),
     status,
     traceId: details.traceId === undefined ? current.traceId : details.traceId,
     reasonCode: details.reasonCode,
@@ -892,49 +946,18 @@ function isProductAuditingError(error: { code: string; subCode?: string }): bool
 async function readProducts(
   gateway: ExtensionProductDisplayGateway,
   request: ProductDisplayRequest
-): Promise<(Product & { status: 'online' | 'offline' | 'auditing' })[]> {
-  const expectedByEncryptedId = new Map(
-    request.encryptedProductIds.map((encryptedId, index) => [encryptedId, request.productIds[index]])
-  );
-  const found = new Map<string, Product>();
-  for (let page = 1; page <= 100; page += 1) {
-    const result = await gateway.list({ page, pageSize: 100, language: 'en_US' });
-    for (const product of result.items) {
-      if (product.encryptedId && expectedByEncryptedId.has(product.encryptedId)) {
-        found.set(product.encryptedId, product);
-      }
-    }
-    if (found.size === expectedByEncryptedId.size || page * result.pageSize >= result.total) break;
-  }
-  return request.encryptedProductIds.map((encryptedId) => {
-    const product = found.get(encryptedId);
-    const expectedProductId = expectedByEncryptedId.get(encryptedId);
-    if (
-      !product ||
-      !expectedProductId ||
-      product.id !== expectedProductId ||
-      (product.status !== 'online' && product.status !== 'offline' && product.status !== 'auditing')
-    ) {
-      throw targetMismatch();
-    }
-    return product as Product & { status: 'online' | 'offline' | 'auditing' };
-  });
-}
-
-function assertRequestPairing(request: ProductDisplayRequest): void {
-  if (request.productIds.length === 0 || request.productIds.length !== request.encryptedProductIds.length) {
-    throw targetMismatch();
-  }
+): Promise<Product[]> {
+  return readProductDisplayTargets((query) => gateway.list(query), request);
 }
 
 function assertDisplayJob(job: ProductMutationJob): asserts job is ProductMutationJob & {
-  encryptedProductId: string;
   targetDisplay: 'online' | 'offline';
   originalDisplay: 'online' | 'offline';
 } {
   if (
     job.operation !== 'updateProductDisplay' ||
-    job.encryptedProductId === null ||
+    ((job.protocol ?? 'top') === 'top' && !job.encryptedProductId) ||
+    (job.protocol === 'iop' && !job.productContext) ||
     job.targetDisplay === null ||
     job.originalDisplay === null
   ) {
@@ -942,12 +965,18 @@ function assertDisplayJob(job: ProductMutationJob): asserts job is ProductMutati
   }
 }
 
+function assertDisplayProtocol(gateway: ExtensionProductDisplayGateway, job: ProductMutationJob): void {
+  if (gateway.protocol !== undefined && gateway.protocol !== (job.protocol ?? 'top')) {
+    throw gatewayError('PRODUCT_CONTEXT_CHANGED', 'Saved product display protocol changed');
+  }
+}
+
 async function displayFingerprint(
   productId: string,
-  encryptedProductId: string,
+  encryptedProductId: string | null,
   display: 'online' | 'offline'
 ): Promise<string> {
-  const bytes = new TextEncoder().encode(`${productId}\n${encryptedProductId}\n${display}`);
+  const bytes = new TextEncoder().encode(`${productId}\n${encryptedProductId ?? ''}\n${display}`);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
 }

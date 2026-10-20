@@ -18,6 +18,16 @@ export function selectAlibabaOperationProtocol(
   payload: unknown,
   available: AlibabaProtocolAvailability
 ): AlibabaProtocol {
+  const input = record(payload);
+  if (operation === 'updateProductDisplay' && (input.protocol === 'top' || input.protocol === 'iop')) {
+    if (!available[input.protocol])
+      throw new GatewayException({
+        code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        message: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        retryable: false
+      });
+    return input.protocol;
+  }
   if (!available.top || !available.iop)
     return available[available.defaultProtocol]
       ? available.defaultProtocol
@@ -26,7 +36,6 @@ export function selectAlibabaOperationProtocol(
         : available.iop
           ? 'iop'
           : available.defaultProtocol;
-  const input = record(payload);
   // Preserve existing composite routing until all dependencies and parameter variants are accepted.
   if (
     operation === 'getProduct' ||

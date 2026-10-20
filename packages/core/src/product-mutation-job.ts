@@ -22,6 +22,10 @@ export interface ProductMutationFieldExpectation {
 }
 
 export interface ProductMutationJob extends EntityAuditFields {
+  /** Legacy receipts without a protocol always belong to TOP. */
+  protocol?: 'top' | 'iop';
+  /** Persisted before dispatch. Once set, recovery must never be submitted again. */
+  recoveryRequestId?: string | null;
   /** Absent on legacy receipts. Never infer ownership from a later login. */
   batchId?: string | null;
   productContext?: ProductOperationContext | null;

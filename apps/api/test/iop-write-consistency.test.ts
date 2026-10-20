@@ -59,8 +59,9 @@ function payload(operation: (typeof writes)[number]) {
     };
   if (operation === 'updateProductDisplay')
     return {
+      protocol: 'iop' as const,
       productIds: [product.id],
-      encryptedProductIds: [product.encryptedId],
+      encryptedProductIds: [],
       display: 'offline' as const
     };
   return fixture.draftPayload;
@@ -70,7 +71,8 @@ async function appHarness(
   gateway: GatewayClient & { galleryGatewayContextId?: () => Promise<string> },
   runtime: ApiRuntime = 'node',
   protocol: 'top' | 'iop' = 'iop',
-  role: 'admin' | 'user' = 'admin'
+  role: 'admin' | 'user' = 'admin',
+  enableWrites = true
 ) {
   const database = openNodeDatabase(':memory:');
   databases.push(database);
@@ -115,7 +117,7 @@ async function appHarness(
     authService,
     productMutationJobs: jobs,
     featureFlags: new StaticOperationFeatureFlags(
-      new Set(writes.map((operation) => `operation:${operation}`))
+      new Set(enableWrites ? writes.map((operation) => `operation:${operation}`) : [])
     ),
     allowedOrigins: ['http://localhost']
   });
@@ -327,7 +329,8 @@ describe('accepted IOP write BFF consistency (display simulation only)', () => {
     acceptFutureDisplay(operation);
     const gatewayId = await opaqueGalleryId('fixture-current-generation');
     const request = vi.fn((operation: OperationId, _payload: unknown, _context?: GatewayRequestContext) => {
-      if (operation === 'listProducts') return Promise.resolve(productFixture.responses.listProducts);
+      if (operation === 'listProducts')
+        return Promise.resolve({ ...productFixture.responses.listProducts, items: [product], total: 1 });
       if (operation === 'getProductDraft')
         return Promise.resolve({
           ...product,
@@ -338,7 +341,7 @@ describe('accepted IOP write BFF consistency (display simulation only)', () => {
         });
       if (operation === 'updateProductDisplay')
         return Promise.resolve({
-          productIds: [product.id],
+          encryptedProductIds: [],
           display: 'offline',
           success: true,
           traceId: 'fixture-trace'
@@ -407,7 +410,7 @@ describe('accepted IOP write BFF consistency (display simulation only)', () => {
       const gatewayId = await opaqueGalleryId('fixture-current-generation');
       const request = vi.fn((called: OperationId) =>
         called === 'listProducts'
-          ? Promise.resolve(productFixture.responses.listProducts)
+          ? Promise.resolve({ ...productFixture.responses.listProducts, items: [product], total: 1 })
           : Promise.reject(
               new GatewayException({
                 code: 'ALIBABA_IOP_RESPONSE_INVALID',
@@ -446,7 +449,7 @@ describe('accepted IOP write BFF consistency (display simulation only)', () => {
     acceptFutureDisplay(operation);
     const request = vi.fn((called: OperationId) =>
       called === 'listProducts'
-        ? Promise.resolve(productFixture.responses.listProducts)
+        ? Promise.resolve({ ...productFixture.responses.listProducts, items: [product], total: 1 })
         : Promise.reject(
             new GatewayException({
               code: 'ALIBABA_IOP_BUSINESS_REJECTED',
@@ -469,13 +472,40 @@ describe('accepted IOP write BFF consistency (display simulation only)', () => {
 });
 
 describe('account-accepted IOP draft routing (no verification mock)', () => {
+  it('never reads a contextless legacy TOP receipt through an IOP-only static gateway', async () => {
+    const send = vi.fn<NetworkTransport['send']>();
+    const gateway = new AlibabaReadGatewayClient(
+      {
+        ...credentialFixture.manual,
+        protocol: 'iop',
+        endpoint: IOP_BUSINESS_ENDPOINT,
+        signMethod: 'hmac-sha256'
+      },
+      { transport: { send }, maxAttempts: 1 }
+    );
+    const h = await appHarness(gateway);
+    const job = await h.jobs.createDisplay({
+      requestId: createRequestId(),
+      productId: product.id,
+      encryptedProductId: product.encryptedId,
+      targetDisplay: 'offline',
+      originalDisplay: 'online',
+      payloadFingerprint: 'c'.repeat(64),
+      actorId: 'legacy-admin'
+    });
+    const response = await h.refresh(job);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
+    expect(send).not.toHaveBeenCalled();
+    expect((await h.jobs.get(job.id))?.revision).toBe(job.revision);
+  });
   it.each(['node', 'cloudflare'] as const)(
     'still denies non-admin schema writes in %s even when all flags are enabled',
     async (runtime) => {
       const request = vi.fn<GatewayClient['request']>();
       const galleryGatewayContextId = vi.fn<() => Promise<string>>();
       const h = await appHarness({ request, galleryGatewayContextId }, runtime, 'iop', 'user');
-      for (const operation of ['publishProduct', 'saveProductDraft', 'updateProduct'] as const) {
+      for (const operation of writes) {
         const response = await h.call(operation, payload(operation));
         expect(response.status).toBe(403);
         expect(await response.json()).toMatchObject({
@@ -487,14 +517,14 @@ describe('account-accepted IOP draft routing (no verification mock)', () => {
       expect(galleryGatewayContextId).not.toHaveBeenCalled();
     }
   );
-  it('keeps unadapted display unsupported despite an admin and an enabled flag', async () => {
+  it('keeps accepted IOP display disabled without its runtime mutation flag', async () => {
     const request = vi.fn<GatewayClient['request']>();
     const galleryGatewayContextId = vi.fn<() => Promise<string>>();
-    const h = await appHarness({ request, galleryGatewayContextId });
+    const h = await appHarness({ request, galleryGatewayContextId }, 'node', 'iop', 'admin', false);
     const response = await h.call('updateProductDisplay', payload('updateProductDisplay'));
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
-      error: { code: 'ALIBABA_IOP_MUTATION_UNVERIFIED', retryable: false }
+      error: { code: 'MUTATION_FLAG_DISABLED', retryable: false }
     });
     for (const register of h.registrations) expect(register).not.toHaveBeenCalled();
     expect(request).not.toHaveBeenCalled();

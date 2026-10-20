@@ -48,10 +48,10 @@ describe('shared IOP coverage registry', () => {
       accountVerified: true
     });
     expect(getIopOperationSupport('updateProductDisplay')).toMatchObject({
-      state: 'unverified-write',
-      verification: 'documented'
+      state: 'supported',
+      verification: 'account-verified'
     });
-    expect(iopRegisteredOperationReason('updateProductDisplay')).toBe('ALIBABA_IOP_MUTATION_UNVERIFIED');
+    expect(iopRegisteredOperationReason('updateProductDisplay')).toBeNull();
     expect(getIopOperationSupport('operatePhotoGroup')).toMatchObject({
       state: 'partial',
       constraints: ['photo-group-delete-unverified']

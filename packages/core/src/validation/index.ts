@@ -119,7 +119,10 @@ export const validateProductDisplayInput = (
     locale
   );
   if (!result.valid || !result.data) return result;
-  if (result.data.productIds.length !== result.data.encryptedProductIds.length) {
+  if (
+    result.data.productIds.length !== result.data.encryptedProductIds.length &&
+    !(result.data.protocol === 'iop' && result.data.encryptedProductIds.length === 0)
+  ) {
     return { valid: false, errors: ['/productIds 必须与 /encryptedProductIds 一一对应'] };
   }
   return result;

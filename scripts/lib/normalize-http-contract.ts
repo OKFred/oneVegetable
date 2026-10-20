@@ -405,6 +405,8 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       'remark'
     ],
     properties: {
+      protocol: { type: 'string', enum: ['top', 'iop'] },
+      recoveryRequestId: { type: ['string', 'null'], format: 'uuid' },
       batchId: { type: ['string', 'null'], format: 'uuid' },
       productContext: { oneOf: [{ $ref: '#/components/schemas/ProductOperationContext' }, { type: 'null' }] },
       id: { type: 'string', format: 'uuid' },

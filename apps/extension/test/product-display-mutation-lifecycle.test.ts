@@ -59,7 +59,7 @@ describe('extension product display mutation lifecycle', () => {
     });
   });
 
-  it('moves a timed-out task to recovery-required and restores the original state', async () => {
+  it('moves a timed-out task to recovery-required and confirms an already-original state without a write', async () => {
     let now = 5_000;
     const storage = new MemoryStorage();
     const gateway = new FakeGateway('online');
@@ -73,13 +73,13 @@ describe('extension product display mutation lifecycle', () => {
     expect(recoveryRequired.status).toBe('recovery-required');
 
     const recovering = await lifecycle.recover(gateway, recoveryRequired.id, recoveryRequired.revision);
-    expect(gateway.updates).toEqual(['offline', 'online']);
-    expect(recovering.status).toBe('recovering');
+    expect(gateway.updates).toEqual(['offline']);
+    expect(recovering.status).toBe('recovered');
 
     const recovered = await lifecycle.refresh(gateway, recovering.id, recovering.revision);
     expect(recovered).toMatchObject({
       status: 'recovered',
-      reasonCode: 'PRODUCT_DISPLAY_RECOVERY_MATCHED'
+      reasonCode: 'PRODUCT_DISPLAY_ORIGINAL_STATE_CONFIRMED'
     });
   });
 

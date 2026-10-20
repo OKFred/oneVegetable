@@ -162,7 +162,7 @@
       "path": "/icbu/product/update/display",
       "risk": "mutation",
       "adapted": true,
-      "accountVerified": false,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "alibaba.icbu.product.inventory.update": {
@@ -332,11 +332,11 @@
     },
     {
       "operation": "updateProductDisplay",
-      "state": "unverified-write",
+      "state": "supported",
       "methods": ["alibaba.icbu.product.batch.update.display"],
       "constraints": [],
-      "verification": "documented",
-      "fallbackProtocol": "top"
+      "verification": "account-verified",
+      "fallbackProtocol": null
     },
     {
       "operation": "listPhotoGroups",

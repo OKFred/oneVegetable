@@ -7,6 +7,9 @@ export function productUpdateFailureStatus(error: unknown): 'failed' | 'recovery
   if (error instanceof ProductMutationRejectedError) return 'failed';
   if (!(error instanceof GatewayException)) return 'recovery-required';
   const { code, subCode } = error.gatewayError;
+  // A batch can contain successful products even when some IDs were rejected.
+  if (code === 'ALIBABA_IOP_BUSINESS_REJECTED' && subCode === 'DISPLAY_ITEM_REJECTED')
+    return 'recovery-required';
   const rejected = new Set([
     'REQUEST_CONTRACT_INVALID',
     'INVALID_OPERATION_PAYLOAD',

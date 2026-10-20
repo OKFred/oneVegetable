@@ -647,6 +647,9 @@ function dedicatedMutationAllowed(operation: OperationId): boolean {
   return productOperations.isAllowed(operation);
 }
 const productDisplayMutationDisabled = computed(() => !dedicatedMutationAllowed('updateProductDisplay'));
+const productDisplayProtocol = computed(
+  () => productOperations.decision('updateProductDisplay').protocolSupport?.protocol ?? 'top'
+);
 const platformDraftDisabled = computed(() => {
   return !productOperations.isAllowed('saveProductDraft');
 });
@@ -1139,7 +1142,9 @@ const selectedEncryptedProductIds = computed(() =>
   selectedProducts.value.flatMap((product) => (product.encryptedId ? [product.encryptedId] : []))
 );
 const selectedProductMissingEncryptedId = computed(
-  () => selectedProducts.value.length !== selectedEncryptedProductIds.value.length
+  () =>
+    productDisplayProtocol.value !== 'iop' &&
+    selectedProducts.value.length !== selectedEncryptedProductIds.value.length
 );
 const selectedDisplayMutationBlocked = computed(() =>
   (displayMutationHistory.data.value ?? []).some(
@@ -1173,8 +1178,9 @@ const recoverDisplayMutation = useMutation({
 const batchDisplay = useMutation({
   mutationFn: (display: 'online' | 'offline') => {
     const validation = validateProductDisplayInput({
+      protocol: productDisplayProtocol.value,
       productIds: selectedProducts.value.map((product) => product.id),
-      encryptedProductIds: selectedEncryptedProductIds.value,
+      encryptedProductIds: productDisplayProtocol.value === 'iop' ? [] : selectedEncryptedProductIds.value,
       display
     });
     if (!validation.valid || !validation.data) throw new Error(validation.errors.join('；'));

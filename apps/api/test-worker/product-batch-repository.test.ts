@@ -33,4 +33,38 @@ it('migrates nullable ownership and atomically blocks duplicate product updates 
   const legacy = await repository.create({ ...oldInput, productId: '302' });
   expect(legacy.productContext).toBeNull();
   expect(legacy.batchId).toBeNull();
+  const display = await repository.createDisplay({
+    requestId: crypto.randomUUID(),
+    productId: '303',
+    protocol: 'iop',
+    productContext: input.productContext,
+    encryptedProductId: null,
+    targetDisplay: 'offline',
+    originalDisplay: 'online',
+    payloadFingerprint: 'e'.repeat(64),
+    actorId: input.actorId
+  });
+  expect(display).toMatchObject({
+    protocol: 'iop',
+    encryptedProductId: null,
+    productContext: input.productContext
+  });
+  const recoveryRequestId = crypto.randomUUID();
+  const recovering = await repository.transition({
+    id: display.id,
+    expectedRevision: display.revision,
+    status: 'recovering',
+    actorId: input.actorId,
+    recoveryRequestId
+  });
+  expect(recovering.recoveryRequestId).toBe(recoveryRequestId);
+  await expect(
+    repository.transition({
+      id: display.id,
+      expectedRevision: recovering.revision,
+      status: 'recovering',
+      actorId: input.actorId,
+      recoveryRequestId: crypto.randomUUID()
+    })
+  ).rejects.toThrow();
 });

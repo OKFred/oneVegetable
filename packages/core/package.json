@@ -24,6 +24,7 @@
     "./showcase": "./src/product-showcase.ts",
     "./inventory": "./src/product-inventory.ts",
     "./product-operation-context": "./src/product-operation-context.ts",
+    "./product-display-identity": "./src/product-display-identity.ts",
     "./product-update-outcome": "./src/product-update-outcome.ts",
     "./product-batch-maintenance": "./src/product-batch-maintenance.ts",
     "./product-batch-runner": "./src/product-batch-runner.ts",
