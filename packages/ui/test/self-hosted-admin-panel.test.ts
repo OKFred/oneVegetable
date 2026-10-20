@@ -74,6 +74,13 @@ describe('SelfHostedAdminPanel', () => {
       expect(wrapper.text()).toContain('Alibaba 凭据配置');
     });
     expect(wrapper.text()).toContain('一键连接');
+    const importActions = wrapper.get('[data-testid="credential-import-actions"]');
+    expect(importActions.findAll('button')).toHaveLength(3);
+    for (const button of importActions.findAll('button')) {
+      expect(button.classes()).toContain('h-9');
+      expect(button.classes()).not.toContain('h-8');
+      expect(button.get('svg').classes()).toContain('size-4');
+    }
     expect(wrapper.text()).toContain('已配置');
     expect(wrapper.text()).toContain('Windows Hello');
     expect(wrapper.get('[data-testid="self-hosted-settings-sections"]').classes()).not.toContain('grid');

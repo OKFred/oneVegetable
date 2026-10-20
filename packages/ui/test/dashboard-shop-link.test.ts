@@ -82,6 +82,10 @@ describe('dashboard shop link', () => {
       target: '_blank',
       rel: 'noopener noreferrer'
     });
+    for (const action of item.wrapper.get('[data-testid="dashboard-shop-link"]').findAll('a, button')) {
+      expect(action.classes()).toEqual(expect.arrayContaining(['h-9', 'px-4', 'text-sm']));
+      expect(action.classes()).not.toContain('h-8');
+    }
     expect(loadDashboardShopUrl(localStorage, dashboardShopScope('mock', item.context))).toBe(
       'https://shop.en.alibaba.com/'
     );

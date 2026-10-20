@@ -31,6 +31,7 @@ import PageHeader from '../components/PageHeader.vue';
 import QueryState from '../components/QueryState.vue';
 import Badge from '../components/ui/Badge.vue';
 import Button from '../components/ui/Button.vue';
+import { buttonVariants } from '../components/ui/button-styles';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
@@ -450,21 +451,17 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
         <p v-if="rfqAccessError?.traceId" class="mt-2 break-all font-mono text-xs text-muted-foreground">
           traceId：{{ rfqAccessError.traceId }}
         </p>
-        <div class="mt-4 flex flex-wrap gap-2">
-          <a
-            href="https://sourcing.alibaba.com/"
-            class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {{ t('rfqs.permissions.marketplace') }}<ExternalLink class="size-3.5" />
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <a href="https://sourcing.alibaba.com/" :class="buttonVariants()" target="_blank" rel="noreferrer">
+            {{ t('rfqs.permissions.marketplace') }}<ExternalLink class="size-4" />
           </a>
           <ListActionButton :icon="RefreshCw" :disabled="equity.isFetching.value" @click="equity.refetch()">
             {{ equity.isFetching.value ? t('rfqs.permissions.checking') : t('rfqs.permissions.retry') }}
           </ListActionButton>
           <a
             href="https://developer.alibaba.com/docs/api.htm?apiId=32084"
-            class="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium text-primary hover:underline"
+            :class="buttonVariants({ variant: 'ghost' })"
+            class="text-primary hover:underline"
             target="_blank"
             rel="noreferrer"
           >

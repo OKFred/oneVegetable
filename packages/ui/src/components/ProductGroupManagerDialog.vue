@@ -291,13 +291,13 @@ function confirmCreate(): void {
                 :disabled="createGroup.isPending.value"
                 @keydown.esc.prevent="cancelCreate"
               />
-              <Button type="submit" size="sm" :disabled="!newGroupName.trim() || createGroup.isPending.value">
+              <Button type="submit" :disabled="!newGroupName.trim() || createGroup.isPending.value">
                 <LoaderCircle v-if="createGroup.isPending.value" class="size-4 animate-spin" />
                 {{
                   createGroup.isPending.value ? t('products.groupManager.saving') : t('common.actions.save')
                 }}
               </Button>
-              <Button variant="ghost" size="sm" :disabled="createGroup.isPending.value" @click="cancelCreate">
+              <Button variant="ghost" :disabled="createGroup.isPending.value" @click="cancelCreate">
                 {{ t('common.actions.cancel') }}
               </Button>
             </div>
@@ -398,22 +398,13 @@ function confirmCreate(): void {
                   :disabled="createGroup.isPending.value"
                   @keydown.esc.prevent="cancelCreate"
                 />
-                <Button
-                  type="submit"
-                  size="sm"
-                  :disabled="!newGroupName.trim() || createGroup.isPending.value"
-                >
+                <Button type="submit" :disabled="!newGroupName.trim() || createGroup.isPending.value">
                   <LoaderCircle v-if="createGroup.isPending.value" class="size-4 animate-spin" />
                   {{
                     createGroup.isPending.value ? t('products.groupManager.saving') : t('common.actions.save')
                   }}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  :disabled="createGroup.isPending.value"
-                  @click="cancelCreate"
-                >
+                <Button variant="ghost" :disabled="createGroup.isPending.value" @click="cancelCreate">
                   {{ t('common.actions.cancel') }}
                 </Button>
               </div>

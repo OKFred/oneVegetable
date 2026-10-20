@@ -315,7 +315,7 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
       <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Input
           v-model="search"
-          class="max-w-sm"
+          :class="standalone ? 'max-w-sm' : 'max-w-sm h-8 text-xs'"
           :placeholder="t('products.templates.search')"
           :aria-label="t('products.templates.search')"
         />
@@ -324,11 +324,11 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
             t('products.templates.showArchived')
           }}
         </label>
-        <div class="flex flex-wrap justify-end gap-2">
+        <div class="flex flex-wrap items-center justify-end gap-2">
           <Button
             v-if="!standalone"
             variant="outline"
-            size="sm"
+            :size="standalone ? 'default' : 'sm'"
             :disabled="loading || !canCompose"
             :title="
               exportTemplates.length > DESCRIPTION_COMPOSITION_MAX_TEMPLATES
@@ -338,22 +338,37 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
             @click="composeSelected"
             ><Layers class="size-4" />{{ tc('combine') }}</Button
           >
-          <Button v-if="canManage" variant="outline" size="sm" @click="transferMode = 'import'"
+          <Button
+            v-if="canManage"
+            variant="outline"
+            :size="standalone ? 'default' : 'sm'"
+            @click="transferMode = 'import'"
             ><Upload class="size-4" />{{ t('products.transfer.import') }}</Button
           >
           <Button
             variant="outline"
-            size="sm"
+            :size="standalone ? 'default' : 'sm'"
             :disabled="exportTemplates.length === 0 || exportTemplates.length > 100"
             @click="transferMode = 'export'"
             ><Download class="size-4" />{{ t('products.transfer.export') }}</Button
           >
-          <Button variant="outline" size="sm" :disabled="loading" @click="loadTemplates">
+          <Button
+            variant="outline"
+            :size="standalone ? 'default' : 'sm'"
+            :disabled="loading"
+            @click="loadTemplates"
+          >
             <RefreshCw class="size-4" :class="loading ? 'animate-spin' : ''" />{{
               t('common.actions.refresh')
             }}
           </Button>
-          <Button v-if="canManage" variant="outline" size="sm" :disabled="loading" @click="startCreate">
+          <Button
+            v-if="canManage"
+            variant="outline"
+            :size="standalone ? 'default' : 'sm'"
+            :disabled="loading"
+            @click="startCreate"
+          >
             <FilePlus2 class="size-4" />{{ t('products.templates.create') }}
           </Button>
         </div>

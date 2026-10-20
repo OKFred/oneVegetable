@@ -455,13 +455,13 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                 :disabled="operateGroup.isPending.value"
                 @keydown.esc.prevent="cancelEdit"
               />
-              <Button type="submit" size="sm" :disabled="!groupName.trim() || operateGroup.isPending.value">
+              <Button type="submit" :disabled="!groupName.trim() || operateGroup.isPending.value">
                 <LoaderCircle v-if="operateGroup.isPending.value" class="size-4 animate-spin" />
                 {{
                   operateGroup.isPending.value ? t('photos.groupManager.saving') : t('common.actions.save')
                 }}
               </Button>
-              <Button variant="ghost" size="sm" :disabled="operateGroup.isPending.value" @click="cancelEdit">
+              <Button variant="ghost" :disabled="operateGroup.isPending.value" @click="cancelEdit">
                 {{ t('common.actions.cancel') }}
               </Button>
             </div>
@@ -575,18 +575,13 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
                   :disabled="operateGroup.isPending.value"
                   @keydown.esc.prevent="cancelEdit"
                 />
-                <Button type="submit" size="sm" :disabled="!groupName.trim() || operateGroup.isPending.value">
+                <Button type="submit" :disabled="!groupName.trim() || operateGroup.isPending.value">
                   <LoaderCircle v-if="operateGroup.isPending.value" class="size-4 animate-spin" />
                   {{
                     operateGroup.isPending.value ? t('photos.groupManager.saving') : t('common.actions.save')
                   }}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  :disabled="operateGroup.isPending.value"
-                  @click="cancelEdit"
-                >
+                <Button variant="ghost" :disabled="operateGroup.isPending.value" @click="cancelEdit">
                   {{ t('common.actions.cancel') }}
                 </Button>
               </div>

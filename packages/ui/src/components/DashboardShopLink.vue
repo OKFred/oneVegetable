@@ -13,6 +13,7 @@ import {
   saveDashboardShopUrl
 } from '../lib/dashboard-shop-url';
 import Button from './ui/Button.vue';
+import { buttonVariants } from './ui/button-styles';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 
@@ -145,12 +146,12 @@ onBeforeUnmount(() => {
       :href="url"
       target="_blank"
       rel="noopener noreferrer"
-      class="inline-flex h-9 items-center justify-center gap-2 rounded-md border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      :class="buttonVariants({ variant: 'outline' })"
       data-testid="dashboard-shop-visit"
     >
-      <Store class="size-4" />{{ t('shell.dashboard.shop.visit') }}<ExternalLink class="size-3.5" />
+      <Store class="size-4" />{{ t('shell.dashboard.shop.visit') }}<ExternalLink class="size-4" />
     </a>
-    <Button variant="outline" size="sm" :disabled="busy" data-testid="dashboard-shop-edit" @click="edit">
+    <Button variant="outline" :disabled="busy" data-testid="dashboard-shop-edit" @click="edit">
       <Settings2 class="size-4" />{{ t(url ? 'shell.dashboard.shop.edit' : 'shell.dashboard.shop.set') }}
     </Button>
   </div>

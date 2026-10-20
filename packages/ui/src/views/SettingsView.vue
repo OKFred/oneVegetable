@@ -47,6 +47,7 @@ import ErrorNotice from '../components/ErrorNotice.vue';
 import ExtensionSocialBackendPanel from '../components/ExtensionSocialBackendPanel.vue';
 import PageHeader from '../components/PageHeader.vue';
 import Button from '../components/ui/Button.vue';
+import { buttonVariants } from '../components/ui/button-styles';
 import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
@@ -935,7 +936,7 @@ function confirmLanguagePreference(): void {
                     : t('settings.vault.lockDescription.other')
               }}
             </p>
-            <div class="mt-3 flex flex-wrap gap-2">
+            <div class="mt-3 flex flex-wrap items-center gap-2">
               <Input
                 v-if="!vaultStatus.deviceProtected"
                 v-model="vaultPassphrase"
@@ -1110,35 +1111,34 @@ function confirmLanguagePreference(): void {
             <div class="mt-3 flex flex-wrap gap-2">
               <Button
                 v-if="mode === 'extension' && alibabaCredentialAcquisition"
-                size="sm"
                 variant="outline"
                 type="button"
                 :data-testid="dualSettings ? 'configure-acquire-credentials' : 'get-alibaba-credentials'"
                 :disabled="credentialActionBusy"
                 @click="protocolDialogPurpose = 'acquire'"
               >
-                <WandSparkles class="size-3.5" />{{ credentialText('acquireCredentials') }}
+                <WandSparkles class="size-4" />{{ credentialText('acquireCredentials') }}
               </Button>
               <Button
                 v-if="dualSettings"
-                size="sm"
                 variant="outline"
                 :disabled="credentialActionBusy"
                 @click="manualConfigurationOpen = true"
-                ><KeyRound class="size-3.5" />{{ credentialText('manual') }}</Button
+                ><KeyRound class="size-4" />{{ credentialText('manual') }}</Button
               >
               <a
                 href="https://i.alibaba.com/explore/open-api"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+                :class="buttonVariants({ variant: 'outline' })"
               >
-                <ExternalLink class="size-3.5" />{{ t('settings.credentials.openCenter') }}
+                <ExternalLink class="size-4" />{{ t('settings.credentials.openCenter') }}
               </a>
               <label
-                class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+                :class="buttonVariants({ variant: 'outline' })"
+                class="focus-within:outline-none focus-within:ring-2 focus-within:ring-ring has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50"
               >
-                <FileUp class="size-3.5" />{{ t('settings.credentials.importBundle') }}
+                <FileUp class="size-4" />{{ t('settings.credentials.importBundle') }}
                 <input
                   class="sr-only"
                   type="file"

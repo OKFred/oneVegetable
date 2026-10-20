@@ -196,6 +196,12 @@ describe('RfqsView', () => {
     const marketplace = wrapper.get('a[href="https://sourcing.alibaba.com/"]');
     expect(marketplace.text()).toContain('前往 Alibaba.com RFQ 市场');
     expect(marketplace.attributes()).toMatchObject({ target: '_blank', rel: 'noreferrer' });
+    const actions = marketplace.element.parentElement?.querySelectorAll('a, button');
+    expect(actions).toHaveLength(3);
+    for (const action of actions ?? []) {
+      expect([...action.classList]).toEqual(expect.arrayContaining(['h-9', 'px-4', 'text-sm']));
+      expect(action.classList.contains('h-8')).toBe(false);
+    }
     wrapper.unmount();
   });
 

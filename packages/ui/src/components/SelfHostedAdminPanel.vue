@@ -169,7 +169,7 @@ function userError(cause: unknown, fallback: string): Error {
 
     <div class="space-y-4" data-testid="self-hosted-settings-sections">
       <GatewayAuthorizationsPanel ref="credentialPanel" v-slot="{ protocol }" dialog-configuration>
-        <Button v-if="protocol !== 'iop'" variant="outline" size="sm" @click="acquisitionOpen = true"
+        <Button v-if="protocol !== 'iop'" variant="outline" @click="acquisitionOpen = true"
           ><Sparkles class="size-4" />{{ t('admin.selfHosted.connect') }}</Button
         >
       </GatewayAuthorizationsPanel>
