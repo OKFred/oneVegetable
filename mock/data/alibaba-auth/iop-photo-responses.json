@@ -1,4 +1,6 @@
 {
+  "plainGroupIdCases": ["2147483648", "30123456789", "9007199254740991"],
+  "productCiphertextNotGroupId": "fixture-product-ciphertext",
   "groupRead": {
     "code": "0",
     "result": {

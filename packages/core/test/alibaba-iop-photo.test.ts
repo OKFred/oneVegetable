@@ -50,6 +50,34 @@ describe('IOP photobank transport and adapters', () => {
       )
     };
   }
+  it.each(fixture.plainGroupIdCases)(
+    'keeps the complete numeric group ID %s without encryption or 32-bit truncation',
+    async (id) => {
+      const request = await createIopBusinessRequest(credentials, photoMethod, {
+        ...photoRequest,
+        group_id: id
+      });
+      expect(request.parameters.groupId).toBe(id);
+      expect(request.parameters).not.toHaveProperty('product_id');
+      expect(request.parameters).not.toHaveProperty('secret_id');
+      const group = await createIopBusinessRequest(credentials, 'alibaba.icbu.photobank.group.list', { id });
+      expect(group.parameters.id).toBe(id);
+      const response = structuredClone(fixture.scopedPhotos);
+      const row = response.result.pagination_query_list.list[0];
+      if (!row) throw new Error('PHOTO_FIXTURE_MISSING');
+      row.group_id = Number(id);
+      expect(() =>
+        normalizeIopBusinessResponse(response, photoMethod, credentials, request.parameters)
+      ).not.toThrow();
+    }
+  );
+  it('does not submit product ciphertext as a group or invoke a product-ID converter', async () => {
+    const { client, send } = photoClient(fixture.scopedPhotos);
+    await expect(
+      client.call(photoMethod, { ...photoRequest, group_id: fixture.productCiphertextNotGroupId })
+    ).rejects.toMatchObject({ gatewayError: { code: 'REQUEST_CONTRACT_INVALID' } });
+    expect(send).not.toHaveBeenCalled();
+  });
   it('accepts scoped data and keeps unknown totals rather than inventing completeness', async () => {
     const { client } = photoClient(fixture.scopedPhotos);
     await expect(

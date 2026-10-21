@@ -206,3 +206,15 @@ At the actual 24-row page size, both isolated formal-MV3 photo-list runs still f
 - 文档依据：[IOP 图片列表](https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=/icbu/product/photobank/list&methodType=GET/POST)、[IOP 分组列表](https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=/icbu/product/photobank/group/list&methodType=GET/POST)、[文档提供的 Java SDK](https://icbu-open-platform-public.oss-us-east-1.aliyuncs.com/sdk/1.0.4-1690374097817bk5i.jar)。SDK 下载名与内嵌版本不一致，仅作静态检查及有限传输对照，不运行其默认日志实现。
 
 The official Image bank shows one image in the known test parent and no images in its child. Two bounded public-IOP probes matching the official Java SDK's common-query/business-form separation still return 24 rows, including the parent's image for the child and 23 rows without group IDs. This is evidence of an unresolved public-service filtering/mapping problem, not a confirmed provider root cause or a successful IOP-only photo-list acceptance. The operator-only comparison is reproducible and redacted; production scope guards, TOP compatibility and no-resend rules remain unchanged.
+
+### 分组 ID 加解密假设与跨协议正对照
+
+- 重新读取当前 82 项新版公开目录，未发现通用或图片分组专属的 ID 加解密/转换接口。已公开的 `/alibaba/icbu/product/id/encrypt` 明确接收未加密 `product_id`，输出商品 `secret_id`；旧版[接口变动说明](https://developer.alibaba.com/docs/doc.htm?articleId=119212&docType=1&treeId=456)也将商品 ID 过渡与图片银行分开描述。不能把商品转换器套在图片或分组 ID 上；`String` 类型本身不是密文标记。
+- 远程先用真实 `group/list` 重新核对已有父子目录，返回字段只有 `id/name/level1/level2`，没有替代密文字段。随后做 2 次诊断：仅在隔离请求中加入从旧 TOP 范围枚举推断的 `locationType=SUB_GROUP`，父、子仍各返回 24 条，分别为 1 条父组和 23 条未返回分组的记录。此未公开 IOP 参数没有改善，不进入生产请求。
+- 再做一次缺参负对照：省略文档必填的 `groupId` 后平台拒绝请求，不能解释为合法空结果。这只说明必填校验生效，不证明分组条件已正确传到实际查询。
+- 最后使用已有授权做独立 TOP 正对照，不更换配置、不刷新 Token，也不把 TOP 成功当成 IOP 验收。两种协议的 `group/list` 返回相同测试父子 ID 和名称；客户端数字字符串往返没有精度损失。同一原始数字 ID 直接传给 TOP 图片查询，父组正确返回 1 张、子组 0 张，均与官网一致。
+- 本组总计 **8 次只读请求（5 IOP、3 TOP）**，0 次写入、0 次续期、0 次配置修改。回执：`artifacts/iop-feature-parity/2026-10-21-photo-id-scope-diagnostics.json`、`2026-10-21-photo-cross-protocol-ids.json`；只保存匹配分类、数量、请求标识与安全字段名，不保存名称、素材地址、凭据或完整响应。
+- 上述证据不支持“调用方需先给分组 ID 加解密”这一解释，也排除了客户端 32 位截断或数值精度丢失。仍不能凭公开元数据排除未公开的服务端转换；当前准确结论为 **IOP 分组筛选/协议适配异常，根因未定**，不是已确认的加密问题。继续保留严格范围校验和仅 IOP 的受阻状态，不添加猜测转换、无分组查询或自动补传。
+- 回归样本全部使用虚构 ID，覆盖超过 32 位及最大安全整数的完整传递，并确认不会将商品密文当成图片分组，或在图片查询时自动调用商品加解密接口。没有提交真实账号数据。
+
+Raw numeric test-group IDs and names match between TOP and IOP. With those same IDs, an independent TOP control returns one parent image and an empty child, matching the official UI, while IOP remains uncorrelated. The public conversion API is product-specific, not a documented photobank converter. Inferred `locationType` adds no improvement; omitting required `groupId` is rejected. Eight read-only calls make no credential changes or writes. No speculative encryption or scope workaround is enabled.
