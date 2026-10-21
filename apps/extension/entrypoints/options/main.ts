@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import type { GatewayCredentialTestResult } from '@one-vegetable/core';
+import type { GalleryReadContextOperation, GatewayCredentialTestResult } from '@one-vegetable/core';
 import {
   IOP_VAULT_KEY,
   IOP_RECEIPT_KEY,
@@ -678,12 +678,13 @@ class ExtensionGatewayClient implements GatewayClient {
       throw new Error('PRODUCT_CONTEXT_UNAVAILABLE');
     return requireProductOperationContext(response.data);
   }
-  async galleryTransferContext() {
+  async galleryTransferContext(operation?: GalleryReadContextOperation) {
     const { requireGalleryContext } = await import('@one-vegetable/core/gallery-transfer-context');
     const requestId = crypto.randomUUID();
     const response: unknown = await browser.runtime.sendMessage({
       kind: 'gallery-transfer-context',
-      requestId
+      requestId,
+      ...(operation === undefined ? {} : { operation })
     });
     if (
       typeof response !== 'object' ||

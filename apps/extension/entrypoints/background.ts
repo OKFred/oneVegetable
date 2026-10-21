@@ -259,6 +259,13 @@ export default defineBackground({
               throw gatewayFailure('INVALID_REQUEST_ID', 'INVALID_REQUEST_ID');
             if (!trustedOptionsPage)
               throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
+            const readOperation = 'operation' in value ? value.operation : undefined;
+            if (
+              readOperation !== undefined &&
+              (value.kind !== 'gallery-transfer-context' ||
+                !VIDEO_OPERATIONS.some((operation) => operation === readOperation))
+            )
+              throw gatewayFailure('INVALID_REQUEST_BODY', 'INVALID_REQUEST_BODY');
             await storageAccessReady;
             return {
               requestId,
@@ -268,7 +275,9 @@ export default defineBackground({
                 gateway: await galleryGatewayId(
                   await resolveAuthorization(
                     await loadAuthorizationSettings(),
-                    value.kind === 'gallery-transfer-context' ? 'uploadPhoto' : 'updateProduct'
+                    value.kind === 'gallery-transfer-context'
+                      ? ((readOperation as (typeof VIDEO_OPERATIONS)[number] | undefined) ?? 'uploadPhoto')
+                      : 'updateProduct'
                   )
                 ),
                 ...(value.kind === 'gallery-transfer-context' ? { storage: await s3.contextId() } : {})

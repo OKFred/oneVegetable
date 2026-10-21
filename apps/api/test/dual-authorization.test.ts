@@ -76,6 +76,45 @@ function present<T>(value: T | null | undefined): T {
 }
 
 describe('independent TOP and IOP credentials', () => {
+  it('returns video-specific TOP contexts without rebinding IOP image transfers or admitting arbitrary operations', async () => {
+    const { dual, db } = await harness();
+    const auth = new AuthService({
+      repository: new SqlAuthRepository(db.executor),
+      bootstrapToken: 'bootstrap-token'
+    });
+    const session = await auth.bootstrap({
+      requestId: crypto.randomUUID(),
+      bootstrapToken: 'bootstrap-token',
+      username: 'admin',
+      password: 'long-correct-password'
+    });
+    const gateway = new CredentialBackedAlibabaGatewayClient(dual);
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway,
+      authService: auth
+    });
+    const post = (body: object, loggedIn = true) =>
+      app.request('/api/v1/gallery-transfers/context/get', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(loggedIn ? { Cookie: `ov_session=${session.sessionToken}` } : {})
+        },
+        body: JSON.stringify({ requestId: crypto.randomUUID(), ...body })
+      });
+    const upload = (await (await post({})).json()) as { data: { gateway: string } };
+    const video = (await (await post({ operation: 'listVideos' })).json()) as { data: { gateway: string } };
+    expect(upload.data.gateway).toBe(await gateway.operationGatewayContextId('uploadPhoto', {}));
+    expect(video.data.gateway).toBe(await gateway.operationGatewayContextId('listVideos', {}));
+    expect(video.data.gateway).not.toBe(upload.data.gateway);
+    expect((await post({ operation: 'listVideos' }, false)).status).toBe(401);
+    for (const operation of ['uploadPhoto', 'updateProduct', ['listVideos'], {}, null])
+      expect((await post({ operation })).status).toBe(400);
+  });
   it.each(['mock', 'replay'] as const)(
     'retains %s TOP availability only for the exact local context and rejects an unprovable real gateway',
     async (gatewayMode) => {

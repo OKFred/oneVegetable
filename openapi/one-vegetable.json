@@ -17659,7 +17659,14 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["requestId"],
-        "properties": { "requestId": { "$ref": "#/components/schemas/RequestId" } }
+        "properties": {
+          "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "operation": {
+            "type": "string",
+            "enum": ["listVideos", "listVideoRelatedProducts", "resolveVideoRelatedProduct"],
+            "description": "Optional read-only operation whose pre-dispatch authorization must be pinned. Omit for the existing image-upload transfer context."
+          }
+        }
       },
       "GalleryTransferContextResponse": {
         "type": "object",

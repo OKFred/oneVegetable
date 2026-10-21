@@ -352,10 +352,13 @@ export interface OperationMap {
 export type OperationId = keyof OperationMap;
 export type RequestOf<K extends OperationId> = OperationMap[K]['request'];
 export type ResponseOf<K extends OperationId> = OperationMap[K]['response'];
+export type GalleryReadContextOperation = NonNullable<
+  components['schemas']['GalleryTransferContextRequest']['operation']
+>;
 
 export interface GatewayClient {
   productOperationContext?(): Promise<ProductOperationContext>;
-  galleryTransferContext?(): Promise<GalleryTransferContext>;
+  galleryTransferContext?(operation?: GalleryReadContextOperation): Promise<GalleryTransferContext>;
   request<K extends OperationId>(
     operation: K,
     request: RequestOf<K>,

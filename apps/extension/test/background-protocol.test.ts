@@ -1261,6 +1261,30 @@ describe('extension background protocol persistence and dispatch', () => {
     ).toMatchObject({ ok: false, error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
     expect(fetch).not.toHaveBeenCalled();
   });
+  it('uses TOP for a paired video read context, keeps image uploads on IOP and rejects non-video context requests', async () => {
+    await createPair();
+    const upload = await sendEnvelope({ kind: 'gallery-transfer-context' });
+    const video = await sendEnvelope({ kind: 'gallery-transfer-context', operation: 'listVideos' });
+    expect(upload.data).toMatchObject(await fixtureContext());
+    expect(video.data).toMatchObject(await fixtureContext(topSettings));
+    expect(fetch).not.toHaveBeenCalled();
+    await sendEnvelope({
+      kind: 'gateway-request',
+      operation: 'listVideos',
+      payload: { page: 1, pageSize: 20 },
+      galleryContext: video.data
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({ href: ALIBABA_GATEWAY });
+    vi.mocked(fetch).mockClear();
+    for (const operation of ['uploadPhoto', 'updateProduct', [], {}, null]) {
+      expect(await sendEnvelope({ kind: 'gallery-transfer-context', operation })).toMatchObject({
+        ok: false,
+        error: { code: 'INVALID_REQUEST_BODY' }
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('keeps denied dual-profile writes closed and never sends a second uncertain write', async () => {
     await createPair();
     expect(await send('gateway-request', 'createTradeOrder', {})).toMatchObject({

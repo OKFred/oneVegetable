@@ -7,6 +7,34 @@ import { createRequestId } from '../src/network';
 import type { NetworkTransport } from '../src/network';
 
 describe('BffGatewayClient', () => {
+  it('requests an optional video-specific context without changing the legacy transfer request', async () => {
+    const bodies: unknown[] = [];
+    const client = new BffGatewayClient({
+      baseUrl: 'https://example.com',
+      transport: {
+        send: (_input, init) => {
+          if (typeof init.body !== 'string') throw new Error('Expected JSON body');
+          const body = JSON.parse(init.body) as { requestId: string; operation?: string };
+          bodies.push(body);
+          return Promise.resolve(
+            Response.json({
+              requestId: body.requestId,
+              ok: true,
+              data: {
+                identity: 'account',
+                gateway: body.operation ? 'top-read' : 'iop-upload',
+                storage: null
+              }
+            })
+          );
+        }
+      }
+    });
+    expect((await client.galleryTransferContext()).gateway).toBe('iop-upload');
+    expect((await client.galleryTransferContext('listVideos')).gateway).toBe('top-read');
+    expect(bodies[0]).not.toHaveProperty('operation');
+    expect(bodies[1]).toMatchObject({ operation: 'listVideos' });
+  });
   it('sends all operation parameters in a JSON body and correlates the response requestId', async () => {
     const send = vi.fn<NetworkTransport['send']>((_input, init) => {
       if (typeof init.body !== 'string') throw new Error('expected JSON string body');

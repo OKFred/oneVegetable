@@ -608,8 +608,19 @@ export function createApiApp(options: ApiAppOptions): Hono {
   });
 
   api.post('/gallery-transfers/context/get', async (context) => {
-    const parsed = await parseEnvelope(context, ['requestId']);
+    const parsed = await parseEnvelope(context, ['requestId', 'operation']);
     if (!parsed.ok) return parsed.response;
+    const readOperation = parsed.body.operation;
+    if (
+      readOperation !== undefined &&
+      (typeof readOperation !== 'string' ||
+        !['listVideos', 'listVideoRelatedProducts', 'resolveVideoRelatedProduct'].includes(readOperation))
+    )
+      return failure(context, parsed.requestId, 400, {
+        code: 'INVALID_REQUEST_BODY',
+        message: 'INVALID_REQUEST_BODY',
+        retryable: false
+      });
     try {
       const session = options.authService ? await authenticateRequest(context, options.authService) : null;
       if (!session) throw new AuthError('AUTH_REQUIRED', 'AUTH_REQUIRED', 401);
@@ -619,9 +630,12 @@ export function createApiApp(options: ApiAppOptions): Hono {
         ok: true,
         data: {
           identity: await opaqueGalleryId(session.principal.actorId),
-          gateway: dynamicGateway.galleryGatewayContextId
-            ? await dynamicGateway.galleryGatewayContextId()
-            : await opaqueGalleryId(`local:${options.gatewayMode}`),
+          gateway:
+            readOperation !== undefined && dynamicGateway.operationGatewayContextId
+              ? await dynamicGateway.operationGatewayContextId(readOperation as OperationId, {})
+              : dynamicGateway.galleryGatewayContextId
+                ? await dynamicGateway.galleryGatewayContextId()
+                : await opaqueGalleryId(`local:${options.gatewayMode}`),
           storage: (await options.s3Storage?.galleryStorageContextId()) ?? null
         }
       });

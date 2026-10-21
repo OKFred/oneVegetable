@@ -8,7 +8,7 @@ import { requireProductOperationContext } from './product-operation-context';
 import type { ApiResponse } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
 import type { NetworkTransport } from './network';
-import type { GatewayClient, OperationId, RequestOf, ResponseOf } from './types';
+import type { GalleryReadContextOperation, GatewayClient, OperationId, RequestOf, ResponseOf } from './types';
 
 export interface BffGatewayClientOptions {
   baseUrl: string;
@@ -51,15 +51,18 @@ export class BffGatewayClient implements GatewayClient {
     });
   }
 
-  async galleryTransferContext() {
-    return requireGalleryContext(await this.#context('gallery-transfers'));
+  async galleryTransferContext(operation?: GalleryReadContextOperation) {
+    return requireGalleryContext(await this.#context('gallery-transfers', operation));
   }
 
   async productOperationContext() {
     return requireProductOperationContext(await this.#context('product-mutation-jobs'));
   }
 
-  async #context(resource: 'gallery-transfers' | 'product-mutation-jobs'): Promise<unknown> {
+  async #context(
+    resource: 'gallery-transfers' | 'product-mutation-jobs',
+    operation?: GalleryReadContextOperation
+  ): Promise<unknown> {
     const requestId = createRequestId();
     const response = await this.#network.request({
       service: 'bff',
@@ -67,7 +70,7 @@ export class BffGatewayClient implements GatewayClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       requestId,
-      body: JSON.stringify({ requestId }),
+      body: JSON.stringify({ requestId, ...(operation === undefined ? {} : { operation }) }),
       responseType: 'json'
     });
     if (!isApiResponse(response.data) || response.data.requestId !== requestId)

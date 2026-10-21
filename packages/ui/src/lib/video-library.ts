@@ -59,16 +59,29 @@ export async function requestVideo<K extends Operation>(
       ? 'mock'
       : '';
   if (!identity || identity !== expectedIdentity) fail('GALLERY_CONTEXT_CHANGED');
+  // Page identity is anchored to the transfer configuration, but each read must
+  // pin its own pre-dispatch route. Uploading images may use IOP while video reads use TOP.
+  const readContext = await gateway.galleryTransferContext?.(operation);
+  if (context && readContext?.identity !== context.identity) fail('GALLERY_CONTEXT_CHANGED');
   let entries = cache.get(gateway);
   if (!entries) {
     entries = new Map();
     cache.set(gateway, entries);
   }
-  const key = JSON.stringify([mode, identity, language, operation, payload]);
+  const key = JSON.stringify([mode, identity, readContext?.gateway, language, operation, payload]);
   const old = entries.get(key);
   if (!refresh && old && Date.now() - old.at < 300_000) return old.value;
-  const result = await gateway.request(operation, payload, context ? { galleryContext: context } : undefined);
+  const result = await gateway.request(
+    operation,
+    payload,
+    readContext ? { galleryContext: readContext } : undefined
+  );
   if ((await pageDetailIdentity(gateway, mode)) !== identity) fail('GALLERY_CONTEXT_CHANGED');
+  if (readContext) {
+    const latest = await gateway.galleryTransferContext?.(operation);
+    if (latest?.identity !== readContext.identity || latest.gateway !== readContext.gateway)
+      fail('GALLERY_CONTEXT_CHANGED');
+  }
   if (!validators[operation](result)) fail('VIDEO_RESPONSE_INVALID');
   if (entries.size >= 200) entries.clear();
   entries.set(key, { at: Date.now(), value: result });
