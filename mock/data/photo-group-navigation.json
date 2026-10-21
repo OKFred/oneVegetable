@@ -1,0 +1,25 @@
+{
+  "groups": [
+    { "id": "legacy", "name": "Wrong unscoped account", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "a", "name": "Alpha root", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "b", "name": "Beta root", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "a-child", "name": "Alpha child", "parentId": "a", "level": 2, "photoCount": 0 },
+    { "id": "b-child", "name": "Beta child", "parentId": "b", "level": 2, "photoCount": 0 },
+    { "id": "a", "name": "Late Alpha root", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "shared-root", "name": "Alpha root", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "shared-root", "name": "Beta root", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "old-child", "name": "Late Alpha child", "parentId": "shared-root", "level": 2, "photoCount": 0 },
+    { "id": "new-child", "name": "Beta child", "parentId": "shared-root", "level": 2, "photoCount": 0 },
+    { "id": "fresh", "name": "Fresh Alpha child", "parentId": "a", "level": 2, "photoCount": 0 },
+    { "id": "late", "name": "Stale Alpha child", "parentId": "a", "level": 2, "photoCount": 0 }
+  ],
+  "completeTree": [
+    { "id": "a", "name": "Alpha root", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "b", "name": "Beta root", "parentId": null, "level": 1, "photoCount": 0 },
+    { "id": "a2", "name": "Alpha child 2", "parentId": "a", "level": 2, "photoCount": 0 },
+    { "id": "b1", "name": "Beta child", "parentId": "b", "level": 2, "photoCount": 0 },
+    { "id": "a1-leaf", "name": "Alpha leaf 1", "parentId": "a1", "level": 3, "photoCount": 0 },
+    { "id": "a1", "name": "Alpha child 1", "parentId": "a", "level": 2, "photoCount": 0 },
+    { "id": "a2-leaf", "name": "Alpha leaf 2", "parentId": "a2", "level": 3, "photoCount": 0 }
+  ]
+}

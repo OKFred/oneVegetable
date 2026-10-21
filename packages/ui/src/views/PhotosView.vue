@@ -69,14 +69,15 @@ const groupCacheRevision = ref(0);
 onScopeDispose(
   queryClient.getQueryCache().subscribe((event) => {
     const key: unknown = event.query.queryKey;
-    if (Array.isArray(key) && (key as unknown[])[0] === 'photo-groups') groupCacheRevision.value++;
+    if (Array.isArray(key) && key[0] === 'photo-groups' && key[1] === identityScope.value)
+      groupCacheRevision.value++;
   })
 );
 function groupPath(id: string): string {
   if (id === '-1') return t('photos.filters.ungrouped');
   void groupCacheRevision.value;
   const groups = queryClient
-    .getQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups'] })
+    .getQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups', identityScope.value] })
     .flatMap(([, data]) => data ?? []);
   const names: string[] = [];
   const seen = new Set<string>();
@@ -146,6 +147,21 @@ const groupSidebarCollapsed = ref(false);
 const groupNavigation = ref<{ refresh: () => Promise<void> } | null>(null);
 const refreshPending = ref(false);
 const selectedPhotoIds = ref<string[]>([]);
+let refreshGeneration = 0;
+watch(
+  identityScope,
+  () => {
+    refreshGeneration++;
+    refreshPending.value = false;
+    selectedGroup.value = '-1';
+    selectedGroupDefinition.value = null;
+    selectedPhotoIds.value = [];
+    observedDimensions.value = {};
+    previewOpen.value = false;
+    page.value = 1;
+  },
+  { flush: 'sync' }
+);
 const photoMutations = useOperationAvailability(['uploadPhoto', 'transferPhotoFromUrl', 'listPhotos']);
 const requiresPhotoGroup = computed(
   () =>
@@ -194,25 +210,33 @@ const refreshing = computed(
 
 async function refreshGallery(): Promise<void> {
   if (refreshPending.value) return;
+  const scope = identityScope.value;
+  const generation = refreshGeneration;
+  const isCurrent = () => identityScope.value === scope && refreshGeneration === generation;
   refreshPending.value = true;
   try {
-    await queryClient.invalidateQueries({ queryKey: ['photo-groups'], refetchType: 'none' });
+    await queryClient.invalidateQueries({ queryKey: ['photo-groups', scope], refetchType: 'none' });
+    if (!isCurrent()) return;
     await Promise.all([
       canLoadPhotos.value ? photos.refetch({ cancelRefetch: false }) : Promise.resolve(),
       groupNavigation.value
         ? groupNavigation.value.refresh()
         : queryClient
             .fetchQuery({
-              queryKey: ['photo-groups', 'root'],
-              queryFn: () => gateway.request('listPhotoGroups', undefined),
+              queryKey: ['photo-groups', scope, 'root'],
+              queryFn: async () => {
+                const groups = await gateway.request('listPhotoGroups', undefined);
+                if (!isCurrent()) throw new Error('GALLERY_CONTEXT_CHANGED');
+                return groups;
+              },
               staleTime: 0
             })
             .catch(() => {
-              toast.error(t('photos.groupNavigation.loadFailed'));
+              if (isCurrent()) toast.error(t('photos.groupNavigation.loadFailed'));
             })
     ]);
   } finally {
-    refreshPending.value = false;
+    if (isCurrent()) refreshPending.value = false;
   }
 }
 const filteredPhotos = computed(() => {
@@ -368,7 +392,7 @@ function handleGalleryImported(): void {
 }
 
 function handleImportedGroupsChanged(): void {
-  void queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
+  void queryClient.invalidateQueries({ queryKey: ['photo-groups', identityScope.value] });
   groupNavigationRevision.value += 1;
 }
 watch(

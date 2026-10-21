@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import {
   ChevronDown,
@@ -29,6 +29,7 @@ import {
 } from '../composables/use-operation-availability';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+import { useListIdentityScope } from '../lib/list-identity-scope';
 
 interface PhotoGroupRow {
   group: PhotoGroup;
@@ -49,6 +50,12 @@ const emit = defineEmits<{
 const { gateway, mode } = useServices();
 const { t } = useUiI18n();
 const queryClient = useQueryClient();
+const identityScope = useListIdentityScope();
+let generation = 0;
+let disposed = false;
+onScopeDispose(() => {
+  disposed = true;
+});
 const availability = useOperationAvailability(['operatePhotoGroup']);
 const expandedIds = ref<Set<string>>(new Set());
 const loadingIds = ref<Set<string>>(new Set());
@@ -60,19 +67,31 @@ const groupName = ref('');
 const pendingRequest = ref<PhotoGroupOperationRequest | null>(null);
 const confirmationOpen = ref(false);
 const operationError = ref('');
+const rootKey = computed(() => ['photo-groups', identityScope.value, 'root'] as const);
 
 const roots = useQuery({
-  queryKey: ['photo-groups', 'root'],
-  queryFn: () => gateway.request('listPhotoGroups', undefined),
+  queryKey: rootKey,
+  queryFn: async ({ queryKey }) => {
+    const scope = queryKey[1];
+    const version = generation;
+    const groups = await gateway.request('listPhotoGroups', undefined);
+    if (!sameContext(scope, version)) throw new Error('GALLERY_CONTEXT_CHANGED');
+    return groups;
+  },
   enabled: computed(() => props.open),
   staleTime: 30_000
 });
 
-const rootGroups = computed(() =>
-  (roots.data.value ?? []).filter(
+const rootGroups = computed(() => {
+  void roots.data.value;
+  return (queryClient.getQueryData<PhotoGroup[]>(rootKey.value) ?? []).filter(
     (group) => group.id !== '-1' && group.level === 1 && group.parentId === null
-  )
-);
+  );
+});
+const rootError = computed(() => {
+  void roots.error.value;
+  return queryClient.getQueryState(rootKey.value)?.error ?? null;
+});
 const visibleRows = computed<PhotoGroupRow[]>(() => {
   const rows: PhotoGroupRow[] = [];
   appendVisibleRows(rootGroups.value, 1, rows);
@@ -126,8 +145,10 @@ const confirmationTarget = computed(() => {
 });
 
 const operateGroup = useMutation({
+  onMutate: () => ({ scope: identityScope.value, generation }),
   mutationFn: (request: PhotoGroupOperationRequest) => gateway.request('operatePhotoGroup', request),
-  onSuccess: async (result, request) => {
+  onSuccess: async (result, request, context) => {
+    if (!isCurrent(context.scope, context.generation)) return;
     applyOperationResult(request, result);
     confirmationOpen.value = false;
     pendingRequest.value = null;
@@ -136,13 +157,37 @@ const operateGroup = useMutation({
     operationError.value = '';
     toast.success(successMessage(request, result));
     emit('changed', request, result);
-    await queryClient.invalidateQueries({ queryKey: ['photo-groups'], refetchType: 'none' });
+    await queryClient.invalidateQueries({ queryKey: ['photo-groups', context.scope], refetchType: 'none' });
   },
-  onError: (error: Error) => {
+  onError: (error: Error, _request, context) => {
+    if (!context || !isCurrent(context.scope, context.generation)) return;
     confirmationOpen.value = false;
     operationError.value = error.message;
   }
 });
+
+watch(
+  identityScope,
+  (_scope, previousScope) => {
+    generation++;
+    clearTree();
+    editAction.value = null;
+    groupName.value = '';
+    pendingRequest.value = null;
+    confirmationOpen.value = false;
+    operationError.value = '';
+    operateGroup.reset();
+    void queryClient.cancelQueries({ queryKey: ['photo-groups', previousScope] });
+  },
+  { flush: 'sync' }
+);
+
+function sameContext(scope: string, version: number): boolean {
+  return identityScope.value === scope && generation === version;
+}
+function isCurrent(scope: string, version: number): boolean {
+  return !disposed && sameContext(scope, version);
+}
 
 watch(
   () => props.open,
@@ -199,8 +244,8 @@ function applyAddedGroup(request: PhotoGroupOperationRequest, result: PhotoGroup
     level: request.groupId ? Math.min((parent?.level ?? 1) + 1, 3) : 1
   };
   const queryKey = request.groupId
-    ? (['photo-groups', request.groupId] as const)
-    : (['photo-groups', 'root'] as const);
+    ? (['photo-groups', identityScope.value, request.groupId] as const)
+    : rootKey.value;
   queryClient.setQueryData<PhotoGroup[]>(queryKey, (current = []) => upsertGroup(current, created));
   if (!request.groupId) return;
 
@@ -258,7 +303,7 @@ function collectKnownBranchIds(groupId: string): Set<string> {
 }
 
 function updateCachedGroups(update: (groups: readonly PhotoGroup[]) => PhotoGroup[]): void {
-  queryClient.setQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups'] }, (current) =>
+  queryClient.setQueriesData<PhotoGroup[]>({ queryKey: ['photo-groups', identityScope.value] }, (current) =>
     current ? update(current) : current
   );
 }
@@ -270,6 +315,8 @@ function upsertGroup(groups: readonly PhotoGroup[], group: PhotoGroup): PhotoGro
 }
 
 async function toggleGroup(row: PhotoGroupRow): Promise<void> {
+  const scope = identityScope.value;
+  const version = generation;
   if (row.group.level >= 3) return;
   const nextExpanded = new Set(expandedIds.value);
   if (nextExpanded.has(row.group.id)) {
@@ -285,9 +332,14 @@ async function toggleGroup(row: PhotoGroupRow): Promise<void> {
   childErrors.value = { ...childErrors.value, [row.group.id]: '' };
   try {
     const groups = await queryClient.fetchQuery({
-      queryKey: ['photo-groups', row.group.id],
-      queryFn: () => gateway.request('listPhotoGroups', { parentId: row.group.id })
+      queryKey: ['photo-groups', scope, row.group.id],
+      queryFn: async () => {
+        const groups = await gateway.request('listPhotoGroups', { parentId: row.group.id });
+        if (!sameContext(scope, version)) throw new Error('GALLERY_CONTEXT_CHANGED');
+        return groups;
+      }
     });
+    if (!isCurrent(scope, version)) return;
     const nextDescendants = { ...descendantsById.value };
     for (const group of groups) {
       if (group.id !== row.group.id && group.id !== '-1') nextDescendants[group.id] = group;
@@ -297,12 +349,13 @@ async function toggleGroup(row: PhotoGroupRow): Promise<void> {
     nextLoaded.add(row.group.id);
     loadedIds.value = nextLoaded;
   } catch (error: unknown) {
+    if (!isCurrent(scope, version)) return;
     childErrors.value = {
       ...childErrors.value,
       [row.group.id]: error instanceof Error ? error.message : t('photos.groupManager.childLoadFailed')
     };
   } finally {
-    setLoading(row.group.id, false);
+    if (isCurrent(scope, version)) setLoading(row.group.id, false);
   }
 }
 
@@ -313,13 +366,20 @@ function setLoading(groupId: string, loading: boolean): void {
   loadingIds.value = next;
 }
 
-async function refreshGroups(): Promise<void> {
+function clearTree(): void {
   expandedIds.value = new Set();
   loadingIds.value = new Set();
   loadedIds.value = new Set();
   descendantsById.value = {};
   childErrors.value = {};
-  await queryClient.invalidateQueries({ queryKey: ['photo-groups'] });
+}
+async function refreshGroups(): Promise<void> {
+  const scope = identityScope.value;
+  const version = generation;
+  await queryClient.cancelQueries({ queryKey: ['photo-groups', scope] });
+  if (!isCurrent(scope, version)) return;
+  clearTree();
+  await queryClient.invalidateQueries({ queryKey: ['photo-groups', scope] });
 }
 
 function beginAdd(parent: PhotoGroup | null): void {
@@ -406,7 +466,7 @@ function successMessage(request: PhotoGroupOperationRequest, result: PhotoGroupO
 
       <ErrorNotice v-if="operationError" class="mb-3" :error="operationError" compact />
 
-      <QueryState :loading="roots.isPending.value" :error="roots.error.value">
+      <QueryState :loading="roots.isPending.value" :error="rootError">
         <div
           class="max-h-[32rem] overflow-auto rounded-lg border bg-card p-2"
           role="tree"

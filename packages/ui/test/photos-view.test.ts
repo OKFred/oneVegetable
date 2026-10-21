@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 
-import { defineComponent, h } from 'vue';
+import { computed, defineComponent, h, ref, type Ref } from 'vue';
 import { flushPromises, mount, DOMWrapper, type VueWrapper } from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { OPERATION_IDS, StaticOperationAvailabilityClient, type OperationId } from '@one-vegetable/core';
+import {
+  OPERATION_IDS,
+  StaticOperationAvailabilityClient,
+  type OperationId,
+  type PhotoGroup,
+  type RequestOf,
+  type ResponseOf
+} from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
 import type { OperationAvailabilityClient } from '@one-vegetable/core';
@@ -13,6 +20,7 @@ import type { OperationAvailabilityClient } from '@one-vegetable/core';
 import { provideServices } from '../src/lib/services';
 import PhotosView from '../src/views/PhotosView.vue';
 import { uiI18n } from '../src/i18n';
+import { provideListIdentityScope } from '../src/lib/list-identity-scope';
 
 vi.mock('vue-sonner', () => ({
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() }
@@ -23,10 +31,12 @@ function mountView(
   mode: 'mock' | 'extension' = 'mock',
   allowedOperations: ReadonlySet<OperationId> = new Set(OPERATION_IDS),
   gateway = new MockGatewayClient(0),
-  operationAvailability?: OperationAvailabilityClient
+  operationAvailability?: OperationAvailabilityClient,
+  options: { scope?: Ref<string>; queryClient?: QueryClient } = {}
 ) {
   const Host = defineComponent({
     setup() {
+      provideListIdentityScope(computed(() => options.scope?.value ?? ''));
       provideServices({
         gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
@@ -37,7 +47,8 @@ function mountView(
       return () => h(PhotosView);
     }
   });
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient =
+    options.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = mount(Host, {
     attachTo: document.body,
     global: { plugins: [[VueQueryPlugin, { queryClient }]] }
@@ -306,6 +317,78 @@ describe('PhotosView', () => {
     ]);
     expect(wrapper.find('[role="tree"]').exists()).toBe(false);
     wrapper.unmount();
+  });
+
+  it('uses only current identity names and clears the previous preview and selection on a switch', async () => {
+    const scope = ref('account-a');
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const gateway = new MockGatewayClient(0);
+    const original = gateway.request.bind(gateway);
+    const photo = (await original('listPhotos', {})).items[0];
+    if (!photo) throw new Error('Missing mock photo');
+    const group = (name: string): PhotoGroup => ({
+      id: photo.groupId,
+      name,
+      photoCount: 1,
+      level: 1,
+      parentId: null
+    });
+    // Foreign and historical entries intentionally precede the current scope in cache order.
+    queryClient.setQueryData(['photo-groups', 'account-b', photo.groupId], [group('账号乙分组')]);
+    queryClient.setQueryData(['photo-groups', 'root'], [group('旧缓存分组')]);
+    queryClient.setQueryData(['photo-groups', 'account-a', photo.groupId], [group('账号甲分组')]);
+    vi.spyOn(gateway, 'request').mockImplementation(
+      <K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> =>
+        operation === 'listPhotoGroups' ? Promise.resolve([]) : original(operation, payload)
+    );
+    const wrapper = mountView('mock', undefined, gateway, undefined, { scope, queryClient });
+    const body = new DOMWrapper(document.body);
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain(photo.name);
+    });
+    await wrapper.get(`input[aria-label="选择 ${photo.name}"]`).setValue(true);
+    await wrapper.get(`button[aria-label="预览 ${photo.name}"]`).trigger('click');
+    await body.get(`button[aria-label="${uiI18n.global.t('photos.previewInfo.title')}"]`).trigger('click');
+    expect(body.get('[data-testid="media-information"]').text()).toContain('账号甲分组');
+    expect(body.get('[data-testid="media-information"]').text()).not.toContain('账号乙分组');
+    expect(body.get('[data-testid="media-information"]').text()).not.toContain('旧缓存分组');
+
+    scope.value = 'account-b';
+    await flushPromises();
+    expect(document.querySelector('[data-testid="image-preview-stage"]')).toBeNull();
+    expect(wrapper.text()).toContain('已选 0 张');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain(photo.name);
+    });
+    await wrapper.get(`button[aria-label="预览 ${photo.name}"]`).trigger('click');
+    await body.get(`button[aria-label="${uiI18n.global.t('photos.previewInfo.title')}"]`).trigger('click');
+    expect(body.get('[data-testid="media-information"]').text()).toContain('账号乙分组');
+    expect(body.get('[data-testid="media-information"]').text()).not.toContain('账号甲分组');
+  });
+
+  it('prefetches and invalidates only the scoped root when the sidebar is collapsed', async () => {
+    const scope = ref('account-a');
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const foreign = [{ id: 'foreign', name: '别的账号', parentId: null, level: 1, photoCount: 0 }];
+    queryClient.setQueryData(['photo-groups', 'account-b', 'root'], foreign);
+    queryClient.setQueryData(['photo-groups', 'root'], foreign);
+    const gateway = new MockGatewayClient(0);
+    const expected = await gateway.request('listPhotoGroups', undefined);
+    const wrapper = mountView('mock', undefined, gateway, undefined, { scope, queryClient });
+    await vi.waitFor(() => {
+      expect(button(wrapper, '搜索').attributes('disabled')).toBeUndefined();
+    });
+    await wrapper.get('button[aria-label="收起图片分组"]').trigger('click');
+    queryClient.removeQueries({ queryKey: ['photo-groups', 'account-a', 'root'], exact: true });
+    await button(wrapper, '搜索').trigger('click');
+    await vi.waitFor(() => {
+      expect(queryClient.getQueryData(['photo-groups', 'account-a', 'root'])).toEqual(expected);
+      expect(button(wrapper, '搜索').attributes('disabled')).toBeUndefined();
+    });
+    expect(queryClient.getQueryData(['photo-groups', 'account-b', 'root'])).toEqual(foreign);
+    expect(queryClient.getQueryState(['photo-groups', 'account-b', 'root'])?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryData(['photo-groups', 'root'])).toEqual(foreign);
+    expect(queryClient.getQueryState(['photo-groups', 'root'])?.isInvalidated).toBe(false);
   });
 
   it('shows read errors and allows another search to recover', async () => {
