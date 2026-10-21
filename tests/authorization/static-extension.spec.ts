@@ -1448,6 +1448,51 @@ test('TOP entry buttons align and recommend IOP in both languages and themes', a
   expect(topCreates + creates + refreshes + topRefreshes).toBe(0);
 });
 
+test('authorization forms and the return link retain spacing in both languages and themes', async () => {
+  const tool = await openTool('iop');
+  await expect(tool.locator('#protectionSection')).toBeVisible();
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await tool.emulateMedia({ colorScheme });
+    for (const language of ['zh-CN', 'en-US'] as const) {
+      if ((await tool.locator('html').getAttribute('lang')) !== language)
+        await tool.locator('#language').click();
+      for (const width of [1488, 390]) {
+        await tool.setViewportSize({ width, height: 1058 });
+        const gap = await tool.locator('#protectionForm').evaluate((element) => {
+          const input = element.querySelector('input');
+          const actions = element.querySelector('.actions');
+          if (!input || !actions) throw new Error('Missing form controls');
+          return actions.getBoundingClientRect().top - input.getBoundingClientRect().bottom;
+        });
+        expect(Math.round(gap)).toBeGreaterThanOrEqual(16);
+        if (width > 900) {
+          const link = await tool.locator('#authorization-header-back').evaluate((element) => {
+            const icon = element.querySelector('svg')?.getBoundingClientRect();
+            const label = element.querySelector('[data-text]')?.getBoundingClientRect();
+            return {
+              display: getComputedStyle(element).display,
+              gap: (label?.left ?? 0) - (icon?.right ?? 0)
+            };
+          });
+          expect(['inline-flex', 'flex']).toContain(link.display);
+          expect(Math.round(link.gap)).toBeGreaterThanOrEqual(8);
+        }
+        expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      }
+    }
+  }
+  await prepareProtection(tool, '');
+  await tool.locator('#advancedJson > summary').click();
+  const jsonGap = await tool.locator('#advancedJson').evaluate((element) => {
+    const editor = element.querySelector('.authorization-json-editor');
+    const actions = element.querySelector('.actions');
+    if (!editor || !actions) throw new Error('Missing JSON controls');
+    return actions.getBoundingClientRect().top - editor.getBoundingClientRect().bottom;
+  });
+  expect(Math.round(jsonGap)).toBeGreaterThanOrEqual(16);
+  expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+});
+
 test('selected split layout shares workbench theme tokens, keeps details visible, and does not change API language', async () => {
   const tool = await openTool('top');
   await tool.evaluate((key) => {

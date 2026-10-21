@@ -216,7 +216,10 @@
   font-weight: 600;
 }
 .authorization-page .authorization-back {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: hsl(var(--muted-foreground));
   background: none;
   border: 0;
@@ -371,6 +374,10 @@
 .authorization-page #form .grid {
   grid-template-columns: 1fr;
   gap: 0;
+}
+.authorization-content :is(form, fieldset, details) > .actions,
+.authorization-content #manual > button {
+  margin-top: 16px;
 }
 .authorization-page #topEntries .actions {
   align-items: stretch;
