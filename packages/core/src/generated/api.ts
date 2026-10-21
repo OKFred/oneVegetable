@@ -10984,6 +10984,8 @@ export interface components {
         TradeOrderListQuery: {
             page?: number;
             pageSize?: number;
+            /** @enum {string} */
+            role?: "seller" | "buyer";
             status?: string;
             buyerLoginId?: string;
             salesmanId?: string;
@@ -11001,6 +11003,11 @@ export interface components {
         };
         TradeOrderSummary: {
             id: string;
+            /**
+             * @description Query perspective; absent in historical summaries means seller.
+             * @enum {string}
+             */
+            role?: "seller" | "buyer";
             buyerLoginId: string | null;
             status: string;
             amount: string | null;

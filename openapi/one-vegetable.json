@@ -20027,6 +20027,7 @@
         "properties": {
           "page": { "type": "integer", "minimum": 1 },
           "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "role": { "type": "string", "enum": ["seller", "buyer"] },
           "status": { "type": "string" },
           "buyerLoginId": { "type": "string" },
           "salesmanId": { "type": "string" },
@@ -20054,6 +20055,11 @@
         "required": ["id", "buyerLoginId", "status", "amount", "currency", "createdAt", "modifiedAt"],
         "properties": {
           "id": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": ["seller", "buyer"],
+            "description": "Query perspective; absent in historical summaries means seller."
+          },
           "buyerLoginId": { "type": ["string", "null"] },
           "status": { "type": "string" },
           "amount": { "type": ["string", "null"], "pattern": "^-?\\d+(?:\\.\\d+)?$" },

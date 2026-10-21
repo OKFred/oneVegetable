@@ -1,0 +1,32 @@
+{
+  "list": {
+    "code": "0",
+    "request_id": "fixture-order-role-request",
+    "value": {
+      "total_count": 1,
+      "order_list": [
+        {
+          "trade_id": "900001",
+          "other_login_id": "fixture-seller",
+          "trade_status": "unpay",
+          "create_date": { "timestamp": 1792454400000 },
+          "modify_date": { "timestamp": 1792540800000 }
+        }
+      ]
+    }
+  },
+  "empty": { "code": "0", "value": { "total_count": 0, "order_list": [] } },
+  "detail": {
+    "code": "0",
+    "request_id": "fixture-order-role-detail",
+    "value": {
+      "trade_id": "900001",
+      "trade_status": "unpay",
+      "buyer": { "full_name": "Fixture buyer" },
+      "seller": { "full_name": "Fixture seller" },
+      "total_amount": { "amount": "12.50", "currency": "USD" },
+      "order_products": []
+    }
+  },
+  "logistics": { "code": "0", "value": { "logistic_status": "WAIT_SHIP" } }
+}

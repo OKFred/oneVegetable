@@ -243,6 +243,11 @@ document.components.schemas.TradeOrderSummary = {
   required: ['id', 'buyerLoginId', 'status', 'amount', 'currency', 'createdAt', 'modifiedAt'],
   properties: {
     id: { type: 'string' },
+    role: {
+      type: 'string',
+      enum: ['seller', 'buyer'],
+      description: 'Query perspective; absent in historical summaries means seller.'
+    },
     buyerLoginId: { type: ['string', 'null'] },
     status: { type: 'string' },
     amount: { ...decimalString, type: ['string', 'null'] },
@@ -493,6 +498,7 @@ document.paths['/trade-orders'] = {
     parameters: [
       { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
       { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+      { name: 'role', in: 'query', schema: { type: 'string', enum: ['seller', 'buyer'] } },
       { name: 'status', in: 'query', schema: { type: 'string' } },
       { name: 'buyerLoginId', in: 'query', schema: { type: 'string' } },
       { name: 'createDateStart', in: 'query', schema: { type: 'string' } },

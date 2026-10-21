@@ -29,6 +29,7 @@ export function addListQueryContract(schemas: Record<string, unknown>): void {
   schemas.TradeOrderListQuery = object({
     page,
     pageSize,
+    role: { type: 'string', enum: ['seller', 'buyer'] },
     status: { type: 'string' },
     buyerLoginId: { type: 'string' },
     salesmanId: { type: 'string' },

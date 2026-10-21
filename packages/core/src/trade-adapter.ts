@@ -1,6 +1,6 @@
 import type { AlibabaClient } from './alibaba-client';
 import { getIopPublicOrderDetail } from './iop-order-detail';
-import { normalizeGatewayError } from './errors';
+import { GatewayException, normalizeGatewayError } from './errors';
 import type {
   RequestOf,
   TradeAddress,
@@ -21,11 +21,18 @@ export class TradeAdapter {
   ) {}
 
   async list(request: RequestOf<'listTradeOrders'>): Promise<TradeOrderPage> {
+    const role = request.role ?? 'seller';
+    if (!['seller', 'buyer'].includes(role) || (role === 'buyer' && request.buyerLoginId))
+      throw new GatewayException({
+        code: 'REQUEST_CONTRACT_INVALID',
+        message: 'REQUEST_CONTRACT_INVALID',
+        retryable: false
+      });
     const page = request.page ?? 1;
     const pageSize = Math.min(request.pageSize ?? 20, 100);
     const call = await this.client.call('alibaba.seller.order.list', {
       param_trade_ecology_order_list_query: {
-        role: 'seller',
+        role,
         start_page: page - 1,
         page_size: pageSize,
         ...(request.status ? { status: request.status } : {}),
@@ -43,7 +50,10 @@ export class TradeAdapter {
     const value = findRecord(root, ['value']) ?? root;
     const records = findRecords(value, ['order_list']);
     return {
-      items: records.map(normalizeOrder),
+      items: records.map((record) => ({
+        ...normalizeOrder(record, role),
+        ...(request.role ? { role } : {})
+      })),
       page,
       pageSize,
       total: readInteger(value, ['total_count']) ?? records.length,
@@ -243,11 +253,18 @@ export class TradeAdapter {
   }
 }
 
-function normalizeOrder(record: Record<string, unknown>): TradeOrderSummary {
+function normalizeOrder(record: Record<string, unknown>, role: 'seller' | 'buyer'): TradeOrderSummary {
   const total = findRecordDeep(record, ['total_amount', 'order_amount', 'amount']);
   return {
     id: readString(record, ['trade_id', 'e_trade_id', 'order_id']) ?? '',
-    buyerLoginId: readString(record, ['other_login_id', 'buyer_login_id', 'buyer_name']) ?? null,
+    // On buyer queries, other_login_id is the seller: never relabel it as the buyer.
+    buyerLoginId:
+      readString(
+        record,
+        role === 'buyer'
+          ? ['buyer_login_id', 'buyer_name']
+          : ['other_login_id', 'buyer_login_id', 'buyer_name']
+      ) ?? null,
     status: readString(record, ['status', 'order_status', 'trade_status']) ?? 'unknown',
     amount: total ? (readString(total, ['amount', 'value']) ?? null) : null,
     currency: total ? (readString(total, ['currency']) ?? null) : null,
