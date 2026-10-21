@@ -75,7 +75,8 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         );
         const origin = 'chrome-extension://' + new URL(worker.url()).host;
         await page.goto(origin + '/options.html#/settings');
-        await page.getByTestId('get-alibaba-credentials').click();
+        await page.getByTestId('open-authorization-guide').click();
+        await page.getByTestId('authorization-wizard-continue').click();
         const en = locale === 'en-US';
         const acquisition = page.getByRole('dialog', {
           name: en ? 'Connect your Alibaba account' : '连接 Alibaba 账号',

@@ -37,7 +37,8 @@ export async function importExtensionAuthorization(
   bundle: unknown,
   passphrase?: string
 ): Promise<void> {
-  await page.getByTestId('get-alibaba-credentials').click();
+  await page.getByTestId('open-authorization-guide').click();
+  await page.getByTestId('authorization-wizard-continue').click();
   const dialog = page.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
   await expect(
     dialog.locator('[data-testid="authorization-protection"], [data-testid="authorization-method-file"]')

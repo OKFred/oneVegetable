@@ -1976,7 +1976,8 @@ test('legacy TOP import stays TOP, saves only explicitly and keeps TOP session s
     });
   });
   const workbench = await openWorkbenchSettings();
-  await workbench.getByTestId('get-alibaba-credentials').click();
+  await workbench.getByTestId('open-authorization-guide').click();
+  await workbench.getByTestId('authorization-wizard-continue').click();
   const acquisition = workbench.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
   await acquisition.getByTestId('authorization-protection-passphrase').fill('123456');
   await acquisition.getByTestId('continue-authorization-protection').click();
@@ -2058,9 +2059,10 @@ for (const [body, code] of [
     await closeExtensionCredentialConfiguration(workbench, 'iop');
     // Import-first method selection precedes the explicit TOP/IOP choice.
     // Browsing either step must not open OAuth or change the saved profile.
-    await expect(workbench.getByRole('button', { name: '连接 Alibaba 账号', exact: true })).toBeEnabled();
+    await expect(workbench.getByTestId('open-authorization-guide')).toBeEnabled();
     const pagesBeforeChoice = context.pages().length;
-    await workbench.getByRole('button', { name: '连接 Alibaba 账号', exact: true }).click();
+    await workbench.getByTestId('open-authorization-guide').click();
+    await workbench.getByTestId('authorization-wizard-continue').click();
     const choice = workbench.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
     await expect(choice).toBeVisible();
     await expect(choice.getByTestId('authorization-method-file')).toBeEnabled();

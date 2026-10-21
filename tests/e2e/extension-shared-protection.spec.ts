@@ -51,7 +51,8 @@ for (const passphrase of ['', fixture.workbench.password]) {
         await guide.getByRole('checkbox').check();
         await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
         await expect(settings.getByTestId('vault-passphrase-setup')).toBeVisible();
-        await settings.getByTestId('get-alibaba-credentials').click();
+        await settings.getByTestId('open-authorization-guide').click();
+        await settings.getByTestId('authorization-wizard-continue').click();
         await expect(settings.getByTestId('authorization-protection')).toBeVisible();
         await expect(settings.getByTestId('alibaba-authorization-protocol-choices')).toHaveCount(0);
         await expect(settings.getByTestId('authorization-protection-passphrase')).not.toHaveAttribute(

@@ -173,6 +173,13 @@ async function confirmSettingsAction(title: string): Promise<void> {
   await flushPromises();
 }
 
+async function openSettingsAuthorization(wrapper: ReturnType<typeof mountView>): Promise<void> {
+  await wrapper.get('[data-testid="open-authorization-guide"]').trigger('click');
+  await flushPromises();
+  document.body.querySelector<HTMLButtonElement>('[data-testid="authorization-wizard-continue"]')?.click();
+  await flushPromises();
+}
+
 afterEach(() => {
   uiI18n.global.locale.value = 'zh-CN';
   vi.restoreAllMocks();
@@ -207,6 +214,8 @@ describe('SettingsView diagnostics', () => {
       const wrapper = mountView('extension', state, 'manual', 'node', { acquisition });
       await flushPromises();
       const launcher = wrapper.get('[data-testid="open-authorization-guide"]');
+      expect(launcher.classes()).toContain('bg-primary');
+      expect(launcher.element.parentElement?.querySelectorAll('button')).toHaveLength(1);
       for (let index = 0; index < 2; index++) {
         await launcher.trigger('click');
         await flushPromises();
@@ -348,7 +357,7 @@ describe('SettingsView diagnostics', () => {
     expect(wrapper.get('[data-testid="alibaba-credential-acquisition-guide"]').text()).not.toContain(
       '已打开的旧应用页面'
     );
-    await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+    await openSettingsAuthorization(wrapper);
     expect(openIopTool).not.toHaveBeenCalled();
     expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
     expect(acquisition.start).not.toHaveBeenCalled();
@@ -385,7 +394,7 @@ describe('SettingsView diagnostics', () => {
       };
       const wrapper = mountView('extension', 'locked', 'manual', 'node', { acquisition });
       await flushPromises();
-      await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+      await openSettingsAuthorization(wrapper);
       expect(openTool).not.toHaveBeenCalled();
       expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
       clicking = true;
@@ -428,7 +437,7 @@ describe('SettingsView diagnostics', () => {
       if (scenario === 'bff') {
         expect(wrapper.find('[data-testid="get-alibaba-credentials"]').exists()).toBe(false);
       } else {
-        await wrapper.get('[data-testid="get-alibaba-credentials"]').trigger('click');
+        await openSettingsAuthorization(wrapper);
         const action = scenario === 'cancel' ? 'cancel-authorization-protocol' : 'choose-authorization-iop';
         document.body.querySelector<HTMLButtonElement>(`[data-testid="${action}"]`)?.click();
       }

@@ -160,7 +160,8 @@ test('formal extension imports locally and requests only the required IOP busine
     });
     const pageCount = context.pages().length;
     for (const protocol of ['top', 'iop'] as const) {
-      await page.getByTestId('get-alibaba-credentials').click();
+      await page.getByTestId('open-authorization-guide').click();
+      await page.getByTestId('authorization-wizard-continue').click();
       const dialog = page.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
       if (protocol === 'top') await dialog.getByTestId('continue-authorization-protection').click();
       else await expect(dialog.getByTestId('authorization-protection')).toHaveCount(0);

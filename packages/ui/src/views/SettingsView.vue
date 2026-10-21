@@ -850,20 +850,11 @@ function confirmLanguagePreference(): void {
       >
         <div v-if="mode === 'extension' && alibabaCredentialAcquisition" class="flex flex-wrap gap-2">
           <Button
-            variant="outline"
             type="button"
             data-testid="open-authorization-guide"
             :disabled="credentialActionBusy"
             @click="openAuthorizationGuide"
             ><BookOpen class="size-4" />{{ credentialText('authorizationWizard') }}</Button
-          >
-          <Button
-            v-if="!settingsEditable || dualSettings"
-            type="button"
-            data-testid="get-alibaba-credentials"
-            :disabled="credentialActionBusy"
-            @click="protocolDialogPurpose = 'acquire'"
-            ><WandSparkles class="size-4" />{{ credentialText('acquireCredentials') }}</Button
           >
         </div>
         <GatewayAuthorizationsPanel
