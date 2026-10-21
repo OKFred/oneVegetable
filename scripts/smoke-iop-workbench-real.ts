@@ -61,10 +61,12 @@ export function parseOptions(args: readonly string[]): {
   nativeHostConsent?: true;
   ordersOnly?: true;
   photosOnly?: true;
+  orderRole?: 'seller' | 'buyer';
 } {
   const inputs = args.filter((arg) => arg.startsWith('--credential='));
   const products = args.filter((arg) => arg.startsWith('--product-id='));
   const photoGroups = args.filter((arg) => arg.startsWith('--photo-group-id='));
+  const orderRoles = args.filter((arg) => arg.startsWith('--order-role='));
   if (
     inputs.length !== 1 ||
     args.filter((arg) => arg === '--confirm-readonly').length !== 1 ||
@@ -74,11 +76,13 @@ export function parseOptions(args: readonly string[]): {
     (args.includes('--orders-only') && args.includes('--photos-only')) ||
     products.length > 1 ||
     photoGroups.length > 1 ||
+    orderRoles.length > 1 ||
     args.some(
       (arg) =>
         !arg.startsWith('--credential=') &&
         !arg.startsWith('--product-id=') &&
         !arg.startsWith('--photo-group-id=') &&
+        !arg.startsWith('--order-role=') &&
         arg !== '--confirm-readonly' &&
         arg !== '--native-host-consent' &&
         arg !== '--photos-only' &&
@@ -90,6 +94,12 @@ export function parseOptions(args: readonly string[]): {
   if (!credential) throw new Error('READ_ONLY_ARGUMENTS_REQUIRED');
   const productId = products[0]?.slice('--product-id='.length);
   const photoGroupId = photoGroups[0]?.slice('--photo-group-id='.length);
+  const orderRole = orderRoles[0]?.slice('--order-role='.length);
+  if (
+    orderRoles.length &&
+    (!args.includes('--orders-only') || !['seller', 'buyer'].includes(orderRole ?? ''))
+  )
+    throw new Error('ORDER_ROLE_INVALID');
   if (products.length && !safeNumericId(productId)) throw new Error('PRODUCT_ID_INVALID');
   if (photoGroups.length && !safeNumericId(photoGroupId)) throw new Error('PHOTO_GROUP_ID_INVALID');
   if (args.includes('--photos-only') && !photoGroupId) throw new Error('PHOTO_GROUP_ID_INVALID');
@@ -97,6 +107,7 @@ export function parseOptions(args: readonly string[]): {
     credential,
     ...(productId ? { productId } : {}),
     ...(photoGroupId ? { photoGroupId } : {}),
+    ...(orderRole === 'seller' || orderRole === 'buyer' ? { orderRole } : {}),
     ...(args.includes('--native-host-consent') ? { nativeHostConsent: true as const } : {}),
     ...(args.includes('--orders-only') ? { ordersOnly: true as const } : {}),
     ...(args.includes('--photos-only') ? { photosOnly: true as const } : {})
@@ -207,7 +218,8 @@ export async function runReadPlan(
   productId?: string,
   photoGroupId?: string,
   ordersOnly = false,
-  photosOnly = false
+  photosOnly = false,
+  orderRole?: 'seller' | 'buyer'
 ): Promise<void> {
   if (photosOnly) {
     if (!safeNumericId(photoGroupId)) throw new Error('PHOTO_GROUP_ID_INVALID');
@@ -245,10 +257,22 @@ export async function runReadPlan(
       skip('getProductInventory', 'NO_VALID_PRODUCT');
     }
   }
-  const orders = await call('listTradeOrders', { page: 1, pageSize: 1 });
+  const orders = await call('listTradeOrders', {
+    page: 1,
+    pageSize: 1,
+    ...(orderRole ? { role: orderRole } : {})
+  });
   // Order IDs stay strings even beyond Number.MAX_SAFE_INTEGER.
-  const order = items(orders).find((entry) => positiveId(entry.id));
+  const order = items(orders).find(
+    (entry) =>
+      typeof entry.id === 'string' &&
+      entry.id.length > 0 &&
+      entry.id.length <= 128 &&
+      entry.id.trim() === entry.id &&
+      !/\p{Cc}/u.test(entry.id)
+  );
   if (order) {
+    if (orderRole && order.role !== orderRole) throw new Error('ORDER_ROLE_NOT_CONFIRMED');
     if (!ordersOnly) await call('getTradeOrderLogistics', { orderId: order.id });
     await call('getTradeOrderAggregate', { order, language: 'zh_CN' });
   } else {
@@ -270,6 +294,7 @@ export function installReadOnlyGuard(config: {
   paths: Record<ReadOperation, string>;
   intervalMs: number;
   maxGroupReads?: number;
+  orderRole?: 'seller' | 'buyer';
 }): void {
   const host = globalThis as GuardGlobal;
   if (host.__iopReadSmokeGuard) throw new Error('READ_GUARD_ALREADY_INSTALLED');
@@ -353,6 +378,9 @@ export function installReadOnlyGuard(config: {
         parameters.get('sign_method') !== 'sha256' ||
         !parameters.get('access_token') ||
         !parameters.get('sign') ||
+        (current.path === config.paths.listTradeOrders &&
+          config.orderRole !== undefined &&
+          parameters.get('role') !== config.orderRole) ||
         (current.path.endsWith('/photobank/list') &&
           !/^[1-9][0-9]{0,63}$/u.test(parameters.get('groupId') ?? ''))
       )
@@ -433,6 +461,7 @@ export async function main(args: readonly string[]): Promise<void> {
     errorCode: null as string | null,
     stage: 'copy-build',
     protocol: 'iop',
+    orderRole: options.orderRole ?? 'seller',
     buildSha256: '',
     productionBuildCopiedUnchanged: false,
     isolatedProfile: true,
@@ -536,7 +565,8 @@ export async function main(args: readonly string[]): Promise<void> {
       origin: IOP_API_ORIGIN,
       paths: READ_PATHS,
       intervalMs: 350,
-      maxGroupReads: MAX_GROUP_READS
+      maxGroupReads: MAX_GROUP_READS,
+      ...(options.orderRole ? { orderRole: options.orderRole } : {})
     });
     const page = await context.newPage();
     page.setDefaultTimeout(20_000);
@@ -739,7 +769,8 @@ export async function main(args: readonly string[]): Promise<void> {
       options.productId,
       options.photoGroupId,
       options.ordersOnly,
-      options.photosOnly
+      options.photosOnly,
+      options.orderRole
     );
     report.status =
       report.blockedRequests || records.some((entry) => entry.status === 'failed')

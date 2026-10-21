@@ -218,3 +218,22 @@ The official Image bank shows one image in the known test parent and no images i
 - 回归样本全部使用虚构 ID，覆盖超过 32 位及最大安全整数的完整传递，并确认不会将商品密文当成图片分组，或在图片查询时自动调用商品加解密接口。没有提交真实账号数据。
 
 Raw numeric test-group IDs and names match between TOP and IOP. With those same IDs, an independent TOP control returns one parent image and an empty child, matching the official UI, while IOP remains uncorrelated. The public conversion API is product-specific, not a documented photobank converter. Inferred `locationType` adds no improvement; omitting required `groupId` is rejected. Eight read-only calls make no credential changes or writes. No speculative encryption or scope workaround is enabled.
+
+## 图片限制收尾与销售/采购订单（远程真实通过）
+
+- 图片范围校验继续保留，不过滤伪造空目录。仅 IOP 的提示明确区分“目录查询不可用”和“没有图片/权限不足”；分组新增、改名和上传仍按各自独立可用性展示。双授权继续在出网前选择 TOP，不在失败后补请求。新增 Vue 回归覆盖图片列表和图片选择器。
+- 公开资料研究没有找到可核验的同类修复。额外 3 次隔离只读对照中，增加 GOP 请求头仍返回不相关记录；公开社区示例的两种 `request` JSON 封装均返回 `MissingParameter`。不将这些诊断参数加入生产实现。脱敏回执：`artifacts/iop-feature-parity/2026-10-21-photo-public-example-comparison.json`。
+- 按[公开订单列表](https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=/alibaba/order/list&methodType=GET/POST)的 `role=seller/buyer` 接通销售和采购入口。`TradeOrderListQuery.role` 为可选项，省略时仍按销售处理，且保持原响应形状；不改变 TOP 请求封装、旧用户默认授权或双协议选路。契约不设置默认值，避免生成类型把旧调用变为必填。
+- 订单摘要兼容增加查询角色，详情缓存、进行中的查询、列表及抽屉状态按角色隔离。切换角色重置选择、页码、抽屉和 TT 遮罩，丢弃迟到结果。采购仅开放只读列表、公开详情和物流，不显示卖家起草、资金、地址操作，也不把采购的 `other_login_id` 错标为买家。
+- Node BFF 隔离 IOP 验收：销售和采购分别成功读取第一页真实订单、匹配详情及物流，共 6 次请求、0 TOP、0 Token、0 写入。详情保留真实总金额和商品行，资金仍不可用，不能用总金额或手续费冒充已付金额。最终回执：`artifacts/iop-order-role-validation/e3dfae87-d615-4bfd-a274-34127af9d3a7.json`。
+- 正式 MV3 未修改的生产代码复制到隔离 Profile，分别运行销售、采购验收：各 3 次 IOP 请求，共 6 次；摘要角色、详情关联、加密存储及刷新保留均通过，0 TOP、Token、写入和越界请求。只在隔离 Manifest 预授予精确 IOP Origin，不替代原生权限弹窗验收，不改日常插件配置。最终回执：`artifacts/iop-workbench-read-validation/1e267d9f-7b3a-4ed0-b6c2-8fc29321e865-iLuvFO/report.json`、`bb36fbe9-4307-4843-a3f5-b997decb2b2c-QCluOQ/report.json`，构建 SHA-256 `030ba1cebd8206b6b116e54117eff3cfc11484729a59c515b0b33d22af641b23`。
+- 复查工具固定只读白名单、串行限速和请求数上限，并核对真实请求中的角色。只持久化数量、关联结果、角色、请求标识和指纹，不保存完整业务响应。未执行付款、交易创建、商品或库存修改；没有将其他视频、运费或交易写方法标为已通过。
+- 远程 Windows 通过 348 个文件、3,091 项全量单测，以及格式、Lint、i18n、契约漂移、类型和三端构建。另有 24 项 Worker 隔离测试、28 条订单/列表/离开保护 Web E2E；验收脚本单独通过严格类型检查。首轮旧响应断言暴露了额外角色字段的兼容差异，现已保留旧请求的原响应形状，未放宽该断言。
+- 首次构建的双语文案包为 310,819 字节，超出原 310,000 字节门槛；经用户明确同意，单独提高到 350,000 字节，不压缩业务提示，不改变其他门禁。调整后包体和商店合规检查通过。ZIP 仅在内存测量为 1,282,526 字节，解包 4,392,130 字节，Options eager JS 249,129 字节；未写出或覆盖正式 ZIP，也未部署或合并。
+
+  ```powershell
+  pnpm exec tsx scripts/smoke-iop-order-roles-real.ts --confirm-readonly --credential=artifacts/local-dual-authorization/iop-credentials.json
+  pnpm exec tsx scripts/smoke-iop-workbench-real.ts --confirm-readonly --credential=artifacts/local-dual-authorization/iop-credentials.json --orders-only --order-role=buyer
+  ```
+
+Sales and purchase perspectives now share the public order API without changing legacy seller defaults or protocol selection. Role-scoped caches, selection and drawers reject late cross-role results, and purchase mode exposes no new write entry points. Isolated remote Node and formal MV3 each passed six real IOP reads across both roles, with no TOP fallback, refresh, mutations or active credential changes. Photo scope failures remain explicit; independent supported actions stay reachable. Native permission consent and unrelated unverified methods are not claimed as accepted.

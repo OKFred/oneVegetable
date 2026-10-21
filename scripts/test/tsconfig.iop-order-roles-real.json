@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "../smoke-iop-order-roles-real.ts",
+    "../smoke-iop-workbench-real.ts",
+    "./iop-order-role-smoke.test.ts",
+    "./iop-workbench-read.test.ts"
+  ]
+}
