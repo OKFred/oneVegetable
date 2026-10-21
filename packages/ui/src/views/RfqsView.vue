@@ -152,6 +152,7 @@ const rfqAccessError = computed<GatewayError | null>(() => {
     : equity.error.value;
   return error ? normalizeGatewayError(error) : null;
 });
+const rfqIopUnsupported = computed(() => rfqAccessError.value?.code === 'ALIBABA_IOP_METHOD_UNSUPPORTED');
 const rfqWorkspaceReady = computed(() => rfqAccessReady.value && !rfqPackageDenied.value);
 const rfqListLoading = computed(
   () => !rfqPackageDenied.value && (equity.isPending.value || rfqs.isPending.value)
@@ -415,7 +416,7 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
       :variant="
         mode === 'mock'
           ? 'secondary'
-          : rfqPackageDenied
+          : rfqIopUnsupported || rfqPackageDenied
             ? 'warning'
             : rfqWorkspaceReady
               ? 'success'
@@ -425,21 +426,33 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
       {{
         mode === 'mock'
           ? t('rfqs.status.demo')
-          : rfqPackageDenied
-            ? t('rfqs.status.denied')
-            : rfqWorkspaceReady
-              ? t('rfqs.status.ready')
-              : t('rfqs.status.checking')
+          : rfqIopUnsupported
+            ? t('rfqs.status.iopUnsupported')
+            : rfqPackageDenied
+              ? t('rfqs.status.denied')
+              : rfqWorkspaceReady
+                ? t('rfqs.status.ready')
+                : t('rfqs.status.checking')
       }}
     </Badge>
   </PageHeader>
 
-  <Card v-if="rfqPackageDenied" class="mb-4 border-amber-300 p-5 dark:border-amber-800">
+  <Card v-if="rfqIopUnsupported || rfqPackageDenied" class="mb-4 border-amber-300 p-5 dark:border-amber-800">
     <div class="flex items-start gap-3">
       <ShieldAlert class="mt-0.5 size-5 shrink-0 text-amber-600" />
       <div class="min-w-0 flex-1">
-        <h2 class="font-semibold">{{ t('rfqs.permissions.deniedTitle') }}</h2>
-        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+        <h2 class="font-semibold">
+          {{ t(rfqIopUnsupported ? 'rfqs.permissions.iopUnsupportedTitle' : 'rfqs.permissions.deniedTitle') }}
+        </h2>
+        <template v-if="rfqIopUnsupported">
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
+            {{ t('errors.codes.ALIBABA_IOP_METHOD_UNSUPPORTED') }}
+          </p>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">
+            {{ t('rfqs.permissions.topSupplement') }}
+          </p>
+        </template>
+        <p v-else class="mt-2 text-sm leading-6 text-muted-foreground">
           {{
             t('rfqs.permissions.deniedDescription', {
               code: rfqAccessError?.code ?? '11',
@@ -460,7 +473,11 @@ const columns = computed<DataColumn<RfqSummary>[]>(() => [
             {{ t('rfqs.permissions.marketplace') }}<ExternalLink class="size-3.5" />
           </a>
           <ListActionButton :icon="RefreshCw" :disabled="equity.isFetching.value" @click="equity.refetch()">
-            {{ equity.isFetching.value ? t('rfqs.permissions.checking') : t('rfqs.permissions.retry') }}
+            {{
+              equity.isFetching.value
+                ? t('rfqs.permissions.checking')
+                : t(rfqIopUnsupported ? 'rfqs.permissions.retryShort' : 'rfqs.permissions.retry')
+            }}
           </ListActionButton>
           <a
             href="https://developer.alibaba.com/docs/api.htm?apiId=32084"

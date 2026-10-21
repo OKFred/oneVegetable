@@ -10,6 +10,7 @@ import {
   OPERATION_IDS,
   StaticOperationAvailabilityClient,
   type GatewayClient,
+  type GatewayError,
   type OperationId,
   type RequestOf,
   type ResponseOf
@@ -17,6 +18,7 @@ import {
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 
 import { provideServices } from '../src/lib/services';
+import { uiI18n } from '../src/i18n';
 import RfqsView from '../src/views/RfqsView.vue';
 import UnsavedEditingDialog from '../src/components/UnsavedEditingDialog.vue';
 import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
@@ -49,6 +51,7 @@ function mountView(
 }
 
 afterEach(() => {
+  uiI18n.global.locale.value = 'zh-CN';
   globalThis.document.body.innerHTML = '';
 });
 
@@ -199,6 +202,43 @@ describe('RfqsView', () => {
     wrapper.unmount();
   });
 
+  it.each(['extension', 'bff'] as const)(
+    'explains unsupported IOP RFQ equity without reporting missing permission in %s mode',
+    async (mode) => {
+      const code = 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+      const gateway = new TrackingGateway(false, { code, message: code, retryable: false });
+      const wrapper = mountView(mode, gateway);
+
+      await vi.waitFor(() => {
+        expect(wrapper.text()).toContain('当前 IOP 尚不支持 RFQ 权益查询');
+      });
+      expect(wrapper.text()).toContain('IOP 暂不支持此 RFQ 查询');
+      expect(wrapper.text()).toContain(uiI18n.global.t(`errors.codes.${code}`));
+      expect(wrapper.text()).toContain('可在设置中补充已有 TOP 授权后重新检测');
+      expect(wrapper.text()).not.toContain('当前账号无 RFQ 权限');
+      expect(wrapper.text()).not.toContain('当前应用未获得 RFQ API 包权限');
+      expect(wrapper.text()).not.toContain('RFQ 权限检查失败');
+      expect(wrapper.text()).not.toContain('正在检查 RFQ 权限');
+      expect(wrapper.text()).not.toContain(code);
+      expect(gateway.calls).toEqual(['getRfqEquity']);
+      const marketplace = wrapper.get('a[href="https://sourcing.alibaba.com/"]');
+      expect(marketplace.attributes()).toMatchObject({ target: '_blank', rel: 'noreferrer' });
+
+      uiI18n.global.locale.value = 'en-US';
+      await flushPromises();
+      expect(wrapper.text()).toContain('IOP does not yet support this RFQ quota query');
+      expect(wrapper.text()).toContain(uiI18n.global.t(`errors.codes.${code}`));
+      expect(wrapper.text()).toContain('Add an existing TOP authorization in Settings');
+      expect(wrapper.text()).not.toContain('This account has no RFQ permission');
+      expect(wrapper.text()).not.toContain('This app has not been granted the RFQ API package');
+      expect(wrapper.text()).not.toContain('Checking RFQ permission');
+      expect(wrapper.text()).not.toContain(code);
+      expect(marketplace.text()).toContain('Open the Alibaba.com RFQ marketplace');
+      expect(gateway.calls).toEqual(['getRfqEquity']);
+      wrapper.unmount();
+    }
+  );
+
   it('applies search filters explicitly instead of querying for every keystroke', async () => {
     const gateway = new TrackingGateway();
     const wrapper = mountView('mock', gateway);
@@ -241,12 +281,18 @@ describe('RfqsView', () => {
 class TrackingGateway extends MockGatewayClient {
   readonly calls: OperationId[] = [];
 
-  constructor(private readonly denyRfqPackage = false) {
+  constructor(
+    private readonly denyRfqPackage = false,
+    private readonly equityError?: GatewayError
+  ) {
     super(0);
   }
 
   override request<K extends OperationId>(operation: K, request: RequestOf<K>): Promise<ResponseOf<K>> {
     this.calls.push(operation);
+    if (this.equityError && operation === 'getRfqEquity') {
+      return Promise.reject(new GatewayException(this.equityError));
+    }
     if (this.denyRfqPackage && operation === 'getRfqEquity') {
       return Promise.reject(
         new GatewayException({

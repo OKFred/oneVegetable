@@ -4,11 +4,15 @@ export const rfqs = {
   description: 'RFQ 搜索、推荐、详情、已读状态与报价草稿均使用类型化契约。',
   status: {
     demo: '契约演示',
+    iopUnsupported: 'IOP 暂不支持此 RFQ 查询',
     denied: '当前账号无 RFQ 权限',
     ready: 'RFQ 权限预检通过',
     checking: '正在检查 RFQ 权限'
   },
   permissions: {
+    iopUnsupportedTitle: '当前 IOP 尚不支持 RFQ 权益查询',
+    topSupplement:
+      '这不代表账号缺少 RFQ 权限。可在设置中补充已有 TOP 授权后重新检测，或直接前往官方 RFQ 市场。',
     deniedTitle: '当前应用未获得 RFQ API 包权限',
     deniedDescription:
       'Alibaba 返回 {code} / {subCode}。页面已停止继续请求搜索、推荐、详情和已读状态，避免重复失败。',

@@ -5,11 +5,15 @@ export const rfqs = {
     'RFQ search, recommendations, details, read status, and quotation drafts all use typed contracts.',
   status: {
     demo: 'Contract demo',
+    iopUnsupported: 'This RFQ query is not yet supported by IOP',
     denied: 'This account has no RFQ permission',
     ready: 'RFQ permission preflight passed',
     checking: 'Checking RFQ permission'
   },
   permissions: {
+    iopUnsupportedTitle: 'IOP does not yet support this RFQ quota query',
+    topSupplement:
+      'This does not mean your account lacks RFQ permission. Add an existing TOP authorization in Settings and check again, or use the official RFQ marketplace.',
     deniedTitle: 'This app has not been granted the RFQ API package',
     deniedDescription:
       'Alibaba returned {code} / {subCode}. Further search, recommendation, detail, and read-status requests have been stopped to avoid repeated failures.',
