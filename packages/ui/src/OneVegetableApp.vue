@@ -151,7 +151,9 @@ async function checkUnlockedSession(): Promise<void> {
     return;
   checkingUnlockedSession = true;
   try {
-    if ((await props.vault.status()).state === 'unlocked') resumeReadQueries();
+    const status = await props.vault.status();
+    if (status.state === 'unlocked' || (status.state === 'locked' && status.gatewayAvailable === true))
+      resumeReadQueries();
   } catch {
     // Do not turn a transient status failure into another password dialog.
   } finally {

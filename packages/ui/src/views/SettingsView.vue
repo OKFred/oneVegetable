@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   Database,
+  Download,
   ExternalLink,
   FileUp,
   Globe2,
@@ -84,6 +85,8 @@ const configurationOpen = ref(false);
 const manualConfigurationOpen = ref(false);
 const testingAuthorization = ref(false);
 const applyingAcquiredCredentials = ref(false);
+const backupConfirmationOpen = ref(false);
+const backingUpAuthorization = ref(false);
 const connectionTests = ref<Partial<Record<'top' | 'iop', GatewayCredentialTestResult>>>({});
 const dualSettings = computed(
   () =>
@@ -130,7 +133,8 @@ const credentialActionBusy = computed(
     vaultBusy.value ||
     switchingAuthorization.value ||
     testingAuthorization.value ||
-    applyingAcquiredCredentials.value
+    applyingAcquiredCredentials.value ||
+    backingUpAuthorization.value
 );
 const configuredProfile = computed(() => authorizationSummary.value?.[selectedProtocol.value] ?? null);
 const latestConnectionTest = computed(() => {
@@ -152,6 +156,7 @@ const protocolDialogPurpose = ref<'acquire' | 'renew' | null>(null);
 const authorizationGuideRequested = ref(false);
 
 function openAuthorizationGuide(): void {
+  if (!settingsEditable.value || credentialActionBusy.value) return;
   authorizationGuideRequested.value = true;
   protocolDialogPurpose.value = 'acquire';
 }
@@ -171,6 +176,14 @@ const settingsEditable = computed(
     settingsLoaded.value &&
     (mode === 'mock' || vaultStatus.value?.state === 'empty' || vaultStatus.value?.state === 'unlocked')
 );
+const authorizationSummaryReadable = computed(
+  () =>
+    settingsEditable.value ||
+    (settingsLoaded.value &&
+      vaultStatus.value?.state === 'locked' &&
+      vaultStatus.value.gatewayAvailable === true)
+);
+let sensitiveGeneration = 0;
 onMounted(async () => {
   if (mode === 'extension' && vault) {
     globalThis.addEventListener(CREDENTIAL_VAULT_CHANGED_EVENT, scheduleVaultReload);
@@ -203,7 +216,7 @@ function scheduleVaultReload(): void {
 
 async function reloadExternalVault(): Promise<void> {
   if (!viewAlive || !vault) return;
-  if (!settingsLoaded.value || vaultReloading || vaultOperationPending()) {
+  if (!settingsLoaded.value || vaultReloading) {
     scheduleVaultReload();
     return;
   }
@@ -213,14 +226,24 @@ async function reloadExternalVault(): Promise<void> {
     if (!isViewAlive()) return;
     applyVaultStatus(next);
     if (next.state === 'locked' || next.state === 'invalid') {
-      authorizations.reset();
-      // Do not discard drafts: the locked view hides them until explicit unlock.
+      if (next.state === 'locked' && next.gatewayAvailable) await authorizations.reload();
+      else authorizations.reset();
+      return;
+    }
+    if (vaultOperationPending()) {
+      scheduleVaultReload();
       return;
     }
     if (hasVaultEdits()) return;
     const protocol = selectedProtocol.value;
     const nextSettings = await loadSelectedAuthorization();
-    if (!isViewAlive() || hasVaultEdits() || vaultOperationPending() || selectedProtocol.value !== protocol)
+    if (
+      !isViewAlive() ||
+      !settingsEditable.value ||
+      hasVaultEdits() ||
+      vaultOperationPending() ||
+      selectedProtocol.value !== protocol
+    )
       return;
     model.value = nextSettings;
     clearVaultPassphrases();
@@ -261,7 +284,7 @@ async function initializeView(): Promise<void> {
   credentialEditing.markClean();
   passphraseEditing.markClean();
   settingsLoaded.value = true;
-  if (mode === 'extension' && settingsEditable.value) await authorizations.reload();
+  if (mode === 'extension' && authorizationSummaryReadable.value) await authorizations.reload();
 }
 
 async function initializeSettings(): Promise<GatewaySettings | undefined> {
@@ -272,7 +295,7 @@ async function initializeSettings(): Promise<GatewaySettings | undefined> {
 }
 
 async function save(): Promise<void> {
-  if (saving.value || vaultBusy.value) return;
+  if (!settingsEditable.value || saving.value || vaultBusy.value) return;
   saving.value = true;
   feedback.value = '';
   vaultError.value = null;
@@ -283,7 +306,7 @@ async function save(): Promise<void> {
       const created = await vault.create(vaultPassphrase.value, model.value);
       applyVaultStatus(created);
       clearVaultPassphrases();
-      model.value = await loadSelectedAuthorization();
+      if (!(await readSensitiveSettings(loadSelectedAuthorization))) return;
       credentialEditing.markClean();
       const configured = created.hasAppKey && created.hasAppSecret && created.hasAccessToken;
       const protectionSaved = hadPassphrase
@@ -293,7 +316,7 @@ async function save(): Promise<void> {
       toast.success(configured ? t('settings.vault.savedToast') : protectionSaved);
     } else {
       await settings.save(model.value);
-      model.value = await loadSelectedAuthorization();
+      if (!(await readSensitiveSettings(loadSelectedAuthorization))) return;
       credentialEditing.markClean();
       feedback.value =
         mode === 'mock'
@@ -326,9 +349,11 @@ async function importCredentialBundle(event: Event): Promise<void> {
   credentialImportError.value = null;
   try {
     await settingsInitialization;
+    if (!settingsEditable.value) return;
     if (!(await credentialEditing.confirmLeave())) return;
     if (file.size > 256 * 1024) throw new Error(t('settings.credentials.bundleTooLarge'));
     const parsed = JSON.parse(await file.text()) as unknown;
+    if (!canEditSensitiveSettings()) return;
     if (alibabaCredentialAcquisition?.importBundles && (Array.isArray(parsed) || configurationOpen.value)) {
       const bundles = parseAlibabaCredentialImport(parsed);
       if (
@@ -345,6 +370,7 @@ async function importCredentialBundle(event: Event): Promise<void> {
       throw new Error(credentialText('profileMismatch'));
     if (dualSettings.value && settings.loadAuthorization) {
       const target = await settings.loadAuthorization(imported.protocol ?? 'top');
+      if (!canEditSensitiveSettings()) return;
       model.value = { ...target, ...readImportedCredentials(parsed, target) };
     } else model.value = { ...model.value, ...imported };
     if (configurationOpen.value) manualConfigurationOpen.value = true;
@@ -361,10 +387,14 @@ async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Pr
   try {
     const protocol = selectedProtocol.value;
     applyVaultStatus(status);
-    model.value =
-      configurationOpen.value && settings.loadAuthorization
-        ? await settings.loadAuthorization(protocol)
-        : await settings.load();
+    if (
+      !(await readSensitiveSettings(() =>
+        configurationOpen.value && settings.loadAuthorization
+          ? settings.loadAuthorization(protocol)
+          : settings.load()
+      ))
+    )
+      return;
     if (mode === 'extension') {
       authorizations.invalidateBinding();
       await authorizations.reload();
@@ -493,7 +523,7 @@ async function unlockVault(): Promise<void> {
   vaultError.value = null;
   try {
     applyVaultStatus(await vault.unlock(vaultStatus.value?.deviceProtected ? '' : vaultPassphrase.value));
-    model.value = await settings.load();
+    if (!(await readSensitiveSettings(() => settings.load()))) return;
     await authorizations.reload();
     clearVaultPassphrases();
     credentialEditing.markClean();
@@ -515,7 +545,7 @@ async function migrateVault(): Promise<void> {
   try {
     assertMatchingPassphrases(vaultPassphrase.value, vaultPassphraseConfirmation.value);
     applyVaultStatus(await vault.migrate(vaultPassphrase.value));
-    model.value = await settings.load();
+    if (!(await readSensitiveSettings(() => settings.load()))) return;
     await authorizations.reload();
     clearVaultPassphrases();
     credentialEditing.markClean();
@@ -534,16 +564,12 @@ async function lockVault(): Promise<void> {
   vaultBusy.value = true;
   try {
     applyVaultStatus(await vault.lock());
-    authorizations.reset();
-    model.value = {
-      appKey: '',
-      appSecret: '',
-      accessToken: '',
-      endpoint: ALIBABA_GATEWAY,
-      signMethod: 'hmac'
-    };
-    credentialEditing.markClean();
-    feedback.value = t('settings.vault.lockedFeedback');
+    if (authorizationSummaryReadable.value) await authorizations.reload();
+    else authorizations.reset();
+    feedback.value = vaultStatus.value?.gatewayAvailable
+      ? t('settings.vault.lockedFeedback')
+      : t('settings.vault.lockDescription.other');
+    toast.success(feedback.value);
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, t('settings.vault.lockError'));
   } finally {
@@ -558,7 +584,8 @@ async function loadSelectedAuthorization(): Promise<GatewaySettings> {
 }
 
 async function selectAuthorization(protocol: 'top' | 'iop', openConfiguration = false): Promise<void> {
-  if (!settings.loadAuthorization || credentialActionBusy.value) return;
+  const loadAuthorization = settings.loadAuthorization?.bind(settings);
+  if (!settingsEditable.value || !loadAuthorization || credentialActionBusy.value) return;
   if (selectedProtocol.value === protocol) {
     if (openConfiguration) configurationOpen.value = true;
     else toast.info(credentialText('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
@@ -568,7 +595,7 @@ async function selectAuthorization(protocol: 'top' | 'iop', openConfiguration = 
   switchingAuthorization.value = true;
   credentialImportError.value = null;
   try {
-    model.value = await settings.loadAuthorization(protocol);
+    if (!(await readSensitiveSettings(() => loadAuthorization(protocol)))) return;
     credentialEditing.markClean();
     feedback.value = '';
     if (openConfiguration) configurationOpen.value = true;
@@ -590,7 +617,8 @@ async function closeCredentialConfiguration(open: boolean): Promise<void> {
     credentialActionBusy.value ||
     manualConfigurationOpen.value ||
     protocolDialogPurpose.value ||
-    clearingAuthorization.value
+    clearingAuthorization.value ||
+    backupConfirmationOpen.value
   )
     return;
   if (!(await discardCredentialEdits())) return;
@@ -607,7 +635,7 @@ async function discardCredentialEdits(): Promise<boolean> {
   if (!credentialEditing.dirty.value) return true;
   if (!(await credentialEditing.confirmLeave())) return false;
   try {
-    model.value = await loadSelectedAuthorization();
+    if (!(await readSensitiveSettings(loadSelectedAuthorization))) return false;
     credentialEditing.markClean();
     return true;
   } catch (cause) {
@@ -617,11 +645,11 @@ async function discardCredentialEdits(): Promise<boolean> {
 }
 
 async function reloadSelectedProfile(): Promise<void> {
-  if (credentialActionBusy.value || !(await discardCredentialEdits())) return;
+  if (!settingsEditable.value || credentialActionBusy.value || !(await discardCredentialEdits())) return;
   switchingAuthorization.value = true;
   credentialImportError.value = null;
   try {
-    model.value = await loadSelectedAuthorization();
+    if (!(await readSensitiveSettings(loadSelectedAuthorization))) return;
     credentialEditing.markClean();
     await authorizations.reload();
   } catch (cause) {
@@ -632,7 +660,12 @@ async function reloadSelectedProfile(): Promise<void> {
 }
 
 async function testSelectedAuthorization(): Promise<void> {
-  if (!settings.testAuthorization || credentialActionBusy.value || !configuredProfile.value?.configured)
+  if (
+    !settingsEditable.value ||
+    !settings.testAuthorization ||
+    credentialActionBusy.value ||
+    !configuredProfile.value?.configured
+  )
     return;
   const protocol = selectedProtocol.value;
   const configurationId = configuredProfile.value.configurationId;
@@ -662,9 +695,11 @@ async function testSelectedAuthorization(): Promise<void> {
 async function chooseDefaultAuthorization(protocol: 'top' | 'iop'): Promise<void> {
   const summary = authorizationSummary.value;
   const configurationId = summary?.[protocol]?.configurationId;
+  const loadAuthorization = settings.loadAuthorization?.bind(settings);
   if (
+    !settingsEditable.value ||
     !settings.setDefaultAuthorization ||
-    !settings.loadAuthorization ||
+    !loadAuthorization ||
     !configurationId ||
     switchingAuthorization.value ||
     authorizationBusy.value ||
@@ -684,7 +719,7 @@ async function chooseDefaultAuthorization(protocol: 'top' | 'iop'): Promise<void
       await settings.setDefaultAuthorization(protocol, configurationId)
     );
     notifyGatewayConfigurationChanged();
-    model.value = await settings.loadAuthorization(protocol);
+    if (!(await readSensitiveSettings(() => loadAuthorization(protocol)))) return;
     credentialEditing.markClean();
     feedback.value = '';
     toast.success(credentialText('defaultSaved', { protocol: protocol.toUpperCase() }));
@@ -699,13 +734,13 @@ async function chooseDefaultAuthorization(protocol: 'top' | 'iop'): Promise<void
 }
 
 async function renewAuthorization(protocol: 'top' | 'iop'): Promise<void> {
-  if (!settings.refreshAuthorization || vaultBusy.value || saving.value) return;
+  if (!settingsEditable.value || !settings.refreshAuthorization || vaultBusy.value || saving.value) return;
   if (!(await credentialEditing.confirmLeave())) return;
   vaultBusy.value = true;
   vaultError.value = null;
   try {
     authorizationSummary.value = await settings.refreshAuthorization(protocol);
-    model.value = await loadSelectedAuthorization();
+    if (!(await readSensitiveSettings(loadSelectedAuthorization))) return;
     credentialEditing.markClean();
     notifyGatewayConfigurationChanged();
     toast.success(credentialText('refreshed'));
@@ -720,6 +755,8 @@ async function renewAuthorization(protocol: 'top' | 'iop'): Promise<void> {
 function selectAuthorizationProtocol(protocol: 'top' | 'iop'): void {
   const purpose = protocolDialogPurpose.value;
   protocolDialogPurpose.value = null;
+  authorizationGuideRequested.value = false;
+  protocolImportFile.value = undefined;
   if (mode !== 'extension' || !purpose) return;
   if (purpose === 'renew') {
     void renewAuthorization(protocol);
@@ -741,20 +778,21 @@ function selectAuthorizationProtocol(protocol: 'top' | 'iop'): void {
 }
 
 async function requestClearAuthorization(protocol: 'top' | 'iop'): Promise<void> {
-  if (vaultBusy.value || saving.value || !(await credentialEditing.confirmLeave())) return;
+  if (!settingsEditable.value || vaultBusy.value || saving.value || !(await credentialEditing.confirmLeave()))
+    return;
   clearingAuthorization.value = protocol;
 }
 
 async function clearAuthorization(): Promise<void> {
   const protocol = clearingAuthorization.value;
-  if (!protocol || !settings.clearAuthorization || vaultBusy.value) return;
+  if (!settingsEditable.value || !protocol || !settings.clearAuthorization || vaultBusy.value) return;
   vaultBusy.value = true;
   vaultError.value = null;
   try {
     await settings.clearAuthorization(protocol);
     authorizations.invalidateBinding();
     await authorizations.reload();
-    model.value = await loadSelectedAuthorization();
+    if (!(await readSensitiveSettings(loadSelectedAuthorization))) return;
     credentialEditing.markClean();
     notifyGatewayConfigurationChanged();
     toast.success(credentialText('profileCleared', { protocol: protocol.toUpperCase() }));
@@ -767,12 +805,13 @@ async function clearAuthorization(): Promise<void> {
 }
 
 async function confirmAuthorizations(): Promise<void> {
+  if (!settingsEditable.value) return;
   await authorizations.confirm();
   if (!authorizationError.value) notifyGatewayConfigurationChanged();
 }
 
 async function rotateVaultPassphrase(): Promise<void> {
-  if (!vault) return;
+  if (!settingsEditable.value || !vault) return;
   vaultBusy.value = true;
   vaultError.value = null;
   try {
@@ -799,7 +838,109 @@ async function closePassphraseConfiguration(open: boolean): Promise<void> {
 }
 
 function applyVaultStatus(status: CredentialVaultStatus): void {
+  const previous = vaultStatus.value;
   vaultStatus.value = status;
+  if (
+    (status.state === 'locked' || status.state === 'invalid') &&
+    (previous?.state !== status.state || previous.protocol !== status.protocol)
+  )
+    clearSensitiveView();
+}
+
+function canEditSensitiveSettings(): boolean {
+  return settingsEditable.value;
+}
+
+function matchesBackupContext(
+  generation: number,
+  protocol: 'top' | 'iop',
+  configurationId: string | null | undefined
+): boolean {
+  return (
+    isViewAlive() &&
+    generation === sensitiveGeneration &&
+    canEditSensitiveSettings() &&
+    selectedProtocol.value === protocol &&
+    configuredProfile.value?.configurationId === configurationId
+  );
+}
+
+async function readSensitiveSettings(load: () => Promise<GatewaySettings>): Promise<boolean> {
+  const generation = sensitiveGeneration;
+  const next = await load();
+  if (!isViewAlive() || generation !== sensitiveGeneration || !settingsEditable.value) return false;
+  model.value = next;
+  return true;
+}
+
+function clearSensitiveView(): void {
+  sensitiveGeneration++;
+  const protocol = vaultStatus.value?.protocol ?? authorizationSummary.value?.defaultProtocol ?? 'top';
+  model.value = {
+    protocol,
+    appKey: '',
+    appSecret: '',
+    accessToken: '',
+    endpoint: protocol === 'iop' ? IOP_BUSINESS_ENDPOINT : ALIBABA_GATEWAY,
+    signMethod: protocol === 'iop' ? 'hmac-sha256' : 'hmac'
+  };
+  clearVaultPassphrases();
+  credentialEditing.markClean();
+  passphraseEditing.markClean();
+  configurationOpen.value = false;
+  manualConfigurationOpen.value = false;
+  passphraseConfigurationOpen.value = false;
+  protocolDialogPurpose.value = null;
+  credentialAcquisitionOpen.value = false;
+  clearingAuthorization.value = null;
+  backupConfirmationOpen.value = false;
+  feedback.value = '';
+  credentialImportError.value = null;
+  vaultError.value = null;
+}
+
+async function backupAuthorization(): Promise<void> {
+  if (
+    !backupConfirmationOpen.value ||
+    !settingsEditable.value ||
+    !settings.exportAuthorization ||
+    !configuredProfile.value?.configured ||
+    credentialActionBusy.value
+  )
+    return;
+  const generation = sensitiveGeneration;
+  const protocol = selectedProtocol.value;
+  const configurationId = configuredProfile.value.configurationId;
+  backingUpAuthorization.value = true;
+  credentialImportError.value = null;
+  try {
+    const bundle = await settings.exportAuthorization(protocol);
+    if (!matchesBackupContext(generation, protocol, configurationId)) return;
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+    );
+    const anchor = globalThis.document.createElement('a');
+    try {
+      anchor.href = url;
+      anchor.download = 'credentialInfo.json';
+      anchor.hidden = true;
+      globalThis.document.body.append(anchor);
+      anchor.click();
+    } finally {
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    }
+    backupConfirmationOpen.value = false;
+    toast.success(credentialText('onlineBackupDownloadStarted'));
+  } catch (cause) {
+    if (matchesBackupContext(generation, protocol, configurationId)) {
+      credentialImportError.value = cause;
+      toast.error(credentialText('onlineBackupFailed'));
+      backupConfirmationOpen.value = false;
+    }
+  } finally {
+    backingUpAuthorization.value = false;
+  }
 }
 
 function assertMatchingPassphrases(passphrase: string, confirmation: string, optional = false): void {
@@ -861,14 +1002,14 @@ function confirmLanguagePreference(): void {
           v-if="
             mode === 'extension' &&
             alibabaCredentialAcquisition &&
-            !(settingsEditable && dualSettings && authorizationSummary)
+            !(authorizationSummaryReadable && dualSettings && authorizationSummary)
           "
           class="flex flex-wrap justify-end gap-2 p-5"
         >
           <Button
             type="button"
             data-testid="open-authorization-guide"
-            :disabled="credentialActionBusy"
+            :disabled="credentialActionBusy || !settingsEditable"
             @click="openAuthorizationGuide"
             ><WandSparkles class="size-4" />{{ credentialText('quickSetup') }}</Button
           >
@@ -897,12 +1038,12 @@ function confirmLanguagePreference(): void {
           >
         </Card>
         <AlibabaAuthorizationsPanel
-          v-if="settingsEditable && dualSettings && authorizationSummary"
+          v-if="authorizationSummaryReadable && dualSettings && authorizationSummary"
           :summary="authorizationSummary"
           :selected-protocol="selectedProtocol"
-          :busy="authorizationBusy || credentialActionBusy"
-          :configure-busy="credentialActionBusy"
-          :can-confirm="canConfirm"
+          :busy="authorizationBusy || credentialActionBusy || !settingsEditable"
+          :configure-busy="credentialActionBusy || !settingsEditable"
+          :can-confirm="canConfirm && settingsEditable"
           :can-set-default="Boolean(settings.setDefaultAuthorization)"
           compact
           configure-actions
@@ -920,7 +1061,7 @@ function confirmLanguagePreference(): void {
             <Button
               type="button"
               data-testid="open-authorization-guide"
-              :disabled="credentialActionBusy"
+              :disabled="credentialActionBusy || !settingsEditable"
               @click="openAuthorizationGuide"
               ><WandSparkles class="size-4" />{{ credentialText('quickSetup') }}</Button
             >
@@ -990,11 +1131,13 @@ function confirmLanguagePreference(): void {
             </p>
             <p class="mt-1 text-xs text-muted-foreground">
               {{
-                vaultStatus.deviceProtected
-                  ? credentialText('protectionDeviceHelp')
-                  : vaultStatus.lockReason !== 'manual'
-                    ? t('settings.vault.lockDescription.existing')
-                    : t('settings.vault.lockDescription.other')
+                vaultStatus.gatewayAvailable
+                  ? t('settings.vault.lockDescription.gatewayAvailable')
+                  : vaultStatus.deviceProtected
+                    ? credentialText('protectionDeviceHelp')
+                    : vaultStatus.lockReason !== 'manual'
+                      ? t('settings.vault.lockDescription.existing')
+                      : t('settings.vault.lockDescription.other')
               }}
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
@@ -1173,35 +1316,33 @@ function confirmLanguagePreference(): void {
             <div class="mt-3 flex flex-wrap gap-2">
               <Button
                 v-if="mode === 'extension' && alibabaCredentialAcquisition"
-                size="sm"
                 variant="outline"
                 type="button"
                 :data-testid="dualSettings ? 'configure-acquire-credentials' : 'get-alibaba-credentials'"
                 :disabled="credentialActionBusy"
                 @click="protocolDialogPurpose = 'acquire'"
               >
-                <WandSparkles class="size-3.5" />{{ credentialText('acquireCredentials') }}
+                <WandSparkles class="size-4" />{{ credentialText('acquireCredentials') }}
               </Button>
               <Button
                 v-if="dualSettings"
-                size="sm"
                 variant="outline"
                 :disabled="credentialActionBusy"
                 @click="manualConfigurationOpen = true"
-                ><KeyRound class="size-3.5" />{{ credentialText('manual') }}</Button
+                ><KeyRound class="size-4" />{{ credentialText('manual') }}</Button
               >
               <a
                 href="https://i.alibaba.com/explore/open-api"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+                class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent"
               >
-                <ExternalLink class="size-3.5" />{{ t('settings.credentials.openCenter') }}
+                <ExternalLink class="size-4" />{{ t('settings.credentials.openCenter') }}
               </a>
               <label
-                class="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent"
+                class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent"
               >
-                <FileUp class="size-3.5" />{{ t('settings.credentials.importBundle') }}
+                <FileUp class="size-4" />{{ t('settings.credentials.importBundle') }}
                 <input
                   class="sr-only"
                   type="file"
@@ -1274,6 +1415,17 @@ function confirmLanguagePreference(): void {
                   <span v-if="latestConnectionTest.errorCode">· {{ latestConnectionTest.errorCode }}</span>
                 </p>
               </div>
+            </CredentialActionsSection>
+            <CredentialActionsSection v-if="settings.exportAuthorization" kind="backup" class="mt-4">
+              <p class="text-xs text-muted-foreground">{{ credentialText('onlineBackupHelp') }}</p>
+              <Button
+                variant="outline"
+                data-testid="backup-online-authorization"
+                :disabled="!settingsEditable || credentialActionBusy || !configuredProfile?.configured"
+                @click="backupConfirmationOpen = true"
+              >
+                <Download class="size-4" />{{ credentialText('onlineBackup') }}
+              </Button>
             </CredentialActionsSection>
           </template>
           <component
@@ -1395,6 +1547,19 @@ function confirmLanguagePreference(): void {
             </form>
           </component>
         </CredentialConfigurationDialog>
+        <ConfirmActionDialog
+          :open="backupConfirmationOpen"
+          :title="credentialText('onlineBackupTitle')"
+          :description="credentialText('onlineBackupWarning')"
+          :confirm-label="credentialText('onlineBackupConfirm')"
+          :pending="backingUpAuthorization"
+          @update:open="
+            (open) => {
+              if (!backingUpAuthorization) backupConfirmationOpen = open;
+            }
+          "
+          @confirm="backupAuthorization"
+        />
         <ConfirmActionDialog
           :open="clearingAuthorization !== null"
           :title="credentialText('confirmLocalClear')"

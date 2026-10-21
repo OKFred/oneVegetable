@@ -7,6 +7,15 @@ export const gatewayCredentials = {
   defaultAction: '默认',
   configureAction: '配置',
   clearAction: '清除',
+  onlineBackup: '备份在线授权文件',
+  onlineBackupHelp:
+    '仅导出授权工具中与当前配置匹配的完整授权包。手动填写或无完整包时，请使用原授权文件，或重新授权后再备份。',
+  onlineBackupTitle: '下载包含明文密钥的授权文件？',
+  onlineBackupWarning:
+    'credentialInfo.json 包含 App Secret、Access Token 等明文密钥。请仅保存在可信位置，不要公开或发给他人。此操作不会重新授权或调用平台接口。',
+  onlineBackupConfirm: '确认下载授权文件',
+  onlineBackupDownloadStarted: '授权文件下载已发起，请妥善保管。',
+  onlineBackupFailed: '未能备份授权文件，请查看错误详情；也可使用原授权文件。',
   profileCleared: '{protocol} 本机授权已清除，可重新连接或导入。',
   wizardContinue: '继续配置',
   wizardBack: '上一步',

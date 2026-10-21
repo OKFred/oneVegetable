@@ -23,6 +23,7 @@ import business from '../../mock/data/alibaba-auth/iop-business-responses.json' 
 import iopVideo from '../../mock/data/video/iop.json' with { type: 'json' };
 import standalone from '../../mock/data/alibaba-auth/standalone-authorization.json' with { type: 'json' };
 import jsonImports from '../../mock/data/alibaba-auth/standalone-json-imports.json' with { type: 'json' };
+import viewLock from '../../mock/data/alibaba-auth/credential-view-lock.json' with { type: 'json' };
 import { iopOperationReason } from '../../packages/core/src/alibaba-iop-business';
 import { SETTINGS_STORAGE_KEY } from '../../packages/core/src/settings-storage';
 import { APP_PREFERENCES_STORAGE_KEY } from '../../packages/core/src/preferences';
@@ -367,28 +368,44 @@ async function authorize(): Promise<Page> {
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
   return tool;
 }
-async function exportBundle(tool: Page): Promise<Record<string, unknown>> {
-  await openManagement(tool);
-  const downloading = tool.waitForEvent('download');
-  await tool.locator('#export').click();
-  await confirmToolAction(tool);
-  const download = await downloading;
-  expect(download.suggestedFilename()).toBe('credentialInfo.json');
-  const path = await download.path();
-  if (!path) throw new Error('Missing downloaded fixture');
-  return JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
+// Compatibility coverage for legacy callers, not an assertion that Settings has
+// an export UI. The standalone page no longer exposes management/download controls.
+async function legacyToolAction(
+  tool: Page,
+  action: string,
+  payload: unknown = {},
+  protocol: 'top' | 'iop' = new URL(tool.url()).searchParams.get('protocol') === 'top' ? 'top' : 'iop'
+): Promise<unknown> {
+  const result = await tool.evaluate(
+    async (message) => {
+      const api = (
+        globalThis as unknown as {
+          chrome: {
+            runtime: { sendMessage(message: unknown): Promise<{ ok: boolean; data?: unknown }> };
+            tabs: { getCurrent(): Promise<{ id?: number }> };
+          };
+        }
+      ).chrome;
+      const tab = ['start', 'reauthorize'].includes(message.action) ? await api.tabs.getCurrent() : undefined;
+      return api.runtime.sendMessage({
+        ...message,
+        kind: 'iop-authorization-request',
+        requestId: crypto.randomUUID(),
+        ...(tab?.id !== undefined ? { toolTabId: tab.id } : {})
+      });
+    },
+    { action, payload, protocol }
+  );
+  expect(result).toMatchObject({ ok: true });
+  await tool.evaluate(() => window.dispatchEvent(new Event('focus')));
+  return result.data;
 }
 
-async function openManagement(tool: Page): Promise<void> {
-  if ((await tool.locator('#connectionDetails').getAttribute('open')) === null)
-    await tool.locator('#connectionDetails summary').click();
+async function exportBundle(tool: Page): Promise<Record<string, unknown>> {
+  return (await legacyToolAction(tool, 'export')) as Record<string, unknown>;
 }
 
 async function openManualEntry(tool: Page): Promise<void> {
-  if (await tool.locator('#authorization-other-methods').isHidden()) {
-    await openManagement(tool);
-    await tool.locator('#changeAuthorization').click();
-  }
   await openOtherMethods(tool);
   await tool.locator('#manualEntry').click();
 }
@@ -426,13 +443,13 @@ async function openWorkbenchSettings(): Promise<Page> {
   await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
   return page;
 }
-test('static page, real MV3 callback, encrypted export and single refresh work end-to-end', async () => {
+test('static page and MV3 callback retain legacy export, lock and refresh endpoints without management UI', async () => {
   const tool = await authorize();
   expect(creates).toBe(1);
   const first = await exportBundle(tool);
   expect(first.protocol).toBe('iop');
   expect(first.oauth).toMatchObject({ accessToken: tokens.success.access_token });
-  await expect(tool.locator('#notice')).toContainText('JSON 下载已发起');
+  await expect(tool.locator('#export, #refresh, #lock, #clear, #connectionDetails')).toHaveCount(0);
   await expect(tool.locator('#workbenchStep')).toBeVisible();
   await expect(tool.locator('#applyWorkbench')).toHaveText('保存并进入工作台');
   await expect(tool.locator('#useStep')).toHaveAttribute('aria-current', 'step');
@@ -447,30 +464,30 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
   );
   expect(JSON.stringify(stored)).not.toContain(tokens.success.access_token);
   expect(JSON.stringify(stored)).not.toContain(credentials.oauthBundle.application.appSecret);
-  await tool.locator('#refresh').click();
   expect(refreshes).toBe(0);
-  await confirmToolAction(tool);
+  await legacyToolAction(tool, 'refresh');
   await expect.poll(() => refreshes).toBe(1);
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
   expect((await exportBundle(tool)).oauth).toMatchObject({
     accessToken: 'fixture-rotated-access',
     refreshToken: 'fixture-rotated-refresh'
   });
-  await openManagement(tool);
-  await tool.locator('#lock').click();
+  await legacyToolAction(tool, 'lock');
   await expect(tool.locator('#status')).toHaveText('授权包已锁定');
   await expect(tool.locator('#unlockForm')).toBeVisible();
   await expect(tool.locator('#discover')).toBeHidden();
   await expect(tool.locator('#nextStep')).toContainText('不是 Alibaba 登录密码');
-  await expect(tool.locator('#export')).toBeDisabled();
+  await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
   await expect(tool.locator('#manualSection')).toBeHidden();
   await tool.locator('#unlockPassphrase').fill('123456');
   await tool.locator('#unlock').click();
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   await tool.locator('#language').click();
-  await expect(tool.locator('#export')).toHaveText('Download authorization file');
+  await expect(tool.locator('#authorizeOtherProtocol')).toHaveText(
+    'Continue authorizing another protocol (TOP)'
+  );
   await tool.emulateMedia({ colorScheme: 'dark' });
-  await expect(tool.locator('#export')).toBeEnabled();
+  await expect(tool.locator('#authorizeOtherProtocol')).toBeEnabled();
   expect(creates).toBe(1);
   expect(refreshes).toBe(1);
 });
@@ -579,11 +596,10 @@ for (const protocol of ['top', 'iop'] as const) {
     await expect(tool.locator('#workbenchStep')).toContainText('下一步');
     await expect(tool.locator('#name')).toBeVisible();
     await expect(tool.locator('#expires')).toBeVisible();
-    await expect(tool.locator('#connectionDetails')).not.toHaveAttribute('open');
-    await expect(tool.locator('#export')).toBeHidden();
+    await expect(tool.locator('#connectionDetails, #export')).toHaveCount(0);
     await expect(tool.locator('#alternatives')).toBeHidden();
     await expect(tool.locator('#applyWorkbench')).toHaveClass('primary');
-    await expect(tool.locator('#export')).not.toHaveClass('primary');
+    await expect(tool.locator('#authorizeOtherProtocol')).not.toHaveClass('primary');
     const before = await worker.evaluate(async (key) => {
       const chrome = (
         globalThis as unknown as { chrome: { storage: { local: { get(key: string): Promise<unknown> } } } }
@@ -633,6 +649,39 @@ for (const protocol of ['top', 'iop'] as const) {
     expect(refreshes + topRefreshes).toBe(0);
   });
 }
+
+test('Settings backs up the matching online bundle only after plaintext confirmation', async () => {
+  const tool = await authorize();
+  await legacyToolAction(tool, 'apply-to-workbench');
+  const workbench = await openWorkbenchSettings();
+  const downloads: string[] = [];
+  workbench.on('download', (download) => {
+    downloads.push(download.suggestedFilename());
+  });
+  await workbench.getByTestId('select-authorization-iop').click();
+  const configuration = workbench.getByRole('dialog', { name: 'IOP 授权配置', exact: true });
+  await expect(configuration.getByTestId('credential-connection-actions')).toHaveCount(1);
+  await expect(configuration.getByTestId('credential-backup-actions')).toHaveCount(1);
+  await configuration.getByTestId('backup-online-authorization').click();
+  const confirmation = workbench.getByRole('dialog', { name: '下载包含明文密钥的授权文件？', exact: true });
+  await expect(confirmation).toContainText('Access Token');
+  expect(downloads).toEqual([]);
+  const downloadEvent = workbench.waitForEvent('download');
+  await confirmation.getByRole('button', { name: '确认下载授权文件', exact: true }).click();
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe('credentialInfo.json');
+  const path = await download.path();
+  if (!path) throw new Error('Missing test authorization download');
+  expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({
+    protocol: 'iop',
+    application: { appKey: credentials.oauthBundle.application.appKey },
+    oauth: { accessToken: tokens.success.access_token }
+  });
+  await expect(confirmation).toHaveCount(0);
+  await expect(configuration).toBeVisible();
+  expect(creates).toBe(1);
+  expect(refreshes + topRefreshes).toBe(0);
+});
 
 test('clearing a workbench profile resets its open authorization tool and allows a fresh connection without token calls', async () => {
   const tool = await authorize();
@@ -693,9 +742,10 @@ test('new users see a guided next action, not technical fields or disabled renew
   await expect(tool.locator('#appSecret')).toBeHidden();
   await expect(tool.locator('#callback')).toBeHidden();
   await expect(tool.locator('#unlockForm')).toBeHidden();
-  await expect(tool.locator('#refresh')).toBeHidden();
-  await expect(tool.locator('#export')).toBeHidden();
-  await expect(tool.locator('#protocolTop')).toBeHidden();
+  await expect(tool.locator('#refresh, #export, #protocolTop, #protocolIop, #protocolSettings')).toHaveCount(
+    0
+  );
+  await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
   await expect(tool.locator('#chooseFile')).toBeHidden();
   await expect(tool.locator('#authorization-other-methods')).not.toHaveAttribute('open');
   await expect(tool.locator('.authorization-content button:visible')).toHaveCount(1);
@@ -711,6 +761,278 @@ test('new users see a guided next action, not technical fields or disabled renew
   await expect(tool.locator('#nextStep')).toContainText('sign in or verify');
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
+for (const protocol of ['top', 'iop'] as const) {
+  test(`${protocol} never exposes an early protocol switch, including locked, waiting, busy and unknown states`, async () => {
+    const tool = await context.newPage();
+    await tool.addInitScript(() => {
+      const api = (
+        globalThis as unknown as {
+          chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } };
+        }
+      ).chrome;
+      const send = api.runtime.sendMessage.bind(api.runtime);
+      api.runtime.sendMessage = (message) => {
+        const request = message as { kind?: string; action?: string };
+        if (request.kind !== 'iop-authorization-request') return send(message);
+        const state = document.documentElement.dataset.fixtureAuthorizationState ?? 'empty';
+        if (request.action === 'protection-status')
+          return Promise.resolve({ ok: true, data: { state: 'unlocked', deviceProtected: false } });
+        if (request.action === 'status') {
+          document.documentElement.dataset.fixtureHandledState = state;
+          return Promise.resolve({
+            ok: true,
+            data: {
+              state,
+              appName: null,
+              appKeySuffix: null,
+              expiresAtUtc: null,
+              refreshExpiresAtUtc: null,
+              callbackUrl: null,
+              canRefresh: false,
+              canReauthorize: false,
+              canSave: false,
+              errorCode: null
+            }
+          });
+        }
+        throw new Error('Unexpected action during protocol preparation');
+      };
+    });
+    await tool.goto(`chrome-extension://${extensionId}/authorization.html?protocol=${protocol}`);
+    for (const state of ['empty', 'locked', 'waiting', 'busy', 'unknown']) {
+      await tool.evaluate((state) => {
+        document.documentElement.dataset.fixtureAuthorizationState = state;
+        window.dispatchEvent(new Event('focus'));
+      }, state);
+      await expect(tool.locator('html')).toHaveAttribute('data-fixture-handled-state', state);
+      await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'false');
+      await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
+      await expect(tool.locator('#authorizeOtherProtocol')).toBeDisabled();
+      await expect(tool.locator('#protocolSettings, #protocolTop, #protocolIop, #topUseIop')).toHaveCount(0);
+      // A programmatic click cannot bypass the READY guard either.
+      await tool.locator('#authorizeOtherProtocol').evaluate((element) => {
+        (element as HTMLButtonElement).click();
+      });
+      await expect(tool).toHaveURL(
+        `chrome-extension://${extensionId}/authorization.html?protocol=${protocol}`
+      );
+      await expect(tool.getByRole('dialog')).toHaveCount(0);
+    }
+    expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+    expect(context.pages().some((page) => page.url().includes('-approval.html'))).toBe(false);
+  });
+
+  test(`${protocol} READY-only other-protocol action is directly below Save, equal-sized and theme-neutral`, async () => {
+    const tool = await openTool(protocol);
+    await prepareProtection(tool, '');
+    if (protocol === 'top') await tool.locator('#topImport').click();
+    else await openOtherMethods(tool);
+    await tool.locator('#file').setInputFiles({
+      name: `${protocol}.json`,
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(jsonImports[protocol]))
+    });
+    await confirmToolAction(tool);
+    await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+    // The disappearing confirmation can leave the pointer over the new secondary
+    // button. Assert its default palette rather than accidentally sampling hover.
+    await tool.mouse.move(0, 0);
+    const target = protocol === 'top' ? 'IOP' : 'TOP';
+    for (const width of [1440, 390, 320]) {
+      await tool.setViewportSize({ width, height: 1058 });
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await tool.emulateMedia({ colorScheme });
+        for (const language of ['zh-CN', 'en-US'] as const) {
+          if ((await tool.locator('html').getAttribute('lang')) !== language)
+            await tool.locator('#language').click();
+          await expect(tool.locator('#authorizeOtherProtocol')).toHaveText(
+            language === 'zh-CN'
+              ? `继续授权另一协议（${target}）`
+              : `Continue authorizing another protocol (${target})`
+          );
+          await expect(tool.locator('#authorizeOtherProtocol')).toBeEnabled();
+          await expect(tool.locator('#authorizeOtherProtocol svg')).toHaveCount(0);
+          await expect(tool.getByText(/推荐|recommended/iu)).toHaveCount(0);
+          await expect(
+            tool.locator(
+              '#connectionDetails, #protocolSettings, [data-text="connectionManagement"], #export, #refresh, #lock, #clear, #changeAuthorization'
+            )
+          ).toHaveCount(0);
+          await expect(tool.locator('.authorization-summary button')).toHaveCount(0);
+          const layout = await tool.locator('#authorization-ready-actions').evaluate((element) => {
+            const primary = element.querySelector<HTMLButtonElement>('#applyWorkbench');
+            const secondary = element.querySelector<HTMLButtonElement>('#authorizeOtherProtocol');
+            if (!primary || !secondary) throw new Error('Missing READY actions');
+            const first = primary.getBoundingClientRect();
+            const second = secondary.getBoundingClientRect();
+            const probe = document.createElement('span');
+            probe.style.backgroundColor = 'hsl(var(--background))';
+            probe.style.color = 'hsl(var(--foreground))';
+            probe.style.border = '1px solid hsl(var(--input))';
+            element.append(probe);
+            const expected = getComputedStyle(probe);
+            const style = getComputedStyle(secondary);
+            const result = {
+              adjacent: primary.nextElementSibling === secondary,
+              widthDifference: Math.abs(first.width - second.width),
+              heightDifference: Math.abs(first.height - second.height),
+              minHeight: Math.min(first.height, second.height),
+              leftDifference: Math.abs(first.left - second.left),
+              gap: second.top - first.bottom,
+              primary: getComputedStyle(primary).backgroundColor,
+              background: style.backgroundColor,
+              foreground: style.color,
+              border: style.borderColor,
+              expectedBackground: expected.backgroundColor,
+              expectedForeground: expected.color,
+              expectedBorder: expected.borderColor,
+              fits:
+                second.left >= 0 &&
+                second.right <= innerWidth &&
+                secondary.scrollWidth <= secondary.clientWidth
+            };
+            probe.remove();
+            return result;
+          });
+          expect(layout.adjacent).toBe(true);
+          expect(layout.widthDifference).toBeLessThanOrEqual(1);
+          expect(layout.heightDifference).toBeLessThanOrEqual(1);
+          expect(layout.minHeight).toBeGreaterThanOrEqual(48);
+          expect(layout.leftDifference).toBeLessThanOrEqual(1);
+          expect(Math.round(layout.gap)).toBe(12);
+          expect(layout.background).toBe(layout.expectedBackground);
+          expect(layout.foreground).toBe(layout.expectedForeground);
+          expect(layout.border).toBe(layout.expectedBorder);
+          expect(layout.background).not.toBe(layout.primary);
+          expect(layout.background).not.toBe('rgb(21, 93, 233)');
+          expect(layout.fits).toBe(true);
+          expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+          await tool.locator('#workbenchStep').screenshot({
+            path: resolve(
+              UI_SCREENSHOT_DIRECTORY,
+              `ready-actions-${protocol}-${language}-${colorScheme}-${width}.png`
+            ),
+            animations: 'disabled'
+          });
+        }
+      }
+    }
+    expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+  });
+
+  for (const targetConfigured of [false, true]) {
+    test(`${protocol} preserves saved profiles and the default when preparing the ${targetConfigured ? 'saved' : 'empty'} other protocol without automatic network, permissions or save`, async () => {
+      const tool = await openTool(protocol);
+      await prepareProtection(tool, '');
+      await legacyToolAction(tool, 'import', { bundle: jsonImports[protocol], passphrase: '' });
+      await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+      // Explicit fixture setup, before observing the page's switch behavior.
+      await legacyToolAction(tool, 'apply-to-workbench');
+      const target = protocol === 'top' ? 'iop' : 'top';
+      if (targetConfigured)
+        await legacyToolAction(tool, 'import', { bundle: jsonImports[target], passphrase: '' }, target);
+      const storage = () =>
+        worker.evaluate(async () => {
+          const api = (
+            globalThis as unknown as {
+              chrome: { storage: { local: { get(keys: null): Promise<Record<string, unknown>> } } };
+            }
+          ).chrome;
+          return api.storage.local.get(null);
+        });
+      const before = await storage();
+      const toolUrlBefore = tool.url();
+      const pagesBefore = context
+        .pages()
+        .map((page) => page.url())
+        .sort();
+      const requests: string[] = [];
+      const downloads: string[] = [];
+      context.on('request', (request) => {
+        if (/^https?:/u.test(request.url())) requests.push(request.url());
+      });
+      tool.on('download', (download) => downloads.push(download.suggestedFilename()));
+      await tool.evaluate(() => {
+        const api = (
+          globalThis as unknown as {
+            chrome: {
+              runtime: { sendMessage(message: unknown): Promise<unknown> };
+              permissions: { request(options: unknown): Promise<boolean> };
+            };
+          }
+        ).chrome;
+        const observed: { actions: { action: string; protocol: string }[]; permissions: number } = {
+          actions: [],
+          permissions: 0
+        };
+        (globalThis as unknown as { switchActivity: typeof observed }).switchActivity = observed;
+        const send = api.runtime.sendMessage.bind(api.runtime);
+        api.runtime.sendMessage = (message) => {
+          const request = message as { kind?: string; action: string; protocol: string };
+          if (request.kind === 'iop-authorization-request')
+            observed.actions.push({ action: request.action, protocol: request.protocol });
+          return send(message);
+        };
+        const permission = api.permissions.request.bind(api.permissions);
+        api.permissions.request = (options) => {
+          observed.permissions++;
+          return permission(options);
+        };
+      });
+      // Rendering READY must not prepare the other protocol on its own.
+      await tool.locator('#language').click();
+      await tool.locator('#authorization-theme').click();
+      await expect(tool.locator('#protocolBadge')).toHaveText(`oneVegetable · ${protocol.toUpperCase()}`);
+      expect(
+        context
+          .pages()
+          .map((page) => page.url())
+          .sort()
+      ).toEqual(pagesBefore);
+      expect(await storage()).toEqual(before);
+      await tool.locator('#authorizeOtherProtocol').click();
+      await expect(tool.locator('#protocolBadge')).toHaveText(`oneVegetable · ${target.toUpperCase()}`);
+      await expect(tool.locator('body')).toHaveAttribute(
+        'data-authorization-ready',
+        String(targetConfigured)
+      );
+      await expect(tool.getByRole('dialog')).toHaveCount(0);
+      if (targetConfigured) {
+        await expect(tool.locator('#authorizeOtherProtocol')).toBeVisible();
+        await expect(tool.locator('#name')).toHaveText(jsonImports[target].application.appName);
+      } else {
+        await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
+        await expect(tool.locator(target === 'top' ? '#topReauthorize' : '#discover')).toBeVisible();
+      }
+      await tool.evaluate(() => window.dispatchEvent(new Event('focus')));
+      const observed = await tool.evaluate(
+        () =>
+          (
+            globalThis as unknown as {
+              switchActivity: { actions: { action: string; protocol: string }[]; permissions: number };
+            }
+          ).switchActivity
+      );
+      expect(observed.actions).toContainEqual({ action: 'status', protocol: target });
+      expect(observed.actions.every(({ action }) => ['status', 'protection-status'].includes(action))).toBe(
+        true
+      );
+      expect(observed.permissions).toBe(0);
+      expect(await storage()).toEqual(before);
+      const expectedPages = pagesBefore.map((url) => (url === toolUrlBefore ? tool.url() : url)).sort();
+      expect(
+        context
+          .pages()
+          .map((page) => page.url())
+          .sort()
+      ).toEqual(expectedPages);
+      expect(requests).toEqual([]);
+      expect(downloads).toEqual([]);
+      expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+    });
+  }
+}
+
 test('public pages cannot export; mismatched callback does not call the platform', async () => {
   const tool = await authorize();
   const publicPage = await context.newPage();
@@ -740,7 +1062,6 @@ test('public pages cannot export; mismatched callback does not call the platform
   expect(JSON.stringify(result)).not.toContain(tokens.success.access_token);
   expect(creates).toBe(1);
   // TOP imports stay rejected instead of silently changing this independent vault.
-  if (!(await tool.locator('#manualSection').isVisible())) await openManualEntry(tool);
   await tool.locator('#file').setInputFiles({
     name: 'credentials.json',
     mimeType: 'application/json',
@@ -1012,7 +1333,8 @@ for (const legacyPage of ['none', 'not-found'] as const) {
     await expect(tool.locator('#discover')).toBeHidden();
     await expect(tool.locator('#topReauthorize')).toHaveText('重新授权');
     await expect(tool.locator('#topImport')).toHaveText('导入已有授权');
-    await expect(tool.locator('#topUseIop')).toHaveText('没有旧版应用？连接新版应用（IOP）');
+    await expect(tool.locator('#topUseIop, #protocolSettings')).toHaveCount(0);
+    await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
     await tool.locator('#topReauthorize').click();
     await expect(tool.locator('#appKey')).toBeFocused();
     await expect(tool.locator('#status')).toHaveText('尚未配置');
@@ -1087,9 +1409,8 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
     application: standalone.top,
     oauth: { accessToken: standalone.topToken.access_token }
   });
-  await top.locator('#refresh').click();
   expect(topRefreshes).toBe(0);
-  await confirmToolAction(top);
+  await legacyToolAction(top, 'refresh');
   await expect.poll(() => topRefreshes).toBe(1);
   await expect(top.locator('#status')).toHaveText('授权文件已安全保存');
   expect(refreshes).toBe(0);
@@ -1111,9 +1432,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
     standalone.top.appSecret
   ])
     expect(JSON.stringify(stored)).not.toContain(secret);
-  await openManagement(top);
-  await top.locator('#clear').click();
-  await confirmToolAction(top);
+  await legacyToolAction(top, 'clear');
   await expect(top.locator('#status')).toHaveText('尚未配置');
   expect((await exportBundle(iop)).oauth).toMatchObject({ accessToken: tokens.success.access_token });
   await top.reload();
@@ -1122,12 +1441,11 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
   expect(topCreates).toBe(1);
 });
 
-test('HTML confirmation is cancellable and import, export, refresh and clear do nothing before confirmation', async () => {
+test('HTML confirmation is cancellable and import, save, reauthorization and protocol switch do nothing before confirmation', async () => {
   const tool = await authorize();
   const downloads: string[] = [];
   tool.on('download', (download) => downloads.push(download.suggestedFilename()));
-  await openManagement(tool);
-  for (const action of ['export', 'refresh', 'clear'] as const) {
+  for (const action of ['restartConnection', 'applyWorkbench'] as const) {
     await tool.locator(`#${action}`).click();
     const dialog = tool.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -1139,7 +1457,6 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
     await expect(tool.locator(`#${action}`)).toBeFocused();
     await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   }
-  if (!(await tool.locator('#manualSection').isVisible())) await openManualEntry(tool);
   await tool.locator('#file').setInputFiles({
     name: 'existing-iop.json',
     mimeType: 'application/json',
@@ -1151,34 +1468,41 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
   await dialog.getByRole('button', { name: '取消', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(tool.locator('#error')).toBeEmpty();
-  await tool.locator('#protocolSettings summary').click();
-  await tool.locator('#protocolTop').click();
+  await tool.locator('#authorizeOtherProtocol').click();
   await expect(tool.getByRole('dialog')).toContainText('切换授权类型');
   await tool.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click();
-  await expect(tool.locator('#protocolIop')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tool.locator('#protocolBadge')).toHaveText('oneVegetable · IOP');
+  await expect(tool.locator('#authorizeOtherProtocol')).toHaveText('继续授权另一协议（TOP）');
   await expect(tool.locator('#appName')).toHaveValue('Merchant fixture');
   expect(refreshes + topRefreshes + topCreates).toBe(0);
   expect(downloads).toEqual([]);
   expect((await exportBundle(tool)).oauth).toMatchObject({ accessToken: tokens.success.access_token });
 });
 
-test('a rejected refresh uses a temporary error toast and does not repeat on status rerender', async () => {
+test('a rejected reauthorization uses a temporary error toast and does not repeat on status rerender', async () => {
   const tool = await authorize();
-  await openManagement(tool);
-  await tool.locator('#refresh').scrollIntoViewIfNeeded();
+  await tool.locator('#restartConnection').scrollIntoViewIfNeeded();
   const readyPosition = () =>
     tool.locator('#authorization-ready-heading').evaluate((element) => {
       const box = element.getBoundingClientRect();
       return { top: box.top + scrollY, left: box.left + scrollX, width: box.width, height: box.height };
     });
   const statusBefore = await readyPosition();
-  await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/auth/token/refresh`, async (route) => {
-    refreshes++;
+  await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/auth/token/create`, async (route) => {
+    creates++;
     await route.fulfill({ json: tokens.invalidAppKey });
   });
-  await tool.locator('#refresh').click();
+  const oauthEvent = context.waitForEvent('page');
+  await tool.locator('#restartConnection').click();
   await confirmToolAction(tool);
-  await expect(tool.locator('#error')).toContainText('Alibaba 拒绝换取或续期 Token');
+  const oauth = await oauthEvent;
+  await oauth.waitForURL(`chrome-extension://${extensionId}/iop-approval.html**`);
+  await Promise.all([
+    // Callback focus can arrive while exchange is busy. The local status poll is
+    // five seconds; the observation deadline must cover that interval plus I/O.
+    expect(tool.locator('#error')).toContainText('Alibaba 拒绝换取或续期 Token', { timeout: 12_000 }),
+    oauth.locator('#approve').click()
+  ]);
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   expect(await readyPosition()).toEqual(statusBefore);
   await expect(tool.locator('#error')).not.toBeVisible({ timeout: 9_000 });
@@ -1186,8 +1510,8 @@ test('a rejected refresh uses a temporary error toast and does not repeat on sta
   await tool.locator('#language').click();
   await expect(tool.locator('#error')).not.toBeVisible();
   await expect(tool.locator('#error')).toBeEmpty();
-  expect(creates).toBe(1);
-  expect(refreshes).toBe(1);
+  expect(creates).toBe(2);
+  expect(refreshes).toBe(0);
   expect((await exportBundle(tool)).oauth).toMatchObject({ accessToken: tokens.success.access_token });
 });
 
@@ -1294,10 +1618,9 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   expect(iopStored).not.toHaveProperty(TOP_VAULT_KEY);
   expect(await exportBundle(tool)).toMatchObject(jsonImports.iop);
 
-  await tool.locator('#protocolSettings summary').click();
-  await tool.locator('#protocolTop').click();
+  await tool.locator('#authorizeOtherProtocol').click();
   if ((await tool.getByRole('dialog').count()) > 0) await confirmToolAction(tool);
-  await expect(tool.locator('#protocolTop')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tool).toHaveURL(`chrome-extension://${extensionId}/authorization.html?protocol=top`);
   await expect(tool.locator('#status')).toHaveText('尚未配置');
   await tool.locator('#topImport').click();
   // The explicit import entry already expands the JSON editor.
@@ -1359,8 +1682,11 @@ test('authorization action buttons align in both languages and themes, with read
         fullPage: true,
         animations: 'disabled'
       });
-      await tool.locator('#connectionDetails summary').click();
-      await tool.locator('#clear').click();
+      await tool.locator('#file').setInputFiles({
+        name: 'iop.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(jsonImports.iop))
+      });
       const dialog = tool.getByRole('dialog');
       await expect(dialog).toBeVisible();
       const colors = await dialog.evaluate((element) => {
@@ -1375,7 +1701,6 @@ test('authorization action buttons align in both languages and themes, with read
       });
       await tool.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
-      await tool.locator('#connectionDetails summary').click();
     }
   }
   await tool.setViewportSize({ width: 390, height: 844 });
@@ -1483,7 +1808,7 @@ test('TOP reads only app metadata from a backup and exchanges a fresh token with
   expect(context.pages().some((page) => page.url().includes('crosstrade.alibaba.com'))).toBe(false);
 });
 
-test('TOP entry buttons and neutral protocol labels align in both languages and themes', async () => {
+test('TOP preparation has aligned entry buttons and no protocol-switch or management controls', async () => {
   const tool = await openTool('top');
   await prepareProtection(tool);
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -1491,12 +1816,10 @@ test('TOP entry buttons and neutral protocol labels align in both languages and 
     for (const language of ['zh-CN', 'en-US'] as const) {
       if ((await tool.locator('html').getAttribute('lang')) !== language)
         await tool.locator('#language').click();
-      await expect(tool.locator('#protocolIop')).toHaveText(
-        language === 'zh-CN' ? '连接新版应用（IOP）' : 'Connect a new app (IOP)'
-      );
-      await expect(tool.locator('#protocolTop')).toHaveText(
-        language === 'zh-CN' ? '连接旧版应用（TOP）' : 'Connect a legacy app (TOP)'
-      );
+      await expect(
+        tool.locator('#protocolIop, #protocolTop, #topUseIop, #protocolSettings, #connectionDetails')
+      ).toHaveCount(0);
+      await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
       const boxes = await Promise.all(
         ['topReauthorize', 'topImport'].map((id) => tool.locator(`#${id}`).boundingBox())
       );
@@ -1510,9 +1833,7 @@ test('TOP entry buttons and neutral protocol labels align in both languages and 
   }
   await tool.setViewportSize({ width: 390, height: 844 });
   expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await tool.locator('#protocolSettings summary').click();
-  await tool.locator('#topUseIop').click();
-  await expect(tool.locator('#title')).toHaveText('Connect Alibaba · New app');
+  await expect(tool.locator('#title')).toHaveText('Connect Alibaba · Legacy app');
   expect(topCreates + creates + refreshes + topRefreshes).toBe(0);
 });
 
@@ -1585,7 +1906,7 @@ test('focused authorization layout shares workbench theme tokens, places details
   await expect(tool.locator('#authorization-summary-panel')).toBeVisible();
   await expect(tool.locator('#name')).toBeVisible();
   await expect(tool.locator('#expires')).toBeVisible();
-  await expect(tool.locator('#export')).toBeHidden();
+  await expect(tool.locator('#export')).toHaveCount(0);
   await expect(tool.locator('#manualSection')).toBeHidden();
   await expect(tool.locator('#alternatives')).toBeHidden();
   await expect(tool.locator('html')).toHaveClass(/dark/u);
@@ -1677,8 +1998,7 @@ test('TOP bundle file import reuses prepared protection and reauthorizes without
   await expect(tool.locator('#protectionSection')).toBeHidden();
   expect(creates + topCreates).toBe(0);
   const oauthEvent = context.waitForEvent('page');
-  await openManagement(tool);
-  await tool.locator('#topReauthorize').click();
+  await tool.locator('#restartConnection').click();
   expect(creates + topCreates).toBe(0);
   await confirmToolAction(tool);
   const oauth = await oauthEvent;
@@ -1753,6 +2073,77 @@ test('a superseded file read cannot prompt for or replace the latest selected TO
   expect(await exportBundle(tool)).toMatchObject(latest);
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
+
+for (const protocol of ['top', 'iop'] as const) {
+  test(`${protocol} keeps signed reads after view lock and service-worker restart without revealing secrets`, async () => {
+    let reads = 0;
+    await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/icbu/product/photobank/group/list`, async (route) => {
+      reads++;
+      await route.fulfill({ json: business.photoGroups });
+    });
+    await context.route('https://eco.taobao.com/**', async (route) => {
+      const parameters = new URLSearchParams(route.request().postData() ?? '');
+      expect(parameters.get('method')).toBe('alibaba.icbu.photobank.group.list');
+      reads++;
+      await route.fulfill({ json: viewLock.topPhotoGroups });
+    });
+    const workbench = await context.newPage();
+    await workbench.goto(`chrome-extension://${extensionId}/options.html#/settings`);
+    const send = (operation: string, payload?: unknown) =>
+      sendWorkbench(workbench, 'credential-vault-request', operation, payload);
+    expect(
+      await send('create', {
+        passphrase: '123456',
+        settings: {
+          appKey: credentials.manual.appKey,
+          appSecret: credentials.manual.appSecret,
+          accessToken: credentials.manual.accessToken,
+          protocol,
+          endpoint: protocol === 'iop' ? `${PUBLIC_AUTH_ORIGIN}/rest` : 'https://eco.taobao.com/router/rest',
+          signMethod: protocol === 'iop' ? 'hmac-sha256' : 'hmac'
+        }
+      })
+    ).toMatchObject({ ok: true });
+    expect(await send('lock')).toMatchObject({
+      ok: true,
+      data: {
+        state: 'locked',
+        gatewayAvailable: true,
+        lockReason: 'manual',
+        appKey: ''
+      }
+    });
+    for (const operation of ['get-settings', 'get-authorization', 'export-authorization']) {
+      expect(await send(operation, operation === 'get-settings' ? undefined : { protocol })).toMatchObject({
+        ok: false,
+        error: { code: 'CREDENTIAL_VAULT_LOCKED' }
+      });
+    }
+    expect(await sendWorkbench(workbench, 'gateway-request', 'listPhotoGroups')).toMatchObject({ ok: true });
+    await workbench.reload();
+    await expect(workbench.locator('#startup-vault-passphrase')).toHaveCount(0);
+    const cdp = await context.newCDPSession(workbench);
+    await cdp.send('ServiceWorker.enable');
+    await cdp.send('ServiceWorker.stopAllWorkers');
+    await cdp.detach();
+    expect(await send('status')).toMatchObject({
+      ok: true,
+      data: {
+        state: 'locked',
+        gatewayAvailable: true,
+        lockReason: 'manual',
+        appKey: ''
+      }
+    });
+    expect(await sendWorkbench(workbench, 'gateway-request', 'listPhotoGroups')).toMatchObject({ ok: true });
+    expect(await send('get-settings')).toMatchObject({
+      ok: false,
+      error: { code: 'CREDENTIAL_VAULT_LOCKED' }
+    });
+    expect(reads).toBe(2);
+    expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+  });
+}
 
 test('workbench persists explicit IOP and rejects unadapted methods without TOP fallback', async () => {
   let reads = 0;

@@ -246,7 +246,11 @@ describe('authorization protection preparation', () => {
     expect(await protection.deviceKey(original.record)).toBe(original.sessionKeyMaterial);
     expect(await session.read(original.record)).toBeUndefined();
     expect(await restartedSession.read(original.record)).toBeUndefined();
-    await expect(restartedSession.protection(original.record)).rejects.toThrow('CREDENTIAL_VAULT_LOCKED');
+    expect((await restartedSession.protection(original.record)).sessionKeyMaterial).toBe(
+      original.sessionKeyMaterial
+    );
+    expect((await restartedSession.readForGateway(original.record))?.value.settings).toEqual(settings);
+    expect(await restartedSession.read(original.record)).toBeUndefined();
     await expect(restarted.prepare('incorrect-passphrase')).rejects.toMatchObject({
       code: 'VAULT_UNLOCK_FAILED'
     });

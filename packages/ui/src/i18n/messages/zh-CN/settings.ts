@@ -42,7 +42,7 @@ export const settings = {
   vault: {
     title: '开放平台凭证保护',
     description:
-      '本机记住解锁，重启浏览器或更新扩展不锁定，也不因空闲锁定。旧凭证需原口令解锁一次；之后仅手动锁定需再输入。',
+      '本机记住解锁，重启浏览器或更新扩展不锁定，也不因空闲锁定。手动锁定仅隐藏敏感信息，不中断后台 API；查看或管理凭据需解锁。旧凭据没有本机恢复密钥时，需原口令解锁一次。',
     status: {
       loading: '读取中',
       unlocked: '已解锁',
@@ -59,7 +59,8 @@ export const settings = {
     },
     lockDescription: {
       existing: '旧凭证仍锁定，请用原口令解锁一次。',
-      other: '已手动锁定，请输入口令恢复使用。'
+      other: '此旧凭据没有可恢复的本机密钥，请用原口令解锁一次，恢复 API 调用。',
+      gatewayAvailable: '后台 API 可继续使用，授权摘要仍可查看。解锁后才能查看、配置、续期或备份敏感凭据。'
     },
     passphrase: '保护口令',
     unlock: '解锁',
@@ -82,7 +83,7 @@ export const settings = {
     savedToast: '凭证与设置已保存',
     unlockedFeedback: '已解锁，本机已记住状态。',
     migratedFeedback: '旧凭证已加密，本机保持解锁。',
-    lockedFeedback: '已锁定，并清除记住的解锁状态。',
+    lockedFeedback: '敏感信息已隐藏，后台 API 调用不受影响。',
     rotatedFeedback: '已用新 salt 和口令重新加密。',
     statusError: '凭证保护状态读取失败',
     unlockError: '凭证解锁失败',

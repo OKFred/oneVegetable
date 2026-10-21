@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BffControlClient,
+  type AlibabaAuthorizationsSummary,
   type ControlGatewayCredentialSummary,
   type ControlSession
 } from '@one-vegetable/core';
@@ -26,6 +27,8 @@ async function harness(
     role?: 'admin' | 'user';
     extension?: boolean;
     locked?: boolean;
+    gatewayAvailable?: boolean;
+    authorizations?: () => Promise<AlibabaAuthorizationsSummary>;
   } = {}
 ) {
   const client = new BffControlClient({ baseUrl: 'http://localhost:8787' });
@@ -52,13 +55,19 @@ async function harness(
         gateway: new MockGatewayClient(0),
         control: client,
         mode: options.extension ? 'extension' : 'bff',
-        settings: { load, save: vi.fn() },
+        settings: {
+          load,
+          save: vi.fn(),
+          ...(options.authorizations ? { authorizations: options.authorizations } : {})
+        },
         ...(options.extension
           ? {
               vault: {
-                status: vi
-                  .fn()
-                  .mockResolvedValue({ state: options.locked ? 'locked' : 'unlocked', hasAccessToken: true }),
+                status: vi.fn().mockResolvedValue({
+                  state: options.locked ? 'locked' : 'unlocked',
+                  gatewayAvailable: options.gatewayAvailable,
+                  hasAccessToken: true
+                }),
                 create: vi.fn(),
                 migrate: vi.fn(),
                 unlock: vi.fn(),
@@ -74,6 +83,14 @@ async function harness(
   });
   const wrapper = mount(Host);
   await flushPromises();
+  await vi.waitFor(
+    () => {
+      expect(wrapper.get('[data-testid="dashboard-authorization-card"]').attributes('aria-busy')).toBe(
+        'false'
+      );
+    },
+    { timeout: 5_000 }
+  );
   return { wrapper, readSession, read, refresh, load };
 }
 
@@ -220,6 +237,49 @@ describe('overview authorization card', () => {
     expect(view.read).not.toHaveBeenCalled();
     view.wrapper.unmount();
   });
+  it('reads expiry from safe summaries while the sensitive view remains locked', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000);
+    const authorizations = vi.fn().mockResolvedValue({
+      top: {
+        ...(fixture.credential as ControlGatewayCredentialSummary),
+        protocol: 'top',
+        configurationId: 'top-opaque-configuration',
+        accessTokenExpiresTimeUtc: Date.now() + 2 * 86_400_000,
+        managementAvailable: true
+      },
+      iop: null,
+      defaultProtocol: 'top',
+      binding: { confirmed: false, topConfigurationId: null, iopConfigurationId: null, confirmedAtUtc: null }
+    });
+    const view = await harness({
+      extension: true,
+      locked: true,
+      gatewayAvailable: true,
+      authorizations
+    });
+    expect(view.wrapper.text()).toContain('2 天');
+    expect(authorizations).toHaveBeenCalledOnce();
+    expect(view.load).not.toHaveBeenCalled();
+    expect(view.read).not.toHaveBeenCalled();
+    expect(view.refresh).not.toHaveBeenCalled();
+    view.wrapper.unmount();
+  });
+  it.each([false, true])(
+    'never falls back to secret settings for locked metadata (endpoint fails: %s)',
+    async (fails) => {
+      const authorizations = fails ? vi.fn().mockRejectedValue(new Error('metadata unavailable')) : undefined;
+      const view = await harness({
+        extension: true,
+        locked: true,
+        gatewayAvailable: true,
+        ...(authorizations ? { authorizations } : {})
+      });
+      expect(view.wrapper.get('[role="status"]').text()).toBe('未知');
+      expect(view.load).not.toHaveBeenCalled();
+      expect(view.refresh).not.toHaveBeenCalled();
+      view.wrapper.unmount();
+    }
+  );
   it('reads unlocked extension metadata and reloads when credentials change, never replaying refresh', async () => {
     // An exact day boundary must not depend on CI scheduling between request and render.
     vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000);

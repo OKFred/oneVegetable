@@ -1,6 +1,5 @@
 import { browser } from 'wxt/browser';
 import { IOP_API_ORIGIN, PUBLIC_AUTH_CALLBACK } from '@one-vegetable/core/alibaba-iop';
-import { parseAlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
 import {
   confirmAction,
   transientMessage,
@@ -33,13 +32,12 @@ el('#app').innerHTML =
 <ol class="connection-steps" aria-label="${t('connectionSteps')}"><li id="connectStep" data-text="connectStep"></li><li id="approveStep" data-text="approveStep"></li><li id="useStep" data-text="useStep"></li></ol>
 <section aria-labelledby="status"><h2 id="status" role="status" data-text="busy"></h2><p id="nextStep" class="muted"></p>
 <form id="unlockForm" hidden><label for="unlockPassphrase" data-text="passphrase"></label><input id="unlockPassphrase" type="password" autocomplete="current-password" required maxlength="256" data-feedback-redact><div class="actions"><button id="unlock" type="submit" class="primary" data-text="unlock"></button></div></form>
-<div class="actions"><button id="retryStatus" data-text="retryStatus" hidden></button><button id="discover" class="primary" data-text="discoverApplication" disabled></button><button id="applyWorkbench" class="primary" data-text="applyWorkbench" hidden></button><button id="export" data-text="export" hidden></button><button id="save" class="primary" data-text="save" hidden></button><button id="reauthorize" data-text="reauthorize" hidden></button><button id="refresh" data-text="refresh" hidden></button><button id="cancel" data-text="cancel" hidden></button><a id="back" class="button" data-text="returnSettings"></a></div>
+<div class="actions"><button id="retryStatus" data-text="retryStatus" hidden></button><button id="discover" class="primary" data-text="discoverApplication" disabled></button><button id="applyWorkbench" class="primary" data-text="applyWorkbench" hidden></button><button id="save" class="primary" data-text="save" hidden></button><button id="cancel" data-text="cancel" hidden></button><a id="back" class="button" data-text="returnSettings"></a></div>
 <details id="manual" hidden><summary data-text="callbackFallback"></summary><label for="callbackPaste" data-text="paste"></label><input id="callbackPaste" type="password" autocomplete="off" data-feedback-redact><button id="receive" data-text="receive"></button></details>
 </section><p id="notice" role="status"></p><p id="error" role="alert"></p>
 <section id="alternatives"><h2 data-text="otherWays"></h2><div class="actions"><button id="manualEntry" data-text="manualAuthorization" disabled></button><button type="button" id="chooseFile" disabled></button><input id="file" type="file" accept="application/json,.json" hidden></div></section>
 <section id="manualSection" hidden><form id="form"><fieldset id="fields"><div class="grid"><div><label for="appName" data-text="appName"></label><input id="appName" required maxlength="256"></div><div><label for="appKey" data-text="appKey"></label><input id="appKey" required maxlength="256" autocomplete="off"></div></div><label for="appSecret" data-text="appSecret"></label><input id="appSecret" type="password" autocomplete="off" required maxlength="4096" data-feedback-redact><label for="callback" data-text="callback"></label><input id="callback" type="url" required><input id="passphrase" type="hidden" value=""><label><input id="registered" type="checkbox" required><span data-text="registered"></span></label><div class="actions"><button type="submit" id="start" class="primary" data-text="start"></button></div></fieldset></form></section>
-<section><details id="connectionDetails"><summary data-text="connectionDetails"></summary><dl><dt data-text="appName"></dt><dd id="name">—</dd><dt>App Key</dt><dd id="key">—</dd><dt data-text="expires"></dt><dd id="expires">—</dd><dt data-text="refreshExpires"></dt><dd id="refreshExpires">—</dd></dl><p id="boundary" class="muted"></p><div class="actions"><button id="lock" data-text="lock" disabled></button><button id="clear" disabled></button></div></details></section>
-<section><details id="protocolSettings"><summary data-text="protocolChoice"></summary><div class="protocol-choices"><button id="protocolIop" data-text="protocolIop"></button><button id="protocolTop" data-text="protocolTop"></button></div><p class="muted" data-text="dualGuide"></p><p id="protocolHelp"></p><a id="center" class="button" href="https://i.alibaba.com/explore/open-api" target="_blank" rel="noopener noreferrer" data-text="center"></a></details></section>${footer}`;
+<section id="authorization-summary-panel"><h2 data-text="authorizationDetails"></h2><dl><dt data-text="appName"></dt><dd id="name">—</dd><dt>App Key</dt><dd id="key">—</dd><dt data-text="expires"></dt><dd id="expires">—</dd><dt data-text="refreshExpires"></dt><dd id="refreshExpires">—</dd></dl><p id="boundary" class="muted"></p></section>${footer}`;
 el('.connection-steps').insertAdjacentHTML(
   'beforebegin',
   '<section id="protectionSection" hidden><h2 data-text="localProtection"></h2><p class="muted" data-text="optionalProtectionHelp"></p><form id="protectionForm"><label for="sharedPassphrase" id="sharedPassphraseLabel"></label><input id="sharedPassphrase" type="password" autocomplete="current-password" maxlength="256" data-feedback-redact><div class="actions"><button type="submit" class="primary" data-text="continueAuthorization"></button></div></form></section>'
@@ -50,7 +48,7 @@ el('footer').insertAdjacentHTML(
 );
 el('#alternatives').insertAdjacentHTML(
   'beforebegin',
-  '<section id="topEntries" hidden><div class="actions"><button id="topReauthorize" class="primary" data-text="reauthorize"></button><button id="topImport" data-text="useExistingAuthorization"></button></div><p class="muted" data-text="topEntryHelp"></p><button id="topUseIop" data-text="newMerchantIop"></button></section>'
+  '<section id="topEntries" hidden><div class="actions"><button id="topReauthorize" class="primary" data-text="reauthorize"></button><button id="topImport" data-text="useExistingAuthorization"></button></div><p class="muted" data-text="topEntryHelp"></p></section>'
 );
 el('#form').insertAdjacentHTML(
   'beforebegin',
@@ -62,21 +60,12 @@ el('#form').insertAdjacentHTML(
 );
 el('#nextStep').insertAdjacentHTML(
   'afterend',
-  '<div id="workbenchStep" class="workbench-next-action" hidden><h3 data-text="workbenchNextTitle"></h3><p class="muted" data-text="workbenchNextHelp"></p><div class="actions" id="workbenchAction"></div></div>'
+  '<div id="workbenchStep" class="workbench-next-action" hidden><h3 data-text="workbenchNextTitle"></h3><p class="muted" data-text="workbenchNextHelp"></p><div class="actions" id="workbenchAction"><div id="authorization-ready-actions"><button id="authorizeOtherProtocol" type="button" class="authorization-secondary" hidden></button></div></div></div>'
 );
-el('#workbenchAction').append(el('#applyWorkbench'));
+el('#authorization-ready-actions').prepend(el('#applyWorkbench'));
 el('#workbenchStep').insertAdjacentHTML(
   'beforeend',
   '<button id="restartConnection" type="button" class="authorization-back" data-text="reauthorize" hidden></button>'
-);
-const management = el('#connectionDetails');
-management.insertAdjacentHTML('beforebegin', '<h2 data-text="authorizationDetails"></h2>');
-management.before(el('#connectionDetails dl'), el('#boundary'));
-el('#connectionDetails summary').setAttribute('data-text', 'connectionManagement');
-el('#connectionDetails .actions').prepend(el('#export'), el('#reauthorize'), el('#refresh'));
-el('#connectionDetails .actions').insertAdjacentHTML(
-  'beforeend',
-  '<button id="changeAuthorization" data-text="changeAuthorization"></button>'
 );
 setupAuthorizationLayout();
 el<HTMLAnchorElement>('#back').href = browser.runtime.getURL('/options.html#/settings');
@@ -91,7 +80,6 @@ let importGeneration = 0;
 const value = (id: string): string => el<HTMLInputElement>(`#${id}`).value;
 const tokenOrigin = (): string => (protocol === 'iop' ? IOP_API_ORIGIN : 'https://oauth.alibaba.com');
 let jsonExample = '';
-let exported = false;
 let statusUnavailable = false;
 let protectionState = '';
 let deviceProtected = false;
@@ -166,9 +154,7 @@ function render(): void {
   el('.connection-steps').setAttribute('aria-label', t('connectionSteps'));
   el('#title').textContent = t(protocol === 'top' ? 'toolTitleTop' : 'toolTitleIop');
   document.title = t(protocol === 'top' ? 'toolTitleTop' : 'toolTitleIop');
-  el('#protocolHelp').textContent = t(protocol === 'top' ? 'topGuide' : 'step1Text');
   el('#boundary').textContent = t('authorizationSecretPrivacy');
-  el('#center').hidden = protocol === 'top';
   if (protocol === 'top') el('#discover').hidden = true;
   el('#topManualGuide').hidden = protocol !== 'top';
   el('#topApplicationBackup').hidden = protocol !== 'top';
@@ -178,10 +164,8 @@ function render(): void {
   el<HTMLButtonElement>('#manualEntry').disabled = el<HTMLButtonElement>('#discover').disabled;
   el<HTMLButtonElement>('#chooseFile').disabled = !summary || el<HTMLButtonElement>('#discover').disabled;
   el('#chooseFile').textContent = t(protocol === 'top' ? 'importTop' : 'import');
-  el('#clear').textContent = t(protocol === 'top' ? 'clearTop' : 'clear');
   const waiting = summary?.state === 'waiting' || summary?.state === 'busy';
   const top = protocol === 'top';
-  el('#topUseIop').hidden = !top;
   const ready = summary?.state === 'ready';
   updateAuthorizationLayout(
     protocol,
@@ -194,15 +178,12 @@ function render(): void {
   el('#restartConnection').hidden = !ready;
   el<HTMLButtonElement>('#restartConnection').disabled = busy || !protectionReady || !summary?.canReauthorize;
   el('#nextStep').hidden = ready;
-  el('#changeAuthorization').hidden = top || !ready;
-  el<HTMLButtonElement>('#changeAuthorization').disabled = busy || !protectionReady;
-  const entryParent = ready ? el('#connectionDetails') : el('.authorization-content');
-  if (el('#topEntries').parentElement !== entryParent) {
-    if (ready) entryParent.append(el('#topEntries'));
-    else el('#authorization-other-methods').before(el('#topEntries'));
-  }
-  el('#topEntries').hidden = !top || !protectionReady || !summary || waiting;
-  for (const id of ['topReauthorize', 'topImport', 'topUseIop', 'chooseApplicationFile'])
+  el('#authorizeOtherProtocol').hidden = !ready || !protectionReady;
+  el('#authorizeOtherProtocol').textContent = t(top ? 'authorizeOtherIop' : 'authorizeOtherTop');
+  el<HTMLButtonElement>('#authorizeOtherProtocol').disabled =
+    busy || !protectionReady || !ready || !!summary?.canSave;
+  el('#topEntries').hidden = !top || !protectionReady || !summary || waiting || ready;
+  for (const id of ['topReauthorize', 'topImport', 'chooseApplicationFile'])
     el<HTMLButtonElement>(`#${id}`).disabled = busy || !protectionReady || !summary || waiting;
   el('#manualEntry').hidden = top;
   el('#alternatives').hidden = waiting || (ready && !alternativeRequested) || (top && topFlow !== 'import');
@@ -215,36 +196,11 @@ function render(): void {
   el<HTMLFieldSetElement>('#fields').disabled = !protectionReady || !summary || busy || waiting;
   el<HTMLTextAreaElement>('#credentialJson').disabled = !summary || busy || waiting;
   el<HTMLButtonElement>('#importJson').disabled = !protectionReady || !summary || busy || waiting;
-  for (const selected of ['top', 'iop'] as const) {
-    const button = el<HTMLButtonElement>(selected === 'top' ? '#protocolTop' : '#protocolIop');
-    button.setAttribute('aria-pressed', String(selected === protocol));
-    button.disabled = busy || waiting;
-  }
   if (!summary) {
     el('#status').textContent = t(statusUnavailable ? 'statusUnavailable' : 'busy');
     el('#nextStep').textContent = '';
-    for (const id of [
-      'refresh',
-      'reauthorize',
-      'export',
-      'applyWorkbench',
-      'lock',
-      'clear',
-      'save',
-      'unlock'
-    ])
-      el<HTMLButtonElement>(`#${id}`).disabled = true;
-    for (const id of [
-      'refresh',
-      'reauthorize',
-      'export',
-      'applyWorkbench',
-      'save',
-      'unlockForm',
-      'manual',
-      'cancel'
-    ])
-      el(`#${id}`).hidden = true;
+    for (const id of ['applyWorkbench', 'save', 'unlock']) el<HTMLButtonElement>(`#${id}`).disabled = true;
+    for (const id of ['applyWorkbench', 'save', 'unlockForm', 'manual', 'cancel']) el(`#${id}`).hidden = true;
     el<HTMLButtonElement>('#discover').disabled = true;
     el<HTMLButtonElement>('#manualEntry').disabled = true;
     return;
@@ -252,9 +208,7 @@ function render(): void {
   el('#status').textContent = t(busy ? 'busy' : summary.state);
   el('#nextStep').textContent = t(
     summary.state === 'ready'
-      ? exported
-        ? 'nextImported'
-        : 'nextReady'
+      ? 'nextReady'
       : summary.state === 'locked'
         ? 'nextLocked'
         : summary.state === 'waiting' || summary.state === 'busy'
@@ -276,23 +230,15 @@ function render(): void {
   el<HTMLInputElement>('#unlockPassphrase').required = !deviceProtected;
   el<HTMLButtonElement>('#unlock').disabled = busy;
   el<HTMLInputElement>('#unlockPassphrase').disabled = busy;
-  el('#export').hidden = summary.state !== 'ready';
   el('#applyWorkbench').hidden = summary.state !== 'ready';
-  el('#reauthorize').hidden = top || !summary.canReauthorize;
-  el('#refresh').hidden = summary.state !== 'ready' || !summary.canRefresh;
   el('#name').textContent = summary.appName ?? '—';
   el('#key').textContent = summary.appKeySuffix ? `…${summary.appKeySuffix}` : '—';
   const date = (text: string | null): string =>
     text ? new Date(text).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : t('unknownDate');
   el('#expires').textContent = date(summary.expiresAtUtc);
   el('#refreshExpires').textContent = date(summary.refreshExpiresAtUtc);
-  el<HTMLButtonElement>('#refresh').disabled = busy || !summary.canRefresh;
-  el<HTMLButtonElement>('#reauthorize').disabled = busy || !summary.canReauthorize;
-  el<HTMLButtonElement>('#export').disabled = busy || summary.state !== 'ready';
   el<HTMLButtonElement>('#applyWorkbench').disabled =
     busy || !protectionReady || summary.state !== 'ready' || summary.canSave;
-  el<HTMLButtonElement>('#lock').disabled = busy || !['ready', 'unknown'].includes(summary.state);
-  el<HTMLButtonElement>('#clear').disabled = busy || waiting;
   el<HTMLButtonElement>('#save').disabled = busy;
   el('#manual').hidden = summary.state !== 'waiting';
   if (waiting || summary.state === 'locked') {
@@ -332,11 +278,8 @@ async function update(): Promise<void> {
     el<HTMLInputElement>('#callback').value = protocol === 'iop' ? PUBLIC_AUTH_CALLBACK : '';
     el<HTMLInputElement>('#registered').checked = false;
     resetJsonEditor();
-    el<HTMLDetailsElement>('#connectionDetails').open = false;
-    el<HTMLDetailsElement>('#protocolSettings').open = false;
   }
   statusUnavailable = false;
-  if (summary?.state !== data.state || data.expiresAtUtc !== summary.expiresAtUtc) exported = false;
   if (data.state === 'ready' && summary?.state !== 'ready') {
     collapseEntryPanels();
   }
@@ -365,7 +308,7 @@ async function run(action: string, payload: unknown = {}): Promise<boolean> {
     await request(action, payload);
     succeeded = true;
     if (action === 'import') collapseEntryPanels();
-    if (!['start', 'reauthorize', 'callback', 'cancel', 'lock', 'clear'].includes(action))
+    if (!['start', 'reauthorize', 'callback', 'cancel'].includes(action))
       transientMessage(t(action === 'apply-to-workbench' ? 'workbenchApplied' : 'saved'));
   } catch (error) {
     showError(error);
@@ -376,7 +319,7 @@ async function run(action: string, payload: unknown = {}): Promise<boolean> {
   return succeeded;
 }
 function withHostPermission(
-  action: 'start' | 'refresh' | 'reauthorize' | 'apply-to-workbench',
+  action: 'start' | 'reauthorize' | 'apply-to-workbench',
   payload: unknown = {},
   callbackUrl?: string
 ): void {
@@ -510,7 +453,7 @@ el('#topReauthorize').onclick = () => {
   topFlow = 'reauthorize';
   render();
   if (summary.canReauthorize) {
-    el<HTMLButtonElement>('#reauthorize').click();
+    restartConnection();
     return;
   }
   showManualApplication();
@@ -526,16 +469,6 @@ el('#topImport').onclick = () => {
   el<HTMLDetailsElement>('#authorization-other-methods').open = true;
   el<HTMLDetailsElement>('#advancedJson').open = true;
   el('#alternatives').scrollIntoView({ block: 'start' });
-};
-el('#changeAuthorization').onclick = () => {
-  if (busy || !protectionReady) return;
-  alternativeRequested = true;
-  render();
-  el<HTMLDetailsElement>('#authorization-other-methods').open = true;
-  el('#alternatives').scrollIntoView({ block: 'start' });
-};
-el('#topUseIop').onclick = () => {
-  switchProtocol('iop');
 };
 el('#authorization-return-choices').onclick = () => {
   collapseEntryPanels();
@@ -626,61 +559,19 @@ el('#applyWorkbench').onclick = () => {
     });
   }
 };
-for (const action of ['lock', 'cancel', 'save'])
+for (const action of ['cancel', 'save'])
   el(`#${action}`).onclick = () => {
     void run(action);
   };
-el('#clear').onclick = () => {
-  if (!busy)
-    confirmAction(t(protocol === 'top' ? 'confirmClearTop' : 'confirmClear'), () => {
-      void run('clear');
-    });
-};
-el('#refresh').onclick = () => {
-  if (!busy)
-    confirmAction(t('confirmRefresh'), () => {
-      withHostPermission('refresh');
-    });
-};
-el('#reauthorize').onclick = () => {
-  if (!busy)
-    confirmAction(t('confirmReauthorize'), () => {
-      withHostPermission('reauthorize', {}, summary?.callbackUrl ?? undefined);
-    });
-};
-el('#restartConnection').onclick = () => {
-  if (!busy && protectionReady && summary?.canReauthorize) el<HTMLButtonElement>('#reauthorize').click();
-};
-el('#export').onclick = () => {
-  if (busy) return;
-  confirmAction(t('confirmExport'), () => {
-    busy = true;
-    render();
-    void request('export')
-      .then((data) => {
-        const bundle = parseAlibabaOpenApiCredentialBundle(data);
-        if ((bundle.protocol ?? 'top') !== protocol)
-          throw new Error(protocol === 'top' ? 'TOP_REQUIRED' : 'IOP_REQUIRED');
-        const url = URL.createObjectURL(
-          new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
-        );
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = 'credentialInfo.json';
-        anchor.click();
-        exported = true;
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 1000);
-        transientMessage(t('downloaded'));
-      })
-      .catch(showError)
-      .finally(() => {
-        busy = false;
-        void update().catch(showError);
-      });
+function restartConnection(): void {
+  if (busy || !protectionReady || !summary?.canReauthorize) return;
+  const selected = protocol;
+  confirmAction(t('confirmReauthorize'), () => {
+    if (selected !== protocol || busy || !protectionReady || !summary?.canReauthorize) return;
+    withHostPermission('reauthorize', {}, summary.callbackUrl ?? undefined);
   });
-};
+}
+el('#restartConnection').onclick = restartConnection;
 el('#chooseFile').onclick = () => {
   el<HTMLInputElement>('#file').click();
 };
@@ -762,20 +653,30 @@ el<HTMLInputElement>('#file').onchange = (event) => {
     });
 };
 function switchProtocol(selected: Protocol): void {
-  if (selected === protocol || busy || summary?.state === 'waiting' || summary?.state === 'busy') return;
+  if (selected === protocol || busy || !protectionReady || summary?.state !== 'ready' || summary.canSave)
+    return;
+  const previousProtocol = protocol;
   const apply = (): void => {
+    if (
+      protocol !== previousProtocol ||
+      busy ||
+      !protectionReady ||
+      summary?.state !== 'ready' ||
+      summary.canSave
+    )
+      return;
     importGeneration += 1;
+    statusSequence += 1;
     clearTimeout(timer);
     protocol = selected;
     history.replaceState(null, '', location.pathname + (selected === 'top' ? '?protocol=top' : ''));
     summary = null;
     statusUnavailable = false;
-    exported = false;
-    topFlow = null;
-    alternativeRequested = false;
-    el('#manualSection').hidden = true;
-    el<HTMLDetailsElement>('#advancedJson').open = false;
-    el<HTMLDetailsElement>('#connectionDetails').open = false;
+    discoverAfterProtection = false;
+    protectionReady = false;
+    protectionState = '';
+    deviceProtected = false;
+    collapseEntryPanels();
     for (const id of ['appName', 'appKey', 'appSecret', 'passphrase', 'unlockPassphrase', 'callbackPaste'])
       el<HTMLInputElement>(`#${id}`).value = '';
     el<HTMLInputElement>('#registered').checked = false;
@@ -784,6 +685,8 @@ function switchProtocol(selected: Protocol): void {
     transientMessage('', true);
     transientMessage('');
     render();
+    // Preparation only: read the other local profile. Never save, discover, request
+    // host permissions or launch OAuth here; those require their own user action.
     void update().catch(showError);
   };
   if (
@@ -793,11 +696,8 @@ function switchProtocol(selected: Protocol): void {
     confirmAction(t('switchProtocolConfirm'), apply);
   else apply();
 }
-el('#protocolIop').onclick = () => {
-  switchProtocol('iop');
-};
-el('#protocolTop').onclick = () => {
-  switchProtocol('top');
+el('#authorizeOtherProtocol').onclick = () => {
+  switchProtocol(protocol === 'top' ? 'iop' : 'top');
 };
 el('#language').addEventListener('click', render);
 document.addEventListener('visibilitychange', () => {

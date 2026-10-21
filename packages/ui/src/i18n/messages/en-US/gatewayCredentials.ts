@@ -13,6 +13,16 @@ export const gatewayCredentials = {
   defaultAction: 'Default',
   configureAction: 'Configure',
   clearAction: 'Clear',
+  onlineBackup: 'Back up online authorization',
+  onlineBackupHelp:
+    'Exports only a complete authorization-tool bundle matching this configuration. For manually entered details or a missing bundle, use the original file or authorize again before backing up.',
+  onlineBackupTitle: 'Download an authorization file with plaintext secrets?',
+  onlineBackupWarning:
+    'credentialInfo.json contains plaintext App Secret, Access Token and other secrets. Store it securely and never publish or share it. This does not authorize again or call platform APIs.',
+  onlineBackupConfirm: 'Download authorization file',
+  onlineBackupDownloadStarted: 'Authorization download started. Keep the file secure.',
+  onlineBackupFailed:
+    'Authorization backup failed. Review the error details or use the original authorization file.',
   profileCleared: 'Local {protocol} authorization cleared. You can reconnect or import it again.',
   wizardContinue: 'Continue setup',
   wizardBack: 'Back',

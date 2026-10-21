@@ -165,7 +165,11 @@ async function load(): Promise<void> {
     } else if (mode === 'extension' && vault) {
       const status = await vault.status();
       if (current !== generation) return;
-      if (status.state !== 'unlocked' && status.state !== 'legacy') {
+      if (
+        status.state !== 'unlocked' &&
+        status.state !== 'legacy' &&
+        !(status.state === 'locked' && status.gatewayAvailable === true)
+      ) {
         authorizations.value = null;
         reason.value = status.state === 'locked' ? 'unlockForExpiry' : 'empty';
         return;
@@ -182,6 +186,12 @@ async function load(): Promise<void> {
             return;
           }
         }
+      }
+      // A view lock permits only safe metadata. Never fall back to reading secrets.
+      if (status.state === 'locked') {
+        authorizations.value = null;
+        reason.value = 'expiryReadFailed';
+        return;
       }
       if (!status.hasAccessToken) {
         reason.value = 'empty';

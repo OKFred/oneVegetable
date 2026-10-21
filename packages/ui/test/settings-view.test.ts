@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { defineComponent, h } from 'vue';
-import { DOMWrapper, flushPromises, mount } from '@vue/test-utils';
+import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'vue-sonner';
 
@@ -12,11 +12,17 @@ import {
   type CredentialVaultState,
   type CredentialVaultStatus,
   type GatewaySettings,
+  type SettingsRepository,
+  type AlibabaAuthorizationsSummary,
+  type ControlGatewayCredentialSummary,
   type ExtensionAlibabaCredentialAcquisitionRepository
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
+import { GatewayException } from '@one-vegetable/core/errors';
+import type { AlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
+import dashboardFixture from '../../../mock/data/dashboard-authorization.json';
 
 import SettingsView from '../src/views/SettingsView.vue';
 import { uiI18n } from '../src/i18n';
@@ -26,11 +32,11 @@ import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved
 import { notifyCredentialVaultChanged } from '../src/lib/credential-vault-events';
 
 vi.mock('vue-sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() }
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() }
 }));
 
 const anchorClick = vi.fn();
-const createObjectUrl = vi.fn(() => 'blob:diagnostics');
+const createObjectUrl = vi.fn((_blob: Blob) => 'blob:diagnostics');
 const revokeObjectUrl = vi.fn();
 const clearAllLocalData = vi.fn(() => Promise.resolve());
 const unlockVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus('unlocked')));
@@ -40,7 +46,8 @@ const createVault = vi.fn((_passphrase: string, _settings: GatewaySettings) =>
 );
 const updateVaultPolicy = vi.fn(() => Promise.resolve(vaultStatus('unlocked')));
 const rotateVault = vi.fn((_passphrase: string) => Promise.resolve(vaultStatus('unlocked')));
-const manualLockVault = vi.fn(() => Promise.resolve(vaultStatus('locked')));
+const manualLockVault = vi.fn(() => Promise.resolve({ ...vaultStatus('locked'), gatewayAvailable: true }));
+const mountedViews: VueWrapper[] = [];
 
 beforeEach(() => {
   uiI18n.global.locale.value = 'zh-CN';
@@ -64,6 +71,7 @@ function mountView(
     acquisition?: ExtensionAlibabaCredentialAcquisitionRepository;
     status?: () => Promise<CredentialVaultStatus>;
     loadSettings?: () => Promise<GatewaySettings>;
+    settings?: Partial<SettingsRepository>;
   } = {}
 ) {
   let grantedHosts = ['https://images.example.com/*'];
@@ -85,7 +93,8 @@ function mountView(
                 signMethod: 'hmac' as const,
                 ...options.initialSettings
               })),
-          save: options.save ?? (() => Promise.resolve())
+          save: options.save ?? (() => Promise.resolve()),
+          ...options.settings
         },
         permissions: {
           list: () => Promise.resolve(grantedHosts),
@@ -158,7 +167,9 @@ function mountView(
       return () => h(options.logs ? LocalDiagnosticsPanel : SettingsView);
     }
   });
-  return mount(Host, { attachTo: globalThis.document.body });
+  const wrapper = mount(Host, { attachTo: globalThis.document.body });
+  mountedViews.push(wrapper);
+  return wrapper;
 }
 
 async function confirmSettingsAction(title: string): Promise<void> {
@@ -188,7 +199,12 @@ async function openPassphraseDialog(wrapper: ReturnType<typeof mountView>): Prom
   return new DOMWrapper(dialog);
 }
 
-afterEach(() => {
+afterEach(async () => {
+  for (const wrapper of mountedViews.splice(0)) {
+    if (wrapper.exists()) wrapper.unmount();
+  }
+  await flushPromises();
+  document.body.replaceChildren();
   uiI18n.global.locale.value = 'zh-CN';
   vi.restoreAllMocks();
   anchorClick.mockClear();
@@ -213,7 +229,7 @@ describe('SettingsView diagnostics', () => {
     expect(notice.element.parentElement?.lastElementChild).toBe(notice.element);
     wrapper.unmount();
   });
-  it.each(['empty', 'unlocked', 'locked'] as const)(
+  it.each(['empty', 'unlocked'] as const)(
     'keeps an authorization guide entry with a %s vault and allows reopening it',
     async (state) => {
       const acquisition = {
@@ -413,7 +429,7 @@ describe('SettingsView diagnostics', () => {
         locatePrerequisiteField: vi.fn(),
         focusPrerequisitePage: vi.fn()
       };
-      const wrapper = mountView('extension', 'locked', 'manual', 'node', { acquisition });
+      const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { acquisition });
       await flushPromises();
       await openSettingsAuthorization(wrapper);
       expect(openTool).not.toHaveBeenCalled();
@@ -658,14 +674,15 @@ describe('SettingsView diagnostics', () => {
     expect(wrapper.text()).not.toContain('快照剩余');
     expect(wrapper.text()).toContain('本机记住解锁');
     expect(wrapper.text()).toContain('重启浏览器或更新扩展不锁定');
-    expect(wrapper.text()).toContain('之后仅手动锁定需再输入');
+    expect(wrapper.text()).toContain('手动锁定仅隐藏敏感信息，不中断后台 API');
     const passphrase = await openPassphraseDialog(wrapper);
     expect(passphrase.get('input[aria-label="新保护口令"]').attributes('placeholder')).toBe('至少 6 位');
     expect(wrapper.text()).not.toContain('UTF-8 字节');
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
     expect(wrapper.text()).toContain('Unlocking survives browser restarts and extension updates');
-    expect(wrapper.text()).toContain('only manual locking requires it again');
+    expect(wrapper.text()).toContain('background APIs continue working');
+    expect(wrapper.text()).toContain('Legacy records without a local recovery key');
     expect(document.body.textContent).toContain('No idle lock');
     expect(wrapper.text()).toContain('Lock now');
     expect(wrapper.find('select[aria-label="Automatic idle lock duration"]').exists()).toBe(false);
@@ -673,6 +690,23 @@ describe('SettingsView diagnostics', () => {
     expect(wrapper.text()).not.toContain('minutes left');
     expect(updateVaultPolicy).not.toHaveBeenCalled();
     wrapper.unmount();
+  });
+
+  it('preserves a typed unlock passphrase when the same locked status is notified again', async () => {
+    const status = vi.fn(() => Promise.resolve({ ...vaultStatus('locked'), gatewayAvailable: true }));
+    const wrapper = mountView('extension', 'locked', 'manual', 'node', { status });
+    await flushPromises();
+    const input = wrapper.get('input[aria-label="保护口令"]');
+    await input.setValue('test-only-passphrase');
+    notifyCredentialVaultChanged();
+    await vi.waitFor(() => {
+      expect(status.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+    await flushPromises();
+    expect((input.element as HTMLInputElement).value).toBe('test-only-passphrase');
+    const button = wrapper.findAll('button').find((candidate) => candidate.text() === '解锁');
+    if (!button) throw new Error('Missing unlock button');
+    expect(button.attributes('disabled')).toBeUndefined();
   });
 
   it('keeps manual locking and requires the passphrase before unlocking again', async () => {
@@ -684,7 +718,7 @@ describe('SettingsView diagnostics', () => {
     await flushPromises();
     expect(manualLockVault).toHaveBeenCalledOnce();
     expect(wrapper.text()).toContain('已手动锁定');
-    expect(wrapper.text()).toContain('请输入口令恢复使用');
+    expect(wrapper.text()).toContain('后台 API 可继续使用');
     expect(wrapper.find('input[aria-label="App Key"]').exists()).toBe(false);
     expect(unlockVault).not.toHaveBeenCalled();
     await wrapper.get('input[aria-label="保护口令"]').setValue('test-only-passphrase');
@@ -1116,3 +1150,284 @@ function vaultStatus(
     lockReason: state === 'locked' ? lockReason : null
   };
 }
+
+function safeAuthorizationSummary(): AlibabaAuthorizationsSummary {
+  const profile = (protocol: 'top' | 'iop'): ControlGatewayCredentialSummary => ({
+    ...(dashboardFixture.credential as ControlGatewayCredentialSummary),
+    protocol,
+    configurationId: `${protocol}-opaque-configuration`,
+    managementAvailable: true
+  });
+  return {
+    top: profile('top'),
+    iop: profile('iop'),
+    defaultProtocol: 'top',
+    binding: { confirmed: false, topConfigurationId: null, iopConfigurationId: null, confirmedAtUtc: null }
+  };
+}
+
+function settingsForBackup(exportAuthorization: NonNullable<SettingsRepository['exportAuthorization']>) {
+  return {
+    authorizations: vi.fn().mockResolvedValue(safeAuthorizationSummary()),
+    loadAuthorization: vi.fn().mockResolvedValue({
+      appKey: credentialFixtures.oauthBundle.application.appKey,
+      appSecret: '',
+      accessToken: '',
+      endpoint: ALIBABA_GATEWAY,
+      signMethod: 'hmac'
+    }),
+    exportAuthorization,
+    setDefaultAuthorization: vi.fn(),
+    refreshAuthorization: vi.fn(),
+    clearAuthorization: vi.fn(),
+    testAuthorization: vi.fn()
+  } satisfies Partial<SettingsRepository>;
+}
+
+function bodyButton(testId: string): HTMLButtonElement {
+  const button = document.body.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
+  if (!button) throw new Error(`Missing settings button: ${testId}`);
+  return button;
+}
+
+async function openBackupConfirmation(wrapper: ReturnType<typeof mountView>): Promise<void> {
+  await waitForAuthorizationSummary(wrapper);
+  await wrapper.get('[data-testid="select-authorization-top"]').trigger('click');
+  await flushPromises();
+  await vi.waitFor(() => {
+    expect(bodyButton('backup-online-authorization').disabled).toBe(false);
+  });
+  expect(document.querySelectorAll('[data-testid="credential-connection-actions"]')).toHaveLength(1);
+  expect(document.querySelectorAll('[data-testid="credential-backup-actions"]')).toHaveLength(1);
+  bodyButton('backup-online-authorization').click();
+  await flushPromises();
+  await vi.waitFor(() => {
+    expect(backupConfirmationDialog()).toBeDefined();
+  });
+}
+
+async function waitForAuthorizationSummary(wrapper: ReturnType<typeof mountView>): Promise<void> {
+  await vi.waitFor(
+    () => {
+      expect(wrapper.find('[data-testid="alibaba-authorizations-panel"]').exists()).toBe(true);
+    },
+    { timeout: 5_000 }
+  );
+}
+
+function backupConfirmationDialog(): HTMLElement {
+  const dialog = [...document.body.querySelectorAll<HTMLElement>('[role="dialog"]')].find((node) => {
+    const title = node.querySelector('h2')?.textContent ?? '';
+    return (
+      title === '下载包含明文密钥的授权文件？' ||
+      title === 'Download an authorization file with plaintext secrets?'
+    );
+  });
+  if (!dialog) throw new Error('Missing authorization-backup confirmation dialog');
+  return dialog;
+}
+
+function confirmBackup(): void {
+  const button = [...backupConfirmationDialog().querySelectorAll<HTMLButtonElement>('button')].find(
+    (item) =>
+      item.textContent.trim() === '确认下载授权文件' ||
+      item.textContent.trim() === 'Download authorization file'
+  );
+  if (!button) throw new Error('Missing explicit authorization-backup confirmation');
+  button.click();
+}
+
+describe('SettingsView sensitive view lock and online authorization backup', () => {
+  it('shows safe summaries while locked, without loading secrets or permitting management', async () => {
+    const repository = settingsForBackup(vi.fn());
+    const loadSettings = vi.fn();
+    const wrapper = mountView('extension', 'locked', 'manual', 'node', {
+      initialVaultStatus: { ...vaultStatus('locked'), gatewayAvailable: true },
+      settings: repository,
+      loadSettings
+    });
+    await waitForAuthorizationSummary(wrapper);
+    const panel = wrapper.get('[data-testid="alibaba-authorizations-panel"]');
+    expect(repository.authorizations).toHaveBeenCalledOnce();
+    expect(panel.text()).toContain('TOP');
+    expect(panel.text()).toContain('IOP');
+    for (const action of ['select', 'default', 'clear']) {
+      for (const protocol of ['top', 'iop']) {
+        const button = panel.get(`[data-testid="${action}-authorization-${protocol}"]`);
+        expect(button.attributes('disabled')).toBeDefined();
+        await button.trigger('click');
+      }
+    }
+    expect(wrapper.text()).toContain('后台 API 可继续使用');
+    expect(wrapper.find('input[aria-label="App Key"]').exists()).toBe(false);
+    expect(document.querySelector('[data-testid="backup-online-authorization"]')).toBeNull();
+    expect(loadSettings).not.toHaveBeenCalled();
+    expect(repository.loadAuthorization).not.toHaveBeenCalled();
+    expect(repository.setDefaultAuthorization).not.toHaveBeenCalled();
+    expect(repository.clearAuthorization).not.toHaveBeenCalled();
+    expect(repository.refreshAuthorization).not.toHaveBeenCalled();
+    expect(repository.exportAuthorization).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('clears a sensitive editing form and closes its dialog when another tab locks the view', async () => {
+    let currentStatus = vaultStatus('unlocked');
+    const repository = settingsForBackup(vi.fn());
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      status: () => Promise.resolve(currentStatus),
+      settings: repository
+    });
+    await waitForAuthorizationSummary(wrapper);
+    await wrapper.get('[data-testid="select-authorization-top"]').trigger('click');
+    await flushPromises();
+    const manual = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+      (item) => item.textContent.trim() === '手动填写'
+    );
+    manual?.click();
+    await flushPromises();
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="App Secret"]');
+    expect(input).not.toBeNull();
+    if (!input) throw new Error('Missing manual secret input');
+    input.value = credentialFixtures.oauthBundle.application.appSecret;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushPromises();
+    currentStatus = { ...vaultStatus('locked'), gatewayAvailable: true };
+    notifyCredentialVaultChanged();
+    await vi.waitFor(() => {
+      expect(document.querySelector('input[aria-label="App Secret"]')).toBeNull();
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    });
+    expect(wrapper.text()).toContain('后台 API 可继续使用');
+    expect(repository.authorizations).toHaveBeenCalledTimes(2);
+    expect(repository.exportAuthorization).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it.each(['zh-CN', 'en-US'] as const)(
+    'backs up only after confirmation, with plaintext warning (%s)',
+    async (locale) => {
+      const exportAuthorization = vi.fn().mockResolvedValue(credentialFixtures.oauthBundle);
+      const repository = settingsForBackup(exportAuthorization);
+      Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
+      Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectUrl });
+      const downloads: string[] = [];
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        downloads.push(this.download);
+        anchorClick();
+      });
+      const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { settings: repository });
+      await waitForAuthorizationSummary(wrapper);
+      uiI18n.global.locale.value = locale;
+      await flushPromises();
+      await openBackupConfirmation(wrapper);
+      const confirmation = backupConfirmationDialog();
+      expect(confirmation.textContent).toContain('App Secret');
+      expect(confirmation.textContent).toContain('Access Token');
+      expect(confirmation.textContent).toContain(locale === 'zh-CN' ? '明文密钥' : 'plaintext');
+      expect(exportAuthorization).not.toHaveBeenCalled();
+      expect(createObjectUrl).not.toHaveBeenCalled();
+      const button = bodyButton('backup-online-authorization');
+      expect(button.classList.contains('h-9')).toBe(true);
+      confirmBackup();
+      await flushPromises();
+      expect(exportAuthorization).toHaveBeenCalledExactlyOnceWith('top');
+      expect(downloads).toEqual(['credentialInfo.json']);
+      expect(createObjectUrl).toHaveBeenCalledOnce();
+      const blob = createObjectUrl.mock.calls[0]?.[0];
+      expect(blob?.type).toBe('application/json');
+      const content = await new Promise<string>((resolve, reject) => {
+        if (!blob) {
+          reject(new Error('Missing exported JSON Blob'));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') resolve(reader.result);
+          else reject(new Error('Expected exported JSON text'));
+        };
+        reader.onerror = reject;
+        reader.readAsText(blob);
+      });
+      expect(JSON.parse(content)).toEqual(credentialFixtures.oauthBundle);
+      expect(revokeObjectUrl).toHaveBeenCalledExactlyOnceWith('blob:diagnostics');
+      expect(toast.success).toHaveBeenCalledWith(
+        locale === 'zh-CN'
+          ? '授权文件下载已发起，请妥善保管。'
+          : 'Authorization download started. Keep the file secure.'
+      );
+      expect(repository.refreshAuthorization).not.toHaveBeenCalled();
+      expect(repository.clearAuthorization).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
+  it('returns from the backup confirmation without exporting or closing the configuration dialog', async () => {
+    const exportAuthorization = vi.fn();
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      settings: settingsForBackup(exportAuthorization)
+    });
+    await flushPromises();
+    await openBackupConfirmation(wrapper);
+    const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"]');
+    expect(dialogs).toHaveLength(2);
+    const close = backupConfirmationDialog().querySelector<HTMLButtonElement>('button[aria-label]');
+    close?.click();
+    await flushPromises();
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    expect(document.querySelector('[data-testid="backup-online-authorization"]')).not.toBeNull();
+    expect(exportAuthorization).not.toHaveBeenCalled();
+    expect(anchorClick).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it.each(['AUTH_BACKUP_UNAVAILABLE', 'AUTH_BACKUP_STALE'])('does not download for %s', async (code) => {
+    const exportAuthorization = vi
+      .fn()
+      .mockRejectedValue(new GatewayException({ code, message: code, retryable: false }));
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      settings: settingsForBackup(exportAuthorization)
+    });
+    await flushPromises();
+    await openBackupConfirmation(wrapper);
+    confirmBackup();
+    await flushPromises();
+    expect(exportAuthorization).toHaveBeenCalledExactlyOnceWith('top');
+    expect(createObjectUrl).not.toHaveBeenCalled();
+    expect(anchorClick).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain(code);
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    expect(toast.error).toHaveBeenCalledWith('未能备份授权文件，请查看错误详情；也可使用原授权文件。');
+    wrapper.unmount();
+  });
+
+  it('discards a late backup response after the sensitive view is locked', async () => {
+    let currentStatus = vaultStatus('unlocked');
+    let resolveBackup: ((bundle: AlibabaOpenApiCredentialBundle) => void) | undefined;
+    const exportAuthorization = vi.fn(
+      () =>
+        new Promise<AlibabaOpenApiCredentialBundle>((resolve) => {
+          resolveBackup = resolve;
+        })
+    );
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      status: () => Promise.resolve(currentStatus),
+      settings: settingsForBackup(exportAuthorization)
+    });
+    await flushPromises();
+    await openBackupConfirmation(wrapper);
+    confirmBackup();
+    await flushPromises();
+    expect(exportAuthorization).toHaveBeenCalledOnce();
+    currentStatus = { ...vaultStatus('locked'), gatewayAvailable: true };
+    notifyCredentialVaultChanged();
+    await vi.waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    });
+    resolveBackup?.(credentialFixtures.oauthBundle as AlibabaOpenApiCredentialBundle);
+    await flushPromises();
+    expect(createObjectUrl).not.toHaveBeenCalled();
+    expect(anchorClick).not.toHaveBeenCalled();
+    expect(document.querySelector('input[aria-label="App Key"]')).toBeNull();
+    wrapper.unmount();
+  });
+});

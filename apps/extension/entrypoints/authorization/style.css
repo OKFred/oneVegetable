@@ -218,11 +218,23 @@
   align-items: flex-start;
   gap: 16px;
 }
-.authorization-page #applyWorkbench {
-  min-width: 220px;
+.authorization-page #authorization-ready-actions {
+  display: grid;
+  grid-auto-rows: 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+}
+.authorization-page :is(#applyWorkbench, #authorizeOtherProtocol) {
+  width: 100%;
+  min-width: 0;
   min-height: 48px;
+  padding: 10px 16px;
   font-size: 16px;
   font-weight: 600;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .authorization-page .authorization-back {
   display: inline-flex;
@@ -271,37 +283,9 @@
   margin: 20px 0 30px;
   font-size: 13px;
 }
-.authorization-page .authorization-summary details {
-  border-top: 1px solid hsl(var(--border));
-  border-bottom: 1px solid hsl(var(--border));
-  padding: 16px 0;
-}
-.authorization-page .authorization-summary details details {
-  border: 0;
-  padding: 12px 0;
-}
 .authorization-page summary {
   cursor: pointer;
   font-weight: 600;
-}
-.authorization-summary .actions,
-.authorization-summary .protocol-choices {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
-  align-items: stretch;
-}
-.authorization-summary .actions > button,
-.authorization-summary .protocol-choices > button {
-  min-width: 0;
-  white-space: normal;
-}
-.authorization-summary #topEntries {
-  margin-top: 24px;
-}
-.authorization-summary #topUseIop {
-  width: 100%;
 }
 .authorization-page footer {
   margin: 0 24px 24px;
@@ -344,12 +328,17 @@
   border-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
+.authorization-page button.authorization-secondary {
+  background: hsl(var(--background));
+  border-color: hsl(var(--input));
+  color: hsl(var(--foreground));
+}
+.authorization-page button.authorization-secondary:hover:not(:disabled) {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
 .authorization-page #error {
   color: hsl(var(--destructive));
-}
-.authorization-page .protocol-choices button[aria-pressed='true'] {
-  border-color: hsl(var(--primary));
-  box-shadow: inset 0 0 0 1px hsl(var(--primary));
 }
 .authorization-page :is(button, a, input, textarea, summary):focus-visible {
   outline: 2px solid hsl(var(--ring));
@@ -562,9 +551,5 @@
   .authorization-header {
     flex-wrap: wrap;
     gap: 12px;
-  }
-  .authorization-page #applyWorkbench {
-    min-width: 0;
-    width: 100%;
   }
 }

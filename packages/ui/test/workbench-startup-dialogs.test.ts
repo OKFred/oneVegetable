@@ -49,6 +49,40 @@ function button(label: string): HTMLButtonElement {
 }
 
 describe('workbench startup dialogs', () => {
+  it('does not prompt or unlock when only the sensitive view is locked and background APIs remain available', async () => {
+    const repository = vault('locked');
+    repository.status.mockResolvedValue({ ...status('locked'), gatewayAvailable: true });
+    const wrapper = mount(WorkbenchStartupDialogs, {
+      props: { vault: repository, extension: true },
+      attachTo: document.body
+    });
+    await flushPromises();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(wrapper.emitted('ready')).toHaveLength(1);
+    expect(wrapper.emitted('locked')).toBeUndefined();
+    expect(wrapper.emitted('unlocked')).toBeUndefined();
+    expect(repository.unlock).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(repository.unlock).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+  it('resumes only read queries when a retained background session becomes available in another tab', async () => {
+    const repository = vault('locked');
+    const wrapper = mount(WorkbenchStartupDialogs, {
+      props: { vault: repository, extension: true },
+      attachTo: document.body
+    });
+    await flushPromises();
+    repository.status.mockResolvedValue({ ...status('locked'), gatewayAvailable: true });
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(wrapper.emitted('unlocked')).toHaveLength(1);
+    expect(wrapper.emitted('ready')).toHaveLength(1);
+    expect(repository.unlock).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
   it('offers explicit blank unlock for locked device protection without auto-unlocking on status or focus', async () => {
     const repository = vault('locked');
     repository.status.mockResolvedValue({ ...status('locked'), deviceProtected: true });

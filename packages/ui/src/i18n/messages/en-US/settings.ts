@@ -43,7 +43,7 @@ export const settings = {
   vault: {
     title: 'Open Platform credential protection',
     description:
-      'Unlocking survives browser restarts and extension updates. No idle lock. Existing locked credentials need the original passphrase once; only manual locking requires it again.',
+      'Unlocking survives browser restarts and extension updates. No idle lock. Manual locking only hides sensitive information; background APIs continue working. Unlock to view or manage credentials. Legacy records without a local recovery key need their original passphrase once.',
     status: {
       loading: 'Loading',
       unlocked: 'Unlocked',
@@ -61,7 +61,10 @@ export const settings = {
     },
     lockDescription: {
       existing: 'Enter the original passphrase once to unlock existing credentials.',
-      other: 'Manually locked. Enter the passphrase to resume.'
+      other:
+        'This legacy record has no recoverable local key. Unlock once with the original passphrase to restore API access.',
+      gatewayAvailable:
+        'Background APIs and safe authorization summaries remain available. Unlock to view, configure, renew or back up sensitive credentials.'
     },
     passphrase: 'Protection passphrase',
     unlock: 'Unlock',
@@ -86,7 +89,7 @@ export const settings = {
     savedToast: 'Credentials and settings saved',
     unlockedFeedback: 'Unlocked and remembered on this device.',
     migratedFeedback: 'Legacy credentials encrypted; this device stays unlocked.',
-    lockedFeedback: 'Locked; remembered unlocking cleared.',
+    lockedFeedback: 'Sensitive information hidden. Background API calls are unaffected.',
     rotatedFeedback: 'Re-encrypted with a new salt and passphrase.',
     statusError: 'Unable to read credential protection status',
     unlockError: 'Unable to unlock credentials',

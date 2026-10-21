@@ -19,10 +19,9 @@ export function setupAuthorizationLayout(): void {
   const title = el('#title');
   const language = el('#language');
   const statusPanel = el('#status').closest('section');
-  const summaryPanel = el('#connectionDetails').closest('section');
-  const protocolPanel = el('#protocolSettings').closest('section');
+  const summaryPanel = el('#authorization-summary-panel');
   const jsonPanel = el('#advancedJson').closest('section');
-  if (!statusPanel || !summaryPanel || !protocolPanel || !jsonPanel) throw new Error('AUTH_INPUT_INVALID');
+  if (!statusPanel || !jsonPanel) throw new Error('AUTH_INPUT_INVALID');
   statusPanel.id = 'authorization-status-panel';
   summaryPanel.id = 'authorization-summary-panel';
   const header = document.createElement('header');
@@ -63,7 +62,6 @@ export function setupAuthorizationLayout(): void {
     el('#manualSection'),
     otherMethods
   );
-  el('#protocolSettings').append(el('#topUseIop'));
   const returnChoices = document.createElement('button');
   returnChoices.id = 'authorization-return-choices';
   returnChoices.type = 'button';
@@ -71,8 +69,7 @@ export function setupAuthorizationLayout(): void {
   returnChoices.dataset.text = 'authorizationBackToMethods';
   returnChoices.hidden = true;
   el('#manualSection').before(returnChoices);
-  el('.authorization-summary').append(summaryPanel, protocolPanel);
-  managementToggle(protocolPanel);
+  el('.authorization-summary').append(summaryPanel);
   const summaryTitle = summaryPanel.querySelector('h2');
   if (summaryTitle) summaryTitle.id = 'authorization-summary-title';
   el('#workbenchStep h3').classList.add('authorization-sr-only');
@@ -98,12 +95,6 @@ export function setupAuthorizationLayout(): void {
   el('#name').previousElementSibling?.setAttribute('data-text', 'applicationName');
   el('#expires').previousElementSibling?.setAttribute('data-text', 'authorizationExpiry');
   el('#boundary').setAttribute('data-text', 'authorizationSecretPrivacy');
-  const refreshLabel = el('#refreshExpires').previousElementSibling;
-  if (refreshLabel) {
-    const dates = document.createElement('dl');
-    dates.append(refreshLabel, el('#refreshExpires'));
-    el('#connectionDetails').prepend(dates);
-  }
   el('#protocolBadge').classList.add('authorization-sr-only');
   el('.authorization-header-actions').insertAdjacentHTML(
     'afterbegin',
@@ -116,13 +107,6 @@ export function setupAuthorizationLayout(): void {
 }
 
 let currentStep = -1;
-function managementToggle(panel: HTMLElement): void {
-  el('#connectionDetails').addEventListener('toggle', () => {
-    panel.hidden =
-      document.body.dataset.authorizationReady === 'true' &&
-      !el<HTMLDetailsElement>('#connectionDetails').open;
-  });
-}
 export function updateAuthorizationLayout(
   protocol: 'top' | 'iop',
   ready: boolean,
@@ -135,14 +119,12 @@ export function updateAuthorizationLayout(
   el('#authorization-summary-title').hidden = !ready;
   el('#authorization-summary-panel > dl').hidden = !ready;
   el('#boundary').hidden = !ready;
-  el('.authorization-summary').hidden = showProtection || waiting;
+  el('.authorization-summary').hidden = showProtection || !ready;
   el('#authorization-other-methods').hidden =
     showProtection ||
     waiting ||
     (ready && !alternativeRequested) ||
     (protocol === 'top' && !alternativeRequested);
-  const protocolPanel = el('#protocolSettings').closest('section');
-  if (protocolPanel) protocolPanel.hidden = ready && !el<HTMLDetailsElement>('#connectionDetails').open;
   el('#authorization-ready-heading').hidden = !ready;
   el('#title').hidden = ready;
   el('#status').classList.toggle('authorization-sr-only', ready);

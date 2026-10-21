@@ -35,6 +35,8 @@ export const zh = {
   approveStep: '平台授权',
   useStep: '启用工作台',
   applyWorkbench: '保存并进入工作台',
+  authorizeOtherTop: '继续授权另一协议（TOP）',
+  authorizeOtherIop: '继续授权另一协议（IOP）',
   confirmApplyWorkbench:
     '保存当前授权并进入总览？仅更新对应协议，保留另一份授权和已有默认选项；首次连接使用当前授权。不重新授权或重放任务。',
   workbenchApplied: '已保存到工作台，正在打开总览',
@@ -43,10 +45,11 @@ export const zh = {
   callbackFallback: '已确认授权，但这里没有变化？',
   nextEmptyIop:
     '点击下方按钮，我们会打开 Alibaba 并尝试读取应用。遇到登录或验证，请在 Alibaba 页面完成后回来继续。',
-  nextEmptyTop: '选择“重新授权”获取新 Token，或“导入已有授权”直接使用完整凭据。新用户推荐 IOP。',
-  nextLocked: '请输入之前为本机授权文件设置的口令，不是 Alibaba 登录密码。解锁后可导出、重新授权或尝试续期。',
+  nextEmptyTop: '选择“重新授权”获取新 Token，或“导入已有授权”直接使用完整凭据。',
+  nextLocked:
+    '请输入之前为本机授权文件设置的口令，不是 Alibaba 登录密码。解锁后可继续连接；授权管理请返回设置。',
   nextWaiting: '请到刚打开的 Alibaba 页面检查账号和权限，再自行确认授权。保持本页打开，结果会自动更新。',
-  nextReady: '点击“保存并进入工作台”直接使用；下载仅用于备份或其他部署。',
+  nextReady: '点击“保存并进入工作台”直接使用；也可继续授权另一协议，当前授权会保留。',
   nextImported: '下载已发起。要在本插件使用，请点击“保存并进入工作台”。',
   nextUnknown:
     '暂时无法确认上次结果，不会自动重试。若出现“再次保存”可先保存；否则请重新授权。不要反复点击续期。',
@@ -125,7 +128,7 @@ export const zh = {
     '没有备份：向原应用管理员取得旧 TOP AppKey、AppSecret 和已登记 Callback，填写下方表单。应用名称可留空，不能使用 IOP 应用信息代替。',
   topManualApprove:
     '核对应用归属及 Callback 后点击“开始授权”。插件生成官方 TOP 授权地址，请在 Alibaba 页面登录并亲自确认。本机保护沿用前一步，不重复设置口令。',
-  topManualFinish: '授权成功后点击“保存并进入工作台”。下载仅用于备份，不需要 Node 服务。',
+  topManualFinish: '授权成功后点击“保存并进入工作台”，不需要 Node 服务。',
   topManualUnavailable:
     '自动读取失败不代表不能手动授权。但若没有旧 TOP 应用资料或授权包备份，请联系原应用管理员或 Alibaba 支持确认旧应用入口；插件无法从 IOP 应用生成 TOP 凭据。',
   topManualDocumentation: 'TOP 官方授权说明',
@@ -262,6 +265,8 @@ export const en: Record<keyof typeof zh, string> = {
   approveStep: 'Approve on Alibaba',
   useStep: 'Use in workbench',
   applyWorkbench: 'Save and open workbench',
+  authorizeOtherTop: 'Continue authorizing another protocol (TOP)',
+  authorizeOtherIop: 'Continue authorizing another protocol (IOP)',
   confirmApplyWorkbench:
     'Save and open the dashboard? Only this protocol is updated; the other profile and existing default stay unchanged. A first connection uses this profile. No authorization or tasks are replayed.',
   workbenchApplied: 'Saved to the workbench. Opening the dashboard.',
@@ -271,12 +276,12 @@ export const en: Record<keyof typeof zh, string> = {
   nextEmptyIop:
     'Use the button below to open Alibaba and read your app. If asked to sign in or verify, complete it on Alibaba, then return here.',
   nextEmptyTop:
-    'Choose Reauthorize to get a new token, or Import existing authorization to use complete credentials. New users should choose IOP.',
+    'Choose Reauthorize to get a new token, or Import existing authorization to use complete credentials.',
   nextLocked:
-    'Enter the passphrase you set for this local authorization file, not your Alibaba password. Then you can download, reauthorize or try renewal.',
+    'Enter the passphrase you set for this local authorization file, not your Alibaba password. Then continue connecting, or return to Settings to manage authorizations.',
   nextWaiting:
     'Check the account and permissions on the Alibaba tab, then approve yourself. Keep this page open; it will update automatically.',
-  nextReady: 'Choose Save and open workbench to connect. Download only for backups or other deployments.',
+  nextReady: 'Choose Save and open workbench, or authorize the other protocol. This authorization is kept.',
   nextImported: 'Download started. To connect this extension, choose Save and open workbench.',
   nextUnknown:
     'The previous result is uncertain; it will not be retried automatically. Retry local save if available, otherwise reauthorize. Do not repeatedly renew.',
@@ -361,8 +366,7 @@ export const en: Record<keyof typeof zh, string> = {
     'No backup? Obtain the legacy TOP AppKey, AppSecret and registered Callback from the app administrator. App Name is optional. IOP app details cannot substitute.',
   topManualApprove:
     'Check app ownership and the Callback, then choose Start authorization. Sign in and personally approve on Alibaba. Local protection reuses the previous step, without setting another passphrase.',
-  topManualFinish:
-    'After authorization, choose Save and open workbench. Download only for backups. No Node service is needed.',
+  topManualFinish: 'After authorization, choose Save and open workbench. No Node service is needed.',
   topManualUnavailable:
     'Automatic reading failure does not prevent manual authorization. Without legacy app details or a bundle backup, contact the original app administrator or Alibaba support about the legacy console. The extension cannot generate TOP credentials from an IOP app.',
   topManualDocumentation: 'Official TOP authorization guide',

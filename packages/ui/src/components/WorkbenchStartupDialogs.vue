@@ -22,7 +22,7 @@ let alive = true;
 onMounted(async () => {
   try {
     const status = props.extension && props.vault ? await props.vault.status() : null;
-    if (status?.state === 'locked') {
+    if (status?.state === 'locked' && !status.gatewayAvailable) {
       if (alive) {
         deviceProtected.value = status.deviceProtected === true;
         stage.value = 'unlock';
@@ -72,7 +72,11 @@ async function recheckSession(): Promise<void> {
   try {
     const status = await props.vault.status();
     if (alive && status.state === 'locked') deviceProtected.value = status.deviceProtected === true;
-    if (status.state === 'unlocked' && alive && unlockVisible()) {
+    if (
+      (status.state === 'unlocked' || (status.state === 'locked' && status.gatewayAvailable === true)) &&
+      alive &&
+      unlockVisible()
+    ) {
       emit('unlocked');
       finish();
     }

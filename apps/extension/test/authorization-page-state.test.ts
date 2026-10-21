@@ -56,14 +56,41 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   );
   const form = document.querySelector<HTMLFormElement>('#unlockForm');
   const input = document.querySelector<HTMLInputElement>('#unlockPassphrase');
-  if (!form || !input) throw new Error('Missing authorization controls');
+  const summary = document.querySelector<HTMLElement>('.authorization-summary');
+  const summaryPanel = document.querySelector<HTMLElement>('#authorization-summary-panel');
+  const otherProtocol = document.querySelector<HTMLButtonElement>('#authorizeOtherProtocol');
+  if (!form || !input || !summary || !summaryPanel || !otherProtocol)
+    throw new Error('Missing authorization controls');
   expect(form.hidden).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('#restartConnection')?.hidden).toBe(false);
+  expect(summary.hidden).toBe(false);
+  expect(summaryPanel.querySelector('button, details')).toBeNull();
+  expect(otherProtocol.hidden).toBe(false);
+  expect(otherProtocol.disabled).toBe(false);
+  expect(otherProtocol.textContent).toContain('IOP');
+  expect(document.querySelector('#applyWorkbench')?.nextElementSibling).toBe(otherProtocol);
+  for (const id of [
+    'connectionDetails',
+    'protocolSettings',
+    'protocolTop',
+    'protocolIop',
+    'topUseIop',
+    'export',
+    'refresh',
+    'lock',
+    'clear',
+    'reauthorize',
+    'changeAuthorization'
+  ])
+    expect(document.getElementById(id), `Removed standalone control: ${id}`).toBeNull();
   state = 'locked';
   window.dispatchEvent(new Event('focus'));
   await vi.advanceTimersByTimeAsync(0);
   expect(form.hidden).toBe(false);
   expect(input.disabled).toBe(false);
+  expect(summary.hidden).toBe(true);
+  expect(otherProtocol.hidden).toBe(true);
+  expect(otherProtocol.disabled).toBe(true);
   input.focus();
   input.value = 'test-only-passphrase';
   input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -85,9 +112,9 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   );
   expect(input.value).toBe('');
   expect(form.hidden).toBe(true);
-  const management = document.querySelector<HTMLDetailsElement>('#connectionDetails');
-  if (!management) throw new Error('Missing management disclosure');
-  management.open = true;
+  expect(summary.hidden).toBe(false);
+  expect(otherProtocol.hidden).toBe(false);
+  expect(otherProtocol.disabled).toBe(false);
   state = 'empty';
   const onChange = mocks.onStorageChanged.mock.calls[0]?.[0] as (
     changes: Record<string, unknown>,
@@ -95,9 +122,31 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   ) => void;
   onChange({ 'one-vegetable-top-authorization-v1': {} }, 'local');
   await vi.advanceTimersByTimeAsync(0);
-  expect(management.open).toBe(false);
+  expect(summary.hidden).toBe(true);
+  expect(otherProtocol.hidden).toBe(true);
+  expect(otherProtocol.disabled).toBe(true);
   expect(otherMethods?.hidden).toBe(true);
   expect(document.querySelector<HTMLButtonElement>('#restartConnection')?.hidden).toBe(true);
+  expect(document.querySelector('#name')?.textContent).toBe('—');
+  for (const unreadyState of ['waiting', 'busy', 'unknown'] as const) {
+    state = unreadyState;
+    onChange({ 'one-vegetable-top-authorization-v1': {} }, 'local');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(document.body.dataset.authorizationReady).toBe('false');
+    expect(summary.hidden).toBe(true);
+    expect(otherProtocol.hidden).toBe(true);
+    expect(otherProtocol.disabled).toBe(true);
+    const requests = mocks.send.mock.calls.length;
+    otherProtocol.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mocks.send).toHaveBeenCalledTimes(requests);
+    expect(new URL(location.href).searchParams.get('protocol')).toBe('top');
+  }
+  expect(
+    mocks.send.mock.calls.every(([message]) =>
+      ['status', 'protection-status', 'unlock'].includes(message.action)
+    )
+  ).toBe(true);
   window.dispatchEvent(new Event('pagehide'));
   const count = mocks.send.mock.calls.length;
   await vi.advanceTimersByTimeAsync(60_000);
