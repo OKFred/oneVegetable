@@ -158,3 +158,31 @@ Eleven bounded, read-only probes show the same incorrect photo-group scope acros
 - 另外通过 24 项 Worker 隔离测试、2 条 Worker/D1/BFF 回放 E2E，以及完整 118 条 Web/正式 MV3 E2E；回放回归与上述真实 IOP 查询分别计验收。首次并行运行两套 Playwright 共用默认输出目录，BFF 启动清理了插件测试的下载临时文件；改用独立 `--output=artifacts/iop-order-web-e2e` 后全量重跑通过，未因此修改产品下载逻辑。
 
 The public native IOP order detail is now independent of restricted TOP/Jushita detail. It supplies real order totals and line items without fabricating paid amounts, timestamps or missing data. Detail and logistics degrade independently; account/language-scoped caching rejects late results after credential changes. Isolated remote Node and formal MV3 each passed three correlated, read-only IOP requests with no TOP fallback, token refresh or mutation. Only the native read is promoted; permission grants and transaction writes are not implied. Photo-group scope remains a separate unresolved platform limitation.
+
+## IOP 素材分组筛选复查与核对流程修正
+
+- 重新读取新版公开目录及 `/icbu/product/photobank/list` 的 SDK 示例，仍只有 `groupId/currentPage/pageSize` 三个业务参数，与生产适配一致。没有发现可替代的公开图片列表路径，不调用官网私有接口。
+- 远程再做 4 次有限只读对照：省略 `simplify`、设置为 `false`，分别使用表单与 JSON。已知父分组的单条图片可匹配，但子分组仍返回父分组图片；不能据此放开分组校验、认定子分组为空或宣称列表已修复。脱敏回执：`artifacts/iop-feature-parity/2026-10-21-photo-simplify-comparison.json`。本组没有上传、删除、Token 刷新或配置替换。
+- 图片分组导航的缓存、展开状态和迟到响应按工作台身份隔离，目录按真实父子关系排列，不把其他根目录混到当前目录下。
+- 仅 IOP 的模板携图导入不再提供依赖全库查询的跨组素材复用。旧任务即使带有复用同意，也不会发起无分组查询或遍历其他目录。已在目标目录确认的精确 fileId 仍直接使用；TOP 的有界、精确 ID 加哈希复用流程保持兼容。
+- 权限预检兼容接收可选 `galleryContext`，按任务绑定的身份和凭据查询协议能力，不能使用当前默认选路代替；BFF 和插件均验证上下文，不触发平台请求或 Token 刷新。旧的无上下文查询行为保持不变。模板的素材域名权限预取也携带同一上下文。
+- 传输核对保留分组、契约及分页错误码，任务中心显示本地化原因。模板创建在素材未确认时停止，不再吞成笼统的未确认；原上传回执、状态和 requestId 保留，只允许后续只读核对，不重复上传。
+- 正式 MV3 可只复查指定的真实分组，避免无关读请求：
+
+  ```powershell
+  pnpm exec tsx scripts/smoke-iop-workbench-real.ts --confirm-readonly --credential=artifacts/local-dual-authorization/iop-credentials.json --photos-only --photo-group-id=<实际分组ID>
+  ```
+
+The public SDK parameters match the implementation. Four additional read-only comparisons reproduce the same foreign-group result without `simplify` or with `simplify=false`; no transport workaround is justified. Group navigation now isolates local state by identity. IOP-only material reconciliation cannot scan all groups or silently adopt a different directory, and persistent uncertain receipts retain actionable errors without any resend. A matching single-row sample is not full photo-library acceptance; the provider scope limitation remains open.
+
+### 正式 MV3 实际分页复查
+
+- 使用最终正式构建的未改动代码副本，隔离配置仅 IOP，分别查询已知父、子分组，图片分页大小为页面默认的 24。两次分组树读取通过，但两次图片列表均触发 `ALIBABA_IOP_PHOTO_SCOPE_MISMATCH`；这两份业务验收均保留为 `failed`，不能按前面单条匹配样本推断整个目录可用。
+- 两份回执的加密存储、刷新后 IOP 配置保留、绑定凭据状态查询、失效上下文拒绝均确认通过。总计 4 次 IOP 只读平台请求、0 TOP、0 Token、0 写入、0 越界请求；没有覆盖现有配置。仅隔离 Manifest 预授予 IOP Origin，不替代原生权限弹窗验收。
+- 回执：`artifacts/iop-workbench-read-validation/ff15ce42-890f-44f4-9b81-dae4d03d67bf-hFVIiK/report.json`、`artifacts/iop-workbench-read-validation/6b544bc4-4c08-419f-8ff0-57638a6d043d-cl9w2p/report.json`。不保存完整响应、图片或凭据。
+- 远程 Windows `pnpm check` 通过 3,055 项单测、格式、Lint、文案、契约漂移、类型、三端构建和商店检查；另外 24 项 Worker 隔离测试通过。验收工具增加的绑定上下文复查另行通过格式、Lint、独立类型检查及 9 项脚本测试。
+- ZIP 仅在内存测量为 1,281,715 字节，未写出或覆盖既有发布包；解包 4,389,574 字节，options eager JS 249,129 字节，i18n 309,948 字节。所有既有预算保持不变。
+- 完整 118 条 Web/正式 MV3 E2E 通过，包含图片目录管理、模板携图与传输任务回归；使用独立输出目录，与真实 IOP 失败回执分开计验收。
+- 另外 2 条 Worker/D1/BFF 集成回放通过，仅重建专用测试数据库；真实业务数据和线上环境未修改。
+
+At the actual 24-row page size, both isolated formal-MV3 photo-list runs still fail scope validation, although group reads, encrypted storage, persisted IOP configuration and context pinning pass. Four platform reads perform no TOP fallback, refresh, mutation or configuration replacement. These are failed photo-list acceptance receipts, not a claim that IOP-only assets are fully usable. Existing TOP compatibility and the safety stop remain in place.

@@ -62,6 +62,30 @@ describe('IOP real workbench acceptance safety', () => {
       readIopBundle({ ...bundle, oauth: { ...bundle.oauth, expiresAtUtc: new Date(0).toISOString() } })
     ).toThrow('IOP_BUNDLE_INVALID');
   });
+  it('isolates photo reads to an explicit group without querying products, orders or other roots', async () => {
+    const args = ['--confirm-readonly', '--credential=artifacts/input.json', '--photos-only'];
+    expect(() => parseOptions(args)).toThrow('PHOTO_GROUP_ID_INVALID');
+    expect(() => parseOptions([...args, '--photo-group-id=1001', '--orders-only'])).toThrow();
+    expect(parseOptions([...args, '--photo-group-id=1001'])).toMatchObject({
+      photosOnly: true,
+      photoGroupId: '1001'
+    });
+    const call = vi
+      .fn()
+      .mockImplementation((operation) =>
+        Promise.resolve(operation === 'listPhotoGroups' ? photoFixture.deleteProofGroups : { items: [] })
+      );
+    await runReadPlan(call, vi.fn(), undefined, '1001', false, true);
+    expect(call.mock.calls).toEqual([
+      ['listPhotoGroups', { parentId: '1001' }],
+      ['listPhotos', { groupId: '1001', page: 1, pageSize: 24 }]
+    ]);
+    call.mockClear().mockResolvedValue([]);
+    const skip = vi.fn();
+    await runReadPlan(call, skip, undefined, '1001', false, true);
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(skip).toHaveBeenCalledWith('listPhotos', 'NO_VALID_PHOTO_GROUP');
+  });
   it('can isolate the order aggregate using only a correlated live order from the preceding list', async () => {
     expect(
       parseOptions(['--confirm-readonly', '--credential=artifacts/input.json', '--orders-only'])

@@ -14,6 +14,8 @@ import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { parseAlibabaOpenApiCredentialBundle } from '../packages/core/src/alibaba-credential-bundle';
 import { IOP_API_ORIGIN, IOP_BUSINESS_ENDPOINT } from '../packages/core/src/alibaba-iop';
 import { requireProductOperationContext } from '../packages/core/src/product-operation-context';
+import { requireGalleryContext } from '../packages/core/src/gallery-transfer-context';
+import type { GalleryTransferContext } from '../packages/core/src/gallery-transfer-task';
 import { gatewayCredentials as credentialsZh } from '../packages/ui/src/i18n/messages/zh-CN/gatewayCredentials';
 import { atomicWriteJson } from './openapi-auth/storage';
 
@@ -58,6 +60,7 @@ export function parseOptions(args: readonly string[]): {
   photoGroupId?: string;
   nativeHostConsent?: true;
   ordersOnly?: true;
+  photosOnly?: true;
 } {
   const inputs = args.filter((arg) => arg.startsWith('--credential='));
   const products = args.filter((arg) => arg.startsWith('--product-id='));
@@ -67,6 +70,8 @@ export function parseOptions(args: readonly string[]): {
     args.filter((arg) => arg === '--confirm-readonly').length !== 1 ||
     args.filter((arg) => arg === '--native-host-consent').length > 1 ||
     args.filter((arg) => arg === '--orders-only').length > 1 ||
+    args.filter((arg) => arg === '--photos-only').length > 1 ||
+    (args.includes('--orders-only') && args.includes('--photos-only')) ||
     products.length > 1 ||
     photoGroups.length > 1 ||
     args.some(
@@ -76,6 +81,7 @@ export function parseOptions(args: readonly string[]): {
         !arg.startsWith('--photo-group-id=') &&
         arg !== '--confirm-readonly' &&
         arg !== '--native-host-consent' &&
+        arg !== '--photos-only' &&
         arg !== '--orders-only'
     )
   )
@@ -86,12 +92,14 @@ export function parseOptions(args: readonly string[]): {
   const photoGroupId = photoGroups[0]?.slice('--photo-group-id='.length);
   if (products.length && !safeNumericId(productId)) throw new Error('PRODUCT_ID_INVALID');
   if (photoGroups.length && !safeNumericId(photoGroupId)) throw new Error('PHOTO_GROUP_ID_INVALID');
+  if (args.includes('--photos-only') && !photoGroupId) throw new Error('PHOTO_GROUP_ID_INVALID');
   return {
     credential,
     ...(productId ? { productId } : {}),
     ...(photoGroupId ? { photoGroupId } : {}),
     ...(args.includes('--native-host-consent') ? { nativeHostConsent: true as const } : {}),
-    ...(args.includes('--orders-only') ? { ordersOnly: true as const } : {})
+    ...(args.includes('--orders-only') ? { ordersOnly: true as const } : {}),
+    ...(args.includes('--photos-only') ? { photosOnly: true as const } : {})
   };
 }
 
@@ -198,8 +206,17 @@ export async function runReadPlan(
   skip: (operation: ReadOperation, reason: string) => void,
   productId?: string,
   photoGroupId?: string,
-  ordersOnly = false
+  ordersOnly = false,
+  photosOnly = false
 ): Promise<void> {
+  if (photosOnly) {
+    if (!safeNumericId(photoGroupId)) throw new Error('PHOTO_GROUP_ID_INVALID');
+    const groups = await call('listPhotoGroups', { parentId: photoGroupId });
+    if (items(groups).some((entry) => entry.id === photoGroupId))
+      await call('listPhotos', { groupId: photoGroupId, page: 1, pageSize: 24 });
+    else skip('listPhotos', 'NO_VALID_PHOTO_GROUP');
+    return;
+  }
   if (!ordersOnly) {
     const products = await call('listProducts', {
       page: 1,
@@ -424,6 +441,8 @@ export async function main(args: readonly string[]): Promise<void> {
     isolatedManifestPregrant: options.nativeHostConsent ? null : `${IOP_API_ORIGIN}/*`,
     encryptedVaultConfirmed: false,
     protocolPersisted: false,
+    boundPhotoContextVerified: false,
+    stalePhotoContextRejected: false,
     tokenRenewed: false,
     tokenRequests: 0,
     mutations: 0,
@@ -618,6 +637,37 @@ export async function main(args: readonly string[]): Promise<void> {
     const operationContext = await send(page, { kind: 'product-operation-context', requestId: randomUUID() });
     if (!isRecord(operationContext) || operationContext.ok !== true) throw new Error('READ_CONTEXT_REQUIRED');
     const productContext = requireProductOperationContext(operationContext.data);
+    let photoContext: GalleryTransferContext | undefined;
+    if (options.photosOnly) {
+      report.stage = 'photo-preflight';
+      const contextResult = await send(page, { kind: 'gallery-transfer-context', requestId: randomUUID() });
+      if (!isRecord(contextResult) || contextResult.ok !== true) throw new Error('READ_CONTEXT_REQUIRED');
+      photoContext = requireGalleryContext(contextResult.data);
+      const statusFor = (galleryContext: GalleryTransferContext) =>
+        send(page, {
+          kind: 'credential-vault-request',
+          operation: 'status',
+          requestId: randomUUID(),
+          payload: { galleryContext }
+        });
+      const pinnedStatus = await statusFor(photoContext);
+      report.boundPhotoContextVerified =
+        isRecord(pinnedStatus) &&
+        pinnedStatus.ok === true &&
+        isRecord(pinnedStatus.data) &&
+        pinnedStatus.data.protocol === 'iop';
+      const staleStatus = await statusFor({
+        ...photoContext,
+        gateway: photoContext.gateway === '0'.repeat(64) ? '1'.repeat(64) : '0'.repeat(64)
+      });
+      report.stalePhotoContextRejected =
+        isRecord(staleStatus) &&
+        staleStatus.ok === false &&
+        isRecord(staleStatus.error) &&
+        staleStatus.error.code === 'GALLERY_CONTEXT_CHANGED';
+      if (!report.boundPhotoContextVerified || !report.stalePhotoContextRejected)
+        throw new Error('READ_CONTEXT_REQUIRED');
+    }
     report.stage = 'runtime-reads';
     await runReadPlan(
       async (operation, payload) => {
@@ -639,7 +689,7 @@ export async function main(args: readonly string[]): Promise<void> {
             operation,
             payload,
             requestId,
-            productContext
+            ...(photoContext ? { galleryContext: photoContext } : { productContext })
           });
           if (!isRecord(response) || response.requestId !== requestId || typeof response.ok !== 'boolean')
             entry.errorCode = 'RUNTIME_ENVELOPE_INVALID';
@@ -688,7 +738,8 @@ export async function main(args: readonly string[]): Promise<void> {
         }),
       options.productId,
       options.photoGroupId,
-      options.ordersOnly
+      options.ordersOnly,
+      options.photosOnly
     );
     report.status =
       report.blockedRequests || records.some((entry) => entry.status === 'failed')
