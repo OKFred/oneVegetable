@@ -1376,10 +1376,16 @@ test('MV3 options page persists settings and exposes the audited catalog', async
   });
   expect(JSON.stringify(encryptedPolicySettings)).not.toContain('idleTimeoutMinutes');
 
-  await page.getByLabel('新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
-  await page.getByLabel('确认新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
-  await page.getByRole('button', { name: '更换口令' }).click();
-  await expect(page.getByText(settingsZh.vault.rotatedFeedback)).toBeVisible();
+  await page.getByRole('button', { name: settingsZh.vault.rotateTitle, exact: true }).click();
+  const rotateDialog = page.getByRole('dialog', { name: settingsZh.vault.rotateTitle, exact: true });
+  await expect(rotateDialog).toBeVisible();
+  await rotateDialog.getByLabel('新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
+  await rotateDialog.getByLabel('确认新保护口令', { exact: true }).fill('e2e-rotated-vault-password');
+  await rotateDialog.getByRole('button', { name: '更换口令', exact: true }).click();
+  await expect(rotateDialog).toHaveCount(0);
+  await expect(
+    page.getByRole('main').getByText(settingsZh.vault.rotatedFeedback, { exact: true })
+  ).toBeVisible();
   await page.getByRole('button', { name: '立即锁定' }).click();
   await expect(page.getByText('已锁定', { exact: true })).toBeVisible();
   await page.getByLabel('保护口令').fill('e2e-vault-password');

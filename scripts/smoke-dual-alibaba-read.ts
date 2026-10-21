@@ -159,10 +159,11 @@ try {
   const group = groups?.[0];
   if (group) {
     const request = { page: 1, pageSize: 2, groupId: group.id };
-    assert.equal(await dual.selectProtocol('listPhotos', request), 'iop');
+    // IOP photo scope is unverified; dual profiles must choose TOP before sending.
+    assert.equal(await dual.selectProtocol('listPhotos', request), 'top');
     await call(
       'listPhotos:group',
-      'iop',
+      'top',
       (requestId) => client.request('listPhotos', request, { requestId }),
       (value) => value.items.length
     );

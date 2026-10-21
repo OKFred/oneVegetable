@@ -1,22 +1,25 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { isDeepStrictEqual } from 'node:util';
 import { dirname, resolve, sep } from 'node:path';
 import { chromium, expect, type BrowserContext, type Page } from '@playwright/test';
 import { unzipSync } from 'fflate';
 import { MockGatewayClient } from '../packages/core/src/mock-client';
+import { isCredentialVaultRecord, unlockCredentialVault } from '../packages/core/src/credential-vault';
 import fixture from '../mock/data/extension-upgrade.json' with { type: 'json' };
 import s3Fixture from '../mock/data/extension-s3.json' with { type: 'json' };
 import taskFixture from '../mock/data/gallery-transfer-task.json' with { type: 'json' };
 
 declare const chrome: {
-  runtime: { sendMessage(message: unknown): Promise<unknown> };
+  runtime: { sendMessage(message: unknown): Promise<unknown>; getManifest(): { version: string } };
   storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
 };
 const root = resolve(import.meta.dirname, '..');
 const latest = resolve(root, 'apps/extension/.output/chrome-mv3');
 const output = resolve(root, 'artifacts/extension-upgrade', randomUUID());
 const checks: string[] = [];
+const installedExtensionIds = new WeakMap<BrowserContext, string>();
 await mkdir(output, { recursive: true });
 const baselinePaths = process.argv.slice(2).filter((value) => value !== '--');
 if (!baselinePaths.length) {
@@ -29,13 +32,21 @@ const report: {
   completed: boolean;
   baselines: { version: string; sha256: string }[];
   checks: string[];
+  vaultStates: {
+    version: string;
+    state: string;
+    gatewayAvailable: boolean | null;
+    lockReason: string | null;
+  }[];
   stage: string;
   errorType?: string;
+  errorCode?: string;
 } = {
   completed: false,
   stage: 'initialization',
   baselines: [],
-  checks
+  checks,
+  vaultStates: []
 };
 try {
   for (const path of baselinePaths) await verifyUpgrade(resolve(root, path));
@@ -44,6 +55,10 @@ try {
   process.stdout.write(`Extension upgrades passed: ${checks.length} checks. Report: ${output}\n`);
 } catch (error) {
   report.errorType = error instanceof Error ? error.name : 'UnknownError';
+  const message = error instanceof Error ? error.message : '';
+  report.errorCode =
+    /net::([A-Z_]+)/u.exec(message)?.[1] ??
+    (/^[A-Z_]+$/u.test(message) ? message : 'CHECKPOINT_ASSERTION_FAILED');
   process.exitCode = 1;
   process.stderr.write(`Extension upgrade failed. Redacted checkpoints: ${output}\n`);
 } finally {
@@ -73,17 +88,37 @@ async function launch(profile: string, extensionPath: string): Promise<BrowserCo
     headless: false,
     locale: 'zh-CN',
     reducedMotion: 'reduce',
-    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]
+    // This capability exists only in the disposable test browser, never the user's Chrome.
+    args: [`--disable-extensions-except=${extensionPath}`, '--enable-unsafe-extension-debugging']
   });
   // Both page and service-worker HTTP requests are blocked. No real credentials are loaded.
   await context.route(/^https?:/u, (route) => route.abort('blockedbyclient'));
   // tsx preserves function names using this helper when serializing test callbacks.
   await context.addInitScript({ content: 'globalThis.__name = (value) => value;' });
+  try {
+    const browser = context.browser();
+    if (!browser) throw new Error('UPGRADE_BROWSER_SESSION_UNAVAILABLE');
+    const cdp = await browser.newBrowserCDPSession();
+    try {
+      // A real unpacked install/update invalidates the old background cache.
+      // https://chromedevtools.github.io/devtools-protocol/tot/Extensions/#method-loadUnpacked
+      const installed: unknown = await cdp.send('Extensions.loadUnpacked', { path: extensionPath });
+      const id = record(installed).id;
+      if (typeof id !== 'string') throw new Error('UPGRADE_EXTENSION_ID_MISSING');
+      installedExtensionIds.set(context, id);
+    } finally {
+      await cdp.detach();
+    }
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
   return context;
 }
 async function options(context: BrowserContext): Promise<{ page: Page; origin: string }> {
-  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
-  const origin = `chrome-extension://${new URL(worker.url()).host}`;
+  const id = installedExtensionIds.get(context);
+  if (!id) throw new Error('UPGRADE_EXTENSION_ID_MISSING');
+  const origin = `chrome-extension://${id}`;
   const page = await context.newPage();
   await page.goto(`${origin}/options.html#/settings`);
   return { page, origin };
@@ -190,20 +225,42 @@ async function verifyUpgrade(path: string): Promise<void> {
     await rm(extensionPath, { recursive: true, force: true });
     await cp(latest, extensionPath, { recursive: true });
     context = await launch(resolve(sandbox, 'profile'), extensionPath);
+    report.stage = 'open natively updated candidate';
     const next = await options(context);
     assert(next.origin === previous.origin, `${version}: same extension identity`);
+    assert(
+      (await next.page.evaluate(() => chrome.runtime.getManifest().version)) === candidate.version,
+      `${version}: candidate version activated after explicit unpacked reload`
+    );
     const status = record(await request(next.page, 'credential-vault-request', 'status'));
-    assert(status.state === 'locked', `${version}: restart requires unlock without losing credentials`);
+    report.vaultStates.push({
+      version,
+      state: typeof status.state === 'string' ? status.state : 'missing',
+      gatewayAvailable: typeof status.gatewayAvailable === 'boolean' ? status.gatewayAvailable : null,
+      lockReason: typeof status.lockReason === 'string' ? status.lockReason : null
+    });
     report.stage = 'unlock upgraded workbench';
     const unlockDialog = next.page.getByRole('dialog').filter({
       has: next.page.locator('#startup-vault-passphrase')
     });
-    await expect(unlockDialog).toBeVisible();
-    await unlockDialog.locator('#startup-vault-passphrase').fill(fixture.passphrase);
-    await unlockDialog.getByRole('button', { name: '解锁', exact: true }).click();
-    await expect(unlockDialog).toBeHidden();
+    if (version === '2.16.1') {
+      assert(
+        status.state === 'unlocked' && status.gatewayAvailable === true,
+        `${version}: retained recovery key keeps API and settings available after restart`
+      );
+      await expect(unlockDialog).toBeHidden();
+    } else {
+      assert(
+        status.state === 'locked' && status.gatewayAvailable === false,
+        `${version}: legacy record requires its original passphrase once`
+      );
+      await expect(unlockDialog).toBeVisible();
+      await unlockDialog.locator('#startup-vault-passphrase').fill(fixture.passphrase);
+      await unlockDialog.getByRole('button', { name: '解锁', exact: true }).click();
+      await expect(unlockDialog).toBeHidden();
+    }
     const unlocked = record(await request(next.page, 'credential-vault-request', 'status'));
-    assert(unlocked.state === 'unlocked', `${version}: dismissible startup prompt unlocks the vault`);
+    assert(unlocked.state === 'unlocked', `${version}: upgraded credentials are accessible`);
     const settings = record(await request(next.page, 'credential-vault-request', 'get-settings'));
     assert(
       settings.appKey === fixture.settings.appKey &&
@@ -213,11 +270,31 @@ async function verifyUpgrade(path: string): Promise<void> {
         unlocked.hasAccessToken === true,
       `${version}: original credentials decrypt`
     );
+    report.stage = 'verify original encrypted credentials';
+    const beforeRecord = record(encrypted).gatewaySettings;
+    const afterRecord = record(
+      await next.page.evaluate(() => chrome.storage.local.get('gatewaySettings'))
+    ).gatewaySettings;
+    if (!isCredentialVaultRecord(beforeRecord) || !isCredentialVaultRecord(afterRecord))
+      throw new Error('UPGRADE_ENCRYPTED_RECORD_INVALID');
+    const beforeSettings = (await unlockCredentialVault(beforeRecord, fixture.passphrase)).settings;
+    const afterSettings = (await unlockCredentialVault(afterRecord, fixture.passphrase)).settings;
+    const { configurationId: beforeId, ...beforeValues } = beforeSettings;
+    const { configurationId: afterId, ...afterValues } = afterSettings;
     assert(
-      JSON.stringify(await next.page.evaluate(() => chrome.storage.local.get('gatewaySettings'))) ===
-        JSON.stringify(encrypted),
-      `${version}: ciphertext unchanged`
+      isDeepStrictEqual(beforeValues, afterValues),
+      `${version}: all original credential fields preserved after decrypt`
     );
+    assert(typeof afterId === 'string' && afterId.length > 0, `${version}: configuration identity available`);
+    if (beforeId) {
+      assert(afterId === beforeId, `${version}: existing configuration identity preserved`);
+      assert(
+        isDeepStrictEqual(beforeRecord, afterRecord),
+        `${version}: existing identified ciphertext unchanged`
+      );
+    } else {
+      checks.push(`${version}: missing configuration identity backfilled without changing credentials`);
+    }
     const summary = record(await request(next.page, 's3-storage-request', 'summary', {}));
     assert(
       summary.configured === true && summary.endpoint === s3.endpoint,

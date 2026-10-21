@@ -4,6 +4,90 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.17.0',
+      releasedAt: '2026-10-22',
+      title: {
+        'zh-CN': 'IOP 能力扩展与更清晰的授权',
+        'en-US': 'Broader IOP support and clearer authorization'
+      },
+      summary: {
+        'zh-CN':
+          '扩展 IOP 商品、库存及图片能力，新增销售与采购订单视角；精简 TOP/IOP 连接和凭据管理，保留旧版兼容及明确的平台限制。',
+        'en-US':
+          'Expand IOP product, inventory and image support, add sales and purchase order views, and simplify TOP/IOP setup while retaining legacy compatibility and explicit platform limitations.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.17.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.16.1...v2.17.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '独立 IOP 能力与受控任务',
+            'en-US': 'Independent IOP capabilities and guarded tasks'
+          },
+          description: {
+            'zh-CN':
+              '统一协议覆盖、参数限制与验收状态；补齐已验收的图片上传、图片分组新增和改名，以及商品上下架的持久回执、只读核对和一次性恢复。库存协议适配保持受控，不新增库存写页面；未验收方法继续关闭。',
+            'en-US':
+              'Unify protocol coverage, parameter constraints and acceptance status. Add independently accepted image uploads, image-group creation and renaming, and durable product-display receipts with readback and one-shot recovery. Inventory adaptation remains guarded without a new write UI; unverified methods stay disabled.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '销售与采购订单',
+            'en-US': 'Sales and purchase orders'
+          },
+          description: {
+            'zh-CN':
+              '按销售、采购角色隔离查询、分页、缓存和详情，展示公开 IOP 详情中的真实金额与商品行。资金和物流分别降级，缺失金额不以手续费或默认值替代；不增加采购下单、付款或发货。',
+            'en-US':
+              'Isolate queries, pagination, caches and details by sales or purchase role. Show actual totals and line items from public IOP details, with independent funding and logistics availability. Missing paid amounts are not replaced with fees or defaults. No order creation, payment or dispatch is added.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '聚焦下一步的授权向导',
+            'en-US': 'Authorization focused on the next step'
+          },
+          description: {
+            'zh-CN':
+              '支持回退及离线导入；授权回调后聚焦保存并进入工作台，就绪后才显示继续授权另一种。完整在线授权备份移到设置。TOP 仅面向已有旧应用；IOP 功能陆续接入，具体请关注平台官方自身开发进度。两份授权独立保存。',
+            'en-US':
+              "Keep back navigation and offline import. After the callback, focus on saving into the workbench; offer the other authorization only once ready. Complete online authorization backups move to Settings. TOP requires an existing legacy app. Features are being added gradually; follow the platform's official development updates. Authorizations remain separate."
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '设置、弹窗与上下文隔离',
+            'en-US': 'Settings, dialogs and context isolation'
+          },
+          description: {
+            'zh-CN':
+              '工作台锁定只隐藏敏感配置，不中断后台 API；查看及导出仍需解锁，旧包缺少恢复材料时需原口令一次。清除授权同步清理工具残留。修正嵌套弹窗、授权页间距和总览按钮高度，视频读取绑定实际授权上下文。',
+            'en-US':
+              'Workbench lock hides sensitive settings without interrupting background API calls. Viewing and exporting still require unlock; legacy bundles without recovery material need their original passphrase once. Clearing authorization removes stale tool state. Correct nested dialogs, authorization spacing and Overview button heights, and pin video reads to their actual authorization context.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '明确 IOP 素材限制',
+            'en-US': 'Explicit IOP asset limitations'
+          },
+          description: {
+            'zh-CN':
+              '图片范围不匹配时保留错误，不伪造空目录、不扫描全库、不重复上传。双授权在出网前选择可用协议，不在失败后跨协议重试。IOP 视频、RFQ、资金及部分写能力仍有平台或验收限制。',
+            'en-US':
+              'Preserve photo-scope failures without fabricated empty folders, whole-library scans or duplicate uploads. Dual authorization selects a supported protocol before sending, never as a retry after failure. IOP video, RFQ, funding and some writes retain explicit platform or acceptance limits.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.16.1',
       releasedAt: '2026-10-20',
       title: {
