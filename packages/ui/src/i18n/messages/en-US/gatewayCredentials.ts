@@ -1,7 +1,18 @@
 export const gatewayCredentials = {
+  topReauthorize: 'Reauthorize',
+  topReauthorizeHelp:
+    'Enter legacy app details or read them from a backup, then approve on Alibaba. The old token is not reused.',
+  topImport: 'Import existing authorization',
+  topImportHelp: 'Import complete TOP authorization JSON and save it without starting online authorization.',
+  topIopRecommendation: 'New users without a legacy TOP app should use IOP. IOP keys cannot be used for TOP.',
   title: 'Alibaba credentials',
   dualTitle: 'TOP + IOP authorizations',
   acquireCredentials: 'Connect Alibaba account',
+  authorizationWizard: 'Authorization guide',
+  wizardContinue: 'Continue setup',
+  wizardBack: 'Back',
+  protectionReady:
+    'Local protection is ready. Reviewing this step does not change or clear your existing passphrase or authorizations. You can continue directly.',
   chooseAcquireProtocol: 'Connect your Alibaba account',
   chooseMethodDescription:
     'Choose how to connect. File import opens no Alibaba page. IOP needs permission for its business API.',

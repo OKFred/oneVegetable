@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
+  BookOpen,
   Database,
   ExternalLink,
   FileUp,
@@ -150,6 +151,12 @@ const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
 const credentialAcquisitionOpen = ref(false);
 const protocolDialogPurpose = ref<'acquire' | 'renew' | null>(null);
+const authorizationGuideRequested = ref(false);
+
+function openAuthorizationGuide(): void {
+  authorizationGuideRequested.value = true;
+  protocolDialogPurpose.value = 'acquire';
+}
 const protocolImportFile = ref<File>();
 const settingsLoaded = ref(false);
 const credentialEditing = useUnsavedEditing(() => model.value, { enabled: () => settingsLoaded.value });
@@ -841,15 +848,24 @@ function confirmLanguagePreference(): void {
         class="min-w-0 space-y-4"
         :aria-label="t('settings.sections.credentials')"
       >
-        <Button
-          v-if="mode === 'extension' && (!settingsEditable || dualSettings) && alibabaCredentialAcquisition"
-          size="sm"
-          type="button"
-          data-testid="get-alibaba-credentials"
-          :disabled="credentialActionBusy"
-          @click="protocolDialogPurpose = 'acquire'"
-          ><WandSparkles class="size-3.5" />{{ credentialText('acquireCredentials') }}</Button
-        >
+        <div v-if="mode === 'extension' && alibabaCredentialAcquisition" class="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            type="button"
+            data-testid="open-authorization-guide"
+            :disabled="credentialActionBusy"
+            @click="openAuthorizationGuide"
+            ><BookOpen class="size-4" />{{ credentialText('authorizationWizard') }}</Button
+          >
+          <Button
+            v-if="!settingsEditable || dualSettings"
+            type="button"
+            data-testid="get-alibaba-credentials"
+            :disabled="credentialActionBusy"
+            @click="protocolDialogPurpose = 'acquire'"
+            ><WandSparkles class="size-4" />{{ credentialText('acquireCredentials') }}</Button
+          >
+        </div>
         <GatewayAuthorizationsPanel
           v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'"
           dialog-configuration
@@ -873,7 +889,33 @@ function confirmLanguagePreference(): void {
             ><ExternalLink class="size-4" />{{ t('settings.credentials.openCenter') }}</a
           >
         </Card>
-        <Card v-if="mode === 'extension' && vault" class="p-5">
+        <AlibabaAuthorizationsPanel
+          v-if="settingsEditable && dualSettings && authorizationSummary"
+          :summary="authorizationSummary"
+          :selected-protocol="selectedProtocol"
+          :busy="authorizationBusy || credentialActionBusy"
+          :configure-busy="credentialActionBusy"
+          :can-confirm="canConfirm"
+          :can-set-default="Boolean(settings.setDefaultAuthorization)"
+          compact
+          configure-actions
+          extension
+          @select="configureAuthorization"
+          @set-default="chooseDefaultAuthorization"
+          @confirm="confirmAuthorizations"
+          @renew="protocolDialogPurpose = 'renew'"
+          @clear="requestClearAuthorization"
+        />
+        <ErrorNotice
+          v-if="authorizationError"
+          :error="authorizationError"
+          :fallback="credentialText('error')"
+        />
+        <Card
+          v-if="mode === 'extension' && vault"
+          class="p-5"
+          data-testid="alibaba-credential-protection-panel"
+        >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div class="flex items-center gap-2">
@@ -1058,28 +1100,6 @@ function confirmLanguagePreference(): void {
           <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
         </Card>
 
-        <AlibabaAuthorizationsPanel
-          v-if="settingsEditable && dualSettings && authorizationSummary"
-          :summary="authorizationSummary"
-          :selected-protocol="selectedProtocol"
-          :busy="authorizationBusy || credentialActionBusy"
-          :configure-busy="credentialActionBusy"
-          :can-confirm="canConfirm"
-          :can-set-default="Boolean(settings.setDefaultAuthorization)"
-          compact
-          configure-actions
-          extension
-          @select="configureAuthorization"
-          @set-default="chooseDefaultAuthorization"
-          @confirm="confirmAuthorizations"
-          @renew="protocolDialogPurpose = 'renew'"
-          @clear="requestClearAuthorization"
-        />
-        <ErrorNotice
-          v-if="authorizationError"
-          :error="authorizationError"
-          :fallback="credentialText('error')"
-        />
         <CredentialConfigurationDialog
           v-if="settingsEditable && (!dualSettings || configurationOpen)"
           :open="configurationOpen"
@@ -1368,6 +1388,7 @@ function confirmLanguagePreference(): void {
           v-if="mode === 'extension'"
           :open="protocolDialogPurpose !== null"
           :purpose="protocolDialogPurpose ?? 'acquire'"
+          :show-guide="authorizationGuideRequested"
           :vault="vault"
           :acquisition="alibabaCredentialAcquisition"
           :initial-file="protocolImportFile"
@@ -1379,6 +1400,7 @@ function confirmLanguagePreference(): void {
             (value) => {
               if (!value) {
                 protocolDialogPurpose = null;
+                authorizationGuideRequested = false;
                 protocolImportFile = undefined;
               }
             }

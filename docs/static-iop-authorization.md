@@ -4,18 +4,28 @@
 
 ## 插件内一键读取（无需本机 Node 服务）
 
+### TOP 两个入口
+
+授权工具沿用工作台同一份主题变量：桌面左侧为三步进度，中间为当前操作，右侧始终可见本次授权摘要。窄屏按进度、操作、摘要顺序排列。授权就绪后仅突出“保存并进入工作台”，文件导入和手工表单自动收起；备份、续期及锁定放在“备份与管理”。新导入文件仅称“授权已就绪”，不把本机格式校验冒充平台验证成功。主题切换保留原界面语言与 Alibaba 接口语言，不发起平台请求。
+
+- **重新授权**：优先使用本工具已保存的旧应用资料；没有时填写旧 AppKey、AppSecret 和已登记的 Callback，应用名称可留空。也可从旧授权 JSON 只读取应用资料，不导入或复用旧 Token。插件打开官方 TOP OAuth 页面，由商家登录并确认协议，收到严格匹配的回调后换取新 Token，再“保存并用于工作台”。这不是无交互的纯接口授权。
+- **导入已有授权**：选择完整 TOP JSON 文件或粘贴完整 JSON，确认后只保存本机授权，不打开应用中心、不调用换 Token 接口。再“保存并用于工作台”。现有导入契约仍要求完整授权包，不能把只有 Access Token 的文本作为完整包。
+- 没有旧版应用的新用户推荐 IOP。旧应用管理页不可用不等于 OAuth 页面被取消，也不能据此断言所有新商家无法申请 TOP；插件不会把新版 IOP 密钥当作旧版密钥。TOP 页面不再自动读取或打开旧控制台，`discover=1` 旧链接也不会触发该行为。
+
+TOP has two explicit paths: **Reauthorize** uses saved app metadata or manually entered legacy AppKey, AppSecret and registered Callback. Reading an old backup copies app details only, never its token. Merchant approval is still required on Alibaba. **Import existing authorization** saves a complete file or pasted JSON without OAuth. Both can then be saved directly to the workbench. New merchants without a legacy app should use IOP; unavailable app management does not imply OAuth is unavailable.
+
 ### 给首次使用者
 
 1. 在设置点击“连接 Alibaba 账号”。首次先准备可选的本机保护口令（可留空），已解锁时不再重复询问。接着选择“导入已有授权文件”或“在线获取新授权”，不会默认打开线上流程。
    - 已有文件：选择完整授权 JSON，预览文件名、应用名及自动识别的 TOP/IOP；点击“导入并保存”才替换对应档案，另一份保持不变。无需打开平台；确认导入 IOP 时仅申请新版业务网关 openapi-api.alibaba.com 的访问权限，拒绝时不保存，保留文件预览以便重试。文件格式通过不等于平台权限或有效期通过，首次只读调用仍可能要求重新授权。文件限 256 KiB，历史未声明 protocol 的文件按 TOP 处理。到此已完成，不必执行下面的在线获取步骤。
    - 在线获取：首次优先选“连接新版应用”；以前使用旧应用的用户选“连接已有旧版应用”。两者不混用，不需要一开始就配齐两份。
 2. 点击“前往 Alibaba 连接”，按官网提示登录或完成验证。应用资料会尝试自动读取；需要手动填写时再展开表单。不要把 Alibaba 登录密码填作本机保护口令。
-3. 在 Alibaba 页面自行核对账号、权限并确认授权，保持工具页打开。
-4. 工具显示“授权文件已安全保存”后，点击“下载授权文件”，返回工作台设置导入并保存。**下载成功不代表工作台配置已经改变。** 导出的文件包含明文密钥，不要发到群聊或公开仓库。
+3. 在 Alibaba 页面自行核对账号、权限并确认授权。插件在原授权标签页收到与任务匹配的 Callback 后，自动切回发起流程的工具页，继续交换并显示保存结果；无需停留在 example.com 等回调页面。保留工具页打开；若已关闭，插件新开对应协议的结果页，不会关闭回调页或覆盖其他页面。
+4. 工具显示“授权文件已安全保存”后，点击主按钮“保存并用于工作台”，确认仅替换当前协议档案后进入总览。无需下载再导入；另一份授权和已有默认选项保留，首次连接则使用这一份。若只想备份或用于其他部署，仍可“下载授权文件”；文件含明文密钥，不要发到群聊或公开仓库。
 
 工具只突出当前步骤：未连接时连接、锁定时解锁、等待时提示官网确认、成功时下载并引导导入。手动填写与文件导入保留显式入口；协议切换、详情管理及 JSON 编辑默认折叠。续期是一次尝试，不保证平台允许；失败不反复重试，可使用原应用重新授权。读取本机状态失败时可点“重新检查”。
 
-Choose **Connect Alibaba account**, select a new or existing legacy app, then follow the next action shown. Sign in and approve on Alibaba itself. Once the file is saved, download it and import it into the matching workbench profile. Downloading does not apply the connection. Manual entry and file import remain available; technical details and JSON editing are collapsed. Renewal is only an attempt, never a guarantee or an automatic retry.
+Choose **Connect Alibaba account**, select a new or existing legacy app, then follow the next action shown. Sign in and approve on Alibaba itself. Once authorization is saved, choose **Save and use in workbench** and confirm. Only the matching profile is replaced; the other profile and existing default are preserved. A first connection uses this profile. Download remains optional for backups or other deployments. Manual entry and file import remain available; technical details and JSON editing are collapsed. Renewal is only an attempt, never a guarantee or an automatic retry.
 
 **Existing file:** after optional local protection, choose **Import an existing authorization file**. Preview the detected TOP/IOP profile, then **Import and save**. Only that profile is replaced; no provider page or token exchange is opened. IOP confirmation requests only openapi-api.alibaba.com access; denial preserves the old profile and allows retry. Legacy files without a protocol remain TOP. Local validation cannot prove provider permissions or token validity. The online instructions above apply only when explicitly choosing **Get a new authorization online**.
 
@@ -26,13 +36,16 @@ Choose **Connect Alibaba account**, select a new or existing legacy app, then fo
 - 首次使用可设置至少 6 个字符的本机保护口令，也可留空使用随机本机密钥；之后仍需显式选择在线获取，才会打开 Alibaba。此口令不是 Alibaba 网站密码。已解锁的独立授权包可以复用加密密钥。已有锁定包可先解锁，再重新读取。
 - 登录失效、验证码、密钥安全验证、缺少应用/Callback 或 30 秒内读取不完整时明确停止并提示检查；不绕过验证、不打开失效的旧 TOP 地址。只读取当前选中的新版应用；需要其他应用请先在平台切换。
 - Alibaba 授权协议仍由用户确认。已登记的 Callback 不需要改成 example.com，也不依赖临时 localhost 授权服务。普通 HTTPS Callback 的同一授权标签页由插件监听；公共 Pages 只是可选的静态回调辅助。
-- TOP 与 IOP 在同一个工具分别保存。TOP 尝试从仍可用、已打开的旧应用页读取；没有可用页面、旧入口 404、多个应用或 Callback 缺失时明确提示，不反复打开失效入口。也可手工填写旧应用，或导入原 TOP JSON 后解锁并点击“重新授权”。不会把新版应用的 Key 发送到 TOP。
+- TOP 与 IOP 在同一个工具分别保存。TOP 不自动尝试读取旧页面；按上述两个显式入口操作。底层旧页面读取器仍保留兼容校验，但不作为用户必经步骤。不会把新版应用的 Key 发送到 TOP。
 - 高级模式支持粘贴完整授权 JSON，两类协议各有格式示例，默认选中示例便于替换，并提供本地语法高亮。占位值、协议不符、字段不完整或超过 64 KiB 时不导入；确认后才加密保存，成功后清空粘贴内容。不读取剪贴板、不持久保存编辑文本、不执行 JSON 中的代码。
 - 进度和错误通过临时通知展示，4 秒/6 秒自动消失，同一后台错误不因轮询重复弹出。Alibaba 侧向导限制在视口内，内容内部滚动；它的阶段状态不包含密钥。
-- 导出文件始终为 `credentialInfo.json`，包含明文密钥。请返回设置，选择匹配的 TOP/IOP 档案导入。两份工作台配置齐全后默认按能力路由；系统不验证两份授权是否属于同一商家，用户须自行核实。
+- “保存并用于工作台”只接受受信插件工具页的显式操作，后台直接读取当前协议的完整授权包，复用工作台的串行加密保存通道；不向页面传回密钥，不下载临时文件，不重新换取或续期 Token，不重放任务。授权未完成、锁定、结果不明或业务域名权限被拒绝时不应用；保存失败保留原配置和独立授权包，页面停留以便重试。已有工作台页通过本地存储变更获知更新。
+- 可选导出文件始终为 `credentialInfo.json`，包含明文密钥，可在其他部署导入。两份工作台配置齐全后默认按能力路由；系统不验证两份授权是否属于同一商家，用户须自行核实。
 - App Secret、Token、口令及 OAuth code 不写入诊断、控制台或引导截图。完整包仅按用户选择加密保存到受信扩展存储，或明确导出到本机。
 
 This extension-only flow needs no additional Node, Worker or Pages deployment. It reuses the current Alibaba tab, visually clicks only Application center and View, and reads the current app into the local tool. Optionally set a local protection passphrase before choosing TOP/IOP, then personally approve OAuth on Alibaba. Leave it blank for device protection; Settings reuses the same protection. Existing registered Callbacks are preserved. TOP and IOP remain separate; configure both for automatic capability routing, only when they belong to the same merchant. No automatic agreement acceptance, secret reset, credential logging or CAPTCHA bypass. Not affiliated with alibaba.com; read platform rules before use.
+
+After a task-bound callback passes the tab, origin/path and state checks, both TOP and IOP automatically focus the original extension tool and its window. A closed or repurposed tool is replaced by a clean result tab; the merchant's callback page stays open. Platform denial and token-exchange errors are shown in the tool, not as success. Duplicate callbacks do not repeat exchange or focus. Callback code/state are never copied into the tool URL. This uses the extension's own runtime contexts and does not add the broad `tabs` permission.
 
 ## 使用方式
 
@@ -97,7 +110,7 @@ pnpm deploy:auth
 
 ## English quick guide
 
-This is a static callback and an independent extension tool, not a server-side credential service. Prepare your own IOP application, register the exact callback, then enter its application details **inside the extension**, approve on Alibaba and export `credentialInfo.json`. Renew in the same tool. Expiry dates come from actual platform responses; missing values remain unknown.
+This is a static callback and an independent extension tool, not a server-side credential service. Prepare your own IOP application, register the exact callback, then enter its application details **inside the extension** and approve on Alibaba. Choose **Save and use in workbench** to connect directly; exporting `credentialInfo.json` remains optional for backups and other deployments. Renew in the same tool, then apply the updated bundle again. Expiry dates come from actual platform responses; missing values remain unknown.
 
 The file contains plaintext secrets. Keep it private. IOP and legacy TOP are separate protocols. Existing settings and unmarked historical bundles still default to TOP. Explicit IOP imports enable only supported read operations; unmapped operations and unverified writes remain unavailable, without falling back to TOP. An uncertain renewal is never resent automatically; reauthorize instead. A local-save retry does not call Alibaba again.
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
-import { ArrowRight, FileUp, Globe, Sparkles } from '@lucide/vue';
+import { ArrowLeft, ArrowRight, FileUp, Globe, Sparkles } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import {
   validateVaultPassphrase,
@@ -17,6 +17,7 @@ import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
+import AlibabaAuthorizationGuide from './AlibabaAuthorizationGuide.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -27,6 +28,7 @@ const props = withDefaults(
     beforeImport?: (() => Promise<boolean>) | undefined;
     initialFile?: File | undefined;
     protocol?: 'top' | 'iop' | undefined;
+    showGuide?: boolean;
   }>(),
   {
     purpose: 'acquire',
@@ -34,7 +36,8 @@ const props = withDefaults(
     acquisition: undefined,
     beforeImport: undefined,
     initialFile: undefined,
-    protocol: undefined
+    protocol: undefined,
+    showGuide: false
   }
 );
 const emit = defineEmits<{
@@ -45,7 +48,10 @@ const emit = defineEmits<{
 }>();
 const text = useGatewayCredentialsI18n();
 const { t } = useUiI18n();
-const phase = ref<'checking' | 'protection' | 'methods' | 'file' | 'choices' | 'error'>('checking');
+type Phase = 'guide' | 'checking' | 'protection' | 'methods' | 'file' | 'choices' | 'error';
+const phase = ref<Phase>('checking');
+const history = ref<Phase[]>([]);
+const initialFileConsumed = ref(false);
 const pendingBundles = shallowRef<AlibabaOpenApiCredentialBundle[]>([]);
 const fileName = ref('');
 const fileInput = ref<HTMLInputElement>();
@@ -60,6 +66,26 @@ const busy = ref(false);
 let generation = 0;
 const needsPassphrase = computed(() => status.value?.state === 'locked' && !status.value.deviceProtected);
 const showPassphrase = computed(() => !status.value?.deviceProtected || status.value.state !== 'locked');
+const canGoBack = computed(
+  () => history.value.length > 0 && phase.value !== 'checking' && !busy.value && !importing.value
+);
+
+function goTo(next: Phase): void {
+  if (next === phase.value) return;
+  history.value.push(phase.value);
+  phase.value = next;
+}
+
+function goBack(): void {
+  if (!canGoBack.value) return;
+  const previous = history.value.pop();
+  if (!previous) return;
+  generation++;
+  passphrase.value = '';
+  pendingBundles.value = [];
+  fileName.value = '';
+  phase.value = previous;
+}
 
 function reset(): void {
   generation++;
@@ -69,10 +95,27 @@ function reset(): void {
   pendingBundles.value = [];
   fileName.value = '';
   phase.value = 'checking';
+  history.value = [];
+  initialFileConsumed.value = false;
 }
 
 async function initialize(): Promise<void> {
   reset();
+  if (props.showGuide) {
+    phase.value = 'guide';
+    return;
+  }
+  await checkProtection();
+}
+
+async function continueGuide(): Promise<void> {
+  if (phase.value !== 'guide') return;
+  history.value.push('guide');
+  await checkProtection();
+}
+
+async function checkProtection(): Promise<void> {
+  phase.value = 'checking';
   if (!props.vault?.prepareAuthorization) {
     phase.value = readyPhase();
     return;
@@ -105,8 +148,9 @@ onBeforeUnmount(reset);
 watch(
   [phase, () => props.initialFile],
   ([currentPhase, file]) => {
-    if (currentPhase === 'methods' && file && props.open) {
-      phase.value = 'file';
+    if (currentPhase === 'methods' && file && props.open && !initialFileConsumed.value) {
+      initialFileConsumed.value = true;
+      goTo('file');
       void readCredentialFile(file);
     }
   },
@@ -116,6 +160,11 @@ watch(
 async function prepare(): Promise<void> {
   const vault = props.vault;
   if (!vault?.prepareAuthorization || busy.value || phase.value !== 'protection') return;
+  // Going back reviews the completed step; it must never rotate a key or replace a passphrase.
+  if (status.value?.state === 'unlocked') {
+    goTo(readyPhase());
+    return;
+  }
   if (needsPassphrase.value && !passphrase.value) return;
   const current = generation;
   busy.value = true;
@@ -128,7 +177,7 @@ async function prepare(): Promise<void> {
     if (current !== generation || !props.open) return;
     if (next.state !== 'unlocked') throw new Error('VAULT_NOT_UNLOCKED');
     status.value = next;
-    phase.value = readyPhase();
+    goTo(readyPhase());
     emit('prepared', next);
   } catch {
     if (current === generation && props.open) toast.error(text('protectionFailed'));
@@ -226,7 +275,7 @@ function select(protocol: 'top' | 'iop'): void {
 }
 
 function chooseOnline(): void {
-  phase.value = 'choices';
+  goTo('choices');
   if (props.protocol) select(props.protocol);
 }
 </script>
@@ -235,21 +284,38 @@ function chooseOnline(): void {
   <ModalDialog
     :open="open"
     :dismissible="!importing"
-    :title="text(purpose === 'renew' ? 'chooseRenewProtocol' : 'chooseAcquireProtocol')"
-    :description="
-      text(
-        phase === 'choices'
-          ? 'chooseProtocolDescription'
-          : phase === 'methods' || phase === 'file'
-            ? 'chooseMethodDescription'
-            : 'protectionDescription'
-      )
+    :title="
+      phase === 'guide'
+        ? text('authorizationWizard')
+        : text(purpose === 'renew' ? 'chooseRenewProtocol' : 'chooseAcquireProtocol')
     "
-    size="sm"
+    :description="
+      phase === 'guide'
+        ? t('auth.onboarding.introduction.extension')
+        : text(
+            phase === 'choices'
+              ? 'chooseProtocolDescription'
+              : phase === 'methods' || phase === 'file'
+                ? 'chooseMethodDescription'
+                : 'protectionDescription'
+          )
+    "
+    :size="phase === 'guide' ? 'lg' : 'sm'"
     @update:open="close"
   >
-    <p v-if="phase === 'checking'" role="status">{{ t('common.actions.loading') }}</p>
+    <AlibabaAuthorizationGuide v-if="phase === 'guide'" />
+    <p v-else-if="phase === 'checking'" role="status">{{ t('common.actions.loading') }}</p>
     <p v-else-if="phase === 'error'" role="alert">{{ text('protectionFailed') }}</p>
+    <div
+      v-else-if="phase === 'protection' && status?.state === 'unlocked'"
+      class="grid gap-3"
+      data-testid="authorization-protection-ready"
+    >
+      <p class="text-sm leading-6">{{ text('protectionReady') }}</p>
+      <Button data-testid="continue-authorization-protection" @click="prepare">{{
+        text('protectionContinue')
+      }}</Button>
+    </div>
     <form
       v-else-if="phase === 'protection'"
       class="grid gap-3"
@@ -287,12 +353,16 @@ function chooseOnline(): void {
         variant="outline"
         class="h-auto justify-start gap-3 whitespace-normal p-4 text-left"
         data-testid="authorization-method-file"
-        @click="phase = 'file'"
+        @click="goTo('file')"
       >
         <FileUp class="size-5 shrink-0" aria-hidden="true" />
         <span
-          ><span class="block font-medium">{{ text('offlineMethod') }}</span
-          ><span class="mt-1 block text-xs text-muted-foreground">{{ text('offlineMethodHelp') }}</span></span
+          ><span class="block font-medium">{{
+            text(protocol === 'top' ? 'topImport' : 'offlineMethod')
+          }}</span
+          ><span class="mt-1 block text-xs text-muted-foreground">{{
+            text(protocol === 'top' ? 'topImportHelp' : 'offlineMethodHelp')
+          }}</span></span
         >
       </Button>
       <Button
@@ -303,10 +373,17 @@ function chooseOnline(): void {
       >
         <Globe class="size-5 shrink-0" aria-hidden="true" />
         <span
-          ><span class="block font-medium">{{ text('onlineMethod') }}</span
-          ><span class="mt-1 block text-xs text-muted-foreground">{{ text('onlineMethodHelp') }}</span></span
+          ><span class="block font-medium">{{
+            text(protocol === 'top' ? 'topReauthorize' : 'onlineMethod')
+          }}</span
+          ><span class="mt-1 block text-xs text-muted-foreground">{{
+            text(protocol === 'top' ? 'topReauthorizeHelp' : 'onlineMethodHelp')
+          }}</span></span
         >
       </Button>
+      <p v-if="protocol === 'top'" class="text-xs leading-5 text-muted-foreground">
+        {{ text('topIopRecommendation') }}
+      </p>
     </div>
     <div v-else-if="phase === 'file'" class="grid gap-3" data-testid="authorization-file-import">
       <input
@@ -380,15 +457,12 @@ function chooseOnline(): void {
     <template #footer>
       <div class="flex flex-wrap justify-end gap-2">
         <Button
-          v-if="canImport && (phase === 'choices' || phase === 'file')"
+          v-if="history.length"
           variant="outline"
-          :disabled="busy || importing"
-          @click="
-            pendingBundles = [];
-            fileName = '';
-            phase = 'methods';
-          "
-          >{{ text('methodBack') }}</Button
+          :disabled="!canGoBack"
+          data-testid="authorization-wizard-back"
+          @click="goBack"
+          ><ArrowLeft class="size-4" aria-hidden="true" />{{ text('wizardBack') }}</Button
         >
         <Button
           variant="outline"
@@ -398,7 +472,10 @@ function chooseOnline(): void {
         >
           {{ t('common.actions.cancel') }}
         </Button>
-        <Button v-if="phase === 'error'" variant="outline" @click="initialize">{{
+        <Button v-if="phase === 'guide'" data-testid="authorization-wizard-continue" @click="continueGuide"
+          ><ArrowRight class="size-4" aria-hidden="true" />{{ text('wizardContinue') }}</Button
+        >
+        <Button v-if="phase === 'error'" variant="outline" @click="checkProtection">{{
           t('common.actions.retry')
         }}</Button>
       </div>

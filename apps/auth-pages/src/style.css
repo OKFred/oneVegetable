@@ -357,7 +357,21 @@ footer {
     flex: 1 1 120px;
   }
 }
+.workbench-next-action {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #93b4f5;
+  border-radius: 0.75rem;
+  background: #eff5ff;
+}
+.workbench-next-action h3 {
+  margin-top: 0;
+}
 @media (prefers-color-scheme: dark) {
+  .workbench-next-action {
+    background: #152a48;
+    border-color: #416798;
+  }
   .authorization-json-editor {
     background: #101a2b;
     border-color: #354965;

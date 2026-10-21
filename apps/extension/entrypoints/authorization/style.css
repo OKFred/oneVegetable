@@ -1,0 +1,507 @@
+@import '../../../../packages/ui/src/theme.css';
+
+.authorization-page {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font:
+    15px/1.6 system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+.authorization-page #app {
+  width: 100%;
+  max-width: none;
+  min-height: 100svh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.authorization-header {
+  height: 84px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 16px 44px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.authorization-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  color: hsl(var(--foreground)) !important;
+  text-decoration: none;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.authorization-brand img {
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+.authorization-brand small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+}
+.authorization-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.authorization-header-actions button {
+  min-width: 44px;
+  padding: 8px 10px;
+}
+.authorization-header-actions svg {
+  display: block;
+}
+.authorization-layout {
+  width: 100%;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 238px minmax(0, 1.16fr) minmax(320px, 1fr);
+  max-width: 1680px;
+  margin: 0 auto;
+}
+.authorization-steps {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 30px 44px;
+  border-right: 1px solid hsl(var(--border));
+}
+.authorization-steps .connection-steps {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  color: hsl(var(--muted-foreground));
+}
+.authorization-steps .connection-steps li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: none;
+  min-height: 84px;
+  padding: 16px 0;
+  border: 0;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.authorization-steps .connection-steps li::after {
+  content: '';
+  position: absolute;
+  width: 1px;
+  top: calc(50% + 18px);
+  bottom: -24px;
+  left: 16px;
+  background: hsl(var(--border));
+}
+.authorization-steps .connection-steps li:last-child::after {
+  display: none;
+}
+.authorization-steps .connection-steps [data-complete='true']::after {
+  background: hsl(var(--primary));
+}
+.authorization-step-badge {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 50%;
+  font-size: 14px;
+  background: hsl(var(--background));
+}
+.authorization-step-badge svg {
+  width: 18px;
+  height: 18px;
+}
+.authorization-steps .connection-steps [data-complete='true'],
+.authorization-steps .connection-steps [aria-current='step'] {
+  color: hsl(var(--foreground));
+}
+.authorization-steps .connection-steps [data-complete='true'] .authorization-step-badge,
+.authorization-steps .connection-steps [aria-current='step'] .authorization-step-badge {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+.authorization-steps > .authorization-back {
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.authorization-content {
+  padding: 78px 60px 40px;
+  min-width: 0;
+}
+.authorization-summary {
+  margin: 40px 0;
+  padding: 36px 48px 32px 62px;
+  border-left: 1px solid hsl(var(--border));
+  min-width: 0;
+}
+.authorization-page .authorization-content > section,
+.authorization-page .authorization-summary > section,
+.authorization-page #topEntries {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0 0 28px;
+  box-shadow: none;
+}
+.authorization-content h1 {
+  font-size: clamp(26px, 2.4vw, 34px);
+  line-height: 1.35;
+  margin: 40px 0 20px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.authorization-content h2 {
+  font-size: 22px;
+  line-height: 1.4;
+}
+.authorization-content #status:not(.authorization-sr-only) {
+  margin-top: 20px;
+}
+.authorization-success-icon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.authorization-success-icon svg {
+  width: 38px;
+  height: 38px;
+  stroke-width: 2.4;
+}
+.authorization-page .workbench-next-action {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+.authorization-content .workbench-next-action > p:first-of-type {
+  margin: 0 0 44px;
+  font-size: 17px;
+  line-height: 1.8;
+}
+.authorization-page #workbenchAction {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+}
+.authorization-page #applyWorkbench {
+  width: 100%;
+  min-height: 64px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.authorization-page .authorization-back {
+  display: inline-block;
+  color: hsl(var(--muted-foreground));
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-align: center;
+}
+.authorization-profile-isolation {
+  color: hsl(var(--muted-foreground));
+  margin-top: 36px;
+  font-size: 14px;
+}
+.authorization-summary h2 {
+  margin: 0 0 26px;
+  font-size: 22px;
+  font-weight: 650;
+}
+.authorization-summary dl {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.8fr) minmax(0, 1.6fr);
+  gap: 0;
+  margin: 0;
+}
+.authorization-summary dt,
+.authorization-summary dd {
+  padding: 16px 0;
+  min-width: 0;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.authorization-summary dt {
+  color: hsl(var(--muted-foreground));
+  padding-right: 16px;
+}
+.authorization-summary dd {
+  color: hsl(var(--foreground));
+}
+.authorization-summary #boundary {
+  margin: 20px 0 30px;
+  font-size: 13px;
+}
+.authorization-page .authorization-summary details {
+  border-top: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 22px 0;
+}
+.authorization-page .authorization-summary details details {
+  border: 0;
+  padding: 12px 0;
+}
+.authorization-page summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.authorization-summary .actions,
+.authorization-summary .protocol-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  align-items: stretch;
+}
+.authorization-summary .actions > button,
+.authorization-summary .protocol-choices > button {
+  min-width: 0;
+  white-space: normal;
+}
+.authorization-summary #topEntries {
+  margin-top: 24px;
+}
+.authorization-summary #topUseIop {
+  width: 100%;
+}
+.authorization-page footer {
+  margin: 24px 24px 28px 242px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  text-align: center;
+}
+.authorization-page footer p {
+  display: inline;
+  margin: 0;
+}
+.authorization-page footer > a {
+  margin-left: 8px;
+}
+.authorization-page a,
+.authorization-page #notice,
+.authorization-page .authorization-manual-guide a {
+  color: hsl(var(--primary));
+}
+.authorization-page small,
+.authorization-page .muted {
+  color: hsl(var(--muted-foreground));
+}
+.authorization-page section {
+  color: hsl(var(--foreground));
+}
+.authorization-page button,
+.authorization-page .button,
+.authorization-page input:not([type='checkbox']),
+.authorization-page .confirmation-dialog,
+.authorization-page .authorization-toast {
+  background: hsl(var(--card));
+  border-color: hsl(var(--input));
+  color: hsl(var(--foreground));
+  border-radius: 6px;
+  font-size: 14px;
+}
+.authorization-page button.primary {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.authorization-page #error {
+  color: hsl(var(--destructive));
+}
+.authorization-page .protocol-choices button[aria-pressed='true'] {
+  border-color: hsl(var(--primary));
+  box-shadow: inset 0 0 0 1px hsl(var(--primary));
+}
+.authorization-page :is(button, a, input, textarea, summary):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 4px;
+}
+.authorization-page input[type='checkbox'] {
+  accent-color: hsl(var(--primary));
+}
+.authorization-page #protectionSection {
+  padding: 22px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--card));
+}
+.authorization-page .authorization-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.authorization-page #manualSection,
+.authorization-page #advancedJson {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.authorization-page #form .grid {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.authorization-page #topEntries .actions {
+  align-items: stretch;
+}
+.authorization-page #topEntries .actions > button {
+  flex: 1;
+}
+.authorization-page [data-text='toolGuide'] {
+  font-size: 13px;
+}
+
+@media (max-width: 1160px) {
+  .authorization-layout {
+    grid-template-columns: 180px minmax(0, 1fr) minmax(280px, 0.85fr);
+  }
+  .authorization-steps {
+    padding: 32px 20px;
+  }
+  .authorization-content {
+    padding: 48px 28px;
+  }
+  .authorization-summary {
+    padding: 12px 28px;
+  }
+  .authorization-steps .connection-steps li {
+    gap: 10px;
+    font-size: 14px;
+  }
+}
+@media (max-width: 900px) {
+  .authorization-header {
+    height: 76px;
+    padding: 12px 24px;
+  }
+  .authorization-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  }
+  .authorization-steps {
+    grid-column: 1 / -1;
+    border-right: 0;
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 8px 24px;
+  }
+  .authorization-steps .connection-steps {
+    flex-direction: row;
+    gap: 16px;
+  }
+  .authorization-steps .connection-steps li {
+    flex: 1;
+    min-height: 62px;
+  }
+  .authorization-steps .connection-steps li::after {
+    display: none;
+  }
+  .authorization-steps > .authorization-back {
+    display: none;
+  }
+  .authorization-content {
+    padding: 32px 24px;
+  }
+  .authorization-summary {
+    margin: 20px 0;
+    padding: 12px 24px;
+  }
+  .authorization-page footer {
+    margin: 20px 24px;
+  }
+}
+@media (max-width: 640px) {
+  .authorization-header {
+    padding: 12px 16px;
+  }
+  .authorization-brand {
+    gap: 10px;
+    font-size: 18px;
+  }
+  .authorization-brand img {
+    width: 36px;
+    height: 36px;
+  }
+  .authorization-brand small {
+    font-size: 9px;
+  }
+  .authorization-header-actions {
+    gap: 6px;
+  }
+  .authorization-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .authorization-steps {
+    padding: 8px 16px;
+  }
+  .authorization-steps .connection-steps {
+    gap: 6px;
+  }
+  .authorization-steps .connection-steps li {
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+    padding: 8px 0;
+    white-space: normal;
+    text-align: center;
+  }
+  .authorization-step-badge {
+    width: 28px;
+    height: 28px;
+  }
+  .authorization-content {
+    padding: 28px 20px 12px;
+  }
+  .authorization-content h1 {
+    font-size: 26px;
+  }
+  .authorization-content .workbench-next-action > p:first-of-type {
+    font-size: 15px;
+  }
+  .authorization-summary {
+    margin: 12px 20px 0;
+    border-left: 0;
+    border-top: 1px solid hsl(var(--border));
+    padding: 28px 0 12px;
+  }
+  .authorization-summary h2 {
+    font-size: 20px;
+  }
+  .authorization-page #topEntries .actions {
+    flex-direction: column;
+  }
+  .authorization-page #topEntries .actions > button {
+    width: 100%;
+    flex: auto;
+  }
+}

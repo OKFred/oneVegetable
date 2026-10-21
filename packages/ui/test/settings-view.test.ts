@@ -189,6 +189,41 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it.each(['empty', 'unlocked', 'locked'] as const)(
+    'keeps an authorization guide entry with a %s vault and allows reopening it',
+    async (state) => {
+      const acquisition = {
+        openTool: vi.fn(),
+        start: vi.fn(),
+        continue: vi.fn(),
+        status: vi.fn(),
+        cancel: vi.fn(),
+        saveToVault: vi.fn(),
+        exportBundle: vi.fn(),
+        readPrerequisite: vi.fn(),
+        locatePrerequisiteField: vi.fn(),
+        focusPrerequisitePage: vi.fn()
+      };
+      const wrapper = mountView('extension', state, 'manual', 'node', { acquisition });
+      await flushPromises();
+      const launcher = wrapper.get('[data-testid="open-authorization-guide"]');
+      for (let index = 0; index < 2; index++) {
+        await launcher.trigger('click');
+        await flushPromises();
+        expect(document.body.querySelector('[data-testid="authorization-wizard-guide"]')).not.toBeNull();
+        document.body
+          .querySelector<HTMLButtonElement>('[data-testid="cancel-authorization-protocol"]')
+          ?.click();
+        await flushPromises();
+      }
+      expect(acquisition.openTool).not.toHaveBeenCalled();
+      expect(acquisition.start).not.toHaveBeenCalled();
+      expect(createVault).not.toHaveBeenCalled();
+      expect(unlockVault).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
   it('saves a new vault with blank optional protection', async () => {
     const wrapper = mountView('extension', 'empty');
     await flushPromises();

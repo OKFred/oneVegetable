@@ -47,6 +47,128 @@ async function dialog(
 }
 
 describe('Alibaba authorization protocol selection', () => {
+  it.each(['zh-CN', 'en-US'] as const)(
+    'offers two clear TOP paths and recommends IOP (%s)',
+    async (locale) => {
+      uiI18n.global.locale.value = locale;
+      const acquisition = testAcquisition();
+      const view = await dialog('acquire', testVault('unlocked'), acquisition);
+      await view.wrapper.setProps({ protocol: 'top' });
+      expect(view.body.get('[data-testid="authorization-method-online"]').text()).toContain(
+        locale === 'zh-CN' ? '重新授权' : 'Reauthorize'
+      );
+      expect(view.body.get('[data-testid="authorization-method-file"]').text()).toContain(
+        locale === 'zh-CN' ? '导入已有授权' : 'Import existing authorization'
+      );
+      expect(view.body.text()).toContain('IOP');
+      expect(acquisition.openTool).not.toHaveBeenCalled();
+      expect(acquisition.importBundle).not.toHaveBeenCalled();
+    }
+  );
+  it.each(['zh-CN', 'en-US'] as const)(
+    'reviews the guide and goes back without opening a tool (%s)',
+    async (locale) => {
+      uiI18n.global.locale.value = locale;
+      const vault = testVault('unlocked');
+      const acquisition = testAcquisition();
+      const view = await dialog('acquire', vault, acquisition);
+      await view.wrapper.setProps({ open: false, showGuide: true });
+      await view.wrapper.setProps({ open: true });
+      await flushPromises();
+      expect(view.body.get('[data-testid="authorization-wizard-guide"]').findAll('img')).toHaveLength(4);
+      await view.body.get('[data-testid="authorization-wizard-continue"]').trigger('click');
+      await flushPromises();
+      expect(view.body.find('[data-testid="authorization-method-choices"]').exists()).toBe(true);
+      await view.body.get('[data-testid="authorization-method-online"]').trigger('click');
+      await view.body.get('[data-testid="authorization-wizard-back"]').trigger('click');
+      expect(view.body.find('[data-testid="authorization-method-choices"]').exists()).toBe(true);
+      await view.body.get('[data-testid="authorization-wizard-back"]').trigger('click');
+      expect(view.body.find('[data-testid="authorization-wizard-guide"]').exists()).toBe(true);
+      expect(view.select).not.toHaveBeenCalled();
+      expect(acquisition.openTool).not.toHaveBeenCalled();
+      expect(acquisition.importBundle).not.toHaveBeenCalled();
+      expect(vault.prepareAuthorization).not.toHaveBeenCalled();
+      expect(vault.rotate).not.toHaveBeenCalled();
+    }
+  );
+
+  it('reviews completed protection without rewriting a key or reentering a passphrase', async () => {
+    const vault = testVault();
+    const view = await dialog('acquire', vault, testAcquisition());
+    await view.body.get('input[type="password"]').setValue('fixture-passphrase');
+    await view.body.get('form').trigger('submit');
+    await flushPromises();
+    expect(vault.prepareAuthorization).toHaveBeenCalledExactlyOnceWith('fixture-passphrase');
+    await view.body.get('[data-testid="authorization-wizard-back"]').trigger('click');
+    expect(view.body.find('[data-testid="authorization-protection-ready"]').exists()).toBe(true);
+    expect(view.body.find('input[type="password"]').exists()).toBe(false);
+    await view.body.get('[data-testid="continue-authorization-protection"]').trigger('click');
+    await flushPromises();
+    expect(view.body.find('[data-testid="authorization-method-choices"]').exists()).toBe(true);
+    expect(vault.prepareAuthorization).toHaveBeenCalledTimes(1);
+    expect(vault.unlock).not.toHaveBeenCalled();
+    expect(vault.rotate).not.toHaveBeenCalled();
+    expect(vault.create).not.toHaveBeenCalled();
+  });
+
+  it('lets an unprepared protection step go back to the guide without saving', async () => {
+    const vault = testVault();
+    const view = await dialog('acquire', vault, testAcquisition());
+    await view.wrapper.setProps({ open: false, showGuide: true });
+    await view.wrapper.setProps({ open: true });
+    await flushPromises();
+    await view.body.get('[data-testid="authorization-wizard-continue"]').trigger('click');
+    await flushPromises();
+    await view.body.get('input[type="password"]').setValue('discard-this-input');
+    await view.body.get('[data-testid="authorization-wizard-back"]').trigger('click');
+    expect(view.body.find('[data-testid="authorization-wizard-guide"]').exists()).toBe(true);
+    await view.body.get('[data-testid="authorization-wizard-continue"]').trigger('click');
+    await flushPromises();
+    expect((view.body.get('input[type="password"]').element as HTMLInputElement).value).toBe('');
+    expect(vault.prepareAuthorization).not.toHaveBeenCalled();
+  });
+
+  it('does not reopen an initial file or retain its preview when returning to methods', async () => {
+    const acquisition = testAcquisition();
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    const file = new File(['fixture'], 'credentials.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', {
+      value: () => Promise.resolve(JSON.stringify(fixture.oauthBundle))
+    });
+    await view.wrapper.setProps({ initialFile: file });
+    await flushPromises();
+    expect(view.body.find('[data-testid="authorization-file-preview"]').exists()).toBe(true);
+    await view.body.get('[data-testid="authorization-wizard-back"]').trigger('click');
+    await flushPromises();
+    expect(view.body.find('[data-testid="authorization-method-choices"]').exists()).toBe(true);
+    expect(view.body.find('[data-testid="authorization-file-preview"]').exists()).toBe(false);
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    expect(view.body.find('[data-testid="authorization-file-preview"]').exists()).toBe(false);
+    expect(acquisition.importBundle).not.toHaveBeenCalled();
+  });
+
+  it('prevents going back during a committed import and does not repeat it', async () => {
+    const acquisition = testAcquisition();
+    let finish: ((status: CredentialVaultStatus) => void) | undefined;
+    acquisition.importBundle.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = await dialog('acquire', testVault('unlocked'), acquisition);
+    await view.body.get('[data-testid="authorization-method-file"]').trigger('click');
+    await selectFile(view.body, JSON.stringify(fixture.oauthBundle));
+    await view.body.get('[data-testid="confirm-authorization-file-import"]').trigger('click');
+    expect(view.body.get('[data-testid="authorization-wizard-back"]').attributes('disabled')).toBeDefined();
+    await view.body.get('[data-testid="authorization-wizard-back"]').trigger('click');
+    expect(view.body.find('[data-testid="authorization-file-preview"]').exists()).toBe(true);
+    finish?.(testStatus('unlocked'));
+    await flushPromises();
+    expect(acquisition.importBundle).toHaveBeenCalledTimes(1);
+    expect(view.wrapper.emitted('imported')).toHaveLength(1);
+  });
+
   it.each(['top', 'iop'] as const)(
     'keeps scoped %s online acquisition on the click stack without a second protocol choice',
     async (protocol) => {

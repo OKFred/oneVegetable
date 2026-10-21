@@ -49,6 +49,27 @@ it('disables configuration with general busy state unless metadata-only loading 
   expect(wrapper.get('[data-testid="select-authorization-iop"]').attributes('disabled')).toBeUndefined();
   expect(wrapper.get('[data-testid="default-authorization-iop"]').attributes('disabled')).toBeDefined();
 });
+it.each([
+  { locale: 'zh-CN', empty: true },
+  { locale: 'zh-CN', empty: false },
+  { locale: 'en-US', empty: true },
+  { locale: 'en-US', empty: false }
+] as const)(
+  'shows dual authorizations before credential protection ($locale, empty=$empty)',
+  async ({ locale, empty }) => {
+    uiI18n.global.locale.value = locale;
+    const view = await harness(SettingsView, { extension: true, empty });
+    const authorizations = view.wrapper.get('[data-testid="alibaba-authorizations-panel"]');
+    const protection = view.wrapper.get('[data-testid="alibaba-credential-protection-panel"]');
+    expect(authorizations.element.parentElement).toBe(protection.element.parentElement);
+    expect(authorizations.element.compareDocumentPosition(protection.element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(view.saveSettings).not.toHaveBeenCalled();
+    expect(view.createVault).not.toHaveBeenCalled();
+  }
+);
+
 it('saves the extension default and keeps form editing separate from the saved choice', async () => {
   const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
   expect(view.wrapper.get('[data-testid="default-authorization-top"]').text()).toContain('已选择');

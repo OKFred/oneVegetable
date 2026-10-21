@@ -1,23 +1,51 @@
 export const zh = {
+  authorizationBrandName: '一棵青菜',
+  applicationName: '应用名称',
+  authorizationExpiry: '授权到期',
+  summaryTop: '旧版 TOP',
+  summaryIop: '新版 IOP',
+  authorizationAssistant: '开放平台授权',
+  authorizationComplete: '授权已就绪',
+  authorizationProtocol: '授权类型',
+  authorizationSecretPrivacy: '密钥不会在此处展示。',
+  isolationTop: '仅更新 TOP，已有 IOP 授权和默认选项不变。',
+  isolationIop: '仅更新 IOP，已有 TOP 授权和默认选项不变。',
+  skipWorkbench: '暂不保存，返回设置',
+  themeSystem: '主题：跟随系统，点击切换为浅色',
+  themeLight: '主题：浅色，点击切换为深色',
+  themeDark: '主题：深色，点击切换为跟随系统',
+  changeAuthorization: '更换或导入其他授权',
+  workbenchNextTitle: '下一步：让工作台使用这份授权',
+  workbenchNextHelp: '最后一步：保存授权并进入工作台。',
+  authorizationDetails: '本次授权',
+  connectionManagement: '备份与管理',
+  useExistingAuthorization: '导入已有授权',
+  topEntryHelp: '已有旧应用可重新授权；已有完整凭据可直接导入。无需寻找失效的旧应用管理入口。',
+  newMerchantIop: '没有旧版应用？使用 IOP（推荐）',
+  topApplicationHelp:
+    '填写旧应用的 AppKey、AppSecret 和已登记 Callback；应用名称可留空。随后仍需在 Alibaba 登录并确认授权。',
+  readApplicationBackup: '从旧授权文件读取应用资料',
+  applicationBackupRead: '已填入应用资料，未导入旧 Token。请核对 Callback，再开始重新授权。',
   retryStatus: '重新检查',
   statusUnavailable: '暂时无法读取本机授权，请重新检查',
   connectionSteps: '连接账号的三个步骤',
-  connectStep: '1. 准备连接',
-  approveStep: '2. 在 Alibaba 确认',
-  useStep: '3. 导入工作台',
+  connectStep: '准备连接',
+  approveStep: '平台授权',
+  useStep: '启用工作台',
+  applyWorkbench: '保存并进入工作台',
+  confirmApplyWorkbench:
+    '保存当前授权并进入总览？仅更新对应协议，保留另一份授权和已有默认选项；首次连接使用当前授权。不重新授权或重放任务。',
+  workbenchApplied: '已保存到工作台，正在打开总览',
   otherWays: '已有授权文件？或需要手动填写？',
   connectionDetails: '查看授权详情与管理',
   callbackFallback: '已确认授权，但这里没有变化？',
   nextEmptyIop:
     '点击下方按钮，我们会打开 Alibaba 并尝试读取应用。遇到登录或验证，请在 Alibaba 页面完成后回来继续。',
-  nextEmptyTop:
-    '已有旧版授权文件，优先从下方导入，再点“重新授权”。也可尝试自动读取已打开的旧应用页面；新版应用不能代替旧版。',
+  nextEmptyTop: '选择“重新授权”获取新 Token，或“导入已有授权”直接使用完整凭据。新用户推荐 IOP。',
   nextLocked: '请输入之前为本机授权文件设置的口令，不是 Alibaba 登录密码。解锁后可导出、重新授权或尝试续期。',
   nextWaiting: '请到刚打开的 Alibaba 页面检查账号和权限，再自行确认授权。保持本页打开，结果会自动更新。',
-  nextReady:
-    '还差最后一步：下载授权文件，返回工作台设置，导入到相同的新版或旧版授权，再保存。当前还没有更改工作台连接。',
-  nextImported:
-    '下载已发起。请返回设置，找到“导入授权文件”，选择刚下载的 credentialInfo.json 并保存。下载文件不等于已连接工作台。',
+  nextReady: '点击“保存并进入工作台”直接使用；下载仅用于备份或其他部署。',
+  nextImported: '下载已发起。要在本插件使用，请点击“保存并进入工作台”。',
   nextUnknown:
     '暂时无法确认上次结果，不会自动重试。若出现“再次保存”可先保存；否则请重新授权。不要反复点击续期。',
   AUTH_PROTOCOL_CHANGED: '授权类型已切换，已取消之前的操作。请在当前协议下重新开始。',
@@ -85,18 +113,17 @@ export const zh = {
   dualGuide:
     '建议已有两类应用的商家分别授权，以覆盖更多能力。两套 AppKey、Secret、Token 和授权包独立保存，不可混用；只有一类也可使用。',
   topGuide:
-    'TOP 使用旧版应用，不在新版应用中心切换。可手动填写整套旧应用信息，或导入已有 TOP JSON、解锁后点击“重新授权”。不需要额外 Node 服务。',
+    'TOP 需要已有旧应用；旧管理页不可用不代表 OAuth 不能授权。重新授权与导入已有凭据是两条独立流程，不使用 IOP 密钥替代。',
   manualAuthorization: '手动填写',
   manualApplication: '应用信息与本机口令',
   topManualTitle: '如何手动完成 TOP 授权？',
   topManualExisting:
-    '已有旧版授权文件：点击“导入旧版授权文件”，设置保护口令，再点击“重新授权”。本工具已保存的文件只需先解锁。',
+    '已有旧文件：可只读取应用资料后重新授权；若要直接使用其中的 Token，请返回“导入已有授权”。',
   topManualPrepare:
-    '没有授权包：向原应用管理员取得旧 TOP 应用的 App Name、App Key、App Secret 和已登记 Callback URL，填写下方表单。只有 Access Token 不够；不能使用新版 IOP 应用信息代替。',
+    '没有备份：向原应用管理员取得旧 TOP AppKey、AppSecret 和已登记 Callback，填写下方表单。应用名称可留空，不能使用 IOP 应用信息代替。',
   topManualApprove:
-    '设置至少 6 个字符的本机口令，确认应用归属及 Callback 后点击“开始授权”。插件会生成官方 TOP 授权地址；请在 Alibaba 页面登录并亲自确认授权。',
-  topManualFinish:
-    '保留本页和授权标签页打开。显示“授权文件已安全保存”后下载文件，再返回设置导入旧版 TOP 授权并保存。无需启动 Node 或另行部署服务。',
+    '核对应用归属及 Callback 后点击“开始授权”。插件生成官方 TOP 授权地址，请在 Alibaba 页面登录并亲自确认。本机保护沿用前一步，不重复设置口令。',
+  topManualFinish: '授权成功后点击“保存并进入工作台”。下载仅用于备份，不需要 Node 服务。',
   topManualUnavailable:
     '自动读取失败不代表不能手动授权。但若没有旧 TOP 应用资料或授权包备份，请联系原应用管理员或 Alibaba 支持确认旧应用入口；插件无法从 IOP 应用生成 TOP 凭据。',
   topManualDocumentation: 'TOP 官方授权说明',
@@ -157,7 +184,7 @@ export const zh = {
   empty: '尚未配置',
   locked: '授权包已锁定',
   ready: '授权文件已安全保存',
-  waiting: '请在新标签页完成授权；保留此工具页打开（10 分钟内有效）。',
+  waiting: '请在 Alibaba 页面点击 Authorize；收到回调后会自动返回这里（10 分钟内有效）。',
   busy: '正在处理，请勿关闭',
   unknown: '结果待核对：不会自动重试，请重新授权；如仅保存失败，可再次保存。',
   cancel: '取消本次授权',
@@ -171,8 +198,7 @@ export const zh = {
   received: '回调已交给插件，请回到工具页查看。此页面不显示或保存凭据。',
   invalidCallback: '回调无效或任务已过期，请在插件中重新授权。',
   clipboardError: '无法复制，请手工选择回调地址复制。',
-  boundary:
-    '这是独立 IOP 授权工具，只能使用新版 IOP 应用的整套 AppKey 和 Secret。导出后在工作台选择 IOP 导入；已有两类应用时建议分别授权，原 TOP 配置不会自动改变。',
+  boundary: '新版 IOP 应用专用。保存到工作台时仅更新 IOP，保留 TOP 和已有默认选项。',
   privacy: '本服务与 alibaba.com 无官方关联。使用前请阅读平台规则。不要分享授权文件。',
   privacyLink: '隐私说明',
   rules: '平台规则',
@@ -196,27 +222,58 @@ export const zh = {
   AUTH_ORIGIN_DENIED: '此页面无权访问授权工具。'
 } as const;
 export const en: Record<keyof typeof zh, string> = {
+  authorizationBrandName: 'oneVegetable',
+  applicationName: 'App name',
+  authorizationExpiry: 'Authorization expires',
+  summaryTop: 'Legacy TOP',
+  summaryIop: 'New IOP',
+  authorizationAssistant: 'OPEN PLATFORM',
+  authorizationComplete: 'Authorization ready',
+  authorizationProtocol: 'Authorization type',
+  authorizationSecretPrivacy: 'Secrets are not displayed here.',
+  isolationTop: 'Updates TOP only. Existing IOP authorization and defaults stay unchanged.',
+  isolationIop: 'Updates IOP only. Existing TOP authorization and defaults stay unchanged.',
+  skipWorkbench: 'Not now, back to Settings',
+  themeSystem: 'Theme: system. Switch to light',
+  themeLight: 'Theme: light. Switch to dark',
+  themeDark: 'Theme: dark. Switch to system',
+  changeAuthorization: 'Change or import another authorization',
+  workbenchNextTitle: 'Next: connect this authorization to your workbench',
+  workbenchNextHelp: 'One last step: save this authorization to connect your workbench.',
+  authorizationDetails: 'This authorization',
+  connectionManagement: 'Backup and management',
+  useExistingAuthorization: 'Import existing authorization',
+  topEntryHelp:
+    'Reauthorize an existing legacy app, or import complete credentials. No legacy app console is required.',
+  newMerchantIop: 'No legacy app? Use IOP (recommended)',
+  topApplicationHelp:
+    'Enter the legacy AppKey, AppSecret and registered Callback. App Name is optional. You must still sign in and approve on Alibaba.',
+  readApplicationBackup: 'Read app details from an old authorization file',
+  applicationBackupRead:
+    'App details filled in; the old token was not imported. Check the Callback, then start reauthorization.',
   retryStatus: 'Check again',
   statusUnavailable: 'Local authorization could not be read. Please check again.',
   connectionSteps: 'Three steps to connect your account',
-  connectStep: '1. Prepare',
-  approveStep: '2. Approve on Alibaba',
-  useStep: '3. Import into workbench',
+  connectStep: 'Prepare',
+  approveStep: 'Approve on Alibaba',
+  useStep: 'Use in workbench',
+  applyWorkbench: 'Save and open workbench',
+  confirmApplyWorkbench:
+    'Save and open the dashboard? Only this protocol is updated; the other profile and existing default stay unchanged. A first connection uses this profile. No authorization or tasks are replayed.',
+  workbenchApplied: 'Saved to the workbench. Opening the dashboard.',
   otherWays: 'Have an authorization file, or prefer manual entry?',
   connectionDetails: 'Authorization details and management',
   callbackFallback: 'Approved, but this page has not changed?',
   nextEmptyIop:
     'Use the button below to open Alibaba and read your app. If asked to sign in or verify, complete it on Alibaba, then return here.',
   nextEmptyTop:
-    'Have a legacy authorization file? Import it below, then choose Reauthorize. You can also try reading an open legacy app page. A new app cannot replace a legacy app.',
+    'Choose Reauthorize to get a new token, or Import existing authorization to use complete credentials. New users should choose IOP.',
   nextLocked:
     'Enter the passphrase you set for this local authorization file, not your Alibaba password. Then you can download, reauthorize or try renewal.',
   nextWaiting:
     'Check the account and permissions on the Alibaba tab, then approve yourself. Keep this page open; it will update automatically.',
-  nextReady:
-    'One step left: download the authorization file, return to workbench Settings, import it into the matching new or legacy profile, then save. The workbench connection has not changed yet.',
-  nextImported:
-    'Download started. Return to Settings, choose Import authorization file, select credentialInfo.json and save. Downloading alone does not connect the workbench.',
+  nextReady: 'Choose Save and open workbench to connect. Download only for backups or other deployments.',
+  nextImported: 'Download started. To connect this extension, choose Save and open workbench.',
   nextUnknown:
     'The previous result is uncertain; it will not be retried automatically. Retry local save if available, otherwise reauthorize. Do not repeatedly renew.',
   AUTH_PROTOCOL_CHANGED:
@@ -290,18 +347,18 @@ export const en: Record<keyof typeof zh, string> = {
   dualGuide:
     'If you have both app types, authorize both for broader coverage. Each AppKey, secret, token and bundle is stored independently and cannot be mixed. A single app type is still supported.',
   topGuide:
-    'TOP uses a legacy app, not another tab in the IOP console. Enter the complete legacy app details, or import existing TOP JSON, unlock it and choose Reauthorize. No additional Node service is needed.',
+    'TOP requires an existing legacy app. An unavailable app console does not disable OAuth. Reauthorization and credential import are separate flows; IOP keys cannot substitute.',
   manualAuthorization: 'Enter manually',
   manualApplication: 'Application details and local passphrase',
   topManualTitle: 'How do I authorize legacy TOP manually?',
   topManualExisting:
-    'Have a legacy authorization file? Import it below, set a protection passphrase, then choose Reauthorize. If this tool already stores it, unlock first.',
+    'Read only the app details from an old file to reauthorize. To use its existing token instead, choose Import existing authorization.',
   topManualPrepare:
-    'No bundle? Obtain the legacy TOP App Name, App Key, App Secret and registered Callback URL from the original app administrator and fill in the form below. An Access Token alone is not enough. IOP app details cannot substitute for TOP.',
+    'No backup? Obtain the legacy TOP AppKey, AppSecret and registered Callback from the app administrator. App Name is optional. IOP app details cannot substitute.',
   topManualApprove:
-    'Set a local passphrase of at least 6 characters, confirm ownership and the Callback, then choose Start authorization. The extension generates the official TOP authorization URL; sign in and personally approve on Alibaba.',
+    'Check app ownership and the Callback, then choose Start authorization. Sign in and personally approve on Alibaba. Local protection reuses the previous step, without setting another passphrase.',
   topManualFinish:
-    'Keep this page and the authorization tab open. Once the authorization file is saved securely, download it, return to Settings, import it into legacy TOP and save. No Node process or extra service deployment is needed.',
+    'After authorization, choose Save and open workbench. Download only for backups. No Node service is needed.',
   topManualUnavailable:
     'Automatic reading failure does not prevent manual authorization. Without legacy app details or a bundle backup, contact the original app administrator or Alibaba support about the legacy console. The extension cannot generate TOP credentials from an IOP app.',
   topManualDocumentation: 'Official TOP authorization guide',
@@ -371,7 +428,8 @@ export const en: Record<keyof typeof zh, string> = {
   empty: 'Not configured',
   locked: 'Bundle locked',
   ready: 'Authorization file saved securely',
-  waiting: 'Approve in the new tab. Keep this tool open; the task expires in 10 minutes.',
+  waiting:
+    'Click Authorize on Alibaba. The extension will return here after the callback (valid for 10 minutes).',
   busy: 'Processing; keep this page open',
   unknown:
     'Result unresolved. No automatic retry. Reauthorize, or retry saving if only local persistence failed.',
@@ -388,7 +446,7 @@ export const en: Record<keyof typeof zh, string> = {
   invalidCallback: 'Invalid callback or expired task. Start authorization again in the extension.',
   clipboardError: 'Copy failed. Select and copy the callback address manually.',
   boundary:
-    'This independent tool requires a complete AppKey and Secret from a new IOP app. Export, then select IOP in the workbench to import. If you have both app types, authorize each separately; existing TOP settings never change automatically.',
+    'For new IOP apps only. Applying updates IOP in the workbench, keeping TOP and the existing default.',
   privacy: 'Not affiliated with alibaba.com. Read platform rules before use. Do not share credential files.',
   privacyLink: 'Privacy',
   rules: 'Platform rules',

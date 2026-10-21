@@ -28,6 +28,95 @@ function authorizationSummary(page: Page): Promise<unknown> {
   });
 }
 
+test('formal extension reopens the authorization guide and safely navigates back', async ({
+  browserName
+}, testInfo) => {
+  expect(browserName).toBe('chromium');
+  test.setTimeout(120_000);
+  const profile = await mkdtemp(resolve(tmpdir(), 'one-vegetable-guide-'));
+  const extension = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: 'chromium',
+    headless: true,
+    locale: 'zh-CN',
+    args: ['--disable-extensions-except=' + extension, '--load-extension=' + extension]
+  });
+  try {
+    const network: string[] = [];
+    await context.route(/^https?:\/\//u, (route) => {
+      network.push(new URL(route.request().url()).origin);
+      return route.abort();
+    });
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+    const origin = 'chrome-extension://' + new URL(worker.url()).host;
+    const page = await context.newPage();
+    await page.goto(origin + '/options.html#/settings');
+    const onboarding = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
+    await onboarding.getByRole('checkbox').check();
+    await onboarding.getByRole('button', { name: '稍后，仅浏览' }).click();
+    const grantedBefore = await permissions(worker);
+    const pageCount = context.pages().length;
+    await page.getByTestId('open-authorization-guide').click();
+    let guide = page.getByRole('dialog', { name: '授权向导', exact: true });
+    await expect(guide.getByTestId('authorization-wizard-guide').locator('img')).toHaveCount(4);
+    await page.screenshot({
+      path: testInfo.outputPath('authorization-guide-zh.png'),
+      animations: 'disabled'
+    });
+    await guide.getByTestId('authorization-wizard-continue').click();
+    let wizard = page.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
+    await expect(wizard.getByTestId('authorization-protection')).toBeVisible();
+    await wizard.getByTestId('authorization-wizard-back').click();
+    guide = page.getByRole('dialog', { name: '授权向导', exact: true });
+    await guide.getByTestId('authorization-wizard-continue').click();
+    wizard = page.getByRole('dialog', { name: '连接 Alibaba 账号', exact: true });
+    await wizard.getByTestId('continue-authorization-protection').click();
+    await expect(wizard.getByTestId('authorization-method-choices')).toBeVisible();
+    await wizard.getByTestId('authorization-method-online').click();
+    await expect(wizard.getByTestId('alibaba-authorization-protocol-choices')).toBeVisible();
+    await wizard.getByTestId('authorization-wizard-back').click();
+    await wizard.getByTestId('authorization-method-file').click();
+    await wizard.getByLabel('选择授权 JSON 文件', { exact: true }).setInputFiles({
+      name: 'credentialInfo.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(fixture.oauthBundle))
+    });
+    await expect(wizard.getByTestId('authorization-file-preview')).toBeVisible();
+    await wizard.getByTestId('authorization-wizard-back').click();
+    await expect(wizard.getByTestId('authorization-method-choices')).toBeVisible();
+    await expect(wizard.getByTestId('authorization-file-preview')).toHaveCount(0);
+    await wizard.getByTestId('authorization-wizard-back').click();
+    await expect(wizard.getByTestId('authorization-protection-ready')).toBeVisible();
+    await expect(wizard.locator('input[type="password"]')).toHaveCount(0);
+    await wizard.getByTestId('authorization-wizard-back').click();
+    await page.getByTestId('cancel-authorization-protocol').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTestId('language-toggle').click();
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByTestId('open-authorization-guide').click();
+    const english = page.getByRole('dialog', { name: 'Authorization guide', exact: true });
+    await expect(english.getByTestId('authorization-wizard-guide').locator('img')).toHaveCount(4);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath('authorization-guide-en-dark-mobile.png'),
+      animations: 'disabled'
+    });
+    await english.getByTestId('authorization-wizard-continue').click();
+    await expect(page.getByTestId('authorization-method-choices')).toBeVisible();
+    await expect(page.getByTestId('authorization-protection')).toHaveCount(0);
+    await page.getByTestId('authorization-wizard-back').click();
+    await expect(page.getByRole('dialog', { name: 'Authorization guide', exact: true })).toBeVisible();
+    await page.getByTestId('cancel-authorization-protocol').click();
+    expect(await authorizationSummary(page)).toMatchObject({ top: null, iop: null });
+    expect(await permissions(worker)).toEqual(grantedBefore);
+    expect(context.pages()).toHaveLength(pageCount);
+    expect(network).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 test('formal extension imports locally and requests only the required IOP business origin', async () => {
   test.setTimeout(120_000);
   const profile = await mkdtemp(resolve(tmpdir(), 'one-vegetable-offline-'));

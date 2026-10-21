@@ -24,6 +24,8 @@ import iopVideo from '../../mock/data/video/iop.json' with { type: 'json' };
 import standalone from '../../mock/data/alibaba-auth/standalone-authorization.json' with { type: 'json' };
 import jsonImports from '../../mock/data/alibaba-auth/standalone-json-imports.json' with { type: 'json' };
 import { iopOperationReason } from '../../packages/core/src/alibaba-iop-business';
+import { SETTINGS_STORAGE_KEY } from '../../packages/core/src/settings-storage';
+import { APP_PREFERENCES_STORAGE_KEY } from '../../packages/core/src/preferences';
 import { isProductMutationJob } from '../../packages/core/src/product-mutation-job-client';
 import { requireProductOperationContext } from '../../packages/core/src/product-operation-context';
 import {
@@ -120,6 +122,7 @@ test.beforeEach(async () => {
   );
   // Test-only copy pregrants native host consent. The shipping manifest is never modified.
   manifest.host_permissions.push(
+    'https://example.com/*',
     `${IOP_API_ORIGIN}/*`,
     `${PUBLIC_AUTH_ORIGIN}/*`,
     `${TOP_TOKEN_FIXTURE_ORIGIN}/*`,
@@ -304,6 +307,34 @@ async function prepareProtection(tool: Page, passphrase = '123456'): Promise<voi
   await expect(tool.getByRole('dialog')).toHaveCount(0);
 }
 
+async function expectToolActive(tool: Page): Promise<void> {
+  const toolId = await tool.evaluate(async () => {
+    const chrome = (
+      globalThis as unknown as {
+        chrome: { tabs: { getCurrent(): Promise<{ id?: number }> } };
+      }
+    ).chrome;
+    return (await chrome.tabs.getCurrent()).id;
+  });
+  expect(toolId).toEqual(expect.any(Number));
+  await expect
+    .poll(() =>
+      worker.evaluate(async () => {
+        const chrome = (
+          globalThis as unknown as {
+            chrome: {
+              tabs: {
+                query(options: { active: boolean; lastFocusedWindow: boolean }): Promise<{ id?: number }[]>;
+              };
+            };
+          }
+        ).chrome;
+        return (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]?.id;
+      })
+    )
+    .toBe(toolId);
+}
+
 async function authorize(): Promise<Page> {
   const site = await context.newPage();
   await site.goto(PUBLIC_AUTH_ORIGIN);
@@ -322,7 +353,7 @@ async function authorize(): Promise<Page> {
   await tool.locator('#appName').fill('Merchant fixture');
   await tool.locator('#appKey').fill(credentials.oauthBundle.application.appKey);
   await tool.locator('#appSecret').fill(credentials.oauthBundle.application.appSecret);
-  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
+  if (!(await tool.locator('#manualSection').isVisible())) await openManualEntry(tool);
   await tool.locator('#registered').check();
   const oauthEvent = context.waitForEvent('page');
   await tool.locator('#start').click();
@@ -330,12 +361,14 @@ async function authorize(): Promise<Page> {
   await oauth.waitForURL(`chrome-extension://${extensionId}/iop-approval.html**`);
   await expect(tool.locator('#appSecret')).toHaveValue('');
   await oauth.locator('#approve').click();
+  await expectToolActive(tool);
   await expect(oauth).toHaveURL(PUBLIC_AUTH_CALLBACK);
   await expect(oauth.locator('body')).not.toContainText(tokens.success.access_token);
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
   return tool;
 }
 async function exportBundle(tool: Page): Promise<Record<string, unknown>> {
+  await openManagement(tool);
   const downloading = tool.waitForEvent('download');
   await tool.locator('#export').click();
   await confirmToolAction(tool);
@@ -344,6 +377,19 @@ async function exportBundle(tool: Page): Promise<Record<string, unknown>> {
   const path = await download.path();
   if (!path) throw new Error('Missing downloaded fixture');
   return JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
+}
+
+async function openManagement(tool: Page): Promise<void> {
+  if ((await tool.locator('#connectionDetails').getAttribute('open')) === null)
+    await tool.locator('#connectionDetails summary').click();
+}
+
+async function openManualEntry(tool: Page): Promise<void> {
+  if (!(await tool.locator('#manualEntry').isVisible())) {
+    await openManagement(tool);
+    await tool.locator('#changeAuthorization').click();
+  }
+  await tool.locator('#manualEntry').click();
 }
 
 async function sendWorkbench(
@@ -382,7 +428,7 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
   expect(first.protocol).toBe('iop');
   expect(first.oauth).toMatchObject({ accessToken: tokens.success.access_token });
   await expect(tool.locator('#notice')).toContainText('JSON 下载已发起');
-  await expect(tool.locator('#nextStep')).toContainText('下载文件不等于已连接工作台');
+  await expect(tool.locator('#nextStep')).toContainText('保存并用于工作台');
   await expect(tool.locator('#useStep')).toHaveAttribute('aria-current', 'step');
   const statusWithNotice = await tool.locator('#status').boundingBox();
   await expect(tool.locator('#notice')).not.toBeVisible({ timeout: 6_000 });
@@ -399,12 +445,12 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
   expect(refreshes).toBe(0);
   await confirmToolAction(tool);
   await expect.poll(() => refreshes).toBe(1);
-  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
   expect((await exportBundle(tool)).oauth).toMatchObject({
     accessToken: 'fixture-rotated-access',
     refreshToken: 'fixture-rotated-refresh'
   });
-  await tool.locator('#connectionDetails summary').click();
+  await openManagement(tool);
   await tool.locator('#lock').click();
   await expect(tool.locator('#status')).toHaveText('授权包已锁定');
   await expect(tool.locator('#unlockForm')).toBeVisible();
@@ -422,6 +468,164 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
   expect(creates).toBe(1);
   expect(refreshes).toBe(1);
 });
+
+for (const protocol of ['top', 'iop'] as const) {
+  test(`${protocol} returns from a merchant callback to the original tool, without a public callback bridge`, async () => {
+    const tool = await openTool(protocol);
+    await prepareProtection(tool);
+    await tool.locator(protocol === 'top' ? '#topReauthorize' : '#manualEntry').click();
+    const application = standalone[protocol];
+    const callbackUrl = 'https://example.com/merchant/callback';
+    for (const [id, value] of Object.entries({
+      appName: application.appName,
+      appKey: application.appKey,
+      appSecret: application.appSecret,
+      callback: callbackUrl
+    }))
+      await tool.locator(`#${id}`).fill(value);
+    await tool.locator('#registered').check();
+    // The disposable build alone pregrants this fixture callback origin.
+    await worker
+      .evaluate(async () => {
+        const chrome = (
+          globalThis as unknown as {
+            chrome: { permissions: { contains(options: { origins: string[] }): Promise<boolean> } };
+          }
+        ).chrome;
+        return chrome.permissions.contains({ origins: ['https://example.com/*'] });
+      })
+      .then((allowed) => {
+        expect(allowed).toBe(true);
+      });
+    await context.route(`${TOP_TOKEN_FIXTURE_ORIGIN}/token`, async (route) => {
+      topCreates++;
+      const parameters = new URLSearchParams(route.request().postData() ?? '');
+      expect(parameters.get('redirect_uri')).toBe(callbackUrl);
+      await route.fulfill({ json: standalone.topToken });
+    });
+    await context.route(`${callbackUrl}**`, (route) =>
+      route.fulfill({
+        contentType: 'text/html',
+        body: '<!doctype html><title>Merchant callback</title><p>Offline merchant callback.</p>'
+      })
+    );
+    const oauthEvent = context.waitForEvent('page');
+    await tool.locator('#start').click();
+    const oauth = await oauthEvent;
+    await oauth.waitForURL(`chrome-extension://${extensionId}/${protocol}-approval.html**`);
+    // A second tool must not receive the original tool's focus handoff.
+    const observer = await context.newPage();
+    await observer.goto(
+      `chrome-extension://${extensionId}/authorization.html?protocol=${protocol}&observer=1`
+    );
+    await oauth.locator('#approve').click();
+    await expectToolActive(tool);
+    await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
+    expect(oauth.isClosed()).toBe(false);
+    expect(new URL(oauth.url()).origin).toBe('https://example.com');
+    expect(creates + topCreates).toBe(1);
+    expect(context.pages().filter((page) => page.url() === tool.url())).toHaveLength(1);
+  });
+}
+
+for (const protocol of ['top', 'iop'] as const) {
+  test(`${protocol} saves acquired authorization directly to the workbench without a file round trip`, async () => {
+    const tool = protocol === 'iop' ? await authorize() : await openTool('top');
+    if (protocol === 'top') {
+      await prepareProtection(tool);
+      await tool.locator('#file').setInputFiles({
+        name: 'credentialInfo.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(
+          JSON.stringify({
+            ...jsonImports.top,
+            application: { ...jsonImports.top.application, ...standalone.top }
+          })
+        )
+      });
+      await confirmToolAction(tool);
+      await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
+    }
+    let reads = 0;
+    await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/icbu/product/photobank/group/list`, async (route) => {
+      reads++;
+      const parameters = new URLSearchParams(route.request().postData() ?? '');
+      expect(parameters.get('access_token')).toBe(tokens.success.access_token);
+      await route.fulfill({ json: business.photoGroups });
+    });
+    await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/alibaba/icbu/product/list`, (route) =>
+      route.fulfill({ json: business.products })
+    );
+    await context.route('https://eco.taobao.com/**', async (route) => {
+      const parameters = new URLSearchParams(route.request().postData() ?? '');
+      if (parameters.get('method') === 'alibaba.icbu.photobank.group.list') {
+        reads++;
+        expect(parameters.get('session')).toBe(jsonImports.top.oauth.accessToken);
+        await route.fulfill({ json: { alibaba_icbu_photobank_group_list_response: { groups: [] } } });
+      } else await route.abort();
+    });
+    const downloads: string[] = [];
+    tool.on('download', (download) => {
+      downloads.push(download.suggestedFilename());
+    });
+    await expect(tool.locator('#applyWorkbench')).toBeVisible();
+    await expect(tool.locator('#workbenchStep')).toContainText('下一步');
+    await expect(tool.locator('#name')).toBeVisible();
+    await expect(tool.locator('#expires')).toBeVisible();
+    await expect(tool.locator('#connectionDetails')).not.toHaveAttribute('open');
+    await expect(tool.locator('#export')).toBeHidden();
+    await expect(tool.locator('#alternatives')).toBeHidden();
+    await expect(tool.locator('#applyWorkbench')).toHaveClass('primary');
+    await expect(tool.locator('#export')).not.toHaveClass('primary');
+    const before = await worker.evaluate(async (key) => {
+      const chrome = (
+        globalThis as unknown as { chrome: { storage: { local: { get(key: string): Promise<unknown> } } } }
+      ).chrome;
+      return chrome.storage.local.get(key);
+    }, SETTINGS_STORAGE_KEY);
+    await tool.locator('#applyWorkbench').click();
+    await expect(tool.getByRole('dialog')).toBeVisible();
+    await tool.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click();
+    await expect(tool.getByRole('dialog')).toHaveCount(0);
+    expect(
+      await worker.evaluate(async (key) => {
+        const chrome = (
+          globalThis as unknown as { chrome: { storage: { local: { get(key: string): Promise<unknown> } } } }
+        ).chrome;
+        return chrome.storage.local.get(key);
+      }, SETTINGS_STORAGE_KEY)
+    ).toEqual(before);
+    if (protocol === 'iop') {
+      await tool.locator('#language').click();
+      await expect(tool.locator('#applyWorkbench')).toHaveText('Save and open workbench');
+      await tool.emulateMedia({ colorScheme: 'dark' });
+      await tool.setViewportSize({ width: 390, height: 844 });
+    }
+    await tool.screenshot({
+      path: resolve(UI_SCREENSHOT_DIRECTORY, `apply-workbench-${protocol}.png`),
+      fullPage: true
+    });
+    await tool.locator('#applyWorkbench').click();
+    await confirmToolAction(tool);
+    await expect(tool).toHaveURL(`chrome-extension://${extensionId}/options.html#/dashboard`);
+    const summary = await sendWorkbench(tool, 'credential-vault-request', 'authorizations');
+    expect(summary).toMatchObject({
+      ok: true,
+      data: { defaultProtocol: protocol, [protocol]: { configured: true } }
+    });
+    expect(await sendWorkbench(tool, 'gateway-request', 'listPhotoGroups')).toMatchObject({ ok: true });
+    expect(reads).toBeGreaterThan(0);
+    await tool.reload();
+    expect(await sendWorkbench(tool, 'credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { defaultProtocol: protocol, [protocol]: { configured: true } }
+    });
+    expect(await sendWorkbench(tool, 'gateway-request', 'listPhotoGroups')).toMatchObject({ ok: true });
+    expect(downloads).toEqual([]);
+    expect(creates + topCreates).toBe(protocol === 'iop' ? 1 : 0);
+    expect(refreshes + topRefreshes).toBe(0);
+  });
+}
 
 test('new users see a guided next action, not technical fields or disabled renewal controls', async () => {
   const tool = await openTool();
@@ -484,7 +688,7 @@ test('public pages cannot export; mismatched callback does not call the platform
   expect(JSON.stringify(result)).not.toContain(tokens.success.access_token);
   expect(creates).toBe(1);
   // TOP imports stay rejected instead of silently changing this independent vault.
-  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
+  if (!(await tool.locator('#manualSection').isVisible())) await openManualEntry(tool);
   await tool.locator('#file').setInputFiles({
     name: 'credentials.json',
     mimeType: 'application/json',
@@ -729,7 +933,7 @@ for (const [mode, expected] of [
 }
 
 for (const legacyPage of ['none', 'not-found'] as const) {
-  test(`TOP discovery reports unavailable with ${legacyPage} legacy page, without opening 404 or borrowing IOP`, async () => {
+  test(`TOP opens two explicit paths with ${legacyPage} legacy page, without discovery or borrowing IOP`, async () => {
     const alibaba = await context.newPage();
     await alibaba.goto('https://i.alibaba.com/explore/open-api');
     // Make a valid IOP app and secret visible: TOP must not borrow either even
@@ -746,13 +950,13 @@ for (const legacyPage of ['none', 'not-found'] as const) {
     }
     const tool = await openTool('top', true);
     await prepareProtection(tool);
-    await expect(tool.locator('#error')).toContainText('无法从已打开的旧 TOP 应用页读取完整信息');
-    await expect(tool.locator('#discover')).toBeVisible();
-    await expect(tool.locator('#discover')).toBeEnabled();
-    await expect(tool.locator('#topManualGuide')).toHaveAttribute('open', '');
-    await expect(tool.locator('#topManualGuide')).toContainText('自动读取失败不代表不能手动授权');
-    await tool.locator('#manualEntry').click();
-    await expect(tool.locator('#appName')).toBeFocused();
+    await expect(tool.locator('#error')).not.toBeVisible();
+    await expect(tool.locator('#discover')).toBeHidden();
+    await expect(tool.locator('#topReauthorize')).toHaveText('重新授权');
+    await expect(tool.locator('#topImport')).toHaveText('导入已有授权');
+    await expect(tool.locator('#topUseIop')).toContainText('推荐');
+    await tool.locator('#topReauthorize').click();
+    await expect(tool.locator('#appKey')).toBeFocused();
     await expect(tool.locator('#status')).toHaveText('尚未配置');
     for (const id of ['appName', 'appKey', 'appSecret', 'callback'])
       await expect(tool.locator(`#${id}`)).toHaveValue('');
@@ -794,11 +998,11 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
   await prepareProtection(top);
   await expect(top.locator('#title')).toHaveText('连接 Alibaba · 旧版应用');
   await expect(top.locator('#status')).toHaveText('尚未配置');
-  await expect(top.locator('#discover')).toBeVisible();
+  await expect(top.locator('#discover')).toBeHidden();
   await expect(top.locator('#center')).toBeHidden();
-  await top.locator('#manualEntry').click();
-  await expect(top.locator('#appName')).toBeFocused();
-  await expect(top.locator('#topManualGuide')).toContainText('无需启动 Node');
+  await top.locator('#topReauthorize').click();
+  await expect(top.locator('#appKey')).toBeFocused();
+  await expect(top.locator('#topManualGuide')).toContainText('不需要 Node 服务');
   for (const [id, value] of Object.entries({
     appName: standalone.top.appName,
     appKey: standalone.top.appKey,
@@ -817,6 +1021,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
   expect(topCreates).toBe(0);
   await oauth.locator('#approve').click();
   await expect(top.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
+  await expectToolActive(top);
   expect(creates).toBe(1);
   expect(topCreates).toBe(1);
   expect(await exportBundle(top)).toMatchObject({
@@ -848,7 +1053,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
     standalone.top.appSecret
   ])
     expect(JSON.stringify(stored)).not.toContain(secret);
-  await top.locator('#connectionDetails summary').click();
+  await openManagement(top);
   await top.locator('#clear').click();
   await confirmToolAction(top);
   await expect(top.locator('#status')).toHaveText('尚未配置');
@@ -863,7 +1068,7 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
   const tool = await authorize();
   const downloads: string[] = [];
   tool.on('download', (download) => downloads.push(download.suggestedFilename()));
-  await tool.locator('#connectionDetails summary').click();
+  await openManagement(tool);
   for (const action of ['export', 'refresh', 'clear'] as const) {
     await tool.locator(`#${action}`).click();
     const dialog = tool.getByRole('dialog');
@@ -876,7 +1081,7 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
     await expect(tool.locator(`#${action}`)).toBeFocused();
     await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   }
-  if (!(await tool.locator('#manualSection').isVisible())) await tool.locator('#manualEntry').click();
+  if (!(await tool.locator('#manualSection').isVisible())) await openManualEntry(tool);
   await tool.locator('#file').setInputFiles({
     name: 'existing-iop.json',
     mimeType: 'application/json',
@@ -901,8 +1106,14 @@ test('HTML confirmation is cancellable and import, export, refresh and clear do 
 
 test('a rejected refresh uses a temporary error toast and does not repeat on status rerender', async () => {
   const tool = await authorize();
+  await openManagement(tool);
   await tool.locator('#refresh').scrollIntoViewIfNeeded();
-  const statusBefore = await tool.locator('#status').boundingBox();
+  const readyPosition = () =>
+    tool.locator('#authorization-ready-heading').evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return { top: box.top + scrollY, left: box.left + scrollX, width: box.width, height: box.height };
+    });
+  const statusBefore = await readyPosition();
   await context.route(`${PUBLIC_AUTH_ORIGIN}/rest/auth/token/refresh`, async (route) => {
     refreshes++;
     await route.fulfill({ json: tokens.invalidAppKey });
@@ -911,7 +1122,7 @@ test('a rejected refresh uses a temporary error toast and does not repeat on sta
   await confirmToolAction(tool);
   await expect(tool.locator('#error')).toContainText('Alibaba 拒绝换取或续期 Token');
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
-  expect(await tool.locator('#status').boundingBox()).toEqual(statusBefore);
+  expect(await readyPosition()).toEqual(statusBefore);
   await expect(tool.locator('#error')).not.toBeVisible({ timeout: 9_000 });
   await expect(tool.locator('#error')).toBeEmpty();
   await tool.locator('#language').click();
@@ -1029,6 +1240,9 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
   if ((await tool.getByRole('dialog').count()) > 0) await confirmToolAction(tool);
   await expect(tool.locator('#protocolTop')).toHaveAttribute('aria-pressed', 'true');
   await expect(tool.locator('#status')).toHaveText('尚未配置');
+  await tool.locator('#topImport').click();
+  // The explicit import entry already expands the JSON editor.
+  await tool.locator('#advancedJson summary').click();
   await openExample('top');
   await expect(tool.locator('#protectionSection')).toBeHidden();
   await editor.fill(JSON.stringify(jsonImports.iop));
@@ -1151,8 +1365,8 @@ test('shared protection preflight has readable optional controls in both languag
         expect(Math.max(...layout.heights) - Math.min(...layout.heights)).toBeLessThanOrEqual(1);
         expect(Math.max(...layout.tops) - Math.min(...layout.tops)).toBeLessThanOrEqual(1);
         expect(layout.align).toBe('normal');
-        expect(layout.background).toBe('rgb(21, 93, 233)');
-        expect(layout.foreground).toBe('rgb(255, 255, 255)');
+        expect(layout.background).not.toBe('rgb(21, 93, 233)');
+        expect(layout.foreground).not.toBe(layout.background);
         expect(layout.fits).toBe(true);
         expect(layout.described).toBe(true);
         expect(layout.labelled).toBe(true);
@@ -1166,9 +1380,169 @@ test('shared protection preflight has readable optional controls in both languag
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
 
+test('TOP reads only app metadata from a backup and exchanges a fresh token without the legacy console', async () => {
+  const tool = await openTool('top', true);
+  await prepareProtection(tool);
+  await tool.locator('#topReauthorize').click();
+  const bundle = { ...jsonImports.top, application: { ...jsonImports.top.application, ...standalone.top } };
+  await tool.locator('#applicationFile').setInputFiles({
+    name: 'old-top.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(bundle))
+  });
+  await expect(tool.locator('#appKey')).toHaveValue(standalone.top.appKey);
+  await expect(tool.locator('#callback')).toHaveValue(standalone.top.callbackUrl);
+  await expect(tool.locator('#status')).toHaveText('尚未配置');
+  const stored = await worker.evaluate(async () => {
+    const api = (
+      globalThis as unknown as {
+        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+      }
+    ).chrome;
+    return api.storage.local.get('one-vegetable-top-authorization-v1');
+  });
+  expect(stored).not.toHaveProperty(TOP_VAULT_KEY);
+  expect(topCreates + topRefreshes).toBe(0);
+  await tool.locator('#appName').fill('');
+  await tool.locator('#registered').check();
+  const opened = context.waitForEvent('page');
+  await tool.locator('#start').click();
+  const oauth = await opened;
+  await oauth.waitForURL(`chrome-extension://${extensionId}/top-approval.html**`);
+  await oauth.locator('#approve').click();
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
+  await expectToolActive(tool);
+  expect(topCreates).toBe(1);
+  expect(topRefreshes + creates).toBe(0);
+  expect(await exportBundle(tool)).toMatchObject({
+    protocol: 'top',
+    application: { ...standalone.top, appName: 'TOP application' },
+    oauth: { accessToken: standalone.topToken.access_token }
+  });
+  expect(context.pages().some((page) => page.url().includes('crosstrade.alibaba.com'))).toBe(false);
+});
+
+test('TOP entry buttons align and recommend IOP in both languages and themes', async () => {
+  const tool = await openTool('top');
+  await prepareProtection(tool);
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await tool.emulateMedia({ colorScheme });
+    for (const language of ['zh-CN', 'en-US'] as const) {
+      if ((await tool.locator('html').getAttribute('lang')) !== language)
+        await tool.locator('#language').click();
+      const boxes = await Promise.all(
+        ['topReauthorize', 'topImport'].map((id) => tool.locator(`#${id}`).boundingBox())
+      );
+      expect(boxes.every((box) => box !== null)).toBe(true);
+      expect(Math.abs((boxes[0]?.height ?? 0) - (boxes[1]?.height ?? 0))).toBeLessThanOrEqual(1);
+      await tool.screenshot({
+        path: resolve(UI_SCREENSHOT_DIRECTORY, `top-two-paths-${language}-${colorScheme}.png`),
+        animations: 'disabled'
+      });
+    }
+  }
+  await tool.setViewportSize({ width: 390, height: 844 });
+  expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await tool.locator('#topUseIop').click();
+  await expect(tool.locator('#title')).toHaveText('Connect Alibaba · New app');
+  expect(topCreates + creates + refreshes + topRefreshes).toBe(0);
+});
+
+test('selected split layout shares workbench theme tokens, keeps details visible, and does not change API language', async () => {
+  const tool = await openTool('top');
+  await tool.evaluate((key) => {
+    localStorage.setItem(
+      key,
+      JSON.stringify({ theme: 'system', uiLocale: 'en-US', alibabaLanguage: 'zh_CN' })
+    );
+  }, APP_PREFERENCES_STORAGE_KEY);
+  await tool.emulateMedia({ colorScheme: 'dark' });
+  await tool.reload();
+  await prepareProtection(tool, '');
+  await tool.locator('#topImport').click();
+  await tool.locator('#file').setInputFiles({
+    name: 'top.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(jsonImports.top))
+  });
+  await confirmToolAction(tool);
+  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
+  await expect(tool.locator('#authorization-ready-heading')).toHaveText('授权已就绪');
+  await expect(tool.locator('#authorization-summary-panel')).toBeVisible();
+  await expect(tool.locator('#name')).toBeVisible();
+  await expect(tool.locator('#expires')).toBeVisible();
+  await expect(tool.locator('#export')).toBeHidden();
+  await expect(tool.locator('#manualSection')).toBeHidden();
+  await expect(tool.locator('#alternatives')).toBeHidden();
+  await expect(tool.locator('html')).toHaveClass(/dark/u);
+  await tool.setViewportSize({ width: 1488, height: 1058 });
+  const rails = await tool.locator('.authorization-layout').evaluate((element) => {
+    const steps = element.querySelector('.authorization-steps')?.getBoundingClientRect();
+    const main = element.querySelector('.authorization-content')?.getBoundingClientRect();
+    const summary = element.querySelector('.authorization-summary')?.getBoundingClientRect();
+    return {
+      stepsRight: steps?.right,
+      mainLeft: main?.left,
+      mainRight: main?.right,
+      summaryLeft: summary?.left
+    };
+  });
+  expect(rails.stepsRight).toBe(rails.mainLeft);
+  expect(rails.mainRight).toBe(rails.summaryLeft);
+  const buttonColor = await tool
+    .locator('#applyWorkbench')
+    .evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(buttonColor).toBe('rgb(44, 201, 143)');
+  await tool.screenshot({
+    path: resolve(UI_SCREENSHOT_DIRECTORY, 'selected-layout-dark.png'),
+    animations: 'disabled'
+  });
+  await tool.locator('#authorization-theme').click();
+  await expect(tool.locator('html')).not.toHaveClass(/dark/u);
+  const headings = await tool.evaluate(() => {
+    const heading = document.querySelector('#authorization-ready-heading h1');
+    const summary = document.querySelector('#authorization-summary-title');
+    if (!heading || !summary) throw new Error('Missing authorization headings');
+    return {
+      foreground: getComputedStyle(document.body).color,
+      heading: getComputedStyle(heading).color,
+      summary: getComputedStyle(summary).color
+    };
+  });
+  expect(headings.heading).toBe(headings.foreground);
+  expect(headings.summary).toBe(headings.foreground);
+  await tool.screenshot({
+    path: resolve(UI_SCREENSHOT_DIRECTORY, 'selected-layout-light.png'),
+    animations: 'disabled'
+  });
+  await tool.locator('#authorization-theme').click();
+  await expect(tool.locator('html')).toHaveClass(/dark/u);
+  expect(
+    await tool.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key) ?? 'null') as unknown,
+      APP_PREFERENCES_STORAGE_KEY
+    )
+  ).toEqual({ theme: 'dark', uiLocale: 'en-US', alibabaLanguage: 'zh_CN' });
+  await tool.locator('#language').click();
+  await expect(tool.locator('#authorization-ready-heading')).toHaveText('Authorization ready');
+  await expect(tool.locator('#applyWorkbench')).toHaveText('Save and open workbench');
+  await tool.setViewportSize({ width: 390, height: 844 });
+  await expect(tool.locator('#applyWorkbench')).toBeVisible();
+  expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await tool.screenshot({
+    path: resolve(UI_SCREENSHOT_DIRECTORY, 'selected-layout-mobile-en.png'),
+    fullPage: true,
+    animations: 'disabled'
+  });
+  await tool.reload();
+  await expect(tool.locator('html')).toHaveClass(/dark/u);
+  expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+});
+
 test('TOP bundle file import reuses prepared protection and reauthorizes without the legacy console', async () => {
   const tool = await openTool('top');
   await prepareProtection(tool);
+  await tool.locator('#topImport').click();
   const bundle = {
     ...jsonImports.top,
     application: { ...jsonImports.top.application, ...standalone.top }
@@ -1184,7 +1558,8 @@ test('TOP bundle file import reuses prepared protection and reauthorizes without
   await expect(tool.locator('#protectionSection')).toBeHidden();
   expect(creates + topCreates).toBe(0);
   const oauthEvent = context.waitForEvent('page');
-  await tool.locator('#reauthorize').click();
+  await openManagement(tool);
+  await tool.locator('#topReauthorize').click();
   expect(creates + topCreates).toBe(0);
   await confirmToolAction(tool);
   const oauth = await oauthEvent;
@@ -1195,6 +1570,7 @@ test('TOP bundle file import reuses prepared protection and reauthorizes without
   expect(query.get('sp')).toBe('ICBU');
   await oauth.locator('#approve').click();
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
+  await expectToolActive(tool);
   expect(topCreates).toBe(1);
   expect(creates + refreshes + topRefreshes).toBe(0);
   expect(await exportBundle(tool)).toMatchObject({
