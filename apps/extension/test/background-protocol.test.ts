@@ -265,6 +265,66 @@ afterEach(() => {
 });
 
 describe('extension background protocol persistence and dispatch', () => {
+  it('pins read-only availability status to either saved gallery profile without refresh or fallback', async () => {
+    await createPair(false);
+    const top = { ...(await fixtureContext(topSettings)), storage: null };
+    const iop = { ...(await fixtureContext(settings)), storage: null };
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    const refresh = vi.spyOn(AlibabaIopTokenClient.prototype, 'request');
+    expect(await send('credential-vault-request', 'status')).toMatchObject({
+      ok: true,
+      data: { pool: { defaultProtocol: 'top' } }
+    });
+    expect(await send('credential-vault-request', 'status', { galleryContext: iop })).toMatchObject({
+      ok: true,
+      data: { protocol: 'iop' }
+    });
+    expect(await send('credential-vault-request', 'status', { galleryContext: top })).toMatchObject({
+      ok: true,
+      data: { protocol: 'top' }
+    });
+    background.main();
+    const pinned = await send('credential-vault-request', 'status', { galleryContext: iop });
+    expect(pinned).toMatchObject({ ok: true, data: { protocol: 'iop' } });
+    expect(pinned.data).not.toHaveProperty('accessToken');
+    expect(pinned.data).not.toHaveProperty('appSecret');
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY]) === before).toBe(true);
+    for (const context of [
+      { ...iop, identity: 'another-actor' },
+      { ...iop, gateway: 'changed-gateway' },
+      { ...iop, storage: 'changed-storage' }
+    ]) {
+      expect(await send('credential-vault-request', 'status', { galleryContext: context })).toMatchObject({
+        ok: false,
+        error: { code: 'GALLERY_CONTEXT_CHANGED' }
+      });
+    }
+    expect(await send('credential-vault-request', 'status', { protocol: 'iop' })).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_CREDENTIAL_VAULT_REQUEST' }
+    });
+    expect(
+      await sendEnvelope(
+        { kind: 'credential-vault-request', operation: 'status', payload: { galleryContext: iop } },
+        { ...sender, url: 'https://untrusted.example/' }
+      )
+    ).toMatchObject({ ok: false });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects availability for a cleared pinned profile instead of selecting the remaining TOP profile', async () => {
+    await createPair(false);
+    const iop = { ...(await fixtureContext(settings)), storage: null };
+    expect(await send('credential-vault-request', 'clear-authorization', { protocol: 'iop' })).toMatchObject({
+      ok: true
+    });
+    expect(await send('credential-vault-request', 'status', { galleryContext: iop })).toMatchObject({
+      ok: false,
+      error: { code: 'GALLERY_CONTEXT_CHANGED' }
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('waits for an in-flight passphrase rotation before clearing persistent credentials', async () => {
     await create();
     vi.spyOn(ExtensionVideoUploadRepository.prototype, 'clearAll').mockResolvedValue();

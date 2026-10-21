@@ -10104,6 +10104,7 @@ export interface components {
         };
         OperationAvailabilityRequest: {
             requestId: components["schemas"]["RequestId"];
+            galleryContext?: components["schemas"]["GalleryTransferContext"];
             operations: string[];
         };
         OperationAvailabilityResult: {

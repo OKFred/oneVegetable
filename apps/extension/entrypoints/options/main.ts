@@ -61,6 +61,7 @@ import {
   type LocalDataRepository,
   type OnboardingRepository,
   type OperationId,
+  type OperationAvailabilityClient,
   type RequestOf,
   type ResponseOf,
   type RuntimeRequest,
@@ -95,8 +96,8 @@ import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
 import { requestVideoUpload } from '../../lib/video-upload-client';
 import { extensionTemplates, inspectLocalTemplates, resetLocalTemplates } from '../../lib/template-client';
 
-const operationAvailability = createExtensionOperationAvailabilityClient(() =>
-  requestVault('status', undefined)
+const operationAvailability = createExtensionOperationAvailabilityClient((options) =>
+  requestVault('status', options)
 );
 type RuntimeTranslator = (key: string, values?: Record<string, unknown>) => string;
 let activeRuntimeTranslator: RuntimeTranslator | null = null;
@@ -417,7 +418,10 @@ interface VaultOperationMap {
     request: { protocol: 'top' | 'iop' };
     response: GatewayCredentialTestResult;
   };
-  status: { request: undefined; response: CredentialVaultStatus & AuthorizationStatus };
+  status: {
+    request: Parameters<OperationAvailabilityClient['get']>[1];
+    response: CredentialVaultStatus & AuthorizationStatus;
+  };
   'prepare-authorization': { request: { passphrase: string }; response: CredentialVaultStatus };
   'get-settings': { request: undefined; response: GatewaySettings };
   create: {

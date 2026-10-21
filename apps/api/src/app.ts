@@ -486,7 +486,7 @@ export function createApiApp(options: ApiAppOptions): Hono {
 
   api.post('/operations/availability/get', async (context) => {
     const startedAt = (options.clock ?? Date.now)();
-    const parsed = await parseEnvelope(context, ['requestId', 'operations']);
+    const parsed = await parseEnvelope(context, ['requestId', 'operations', 'galleryContext']);
     if (!parsed.ok) return parsed.response;
     const validation = validateOperationAvailabilityInput(parsed.body);
     if (!validation.valid || !validation.data) {
@@ -500,9 +500,34 @@ export function createApiApp(options: ApiAppOptions): Hono {
       const principal = options.authService
         ? (await authenticateRequest(context, options.authService)).principal
         : extensionAdminPrincipal();
-      const pool = options.gatewayAuthorizations
-        ? await options.gatewayAuthorizations.authorizations()
-        : null;
+      const galleryContext = validation.data.galleryContext;
+      let pinnedProtocol: 'top' | 'iop' | undefined;
+      if (galleryContext) {
+        if (!options.authService) throw new AuthError('AUTH_REQUIRED', 'AUTH_REQUIRED', 401);
+        requireGalleryContext(galleryContext);
+        assertGalleryContextId(galleryContext.identity, await opaqueGalleryId(principal.actorId));
+        assertGalleryContextId(
+          galleryContext.storage,
+          (await options.s3Storage?.galleryStorageContextId()) ?? null
+        );
+        if (dynamicGateway.operationProtocol) {
+          pinnedProtocol = await dynamicGateway.operationProtocol('listPhotos', {}, { galleryContext });
+        } else {
+          // Only explicitly local TOP modes can use their existing opaque context.
+          // An unknown real gateway must never be reinterpreted as TOP.
+          if (options.gatewayMode !== 'mock' && options.gatewayMode !== 'replay')
+            throw new AuthError('GALLERY_CONTEXT_UNAVAILABLE', 'GALLERY_CONTEXT_UNAVAILABLE', 503);
+          assertGalleryContextId(
+            galleryContext.gateway,
+            await opaqueGalleryId(`local:${options.gatewayMode}`)
+          );
+          pinnedProtocol = 'top';
+        }
+      }
+      const pool =
+        options.gatewayAuthorizations && !galleryContext
+          ? await options.gatewayAuthorizations.authorizations()
+          : null;
       const items = await Promise.all(
         validation.data.operations.map(async (operation) => {
           if (!isOperationId(operation)) {
@@ -511,20 +536,22 @@ export function createApiApp(options: ApiAppOptions): Hono {
           if (options.gatewayMode === 'disabled') {
             return { operation, allowed: false, reasonCode: 'ALIBABA_GATEWAY_DISABLED' };
           }
-          const protocol = pool
-            ? selectAlibabaOperationProtocol(
-                operation,
-                {},
-                {
-                  top: pool.top !== null,
-                  iop: pool.iop !== null,
-                  defaultProtocol: pool.defaultProtocol,
-                  bindingConfirmed: pool.binding.confirmed
-                }
-              )
-            : dynamicGateway.operationProtocol
-              ? await dynamicGateway.operationProtocol(operation, {})
-              : await activeGatewayProtocol(options, dynamicGateway);
+          const protocol =
+            pinnedProtocol ??
+            (pool
+              ? selectAlibabaOperationProtocol(
+                  operation,
+                  {},
+                  {
+                    top: pool.top !== null,
+                    iop: pool.iop !== null,
+                    defaultProtocol: pool.defaultProtocol,
+                    bindingConfirmed: pool.binding.confirmed
+                  }
+                )
+              : dynamicGateway.operationProtocol
+                ? await dynamicGateway.operationProtocol(operation, {})
+                : await activeGatewayProtocol(options, dynamicGateway));
           const protocolReason = protocol === 'iop' ? iopOperationReason(operation) : null;
           const protocolMetadata =
             protocol === 'iop'
@@ -563,12 +590,18 @@ export function createApiApp(options: ApiAppOptions): Hono {
       );
       return success(context, parsed.requestId, { items });
     } catch (error: unknown) {
-      const status = error instanceof AuthError ? error.status : 500;
-      const code = error instanceof AuthError ? error.code : 'OPERATION_AVAILABILITY_FAILED';
+      const status =
+        error instanceof AuthError ? error.status : error instanceof GatewayException ? 409 : 500;
+      const code =
+        error instanceof AuthError
+          ? error.code
+          : error instanceof GatewayException
+            ? error.gatewayError.code
+            : 'OPERATION_AVAILABILITY_FAILED';
       logRequest(options, parsed.requestId, 'operations/availability/get', 'denied', status, startedAt);
       return failure(context, parsed.requestId, status, {
         code,
-        message: error instanceof Error ? error.message : '读取 operation 状态失败',
+        message: error instanceof AuthError ? error.message : code,
         retryable: false
       });
     }

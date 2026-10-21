@@ -9,8 +9,39 @@ import {
 
 import type { NetworkTransport } from '../src/network';
 import iop from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
+import photos from '../../../mock/data/photos.json';
+import { validateOperationAvailabilityInput } from '../src/validation';
 
 describe('product description template clients', () => {
+  it.each([undefined, photos.transferContext])(
+    'forwards an optional frozen availability context without changing legacy requests',
+    async (galleryContext) => {
+      const send = vi.fn<NetworkTransport['send']>((_input, init) => {
+        if (typeof init.body !== 'string') throw new Error('Expected JSON request');
+        const body = JSON.parse(init.body) as Record<string, unknown>;
+        expect(body.galleryContext).toEqual(galleryContext);
+        expect(validateOperationAvailabilityInput(body).valid).toBe(true);
+        return Promise.resolve(
+          Response.json({ requestId: body.requestId, ok: true, data: { items: [iop.availabilityItem] } })
+        );
+      });
+      const client = new BffProductDescriptionTemplateClient({
+        baseUrl: 'https://staging.example.com',
+        transport: { send }
+      });
+      await client.get(['listPhotos'], galleryContext ? { galleryContext } : undefined);
+      expect(send).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('rejects malformed availability contexts and protocol-only requests in the contract', () => {
+    const body = { requestId: crypto.randomUUID(), operations: ['listPhotos'] };
+    expect(validateOperationAvailabilityInput({ ...body, protocol: 'top' }).valid).toBe(false);
+    expect(validateOperationAvailabilityInput({ ...body, galleryContext: { protocol: 'top' } }).valid).toBe(
+      false
+    );
+    expect(validateOperationAvailabilityInput({ ...body, galleryContext: null }).valid).toBe(false);
+  });
   it.each([undefined, iop.availabilityItem.protocolSupport])(
     'accepts legacy availability or valid optional IOP coverage',
     async (protocolSupport) => {

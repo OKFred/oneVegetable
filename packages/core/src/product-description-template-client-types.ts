@@ -7,6 +7,7 @@ import type {
   ProductDescriptionTemplateStatus
 } from './product-description-template';
 import type { OperationId } from './types';
+import type { GalleryTransferContext } from './gallery-transfer-task';
 
 export interface ProductDescriptionTemplateListInput {
   page?: number;
@@ -39,5 +40,8 @@ export interface ProductDescriptionTemplateClient {
 }
 
 export interface OperationAvailabilityClient {
-  get(operations: readonly OperationId[]): Promise<OperationAvailabilityResult>;
+  get(
+    operations: readonly OperationId[],
+    options?: { galleryContext?: GalleryTransferContext }
+  ): Promise<OperationAvailabilityResult>;
 }

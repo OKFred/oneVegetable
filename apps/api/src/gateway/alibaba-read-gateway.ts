@@ -68,9 +68,26 @@ export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
     payload: unknown,
     context?: GalleryRequestOptions
   ): Promise<'top' | 'iop'> {
-    return this.provider.selectProtocol
-      ? this.provider.selectProtocol(operation, payload, context)
-      : this.credentialProtocol();
+    try {
+      if (this.provider.selectProtocol)
+        return await this.provider.selectProtocol(operation, payload, context);
+      if (context?.galleryContext) {
+        // Availability must never call requireCredentials: it may refresh tokens.
+        const credentials = await this.provider.credentialSnapshot?.();
+        if (!credentials)
+          throw new GatewayException({
+            code: 'GALLERY_CONTEXT_UNAVAILABLE',
+            message: 'GALLERY_CONTEXT_UNAVAILABLE',
+            retryable: false
+          });
+        assertGalleryContextId(context.galleryContext.gateway, await galleryGatewayId(credentials));
+        return credentials.protocol ?? 'top';
+      }
+      return await this.credentialProtocol();
+    } catch (error: unknown) {
+      if (error instanceof GatewayConfigurationError) throw credentialGatewayError(error);
+      throw error;
+    }
   }
 
   async operationGatewayContextId(
@@ -182,6 +199,15 @@ export class AlibabaReadGatewayClient implements GatewayClient {
 
   credentialProtocol(): Promise<'top' | 'iop'> {
     return Promise.resolve(this.#credentials.protocol ?? 'top');
+  }
+
+  async operationProtocol(
+    _operation: OperationId,
+    _payload: unknown,
+    context?: GalleryRequestOptions
+  ): Promise<'top' | 'iop'> {
+    assertGalleryContextId(context?.galleryContext?.gateway, await this.galleryGatewayContextId());
+    return this.credentialProtocol();
   }
 
   async request<K extends OperationId>(

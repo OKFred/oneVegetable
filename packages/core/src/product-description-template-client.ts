@@ -110,8 +110,14 @@ export class BffProductDescriptionTemplateClient
     return this.#changeStatus('/product-description-templates/restore', id, revision);
   }
 
-  async get(operations: readonly OperationId[]): Promise<OperationAvailabilityResult> {
-    const data = await this.#call('/operations/availability/get', { operations });
+  async get(
+    operations: readonly OperationId[],
+    options?: Parameters<OperationAvailabilityClient['get']>[1]
+  ): Promise<OperationAvailabilityResult> {
+    const data = await this.#call('/operations/availability/get', {
+      operations,
+      ...(options?.galleryContext ? { galleryContext: options.galleryContext } : {})
+    });
     if (!isAvailabilityResult(data)) throw invalidResponse();
     return data;
   }

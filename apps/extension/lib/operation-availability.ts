@@ -1,4 +1,5 @@
 import {
+  GatewayException,
   QUALIFICATION_GATED_OPERATION_IDS,
   type CredentialVaultStatus,
   type GatewaySettings,
@@ -93,23 +94,26 @@ export function resolveExtensionStaticOperationAvailability(
 
 /** Read only safe status, never settings/secrets or a stale startup protocol snapshot. */
 export function createExtensionOperationAvailabilityClient(
-  readStatus: () => Promise<AuthorizationStatus>
+  readStatus: (options?: Parameters<OperationAvailabilityClient['get']>[1]) => Promise<AuthorizationStatus>
 ): OperationAvailabilityClient {
   return {
-    async get(operations) {
+    async get(operations, options) {
       try {
-        const status = await readStatus();
+        const status = await readStatus(options);
         const protocol = status.protocol;
         if (
           !['empty', 'legacy', 'unlocked'].includes(status.state) ||
+          (options?.galleryContext !== undefined && protocol === undefined) ||
           (protocol !== undefined && protocol !== 'top' && protocol !== 'iop')
         )
           throw new Error('OPERATION_AVAILABILITY_UNAVAILABLE');
         return {
           items: operations.map((operation) => {
-            const selected = status.pool
-              ? selectAlibabaOperationProtocol(operation, {}, status.pool)
-              : protocol;
+            const selected = options?.galleryContext
+              ? protocol
+              : status.pool
+                ? selectAlibabaOperationProtocol(operation, {}, status.pool)
+                : protocol;
             return {
               operation,
               ...resolveExtensionStaticOperationAvailability(operation, selected),
@@ -119,12 +123,19 @@ export function createExtensionOperationAvailabilityClient(
             };
           })
         };
-      } catch {
+      } catch (error: unknown) {
+        const contextCode =
+          error instanceof GatewayException &&
+          ['GALLERY_CONTEXT_CHANGED', 'GALLERY_CONTEXT_INVALID', 'GALLERY_CONTEXT_UNTRUSTED'].includes(
+            error.gatewayError.code
+          )
+            ? error.gatewayError.code
+            : null;
         return {
           items: operations.map((operation) => ({
             operation,
             allowed: false,
-            reasonCode: 'OPERATION_AVAILABILITY_UNAVAILABLE'
+            reasonCode: contextCode ?? 'OPERATION_AVAILABILITY_UNAVAILABLE'
           }))
         };
       }

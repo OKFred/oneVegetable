@@ -18386,6 +18386,7 @@
         "required": ["requestId", "operations"],
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
+          "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "operations": {
             "type": "array",
             "minItems": 1,

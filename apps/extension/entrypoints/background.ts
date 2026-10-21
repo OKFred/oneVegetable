@@ -638,8 +638,27 @@ async function executeCredentialVaultOperation(
       );
       return credentialVaultStatus(current);
     }
-    case 'status':
-      return credentialVaultStatus(state);
+    case 'status': {
+      const expected = asRecord(payload).galleryContext;
+      if (expected === undefined) return credentialVaultStatus(state);
+      const context = requireGalleryContext(expected);
+      assertGalleryContextId(context.identity, await opaqueGalleryId('extension:local-admin'));
+      const settings = await resolveAuthorization(
+        (await getUnlockedVault(state)).settings,
+        undefined,
+        undefined,
+        context.gateway,
+        'GALLERY_CONTEXT_CHANGED'
+      );
+      assertGalleryContextId(
+        context.storage,
+        await new ExtensionS3Service(s3LocalStore, (origins) =>
+          browser.permissions.contains({ origins })
+        ).contextId()
+      );
+      // Only safe metadata leaves the trusted background; no refresh or provider request.
+      return { ...(await credentialVaultStatus(state)), protocol: settings.protocol ?? 'top' };
+    }
     case 'get-settings':
       return editableSettings(state);
     case 'authorizations': {
@@ -1751,6 +1770,11 @@ function validateCredentialVaultPayload(
   operation: CredentialVaultRequest['operation'],
   payload: unknown
 ): void {
+  if (operation === 'status' && isRecord(payload) && 'galleryContext' in payload) {
+    const input = requireOnlyKeys(payload, ['galleryContext']);
+    requireGalleryContext(input.galleryContext);
+    return;
+  }
   if (['status', 'get-settings', 'authorizations', 'lock'].includes(operation)) {
     // Historical runtime callers sent an empty object for no-argument operations.
     // Retain that wire shape, without accepting any extra fields.

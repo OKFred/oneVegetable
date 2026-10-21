@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/node-gateway-credentials.json';
 import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
-import { galleryGatewayId } from '@one-vegetable/core/gallery-transfer-context';
+import { galleryGatewayId, opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
 import { validateAlibabaAuthorizationsSummary } from '@one-vegetable/core/gateway-credential-validators';
 import { applyNodeMigrations, openNodeDatabase, type NodeDatabaseHandle } from '../src/db/node-database';
 import {
@@ -11,7 +11,12 @@ import {
   StoredAlibabaCredentialProvider
 } from '../src/gateway/credential-vault';
 import { DualAlibabaAuthorization } from '../src/gateway/dual-authorization';
-import { CredentialBackedAlibabaGatewayClient } from '../src/gateway/alibaba-read-gateway';
+import {
+  AlibabaReadGatewayClient,
+  CredentialBackedAlibabaGatewayClient
+} from '../src/gateway/alibaba-read-gateway';
+import { createDocumentationReplayGateway } from '../src/gateway/documentation-replay';
+import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { createApiApp } from '../src/app';
 import { AuthService } from '../src/auth/service';
 import { AdminService } from '../src/auth/admin-service';
@@ -20,6 +25,7 @@ import type { NetworkTransport } from '@one-vegetable/core';
 
 const databases: NodeDatabaseHandle[] = [];
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const db of databases.splice(0)) db.connection.close();
 });
 const now = Date.parse('2026-09-12T00:00:00Z');
@@ -70,6 +76,236 @@ function present<T>(value: T | null | undefined): T {
 }
 
 describe('independent TOP and IOP credentials', () => {
+  it.each(['mock', 'replay'] as const)(
+    'retains %s TOP availability only for the exact local context and rejects an unprovable real gateway',
+    async (gatewayMode) => {
+      const { db } = await harness();
+      const auth = new AuthService({
+        repository: new SqlAuthRepository(db.executor),
+        bootstrapToken: 'bootstrap-token'
+      });
+      const session = await auth.bootstrap({
+        requestId: crypto.randomUUID(),
+        bootstrapToken: 'bootstrap-token',
+        username: 'admin',
+        password: 'long-correct-password'
+      });
+      const gateway = new MockGatewayClient(0);
+      const dispatch = vi.spyOn(gateway, 'request');
+      const app = createApiApp({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'test',
+        gatewayMode,
+        gateway,
+        authService: auth
+      });
+      const post = (target: ReturnType<typeof createApiApp>, path: string, body: object) =>
+        target.request(`/api/v1/${path}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Cookie: `ov_session=${session.sessionToken}` },
+          body: JSON.stringify({ requestId: crypto.randomUUID(), ...body })
+        });
+      const contextResult = await post(app, 'gallery-transfers/context/get', {});
+      const envelope = (await contextResult.json()) as {
+        data: { identity: string; gateway: string; storage: null };
+      };
+      const context = envelope.data;
+      const scoped = await post(app, 'operations/availability/get', {
+        operations: ['listPhotos'],
+        galleryContext: context
+      });
+      expect(scoped.status).toBe(200);
+      expect(await scoped.json()).toMatchObject({
+        data: { items: [{ operation: 'listPhotos', allowed: true }] }
+      });
+      expect(
+        (
+          await post(app, 'operations/availability/get', {
+            operations: ['listPhotos'],
+            galleryContext: { ...context, gateway: 'different-local-context' }
+          })
+        ).status
+      ).toBe(409);
+      const real = createApiApp({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'test',
+        gatewayMode: 'real',
+        gateway,
+        authService: auth
+      });
+      const unknown = await post(real, 'operations/availability/get', {
+        operations: ['listPhotos'],
+        galleryContext: context
+      });
+      expect(unknown.status).toBe(503);
+      expect(await unknown.json()).toMatchObject({ error: { code: 'GALLERY_CONTEXT_UNAVAILABLE' } });
+      expect(dispatch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('reads the protocol of frozen TOP/IOP and documentation replay credentials without dispatch', async () => {
+    const { provider, dual } = await harness();
+    const top = new AlibabaReadGatewayClient(present(await provider.credentialSnapshot()));
+    const iop = new AlibabaReadGatewayClient(
+      present(await (await dual.managementProvider('iop')).credentialSnapshot?.())
+    );
+    const replay = createDocumentationReplayGateway();
+    for (const [gateway, protocol] of [
+      [top, 'top'],
+      [iop, 'iop'],
+      [replay, 'top']
+    ] as const) {
+      const dispatch = vi.spyOn(gateway, 'request');
+      const context = {
+        identity: 'route-validated-actor',
+        gateway: await gateway.galleryGatewayContextId(),
+        storage: null
+      };
+      expect(await gateway.operationProtocol('listPhotos', {}, { galleryContext: context })).toBe(protocol);
+      await expect(
+        gateway.operationProtocol(
+          'listPhotos',
+          {},
+          { galleryContext: { ...context, gateway: 'stale-context' } }
+        )
+      ).rejects.toMatchObject({ gatewayError: { code: 'GALLERY_CONTEXT_CHANGED' } });
+      expect(dispatch).not.toHaveBeenCalled();
+    }
+  });
+  it('pins availability to trusted gallery context without refreshing or dispatching, while retaining legacy routing', async () => {
+    const send = vi.fn<NetworkTransport['send']>(() =>
+      Promise.reject(new Error('No provider calls allowed'))
+    );
+    const { dual, db } = await harness({ send });
+    const repository = new SqlAuthRepository(db.executor);
+    const auth = new AuthService({ repository, bootstrapToken: 'bootstrap-token' });
+    const session = await auth.bootstrap({
+      requestId: crypto.randomUUID(),
+      bootstrapToken: 'bootstrap-token',
+      username: 'admin',
+      password: 'long-correct-password'
+    });
+    const identity = await opaqueGalleryId(session.user.id);
+    const contextFor = async (protocol: 'top' | 'iop') => ({
+      identity,
+      gateway: await galleryGatewayId(
+        present(await (await dual.managementProvider(protocol)).credentialSnapshot?.())
+      ),
+      storage: null
+    });
+    const top = await contextFor('top');
+    const iop = await contextFor('iop');
+    const refresh = vi.spyOn(StoredAlibabaCredentialProvider.prototype, 'requireCredentials');
+    const gateway = new CredentialBackedAlibabaGatewayClient(dual, { transport: { send } });
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      authService: auth,
+      gateway,
+      gatewayAuthorizations: dual
+    });
+    const request = (body: object = {}, authenticated = true) =>
+      app.request('/api/v1/operations/availability/get', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authenticated ? { Cookie: `ov_session=${session.sessionToken}` } : {})
+        },
+        body: JSON.stringify({
+          requestId: crypto.randomUUID(),
+          operations: ['listPhotos', 'createTradeOrder'],
+          ...body
+        })
+      });
+    const legacy = await request();
+    expect(legacy.status).toBe(200);
+    expect(await legacy.json()).toMatchObject({
+      data: {
+        items: [
+          { operation: 'listPhotos', allowed: true },
+          { operation: 'createTradeOrder', allowed: false }
+        ]
+      }
+    });
+    const pinned = await request({ galleryContext: iop });
+    expect(pinned.status).toBe(200);
+    expect(await pinned.json()).toMatchObject({
+      data: {
+        items: [
+          {
+            operation: 'listPhotos',
+            protocolSupport: {
+              protocol: 'iop',
+              constraints: ['photo-group-required', 'photo-group-scope-unverified']
+            }
+          },
+          { operation: 'createTradeOrder', allowed: false }
+        ]
+      }
+    });
+    const historical = await request({ galleryContext: top });
+    expect(historical.status).toBe(200);
+    const historicalBody = (await historical.json()) as { data: { items: Record<string, unknown>[] } };
+    expect(historicalBody.data.items[0]).not.toHaveProperty('protocolSupport');
+    const failedSnapshot = vi
+      .spyOn(gateway, 'operationProtocol')
+      .mockRejectedValueOnce(new Error('private-provider-message'));
+    const failed = await request({ galleryContext: iop });
+    expect(failed.status).toBe(500);
+    const failedBody = await failed.text();
+    expect(failedBody).toContain('OPERATION_AVAILABILITY_FAILED');
+    expect(failedBody).not.toContain('private-provider-message');
+    failedSnapshot.mockRestore();
+    expect((await request({ galleryContext: iop }, false)).status).toBe(401);
+    for (const changed of [
+      { ...iop, identity: 'another-actor' },
+      { ...iop, gateway: 'unknown-gateway' },
+      { ...iop, storage: 'changed-storage' }
+    ]) {
+      const rejected = await request({ galleryContext: changed });
+      expect(rejected.status).toBe(409);
+      expect(await rejected.json()).toMatchObject({
+        error: { code: 'GALLERY_CONTEXT_CHANGED', retryable: false }
+      });
+    }
+    expect((await request({ protocol: 'iop' })).status).toBe(400);
+    await (await dual.service('iop')).clear(1);
+    const cleared = await request({ galleryContext: iop });
+    expect(cleared.status).toBe(409);
+    expect(await cleared.json()).toMatchObject({ error: { code: 'GALLERY_CONTEXT_CHANGED' } });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+    refresh.mockRestore();
+  });
+
+  it('matches a single-provider context only through a read-only credential snapshot', async () => {
+    const { provider } = await harness();
+    const credentials = present(await provider.credentialSnapshot());
+    const context = {
+      identity: 'validated-by-route',
+      gateway: await galleryGatewayId(credentials),
+      storage: null
+    };
+    const refresh = vi.spyOn(provider, 'requireCredentials');
+    const gateway = new CredentialBackedAlibabaGatewayClient(provider);
+    expect(await gateway.operationProtocol('listPhotos', {}, { galleryContext: context })).toBe('top');
+    await expect(
+      gateway.operationProtocol('listPhotos', {}, { galleryContext: { ...context, gateway: 'changed' } })
+    ).rejects.toMatchObject({ gatewayError: { code: 'GALLERY_CONTEXT_CHANGED' } });
+    expect(refresh).not.toHaveBeenCalled();
+    const withoutSnapshot = new CredentialBackedAlibabaGatewayClient({
+      status: () => provider.status(),
+      requireCredentials: () => provider.requireCredentials()
+    });
+    await expect(
+      withoutSnapshot.operationProtocol('listPhotos', {}, { galleryContext: context })
+    ).rejects.toMatchObject({ gatewayError: { code: 'GALLERY_CONTEXT_UNAVAILABLE' } });
+    expect(refresh).not.toHaveBeenCalled();
+  });
   it('preserves the legacy primary ciphertext and routes configured profiles without claiming a confirmed binding', async () => {
     const { dual, service, repository, cipher } = await harness();
     const row = await repository.find();

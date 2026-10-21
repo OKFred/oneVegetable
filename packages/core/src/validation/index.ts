@@ -30,6 +30,7 @@ import {
 } from '../generated/validators-core';
 
 import type { AlibabaCredentialAcquisitionState } from '../alibaba-credential-acquisition';
+import type { components } from '../generated/api';
 
 import type {
   CapabilityCallRequest,
@@ -145,7 +146,7 @@ export const validateLogisticsOrderInput = (value: unknown, locale?: 'en' | 'zh'
   runValidator<LogisticsOrderDraft>(validateLogisticsOrderDraft as StandaloneValidator, value, locale);
 
 export const validateOperationAvailabilityInput = (value: unknown, locale?: 'en' | 'zh') =>
-  runValidator<{ requestId: string; operations: string[] }>(
+  runValidator<components['schemas']['OperationAvailabilityRequest']>(
     validateOperationAvailabilityRequest as StandaloneValidator,
     value,
     locale
