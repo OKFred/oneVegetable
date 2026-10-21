@@ -9,6 +9,7 @@ import fixture from '../../../mock/data/photos.json';
 import taskFixture from '../../../mock/data/gallery-transfer-task.json';
 import { validateGalleryTransferTask } from '@one-vegetable/core/gallery-transfer-task';
 import type { AppServices } from '../src/lib/services';
+import { GatewayException } from '@one-vegetable/core/errors';
 
 function setup() {
   const gateway = new MockGatewayClient(0);
@@ -23,6 +24,29 @@ function setup() {
   return { gateway, driver: new BrowserGalleryTransferDriver(services, () => undefined) };
 }
 describe('gallery transfer readback', () => {
+  it.each([
+    'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
+    'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',
+    'ALIBABA_IOP_RESPONSE_INVALID'
+  ])('keeps %s actionable without changing uncertain receipts or issuing another upload', async (code) => {
+    const s = setup();
+    const task = validateGalleryTransferTask(structuredClone(taskFixture));
+    task.direction = 'import';
+    const item = task.items[0];
+    if (!item) throw new Error('fixture');
+    Object.assign(item, {
+      status: 'unconfirmed',
+      fileId: 'known-receipt',
+      targetGroupId: '2001',
+      requestId: crypto.randomUUID()
+    });
+    const send = vi
+      .spyOn(s.gateway, 'request')
+      .mockRejectedValue(new GatewayException({ code, message: 'hidden provider body', retryable: false }));
+    expect(await s.driver.verify(task, item)).toEqual({ ...item, errorCode: code });
+    expect(send).toHaveBeenCalledOnce();
+    expect(send.mock.calls[0]?.[0]).toBe('listPhotos');
+  });
   it('bounds cumulative ZIP bytes, including already-confirmed items after reload', () => {
     const task = validateGalleryTransferTask(structuredClone(taskFixture));
     task.direction = 'export';

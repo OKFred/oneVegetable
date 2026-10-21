@@ -11,6 +11,7 @@ import {
 } from '@one-vegetable/core';
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import type { GalleryTransferDriver } from '@one-vegetable/core/gallery-transfer-runner';
+import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 import {
   GalleryTaskError,
   type GalleryTransferItemV1 as Item,
@@ -23,7 +24,11 @@ import {
   readGalleryTransferArchive,
   type GalleryTransferArchive
 } from './gallery-transfer-archive';
-import { galleryImportReadback } from './gallery-import-readback';
+import {
+  galleryCanQueryAllPhotos,
+  galleryImportReadback,
+  galleryReadbackFailure
+} from './gallery-import-readback';
 
 export function transferOptions(task: Task, item?: Item): GalleryRequestOptions {
   return { galleryContext: task.context, ...(item?.requestId ? { requestId: item.requestId } : {}) };
@@ -289,7 +294,9 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
           photos = await allGalleryPhotos(this.services.gateway, item.targetGroupId, options);
           this.verifiedPages.set(item.targetGroupId, photos);
         }
-        const photo = await galleryImportReadback(this.services.gateway, task, item, photos);
+        const photo = await galleryImportReadback(this.services.gateway, task, item, photos, () =>
+          galleryCanQueryAllPhotos(this.services, task.context)
+        );
         if (photo)
           return {
             ...item,
@@ -307,11 +314,8 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
           return { ...item, status: 'confirmed', errorCode: null };
       }
     } catch (error: unknown) {
-      if (
-        error instanceof GalleryTaskError &&
-        ['GALLERY_TASK_EXISTING_OTHER_GROUP', 'GALLERY_TASK_SOURCE_CHANGED'].includes(error.code)
-      )
-        return { ...item, errorCode: error.code };
+      const code = safeCode(error);
+      if (galleryReadbackFailure(code)) return { ...item, errorCode: code };
       /* A failed read must never authorize repeating a mutation. */
     }
     return { ...item, errorCode: 'GALLERY_TASK_UNCONFIRMED' };

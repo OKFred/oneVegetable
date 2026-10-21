@@ -88,7 +88,7 @@ describe('ErrorNotice', () => {
     expect(wrapper.text()).not.toContain('errors.codes.');
     const chinese = wrapper.text();
     if (code === 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH') {
-      expect(chinese).toContain('分组不符');
+      expect(chinese).toContain('不代表空组');
       expect(chinese).toContain('已停止');
       expect(chinese).toContain('TOP');
     }

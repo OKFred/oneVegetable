@@ -10,7 +10,7 @@ import {
 import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 import { useGalleryTransfers, downloadGalleryFile } from '../lib/gallery-transfer-service';
 import { formatDateTime } from '../lib/date-time';
-import { useUiI18n } from '../i18n';
+import { hasUiTranslation, useUiI18n } from '../i18n';
 import Sheet from './ui/Sheet.vue';
 import Button from './ui/Button.vue';
 import ListActionButton from './ListActionButton.vue';
@@ -19,6 +19,10 @@ import PlatformReadbackNotice from './PlatformReadbackNotice.vue';
 
 const transfers = useGalleryTransfers();
 const { t } = useUiI18n();
+function errorMessage(code: string): string {
+  const key = `errors.codes.${code}`;
+  return hasUiTranslation(key) ? t(key) : t('photos.tasks.error', { code });
+}
 const filter = ref('all');
 const busy = ref(false);
 const pending = ref<{
@@ -251,7 +255,7 @@ async function pause(): Promise<void> {
             {{
               item.errorCode === 'GALLERY_TASK_EXISTING_OTHER_GROUP'
                 ? t('photos.tasks.existingOtherGroup')
-                : t('photos.tasks.error', { code: item.errorCode })
+                : errorMessage(item.errorCode)
             }}
           </p>
           <p

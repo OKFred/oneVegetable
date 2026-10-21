@@ -1,23 +1,58 @@
 import { decodeBase64, type GatewayClient, type Photo } from '@one-vegetable/core';
 import {
   GalleryTaskError,
+  type GalleryTransferContext,
   type GalleryTransferTaskV1,
   type GalleryTransferItemV1
 } from '@one-vegetable/core/gallery-transfer-task';
 import { galleryAssetSha256 } from './gallery-transfer-archive';
+import type { AppServices } from './services';
+
+/** Availability is a preflight, not permission to change the task's bound context. */
+export async function galleryCanQueryAllPhotos(
+  services: Pick<AppServices, 'mode' | 'operationAvailability'>,
+  context: GalleryTransferContext
+): Promise<boolean> {
+  if (!services.operationAvailability) {
+    if (services.mode === 'mock') return true;
+    throw new GalleryTaskError('OPERATION_AVAILABILITY_UNAVAILABLE');
+  }
+  const { items } = await services.operationAvailability.get(['listPhotos'], { galleryContext: context });
+  const decision = items.find((item) => item.operation === 'listPhotos');
+  if (!decision?.allowed)
+    throw new GalleryTaskError(decision?.reasonCode ?? 'OPERATION_AVAILABILITY_UNAVAILABLE');
+  return !decision.protocolSupport?.constraints.includes('photo-group-required');
+}
+
+export function galleryReadbackFailure(code: string): boolean {
+  return [
+    'GALLERY_TASK_EXISTING_OTHER_GROUP',
+    'GALLERY_TASK_SOURCE_CHANGED',
+    'GALLERY_TASK_PAGINATION',
+    'GALLERY_CONTEXT_CHANGED',
+    'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
+    'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',
+    'ALIBABA_IOP_RESPONSE_INVALID',
+    'OPERATION_AVAILABILITY_UNAVAILABLE'
+  ].includes(code);
+}
 
 /** A bounded exact-ID lookup, never a name match or a scan of the whole merchant library. */
 export async function galleryImportReadback(
   gateway: GatewayClient,
   task: GalleryTransferTaskV1,
   item: GalleryTransferItemV1,
-  targetPhotos: readonly Photo[]
+  targetPhotos: readonly Photo[],
+  canQueryAllPhotos: () => Promise<boolean> = () => Promise.resolve(true)
 ): Promise<Photo | null> {
   if (!item.fileId || !item.targetGroupId) return null;
   const target = targetPhotos.find(
     (photo) => photo.id === item.fileId && photo.groupId === item.targetGroupId
   );
   if (target) return target;
+  // IOP has no documented all-groups lookup. Never scan other groups or use
+  // an unscoped response to claim an upload in a different directory.
+  if (!(await canQueryAllPhotos())) return null;
   const options = { galleryContext: task.context };
   const page = await gateway.request('listPhotos', { page: 1, pageSize: 100 }, options);
   const existing = page.items.find((photo) => photo.id === item.fileId);

@@ -28,6 +28,7 @@ import {
   prepareTemplateMaterialImport
 } from '../src/lib/template-material-transfer';
 import type { AppServices } from '../src/lib/services';
+import { GatewayException } from '@one-vegetable/core/errors';
 
 const servicesToDispose: GalleryTransferService[] = [];
 const unsupported = () => Promise.reject(new Error('Unused offline service'));
@@ -134,6 +135,49 @@ async function materialPackage(withImage = true): Promise<TemplateMaterialPackag
 }
 
 describe('template material runtime with persistent gallery tasks', () => {
+  it('preserves IOP scope failures and an existing receipt without creating a template or resending an upload', async () => {
+    const s = setup();
+    const plan = await prepareTemplateMaterialImport(
+      s.transfers,
+      await materialPackage(),
+      '2001',
+      'Chosen group',
+      () => true
+    );
+    const task = required(plan.task);
+    await s.transfers.create(task, required(plan.archiveBytes), false);
+    const requestId = crypto.randomUUID();
+    await s.transfers.repository.update(task.id, (current) => {
+      current.status = 'attention';
+      Object.assign(required(current.items[0]), {
+        status: 'unconfirmed',
+        requestId,
+        fileId: 'known-receipt'
+      });
+    });
+    s.request.mockImplementation(async (operation, payload, options) => {
+      if (operation === 'listPhotos')
+        throw new GatewayException({
+          code: 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
+          message: 'hidden platform body',
+          retryable: false
+        });
+      return s.originalRequest(operation, payload, options);
+    });
+    const create = vi.spyOn(s.client, 'create');
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, plan, 'copy', () => true)
+    ).rejects.toThrow('ALIBABA_IOP_PHOTO_SCOPE_MISMATCH');
+    const saved = required((await s.transfers.repository.get(task.id)).items[0]);
+    expect(saved).toMatchObject({
+      status: 'unconfirmed',
+      fileId: 'known-receipt',
+      requestId,
+      errorCode: 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH'
+    });
+    expect(s.request.mock.calls.filter(([operation]) => operation === 'uploadPhoto')).toHaveLength(0);
+    expect(create).not.toHaveBeenCalled();
+  });
   it('uses the current confirmation when resuming a pending task with previous reuse consent', async () => {
     const s = setup();
     const pack = await materialPackage();

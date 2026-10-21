@@ -31,6 +31,7 @@ import {
   type TemplateBackupPlan
 } from '../lib/template-s3';
 import { useListIdentityScope } from '../lib/list-identity-scope';
+import { galleryCanQueryAllPhotos } from '../lib/gallery-import-readback';
 import { downloadGalleryFile, useGalleryTransfers } from '../lib/gallery-transfer-service';
 import { readTemplateMaterialArchive, createTemplateMaterialArchive } from '../lib/template-material-archive';
 import {
@@ -114,6 +115,7 @@ const materialBackup = shallowRef<TemplateMaterialBackupPlan | null>(null);
 const archive = shallowRef<Uint8Array | null>(null);
 const targetGroup = shallowRef<PhotoGroup | null>(null);
 const reuseExistingPhotos = ref(false);
+const scopedPhotosOnly = ref(false);
 const reusePermissionOrigins = ref<string[]>([]);
 const reusePermissionHosts = computed(() =>
   reusePermissionOrigins.value.map((origin) => new URL(origin.slice(0, -2)).hostname).join(', ')
@@ -306,11 +308,19 @@ async function checkUploadPermission(): Promise<void> {
       }
     }
     if (!operationAvailability) return;
-    const result = await operationAvailability.get(['uploadPhoto']);
+    const context = materialImport.value?.context;
+    const result = context
+      ? await operationAvailability.get(['uploadPhoto', 'listPhotos'], { galleryContext: context })
+      : await operationAvailability.get(['uploadPhoto', 'listPhotos']);
     assertCurrent();
     const decision = result.items.find((item) => item.operation === 'uploadPhoto');
     uploadAllowed.value = decision?.allowed === true;
     uploadReason.value = decision?.reasonCode ?? 'OPERATION_AVAILABILITY_UNAVAILABLE';
+    scopedPhotosOnly.value =
+      result.items
+        .find((item) => item.operation === 'listPhotos')
+        ?.protocolSupport?.constraints.includes('photo-group-required') === true;
+    if (scopedPhotosOnly.value) reuseExistingPhotos.value = false;
   } catch {
     if (isCurrent()) permissionReason.value = 'permissionUnavailable';
   } finally {
@@ -460,8 +470,28 @@ async function prepare(): Promise<void> {
         isCurrent,
         reuseExistingPhotos.value
       );
-      if (requiresUpload.value && reuseExistingPhotos.value && services.mode === 'extension') {
-        const page = await services.gateway.request('listPhotos', { page: 1, pageSize: 100 });
+      const context = materialImport.value.context;
+      if (requiresUpload.value && context) {
+        const canReadAll = await galleryCanQueryAllPhotos(services, context);
+        assertCurrent();
+        scopedPhotosOnly.value = !canReadAll;
+        if (!canReadAll && reuseExistingPhotos.value) {
+          reuseExistingPhotos.value = false;
+          throw templateError('ALIBABA_IOP_PHOTO_GROUP_REQUIRED');
+        }
+      }
+      if (
+        requiresUpload.value &&
+        reuseExistingPhotos.value &&
+        !scopedPhotosOnly.value &&
+        services.mode === 'extension'
+      ) {
+        if (!context) throw templateError('GALLERY_CONTEXT_UNAVAILABLE');
+        const page = await services.gateway.request(
+          'listPhotos',
+          { page: 1, pageSize: 100 },
+          { galleryContext: context }
+        );
         assertCurrent();
         reusePermissionOrigins.value = [
           ...new Set(
@@ -727,11 +757,12 @@ async function execute(): Promise<void> {
                   isCurrent()
                 "
                 :model-value="targetGroup?.id ?? ''"
+                :allow-all="false"
                 @select="selectGroup"
               />
             </fieldset>
             <p v-if="validGroup" class="text-sm">{{ mt('selectedGroup', { name: targetGroup?.name }) }}</p>
-            <label class="flex items-start gap-2 text-sm">
+            <label v-if="!scopedPhotosOnly" class="flex items-start gap-2 text-sm">
               <input
                 v-model="reuseExistingPhotos"
                 type="checkbox"
@@ -741,7 +772,11 @@ async function execute(): Promise<void> {
               />
               {{ mt('reuseExisting') }}
             </label>
-            <p class="text-xs text-muted-foreground">{{ mt('reuseExplanation') }}</p>
+            <p class="text-xs text-muted-foreground">
+              {{
+                scopedPhotosOnly ? t('errors.codes.ALIBABA_IOP_PHOTO_GROUP_REQUIRED') : mt('reuseExplanation')
+              }}
+            </p>
             <p v-if="!materialImport" class="text-sm">{{ mt('uploadCount', { count: images }) }}</p>
             <p v-else class="text-sm">
               {{ mt('preparedImages', { uploads: imagePlan.uploads, reused: imagePlan.reused }) }}

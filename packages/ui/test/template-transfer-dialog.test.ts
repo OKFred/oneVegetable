@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/template-library.json';
 import configuration from '../../../mock/data/template-library-s3.json';
 import materialFixture from '../../../mock/data/template-material-ui/package.json';
+import photoFixture from '../../../mock/data/photos.json';
 import { MemoryProductDescriptionTemplateClient } from '../../core/src/product-description-template-client';
 import { parseTemplateBundle, templateError } from '../../core/src/template-library';
 import type { S3StorageControl } from '../../core/src/s3-storage';
@@ -82,7 +83,7 @@ beforeEach(() => {
     .mockReset()
     .mockImplementation(
       (_transfers: unknown, pack: TemplateMaterialPackage, groupId: string, groupName: string) =>
-        Promise.resolve({ package: pack, groupId, groupName })
+        Promise.resolve({ package: pack, groupId, groupName, context: photoFixture.transferContext })
     );
   mocks.executeImport
     .mockReset()
@@ -114,7 +115,10 @@ async function setup(
   const permissionRequest = vi.fn().mockResolvedValue(true);
   const availability = {
     get: vi.fn().mockResolvedValue({
-      items: [{ operation: 'uploadPhoto', allowed: true, reasonCode: 'ADMIN_MUTATION_ALLOWED' }]
+      items: [
+        { operation: 'uploadPhoto', allowed: true, reasonCode: 'ADMIN_MUTATION_ALLOWED' },
+        { operation: 'listPhotos', allowed: true, reasonCode: 'READ_ALLOWED' }
+      ]
     })
   };
   const s3 = {
@@ -222,6 +226,71 @@ async function setup(
 }
 
 describe('template package confirmation and safe writes', () => {
+  it('uses the frozen upload context even when an unbound dual-profile lookup advertises TOP support', async () => {
+    const get = vi.fn().mockImplementation((_operations, options) =>
+      Promise.resolve({
+        items: [
+          { operation: 'uploadPhoto', allowed: true, reasonCode: null },
+          {
+            operation: 'listPhotos',
+            allowed: true,
+            reasonCode: null,
+            ...(options
+              ? {
+                  protocolSupport: {
+                    protocol: 'iop',
+                    state: 'partial',
+                    methods: ['alibaba.icbu.photobank.list'],
+                    constraints: ['photo-group-required'],
+                    verification: 'documented',
+                    fallbackProtocol: 'top'
+                  }
+                }
+              : {})
+          }
+        ]
+      })
+    );
+    const s = await setup('import', { services: { operationAvailability: { get } } });
+    const request = vi.spyOn(s.gateway, 'request');
+    await s.chooseBytes();
+    await s.selectGroup();
+    await s.body.get('[data-testid="template-reuse-existing-photos"]').setValue(true);
+    await s.button('Import').trigger('click');
+    await vi.waitFor(() => {
+      expect(s.body.text()).toContain('Choose a specific group for IOP photos');
+    });
+    expect(get).toHaveBeenCalledWith(['listPhotos'], { galleryContext: photoFixture.transferContext });
+    expect(s.body.find('[data-testid="template-reuse-existing-photos"]').exists()).toBe(false);
+    expect(request.mock.calls.some(([operation]) => operation === 'listPhotos')).toBe(false);
+    expect(mocks.executeImport).not.toHaveBeenCalled();
+  });
+  it('restricts IOP material imports to a concrete group without offering an all-groups reuse lookup', async () => {
+    const get = vi.fn().mockResolvedValue({
+      items: [
+        { operation: 'uploadPhoto', allowed: true, reasonCode: null },
+        {
+          operation: 'listPhotos',
+          allowed: true,
+          reasonCode: null,
+          protocolSupport: {
+            state: 'partial',
+            methods: ['alibaba.icbu.photobank.list'],
+            constraints: ['photo-group-required'],
+            verification: 'documented',
+            fallbackProtocol: 'top'
+          }
+        }
+      ]
+    });
+    const s = await setup('import', { services: { operationAvailability: { get } } });
+    const request = vi.spyOn(s.gateway, 'request');
+    await s.chooseBytes();
+    expect(s.body.find('[data-testid="template-reuse-existing-photos"]').exists()).toBe(false);
+    expect(s.dialog.getComponent(PhotoGroupNavigation).props('allowAll')).toBe(false);
+    expect(s.body.text()).toContain('Choose a specific group for IOP photos');
+    expect(request.mock.calls.some(([operation]) => operation === 'listPhotos')).toBe(false);
+  });
   it('previews a valid file and creates nothing before confirmation; duplicates default to skip', async () => {
     const { choose, create, button, body, client } = await setup();
     await choose();
@@ -315,7 +384,7 @@ describe('template material UI without provider writes', () => {
     expect(body.text()).toContain('Safe material preview');
     expect(body.find('script').exists()).toBe(false);
     expect(body.find('img').exists()).toBe(false);
-    expect(availability.get).toHaveBeenCalledWith(['uploadPhoto']);
+    expect(availability.get).toHaveBeenCalledWith(['uploadPhoto', 'listPhotos']);
     expect(button('Import').attributes('disabled')).toBeDefined();
     expect(mocks.prepareImport).not.toHaveBeenCalled();
     expect(mocks.executeImport).not.toHaveBeenCalled();

@@ -12,7 +12,7 @@ import fixture from '../../../mock/data/template-material-deduplication.json';
 import image from '../../../mock/data/gallery-task-assets.json';
 import taskFixture from '../../../mock/data/gallery-transfer-task.json';
 import photos from '../../../mock/data/photos.json';
-import { galleryImportReadback } from '../src/lib/gallery-import-readback';
+import { galleryCanQueryAllPhotos, galleryImportReadback } from '../src/lib/gallery-import-readback';
 import { galleryAssetSha256 } from '../src/lib/gallery-transfer-archive';
 
 async function setup() {
@@ -45,6 +45,41 @@ async function setup() {
 }
 
 describe('deduplicated gallery image readback', () => {
+  it('does not query all groups or reuse another group in IOP-only mode, even with old reuse consent', async () => {
+    const s = await setup();
+    s.task.reuseExistingPhotos = true;
+    const get = vi.fn().mockResolvedValue({
+      items: [
+        {
+          operation: 'listPhotos',
+          allowed: true,
+          reasonCode: null,
+          protocolSupport: { constraints: ['photo-group-required'] }
+        }
+      ]
+    });
+    const canReadAll = () =>
+      galleryCanQueryAllPhotos({ mode: 'extension', operationAvailability: { get } }, s.task.context);
+    expect(await galleryImportReadback(s.gateway, s.task, s.item, [], canReadAll)).toBeNull();
+    expect(get).toHaveBeenCalledWith(['listPhotos'], { galleryContext: s.task.context });
+    expect(s.request).not.toHaveBeenCalled();
+  });
+  it('fails closed when real availability cannot be read; TOP remains eligible for its exact-ID lookup', async () => {
+    const { task } = await setup();
+    await expect(galleryCanQueryAllPhotos({ mode: 'bff' }, task.context)).rejects.toThrow(
+      'OPERATION_AVAILABILITY_UNAVAILABLE'
+    );
+    const get = vi.fn().mockResolvedValue({
+      items: [{ operation: 'listPhotos', allowed: false, reasonCode: 'AUTH_REQUIRED' }]
+    });
+    await expect(
+      galleryCanQueryAllPhotos({ mode: 'extension', operationAvailability: { get } }, task.context)
+    ).rejects.toThrow('AUTH_REQUIRED');
+    get.mockResolvedValue({ items: [{ operation: 'listPhotos', allowed: true, reasonCode: null }] });
+    expect(
+      await galleryCanQueryAllPhotos({ mode: 'bff', operationAvailability: { get } }, task.context)
+    ).toBe(true);
+  });
   it('retains strict target-group checks by default and never redownloads or rewrites', async () => {
     const s = await setup();
     await expect(galleryImportReadback(s.gateway, s.task, s.item, [])).rejects.toThrow(

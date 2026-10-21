@@ -34,7 +34,11 @@ import {
 } from '@one-vegetable/core/template-materials';
 import { galleryAssetSha256 } from './gallery-transfer-archive';
 import { allGalleryPhotos } from './gallery-transfer-driver';
-import { galleryImportReadback } from './gallery-import-readback';
+import {
+  galleryCanQueryAllPhotos,
+  galleryImportReadback,
+  galleryReadbackFailure
+} from './gallery-import-readback';
 import { templateMaterialGalleryArchive } from './template-material-archive';
 import type { GalleryTransferService } from './gallery-transfer-service';
 import type { AppServices } from './services';
@@ -300,6 +304,10 @@ export async function executeTemplateMaterialImport(
     const result = await transfers.repository.get(claimed.id);
     if (result.items.some((item) => item.errorCode === 'GALLERY_TASK_EXISTING_OTHER_GROUP'))
       throw templateError('TEMPLATE_MATERIAL_EXISTING_OTHER_GROUP');
+    const readbackFailure = result.items.find(
+      (item) => item.errorCode && galleryReadbackFailure(item.errorCode)
+    )?.errorCode;
+    if (readbackFailure) throw templateError(readbackFailure);
     if (
       result.status !== 'completed' ||
       result.items.some((item) => item.status !== 'confirmed' || !item.fileId)
@@ -315,7 +323,8 @@ export async function executeTemplateMaterialImport(
         services.gateway,
         { ...result, reuseExistingPhotos: plan.reuseExistingPhotos === true },
         item,
-        found
+        found,
+        () => galleryCanQueryAllPhotos(services, result.context)
       );
       await assertContext(services, plan.context, isCurrent);
       if (!photo) throw templateError('TEMPLATE_MATERIAL_UNCONFIRMED');

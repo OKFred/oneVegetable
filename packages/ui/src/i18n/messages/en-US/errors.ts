@@ -25,7 +25,7 @@ export const errors = {
     ALIBABA_IOP_PHOTO_GROUP_REQUIRED:
       'Choose a specific group for IOP photos; all photos and ungrouped photos are unsupported.',
     ALIBABA_IOP_PHOTO_SCOPE_MISMATCH:
-      'IOP returned images from another group. Stopped safely; consider adding TOP authorization.',
+      'IOP returned another group, not an empty folder. Stopped. Add TOP authorization.',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH:
       'The protocol and gateway endpoint do not match. Check the TOP or IOP configuration.',
     ALIBABA_IOP_RESPONSE_INVALID:
