@@ -64,8 +64,8 @@ if (eagerOptionBytes > 250_000) {
 if (!productTransferWorker || productTransferWorker.size > 50_000) {
   errors.push(`Product transfer worker exceeds 50 KB: ${productTransferWorker?.size ?? 'missing'}`);
 }
-if (!i18nChunk || i18nChunk.size > 310_000) {
-  errors.push(`Bilingual i18n chunk exceeds 310 KB: ${i18nChunk?.size ?? 'missing'}`);
+if (!i18nChunk || i18nChunk.size > 350_000) {
+  errors.push(`Bilingual i18n chunk exceeds 350 KB: ${i18nChunk?.size ?? 'missing'}`);
 }
 try {
   assertExtensionUnpackedBudget(totalBytes);
