@@ -20,10 +20,10 @@
   flex-direction: column;
 }
 .authorization-header {
-  height: 84px;
+  min-height: 76px;
   flex-shrink: 0;
   margin: 0;
-  padding: 16px 44px;
+  padding: 14px 32px;
   border-bottom: 1px solid hsl(var(--border));
 }
 .authorization-brand {
@@ -63,16 +63,19 @@
   width: 100%;
   flex: 1;
   display: grid;
-  grid-template-columns: 238px minmax(0, 1.16fr) minmax(320px, 1fr);
-  max-width: 1680px;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 24px;
+  align-content: start;
+  max-width: 1120px;
+  padding: 36px 24px;
   margin: 0 auto;
 }
 .authorization-steps {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 30px 44px;
-  border-right: 1px solid hsl(var(--border));
+  grid-row: 1 / span 2;
+  padding: 8px 20px;
 }
 .authorization-steps .connection-steps {
   display: flex;
@@ -144,13 +147,19 @@
   font-size: 13px;
 }
 .authorization-content {
-  padding: 78px 60px 40px;
+  padding: 32px;
   min-width: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card));
 }
 .authorization-summary {
-  margin: 40px 0;
-  padding: 36px 48px 32px 62px;
-  border-left: 1px solid hsl(var(--border));
+  grid-column: 2;
+  margin: 0;
+  padding: 24px 32px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card));
   min-width: 0;
 }
 .authorization-page .authorization-content > section,
@@ -164,9 +173,9 @@
   box-shadow: none;
 }
 .authorization-content h1 {
-  font-size: clamp(26px, 2.4vw, 34px);
+  font-size: clamp(24px, 2.4vw, 30px);
   line-height: 1.35;
-  margin: 40px 0 20px;
+  margin: 16px 0 12px;
   font-weight: 700;
   letter-spacing: -0.025em;
 }
@@ -180,15 +189,15 @@
 .authorization-success-icon {
   display: grid;
   place-items: center;
-  width: 68px;
-  height: 68px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
 .authorization-success-icon svg {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   stroke-width: 2.4;
 }
 .authorization-page .workbench-next-action {
@@ -199,20 +208,20 @@
   border-radius: 0;
 }
 .authorization-content .workbench-next-action > p:first-of-type {
-  margin: 0 0 44px;
-  font-size: 17px;
+  margin: 0 0 24px;
+  font-size: 15px;
   line-height: 1.8;
 }
 .authorization-page #workbenchAction {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 20px;
+  align-items: flex-start;
+  gap: 16px;
 }
 .authorization-page #applyWorkbench {
-  width: 100%;
-  min-height: 64px;
-  font-size: 18px;
+  min-width: 220px;
+  min-height: 48px;
+  font-size: 16px;
   font-weight: 600;
 }
 .authorization-page .authorization-back {
@@ -231,12 +240,12 @@
 }
 .authorization-profile-isolation {
   color: hsl(var(--muted-foreground));
-  margin-top: 36px;
-  font-size: 14px;
+  margin-top: 24px;
+  font-size: 13px;
 }
 .authorization-summary h2 {
-  margin: 0 0 26px;
-  font-size: 22px;
+  margin: 0 0 12px;
+  font-size: 18px;
   font-weight: 650;
 }
 .authorization-summary dl {
@@ -247,7 +256,7 @@
 }
 .authorization-summary dt,
 .authorization-summary dd {
-  padding: 16px 0;
+  padding: 12px 0;
   min-width: 0;
   border-bottom: 1px solid hsl(var(--border));
 }
@@ -265,7 +274,7 @@
 .authorization-page .authorization-summary details {
   border-top: 1px solid hsl(var(--border));
   border-bottom: 1px solid hsl(var(--border));
-  padding: 22px 0;
+  padding: 16px 0;
 }
 .authorization-page .authorization-summary details details {
   border: 0;
@@ -295,7 +304,7 @@
   width: 100%;
 }
 .authorization-page footer {
-  margin: 24px 24px 28px 242px;
+  margin: 0 24px 24px;
   color: hsl(var(--muted-foreground));
   font-size: 12px;
   text-align: center;
@@ -389,18 +398,55 @@
   font-size: 13px;
 }
 
+.authorization-page #authorization-other-methods {
+  margin-top: 24px;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 20px;
+}
+.authorization-page #authorization-other-methods > summary {
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+}
+.authorization-page #authorization-other-methods > section {
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.authorization-page #authorization-other-methods h2 {
+  font-size: 15px;
+}
+.authorization-header-actions > .authorization-back {
+  min-width: 0;
+  text-decoration: none;
+  margin-right: 8px;
+}
+.authorization-page #authorization-return-choices {
+  margin-bottom: 20px;
+}
+.authorization-page[data-authorization-editing='manual'] #discover,
+.authorization-page[data-authorization-editing='manual'] #nextStep,
+.authorization-page[data-authorization-editing='manual'] .authorization-content > #topEntries {
+  display: none;
+}
+.authorization-content:has(#authorization-other-methods[open]) #discover,
+.authorization-content:has(#authorization-other-methods[open]) #nextStep,
+.authorization-content:has(#authorization-other-methods[open]) > #topEntries {
+  display: none;
+}
+
 @media (max-width: 1160px) {
   .authorization-layout {
-    grid-template-columns: 180px minmax(0, 1fr) minmax(280px, 0.85fr);
+    grid-template-columns: 160px minmax(0, 1fr);
   }
   .authorization-steps {
     padding: 32px 20px;
   }
   .authorization-content {
-    padding: 48px 28px;
+    padding: 28px;
   }
   .authorization-summary {
-    padding: 12px 28px;
+    padding: 24px 28px;
   }
   .authorization-steps .connection-steps li {
     gap: 10px;
@@ -409,16 +455,18 @@
 }
 @media (max-width: 900px) {
   .authorization-header {
-    height: 76px;
+    min-height: 76px;
     padding: 12px 24px;
   }
   .authorization-layout {
-    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
   }
   .authorization-steps {
     grid-column: 1 / -1;
+    grid-row: auto;
     border-right: 0;
-    border-bottom: 1px solid hsl(var(--border));
+    border-bottom: 0;
     padding: 8px 24px;
   }
   .authorization-steps .connection-steps {
@@ -439,8 +487,9 @@
     padding: 32px 24px;
   }
   .authorization-summary {
-    margin: 20px 0;
-    padding: 12px 24px;
+    grid-column: 1;
+    margin: 0;
+    padding: 24px;
   }
   .authorization-page footer {
     margin: 20px 24px;
@@ -467,6 +516,7 @@
   .authorization-layout {
     display: flex;
     flex-direction: column;
+    padding: 16px;
   }
   .authorization-steps {
     padding: 8px 16px;
@@ -487,7 +537,7 @@
     height: 28px;
   }
   .authorization-content {
-    padding: 28px 20px 12px;
+    padding: 24px 20px;
   }
   .authorization-content h1 {
     font-size: 26px;
@@ -496,10 +546,8 @@
     font-size: 15px;
   }
   .authorization-summary {
-    margin: 12px 20px 0;
-    border-left: 0;
-    border-top: 1px solid hsl(var(--border));
-    padding: 28px 0 12px;
+    margin: 0;
+    padding: 24px 20px;
   }
   .authorization-summary h2 {
     font-size: 20px;
@@ -510,5 +558,13 @@
   .authorization-page #topEntries .actions > button {
     width: 100%;
     flex: auto;
+  }
+  .authorization-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .authorization-page #applyWorkbench {
+    min-width: 0;
+    width: 100%;
   }
 }

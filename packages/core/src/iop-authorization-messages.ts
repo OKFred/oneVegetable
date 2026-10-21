@@ -1,4 +1,6 @@
 export const zh = {
+  authorizationOtherMethods: '其他连接方式',
+  authorizationBackToMethods: '返回连接方式',
   authorizationBrandName: '一棵青菜',
   applicationName: '应用名称',
   authorizationExpiry: '授权到期',
@@ -222,6 +224,8 @@ export const zh = {
   AUTH_ORIGIN_DENIED: '此页面无权访问授权工具。'
 } as const;
 export const en: Record<keyof typeof zh, string> = {
+  authorizationOtherMethods: 'Other connection methods',
+  authorizationBackToMethods: 'Back to connection options',
   authorizationBrandName: 'oneVegetable',
   applicationName: 'App name',
   authorizationExpiry: 'Authorization expires',

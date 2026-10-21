@@ -46,6 +46,12 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   });
   await import('../entrypoints/authorization/main');
   await vi.advanceTimersByTimeAsync(0);
+  const otherMethods = document.querySelector<HTMLDetailsElement>('#authorization-other-methods');
+  expect(otherMethods?.open).toBe(false);
+  expect(otherMethods?.hidden).toBe(true);
+  expect(document.querySelector('#authorization-header-back')?.parentElement?.className).toBe(
+    'authorization-header-actions'
+  );
   const form = document.querySelector<HTMLFormElement>('#unlockForm');
   const input = document.querySelector<HTMLInputElement>('#unlockPassphrase');
   if (!form || !input) throw new Error('Missing authorization controls');
@@ -76,6 +82,14 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   );
   expect(input.value).toBe('');
   expect(form.hidden).toBe(true);
+  const management = document.querySelector<HTMLDetailsElement>('#connectionDetails');
+  if (!management) throw new Error('Missing management disclosure');
+  management.open = true;
+  state = 'empty';
+  window.dispatchEvent(new Event('focus'));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(management.open).toBe(false);
+  expect(otherMethods?.hidden).toBe(true);
   window.dispatchEvent(new Event('pagehide'));
   const count = mocks.send.mock.calls.length;
   await vi.advanceTimersByTimeAsync(60_000);

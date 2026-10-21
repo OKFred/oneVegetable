@@ -106,6 +106,8 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         });
         await expect(configuration.getByTestId('credential-import-actions')).toBeVisible();
         await expect(configuration.getByTestId('credential-connection-actions')).toBeVisible();
+        await expect(configuration.getByRole('note')).toHaveCount(0);
+        await expect(page.getByTestId('settings-independent-notice')).toHaveCount(1);
         expect(
           await worker.evaluate(
             () => (globalThis as unknown as { credentialTestPaths: string[] }).credentialTestPaths.length

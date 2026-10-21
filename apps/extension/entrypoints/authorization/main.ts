@@ -99,6 +99,15 @@ function collapseEntryPanels(): void {
   topFlow = null;
   el('#manualSection').hidden = true;
   el<HTMLDetailsElement>('#advancedJson').open = false;
+  el<HTMLDetailsElement>('#authorization-other-methods').open = false;
+  el('#authorization-return-choices').hidden = true;
+  document.body.dataset.authorizationEditing = '';
+}
+function showManualApplication(): void {
+  el('#manualSection').hidden = false;
+  el('#authorization-return-choices').hidden = false;
+  el<HTMLDetailsElement>('#authorization-other-methods').open = false;
+  document.body.dataset.authorizationEditing = 'manual';
 }
 function resetJsonEditor(): void {
   jsonExample = authorizationJsonExample(protocol);
@@ -167,16 +176,23 @@ function render(): void {
   el('#clear').textContent = t(protocol === 'top' ? 'clearTop' : 'clear');
   const waiting = summary?.state === 'waiting' || summary?.state === 'busy';
   const top = protocol === 'top';
+  el('#topUseIop').hidden = !top;
   const ready = summary?.state === 'ready';
-  updateAuthorizationLayout(protocol, ready, waiting);
+  updateAuthorizationLayout(
+    protocol,
+    ready,
+    waiting,
+    alternativeRequested,
+    !protectionReady && protectionState !== ''
+  );
   el('#workbenchStep').hidden = !ready;
   el('#nextStep').hidden = ready;
   el('#changeAuthorization').hidden = top || !ready;
   el<HTMLButtonElement>('#changeAuthorization').disabled = busy || !protectionReady;
-  const entryParent = ready ? el('#connectionDetails') : el('#alternatives').parentElement;
-  if (entryParent && el('#topEntries').parentElement !== entryParent) {
+  const entryParent = ready ? el('#connectionDetails') : el('.authorization-content');
+  if (el('#topEntries').parentElement !== entryParent) {
     if (ready) entryParent.append(el('#topEntries'));
-    else el('#alternatives').before(el('#topEntries'));
+    else el('#authorization-other-methods').before(el('#topEntries'));
   }
   el('#topEntries').hidden = !top || !protectionReady || !summary || waiting;
   for (const id of ['topReauthorize', 'topImport', 'topUseIop', 'chooseApplicationFile'])
@@ -272,7 +288,11 @@ function render(): void {
   el<HTMLButtonElement>('#clear').disabled = busy || waiting;
   el<HTMLButtonElement>('#save').disabled = busy;
   el('#manual').hidden = summary.state !== 'waiting';
-  if (waiting || summary.state === 'locked') el('#manualSection').hidden = true;
+  if (waiting || summary.state === 'locked') {
+    el('#manualSection').hidden = true;
+    el('#authorization-return-choices').hidden = true;
+    document.body.dataset.authorizationEditing = '';
+  }
   el('#cancel').hidden = summary.state !== 'waiting';
   el('#save').hidden = !summary.canSave;
 }
@@ -297,6 +317,11 @@ async function update(): Promise<void> {
     throw new Error('AUTH_ACTION_FAILED');
   const previousError = summary?.errorCode;
   const wasWaiting = summary?.state === 'waiting' || summary?.state === 'busy';
+  if (data.state === 'empty' && summary?.state !== 'empty') {
+    collapseEntryPanels();
+    el<HTMLDetailsElement>('#connectionDetails').open = false;
+    el<HTMLDetailsElement>('#protocolSettings').open = false;
+  }
   statusUnavailable = false;
   if (summary?.state !== data.state || data.expiresAtUtc !== summary.expiresAtUtc) exported = false;
   if (data.state === 'ready' && summary?.state !== 'ready') {
@@ -461,7 +486,7 @@ el<HTMLFormElement>('#protectionForm').onsubmit = (event) => {
 };
 el('#manualEntry').onclick = () => {
   alternativeRequested = true;
-  el('#manualSection').hidden = false;
+  showManualApplication();
   if (protocol === 'top') el<HTMLDetailsElement>('#topManualGuide').open = true;
   el('#form').scrollIntoView({ block: 'center' });
   el('#appName').focus({ preventScroll: true });
@@ -475,7 +500,7 @@ el('#topReauthorize').onclick = () => {
     el<HTMLButtonElement>('#reauthorize').click();
     return;
   }
-  el('#manualSection').hidden = false;
+  showManualApplication();
   el('#form').scrollIntoView({ block: 'center' });
   el('#appKey').focus({ preventScroll: true });
 };
@@ -485,6 +510,7 @@ el('#topImport').onclick = () => {
   topFlow = 'import';
   alternativeRequested = true;
   render();
+  el<HTMLDetailsElement>('#authorization-other-methods').open = true;
   el<HTMLDetailsElement>('#advancedJson').open = true;
   el('#alternatives').scrollIntoView({ block: 'start' });
 };
@@ -492,10 +518,15 @@ el('#changeAuthorization').onclick = () => {
   if (busy || !protectionReady) return;
   alternativeRequested = true;
   render();
+  el<HTMLDetailsElement>('#authorization-other-methods').open = true;
   el('#alternatives').scrollIntoView({ block: 'start' });
 };
 el('#topUseIop').onclick = () => {
   switchProtocol('iop');
+};
+el('#authorization-return-choices').onclick = () => {
+  collapseEntryPanels();
+  render();
 };
 el('#chooseApplicationFile').onclick = () => {
   el<HTMLInputElement>('#applicationFile').click();

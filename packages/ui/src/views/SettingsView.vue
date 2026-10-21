@@ -1106,7 +1106,6 @@ function confirmLanguagePreference(): void {
             <KeyRound class="size-4 text-primary" />
             <h2 class="font-semibold">{{ t('settings.credentials.title') }}</h2>
           </div>
-          <AlibabaIndependentNotice v-if="!dualSettings" class="mb-4" />
           <component
             :is="dualSettings ? CredentialActionsSection : 'div'"
             kind="import"
@@ -1356,7 +1355,6 @@ function confirmLanguagePreference(): void {
               </div>
             </form>
           </component>
-          <AlibabaIndependentNotice v-if="dualSettings" class="mt-4" />
         </CredentialConfigurationDialog>
         <ConfirmActionDialog
           :open="clearingAuthorization !== null"
@@ -1454,6 +1452,7 @@ function confirmLanguagePreference(): void {
           </div>
         </Card>
       </section>
+      <AlibabaIndependentNotice data-testid="settings-independent-notice" />
     </div>
   </div>
 </template>

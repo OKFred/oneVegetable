@@ -52,14 +52,25 @@ export function setupAuthorizationLayout(): void {
     label.dataset.text = ['connectStep', 'approveStep', 'useStep'][index];
     step.removeAttribute('data-text');
   }
+  const otherMethods = document.createElement('details');
+  otherMethods.id = 'authorization-other-methods';
+  otherMethods.innerHTML = '<summary data-text="authorizationOtherMethods"></summary>';
+  otherMethods.append(el('#alternatives'), jsonPanel);
   el('.authorization-content').append(
     el('#protectionSection'),
     statusPanel,
     el('#topEntries'),
-    el('#alternatives'),
     el('#manualSection'),
-    jsonPanel
+    otherMethods
   );
+  el('#protocolSettings').append(el('#topUseIop'));
+  const returnChoices = document.createElement('button');
+  returnChoices.id = 'authorization-return-choices';
+  returnChoices.type = 'button';
+  returnChoices.className = 'authorization-back';
+  returnChoices.dataset.text = 'authorizationBackToMethods';
+  returnChoices.hidden = true;
+  el('#manualSection').before(returnChoices);
   el('.authorization-summary').append(summaryPanel, protocolPanel);
   managementToggle(protocolPanel);
   const summaryTitle = summaryPanel.querySelector('h2');
@@ -94,8 +105,8 @@ export function setupAuthorizationLayout(): void {
     el('#connectionDetails').prepend(dates);
   }
   el('#protocolBadge').classList.add('authorization-sr-only');
-  el('.authorization-steps').insertAdjacentHTML(
-    'beforeend',
+  el('.authorization-header-actions').insertAdjacentHTML(
+    'afterbegin',
     '<a id="authorization-header-back" class="authorization-back"><span></span><span data-text="returnSettings"></span></a>'
   );
   el<HTMLAnchorElement>('#authorization-header-back').href =
@@ -112,8 +123,24 @@ function managementToggle(panel: HTMLElement): void {
       !el<HTMLDetailsElement>('#connectionDetails').open;
   });
 }
-export function updateAuthorizationLayout(protocol: 'top' | 'iop', ready: boolean, waiting: boolean): void {
+export function updateAuthorizationLayout(
+  protocol: 'top' | 'iop',
+  ready: boolean,
+  waiting: boolean,
+  alternativeRequested = false,
+  showProtection = false
+): void {
   document.body.dataset.authorizationReady = String(ready);
+  el('#authorization-status-panel').hidden = showProtection;
+  el('#authorization-summary-title').hidden = !ready;
+  el('#authorization-summary-panel > dl').hidden = !ready;
+  el('#boundary').hidden = !ready;
+  el('.authorization-summary').hidden = showProtection || waiting;
+  el('#authorization-other-methods').hidden =
+    showProtection ||
+    waiting ||
+    (ready && !alternativeRequested) ||
+    (protocol === 'top' && !alternativeRequested);
   const protocolPanel = el('#protocolSettings').closest('section');
   if (protocolPanel) protocolPanel.hidden = ready && !el<HTMLDetailsElement>('#connectionDetails').open;
   el('#authorization-ready-heading').hidden = !ready;

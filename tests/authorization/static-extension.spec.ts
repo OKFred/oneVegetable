@@ -349,7 +349,7 @@ async function authorize(): Promise<Page> {
   if ((await tool.locator('html').getAttribute('lang')) === 'en-US') await tool.locator('#language').click();
   await expect(tool.locator('#status')).toHaveText('尚未配置');
   await prepareProtection(tool);
-  await tool.locator('#manualEntry').click();
+  await openManualEntry(tool);
   await tool.locator('#appName').fill('Merchant fixture');
   await tool.locator('#appKey').fill(credentials.oauthBundle.application.appKey);
   await tool.locator('#appSecret').fill(credentials.oauthBundle.application.appSecret);
@@ -385,11 +385,16 @@ async function openManagement(tool: Page): Promise<void> {
 }
 
 async function openManualEntry(tool: Page): Promise<void> {
-  if (!(await tool.locator('#manualEntry').isVisible())) {
+  if (await tool.locator('#authorization-other-methods').isHidden()) {
     await openManagement(tool);
     await tool.locator('#changeAuthorization').click();
   }
+  await openOtherMethods(tool);
   await tool.locator('#manualEntry').click();
+}
+async function openOtherMethods(tool: Page): Promise<void> {
+  const options = tool.locator('#authorization-other-methods');
+  if ((await options.getAttribute('open')) === null) await options.locator(':scope > summary').click();
 }
 
 async function sendWorkbench(
@@ -474,7 +479,8 @@ for (const protocol of ['top', 'iop'] as const) {
   test(`${protocol} returns from a merchant callback to the original tool, without a public callback bridge`, async () => {
     const tool = await openTool(protocol);
     await prepareProtection(tool);
-    await tool.locator(protocol === 'top' ? '#topReauthorize' : '#manualEntry').click();
+    if (protocol === 'top') await tool.locator('#topReauthorize').click();
+    else await openManualEntry(tool);
     const application = standalone[protocol];
     const callbackUrl = 'https://example.com/merchant/callback';
     for (const [id, value] of Object.entries({
@@ -647,10 +653,12 @@ test('new users see a guided next action, not technical fields or disabled renew
   await expect(tool.locator('#refresh')).toBeHidden();
   await expect(tool.locator('#export')).toBeHidden();
   await expect(tool.locator('#protocolTop')).toBeHidden();
-  await expect(tool.locator('#chooseFile')).toBeVisible();
+  await expect(tool.locator('#chooseFile')).toBeHidden();
+  await expect(tool.locator('#authorization-other-methods')).not.toHaveAttribute('open');
+  await expect(tool.locator('.authorization-content button:visible')).toHaveCount(1);
   await expect(tool.locator('#nextStep')).toContainText('登录或验证');
   await tool.screenshot({ path: resolve(UI_SCREENSHOT_DIRECTORY, 'guided-connect-zh.png'), fullPage: true });
-  await tool.locator('#manualEntry').click();
+  await openManualEntry(tool);
   await expect(tool.locator('#appName')).toBeFocused();
   await expect(tool.locator('#appKey')).toBeVisible();
   await tool.locator('#appName').fill('Unsubmitted local form');
@@ -1167,6 +1175,7 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
     }
   };
   const openExample = async (protocol: 'iop' | 'top'): Promise<void> => {
+    await openOtherMethods(tool);
     if ((await advanced.getAttribute('open')) !== null) await advanced.locator('summary').click();
     await advanced.locator('summary').click();
     await expect(editor).toBeVisible();
@@ -1285,6 +1294,8 @@ test('advanced JSON selects complete examples and imports only the confirmed mat
 
 test('authorization action buttons align in both languages and themes, with readable HTML dialogs', async () => {
   const tool = await openTool();
+  await prepareProtection(tool);
+  await openOtherMethods(tool);
   await tool.setViewportSize({ width: 1440, height: 1080 });
   for (const colorScheme of ['light', 'dark'] as const) {
     await tool.emulateMedia({ colorScheme });
@@ -1450,6 +1461,7 @@ test('TOP entry buttons align and recommend IOP in both languages and themes', a
   }
   await tool.setViewportSize({ width: 390, height: 844 });
   expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await tool.locator('#protocolSettings summary').click();
   await tool.locator('#topUseIop').click();
   await expect(tool.locator('#title')).toHaveText('Connect Alibaba · New app');
   expect(topCreates + creates + refreshes + topRefreshes).toBe(0);
@@ -1489,6 +1501,7 @@ test('authorization forms and the return link retain spacing in both languages a
     }
   }
   await prepareProtection(tool, '');
+  await openOtherMethods(tool);
   await tool.locator('#advancedJson > summary').click();
   const jsonGap = await tool.locator('#advancedJson').evaluate((element) => {
     const editor = element.querySelector('.authorization-json-editor');
@@ -1500,7 +1513,7 @@ test('authorization forms and the return link retain spacing in both languages a
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
 
-test('selected split layout shares workbench theme tokens, keeps details visible, and does not change API language', async () => {
+test('focused authorization layout shares workbench theme tokens, places details below the main action, and does not change API language', async () => {
   const tool = await openTool('top');
   await tool.evaluate((key) => {
     localStorage.setItem(
@@ -1536,11 +1549,15 @@ test('selected split layout shares workbench theme tokens, keeps details visible
       stepsRight: steps?.right,
       mainLeft: main?.left,
       mainRight: main?.right,
-      summaryLeft: summary?.left
+      mainBottom: main?.bottom,
+      summaryLeft: summary?.left,
+      summaryTop: summary?.top
     };
   });
-  expect(rails.stepsRight).toBe(rails.mainLeft);
-  expect(rails.mainRight).toBe(rails.summaryLeft);
+  expect((rails.mainLeft ?? 0) - (rails.stepsRight ?? 0)).toBeGreaterThanOrEqual(20);
+  expect(rails.mainLeft).toBe(rails.summaryLeft);
+  expect((rails.summaryTop ?? 0) - (rails.mainBottom ?? 0)).toBeGreaterThanOrEqual(20);
+  await expect(tool.locator('#workbenchStep button:visible')).toHaveCount(1);
   const buttonColor = await tool
     .locator('#applyWorkbench')
     .evaluate((element) => getComputedStyle(element).backgroundColor);

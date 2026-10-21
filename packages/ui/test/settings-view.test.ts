@@ -196,6 +196,15 @@ afterEach(() => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('keeps the independent service notice once at the bottom, outside credential dialogs', async () => {
+    const wrapper = mountView('extension', 'unlocked');
+    await flushPromises();
+    const notice = wrapper.get('[data-testid="settings-independent-notice"]');
+    expect(wrapper.findAll('[data-testid="settings-independent-notice"]')).toHaveLength(1);
+    expect(notice.element.closest('[role="dialog"]')).toBeNull();
+    expect(notice.element.parentElement?.lastElementChild).toBe(notice.element);
+    wrapper.unmount();
+  });
   it.each(['empty', 'unlocked', 'locked'] as const)(
     'keeps an authorization guide entry with a %s vault and allows reopening it',
     async (state) => {
