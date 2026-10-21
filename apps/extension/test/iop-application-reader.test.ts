@@ -5,6 +5,11 @@ vi.mock('wxt/browser', () => ({ browser: {} }));
 import { IopApplicationReader } from '../lib/iop-application-reader';
 
 const application = fixtures.application as ExtensionAlibabaApplicationDetails;
+const prerequisite = {
+  kind: 'prerequisite',
+  reasonCode: 'developer-registration-under-review',
+  registration: null
+} as const;
 const page = {
   open: vi.fn().mockResolvedValue(7),
   inspect: vi.fn(),
@@ -19,6 +24,7 @@ beforeEach(() => {
   page.state.mockResolvedValue({ kind: 'ready' });
   page.click.mockResolvedValue(true);
   page.secret.mockResolvedValue({ status: 'available', appSecret: fixtures.appSecret });
+  page.wait.mockResolvedValue(undefined);
 });
 afterEach(() => vi.useRealTimers());
 describe('bounded IOP app discovery', () => {
@@ -67,8 +73,155 @@ describe('bounded IOP app discovery', () => {
   ])('stops on a prerequisite without revealing any secret', async (state, code) => {
     page.state.mockResolvedValue(state);
     await expect(new IopApplicationReader(page).read()).rejects.toMatchObject({ gatewayError: { code } });
+    expect(page.inspect).not.toHaveBeenCalled();
     expect(page.secret).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
+    if (state.kind !== 'prerequisite') {
+      expect(page.state).toHaveBeenCalledOnce();
+      expect(page.wait).not.toHaveBeenCalled();
+    }
+  });
+  it('confirms a stable prerequisite briefly, without inspecting the app or reading its secret', async () => {
+    vi.useFakeTimers();
+    page.state.mockResolvedValue(prerequisite);
+    page.wait.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    const guide = vi.fn().mockResolvedValue(undefined);
+    const reading = new IopApplicationReader({ ...page, guide }).read();
+    const rejection = expect(reading).rejects.toMatchObject({
+      gatewayError: { code: 'IOP_APP_PREREQUISITE_REQUIRED' }
+    });
+    await vi.advanceTimersByTimeAsync(1499);
+    expect(page.state).toHaveBeenCalledTimes(3);
+    expect(guide).not.toHaveBeenCalledWith(7, 'blocked', expect.anything());
+    await vi.advanceTimersByTimeAsync(1);
+    await rejection;
+    expect(page.state).toHaveBeenCalledTimes(4);
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    expect(page.click).not.toHaveBeenCalled();
+    expect(guide).toHaveBeenLastCalledWith(7, 'blocked', 'IOP_APP_PREREQUISITE_REQUIRED');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('continues with the existing app when a loading prerequisite becomes ready', async () => {
+    vi.useFakeTimers();
+    page.state.mockResolvedValueOnce(prerequisite).mockResolvedValueOnce({ kind: 'waiting' });
+    page.wait.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    const reading = new IopApplicationReader(page).read();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    expect(page.click).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(500);
+    await expect(reading).resolves.toEqual({
+      appName: application.appName,
+      appKey: application.appKey,
+      callbackUrl: application.callbackUrl,
+      appSecret: fixtures.appSecret
+    });
+    expect(page.secret).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('requires a fresh stable interval when the prerequisite reason changes', async () => {
+    vi.useFakeTimers();
+    const rejected = { ...prerequisite, reasonCode: 'developer-registration-rejected' };
+    page.state
+      .mockResolvedValueOnce(prerequisite)
+      .mockResolvedValueOnce(prerequisite)
+      .mockResolvedValueOnce(rejected)
+      .mockResolvedValueOnce(rejected);
+    page.wait.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    const reading = new IopApplicationReader(page).read();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(500);
+    await expect(reading).resolves.toHaveProperty('appKey', application.appKey);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it.each([
+    [{ kind: 'challenge' }, 'IOP_APP_SECURITY_CHECK'],
+    [{ kind: 'login-required' }, 'IOP_APP_LOGIN_REQUIRED']
+  ])('immediately stops if a security or login state appears while confirming: %s', async (state, code) => {
+    vi.useFakeTimers();
+    page.state.mockResolvedValueOnce(prerequisite).mockResolvedValue(state);
+    page.wait.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    const reading = new IopApplicationReader(page).read();
+    const rejection = expect(reading).rejects.toMatchObject({ gatewayError: { code } });
+    await vi.advanceTimersByTimeAsync(500);
+    await rejection;
+    expect(page.state).toHaveBeenCalledTimes(2);
+    expect(page.wait).toHaveBeenCalledOnce();
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    expect(page.click).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('bounds changing prerequisite reasons to three seconds rather than extending the deadline', async () => {
+    vi.useFakeTimers();
+    let count = 0;
+    page.state.mockImplementation(() =>
+      Promise.resolve({
+        ...prerequisite,
+        reasonCode: count++ % 2 ? 'application-required' : prerequisite.reasonCode
+      })
+    );
+    page.wait.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    const reading = new IopApplicationReader(page).read();
+    const rejection = expect(reading).rejects.toMatchObject({
+      gatewayError: { code: 'IOP_APP_PREREQUISITE_REQUIRED' }
+    });
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(page.state).toHaveBeenCalledTimes(6);
+    await vi.advanceTimersByTimeAsync(500);
+    await rejection;
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    expect(page.click).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('does not infer approval when a prerequisite becomes an unresolved loading state', async () => {
+    vi.useFakeTimers();
+    page.state.mockResolvedValueOnce(prerequisite).mockResolvedValue({ kind: 'waiting' });
+    page.wait.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    const reading = new IopApplicationReader(page).read();
+    const rejection = expect(reading).rejects.toMatchObject({
+      gatewayError: { code: 'IOP_APP_PAGE_UNAVAILABLE' }
+    });
+    await vi.advanceTimersByTimeAsync(3000);
+    await rejection;
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    expect(page.click).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it.each(['wait', 'state'] as const)('also bounds a hung confirmation %s call', async (phase) => {
+    vi.useFakeTimers();
+    page.state.mockResolvedValueOnce(prerequisite);
+    if (phase === 'state') page.state.mockReturnValueOnce(new Promise(() => undefined));
+    else page.wait.mockReturnValueOnce(new Promise(() => undefined));
+    const reading = new IopApplicationReader(page).read();
+    const rejection = expect(reading).rejects.toMatchObject({
+      gatewayError: { code: 'IOP_APP_PREREQUISITE_REQUIRED' }
+    });
+    await vi.advanceTimersByTimeAsync(3000);
+    await rejection;
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    expect(page.click).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('bounds repeated states with a stalled clock and resets confirmation on a new explicit read', async () => {
+    page.state.mockResolvedValue(prerequisite);
+    const reader = new IopApplicationReader(page, () => 0);
+    await expect(reader.read()).rejects.toMatchObject({
+      gatewayError: { code: 'IOP_APP_PREREQUISITE_REQUIRED' }
+    });
+    expect(page.state).toHaveBeenCalledTimes(7);
+    expect(page.wait).toHaveBeenCalledTimes(6);
+    expect(page.inspect).not.toHaveBeenCalled();
+    expect(page.secret).not.toHaveBeenCalled();
+    page.state.mockResolvedValue({ kind: 'ready' });
+    await expect(reader.read()).resolves.toHaveProperty('appKey', application.appKey);
   });
   it('hands security verification back instead of repeatedly clicking View', async () => {
     page.secret.mockResolvedValue({ status: 'waiting', reason: 'security-verification' });

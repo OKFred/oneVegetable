@@ -302,9 +302,14 @@ function mountGuide(): void {
     });
   });
   back.addEventListener('click', () => {
-    void browser.runtime.openOptionsPage().catch(() => {
-      showFeedback(copy.error, true);
-    });
+    void browser.runtime
+      .sendMessage({ kind: 'one-vegetable-authorization-guide-return' })
+      .then((response: unknown) => {
+        if (!isRecord(response) || response.ok !== true) showFeedback(copy.error, true);
+      })
+      .catch(() => {
+        showFeedback(copy.error, true);
+      });
   });
 
   const onMessage = (message: unknown): void => {

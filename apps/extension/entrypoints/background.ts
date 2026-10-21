@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { returnFromAuthorizationGuide } from '../lib/authorization-guide-navigation';
 import {
   parseAlibabaCredentialImport,
   parseAlibabaOpenApiCredentialBundle
@@ -230,6 +231,8 @@ export default defineBackground({
     // WebExtension runtime listeners support returning a promise for the response.
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     browser.runtime.onMessage.addListener((value: unknown, sender) => {
+      if (isRecord(value) && value.kind === 'one-vegetable-authorization-guide-return')
+        return returnFromAuthorizationGuide(sender);
       if (
         value &&
         typeof value === 'object' &&

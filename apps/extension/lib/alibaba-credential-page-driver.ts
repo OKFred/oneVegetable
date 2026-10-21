@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { APP_PREFERENCES_STORAGE_KEY, parseAppPreferences } from '@one-vegetable/core/preferences';
 import { inspectAlibabaDeveloperPageDocument } from '@one-vegetable/core/alibaba-developer-page-inspection';
+import { registerAuthorizationGuide, forgetAuthorizationGuide } from './authorization-guide-navigation';
 import {
   authorizationDiscoveryReason,
   type AuthorizationDiscoveryReason
@@ -197,6 +198,7 @@ export async function showAlibabaDeveloperGuide(
     uiLocale,
     state
   });
+  registerAuthorizationGuide(tabId, null);
 }
 
 export type AlibabaAuthorizationGuidePhase = 'opening' | 'application' | 'secret' | 'ready' | 'blocked';
@@ -221,6 +223,7 @@ export async function showAlibabaAuthorizationGuide(
       ...(phase === 'blocked' && authorizationDiscoveryReason(reasonCode) ? { reasonCode } : {})
     }
   });
+  registerAuthorizationGuide(tabId, protocol);
 }
 
 async function sendAlibabaDeveloperGuideMessage(tabId: number, message: unknown): Promise<void> {
@@ -238,6 +241,7 @@ async function sendAlibabaDeveloperGuideMessage(tabId: number, message: unknown)
 }
 
 export async function hideAlibabaDeveloperGuide(tabId: number): Promise<void> {
+  forgetAuthorizationGuide(tabId);
   if (tabId < 0) return;
   await browser.tabs
     .sendMessage(tabId, { kind: 'one-vegetable-alibaba-developer-guide-remove' })

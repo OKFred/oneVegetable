@@ -210,11 +210,15 @@ describe('Alibaba page guide storage isolation', () => {
     await vi.waitFor(() => {
       expect(panel().textContent).toContain('The prerequisite changed');
     });
-    mocks.openOptionsPage.mockRejectedValue(new Error('Extension context invalidated'));
+    mocks.sendMessage.mockRejectedValueOnce(new Error('Extension context invalidated'));
     control('Return to oneVegetable').click();
     await vi.waitFor(() => {
       expect(panel().textContent).toContain('The check failed');
     });
+    expect(mocks.sendMessage).toHaveBeenLastCalledWith({
+      kind: 'one-vegetable-authorization-guide-return'
+    });
+    expect(mocks.openOptionsPage).not.toHaveBeenCalled();
   });
 
   it('reads UI preferences only in the trusted driver and passes no stored secrets to the page', async () => {

@@ -80,6 +80,49 @@ export class IopApplicationReader {
     private readonly clock = Date.now
   ) {}
 
+  private async confirmPrerequisite(
+    tabId: number,
+    initial: Extract<ExtensionAlibabaPageState, { kind: 'prerequisite' }>
+  ): Promise<ExtensionAlibabaPageState> {
+    // The console can briefly expose its registration iframe before loading an
+    // existing Online app. Confirm the same reason, never infer approval or
+    // inspect/reveal a secret while the page still reports a prerequisite.
+    let reason: typeof initial.reasonCode | undefined = initial.reasonCode;
+    let stableSince = this.clock();
+    let failureCode: 'IOP_APP_PREREQUISITE_REQUIRED' | 'IOP_APP_PAGE_UNAVAILABLE' =
+      'IOP_APP_PREREQUISITE_REQUIRED';
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timeoutHandle = setTimeout(() => {
+        reject(failure(failureCode));
+      }, 3000);
+    });
+    const bounded = <T>(work: Promise<T>): Promise<T> => Promise.race([work, timeout]);
+    try {
+      // The iteration bound also applies if the local clock rolls back or a
+      // driver resolves its wait immediately. Changing reasons cannot extend it.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        await bounded(this.page.wait());
+        const state = await bounded(this.page.state(tabId));
+        if (state.kind !== 'prerequisite' && state.kind !== 'waiting') return state;
+        if (state.kind === 'prerequisite') {
+          failureCode = 'IOP_APP_PREREQUISITE_REQUIRED';
+          if (state.reasonCode !== reason) {
+            reason = state.reasonCode;
+            stableSince = this.clock();
+          }
+          if (this.clock() - stableSince >= 1500) return state;
+        } else {
+          reason = undefined;
+          failureCode = 'IOP_APP_PAGE_UNAVAILABLE';
+        }
+      }
+      throw failure(failureCode);
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
+  }
+
   async read(): Promise<IopApplicationReadResult> {
     if (this.running) throw failure('AUTH_TASK_ACTIVE');
     this.running = true;
@@ -125,6 +168,7 @@ export class IopApplicationReader {
           await bounded(this.page.wait());
           continue;
         }
+        if (state.kind === 'prerequisite') state = await bounded(this.confirmPrerequisite(tabId, state));
         if (state.kind === 'challenge') throw failure('IOP_APP_SECURITY_CHECK');
         if (state.kind === 'login-required') throw failure('IOP_APP_LOGIN_REQUIRED');
         if (state.kind === 'prerequisite') throw failure('IOP_APP_PREREQUISITE_REQUIRED');

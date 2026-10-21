@@ -428,7 +428,8 @@ test('static page, real MV3 callback, encrypted export and single refresh work e
   expect(first.protocol).toBe('iop');
   expect(first.oauth).toMatchObject({ accessToken: tokens.success.access_token });
   await expect(tool.locator('#notice')).toContainText('JSON 下载已发起');
-  await expect(tool.locator('#nextStep')).toContainText('保存并用于工作台');
+  await expect(tool.locator('#workbenchStep')).toBeVisible();
+  await expect(tool.locator('#applyWorkbench')).toHaveText('保存并进入工作台');
   await expect(tool.locator('#useStep')).toHaveAttribute('aria-current', 'step');
   const statusWithNotice = await tool.locator('#status').boundingBox();
   await expect(tool.locator('#notice')).not.toBeVisible({ timeout: 6_000 });
@@ -760,6 +761,12 @@ for (const language of ['en', 'zh'] as const) {
     // Discovery starts OAuth but must never accept Alibaba's agreement automatically.
     expect(creates).toBe(0);
     await expect(oauth.locator('#approve')).toBeVisible();
+    const pageCountBeforeReturn = context.pages().length;
+    await alibaba.bringToFront();
+    await alibaba.getByRole('button', { name: /^(Return to oneVegetable|返回 oneVegetable)$/u }).click();
+    await expectToolActive(tool);
+    expect(context.pages()).toHaveLength(pageCountBeforeReturn);
+    expect(creates).toBe(0);
     await expect(tool.locator('#appSecret')).toHaveValue('');
     await oauth.locator('#approve').click();
     await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
