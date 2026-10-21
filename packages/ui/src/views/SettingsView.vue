@@ -848,7 +848,10 @@ function confirmLanguagePreference(): void {
         class="min-w-0 space-y-4"
         :aria-label="t('settings.sections.credentials')"
       >
-        <div v-if="mode === 'extension' && alibabaCredentialAcquisition" class="flex flex-wrap gap-2">
+        <div
+          v-if="mode === 'extension' && alibabaCredentialAcquisition"
+          class="flex flex-wrap justify-end gap-2"
+        >
           <Button
             type="button"
             data-testid="open-authorization-guide"

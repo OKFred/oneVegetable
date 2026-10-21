@@ -215,6 +215,7 @@ describe('SettingsView diagnostics', () => {
       await flushPromises();
       const launcher = wrapper.get('[data-testid="open-authorization-guide"]');
       expect(launcher.classes()).toContain('bg-primary');
+      expect(launcher.element.parentElement?.classList.contains('justify-end')).toBe(true);
       expect(launcher.element.parentElement?.querySelectorAll('button')).toHaveLength(1);
       for (let index = 0; index < 2; index++) {
         await launcher.trigger('click');
