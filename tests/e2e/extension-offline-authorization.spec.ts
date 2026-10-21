@@ -28,6 +28,34 @@ function authorizationSummary(page: Page): Promise<unknown> {
   });
 }
 
+async function expectProtocolCopy(page: Page, english: boolean): Promise<void> {
+  const choices = page.getByTestId('alibaba-authorization-protocol-choices');
+  for (const [protocol, title, description] of [
+    [
+      'iop',
+      english ? 'Connect a new app' : '连接新版应用',
+      english
+        ? 'Features are being added gradually. Please follow the platform’s official development updates.'
+        : '功能陆续接入中，具体请关注平台官方自身开发进度。'
+    ],
+    [
+      'top',
+      english ? 'Connect a legacy app' : '连接旧版应用',
+      english
+        ? 'TOP offers more mature support for existing features, for users with a legacy TOP app only.'
+        : 'TOP 经典方案，现有功能支持更成熟，仅面向已有 TOP 应用的老用户。'
+    ]
+  ]) {
+    const choice = choices.getByTestId(`choose-authorization-${protocol}`);
+    await expect(choice.locator('span.font-medium')).toHaveText(title ?? '');
+    await expect(choice).toContainText(description ?? '');
+    await expect(choice.locator('span.font-medium svg')).toHaveCount(0);
+    await expect(choice.locator('svg')).toHaveCount(1);
+    expect(await choice.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  }
+  await expect(choices).not.toContainText(/推荐|recommended/iu);
+}
+
 test('formal extension reopens the authorization guide and safely navigates back', async ({
   browserName
 }, testInfo) => {
@@ -74,6 +102,8 @@ test('formal extension reopens the authorization guide and safely navigates back
     await expect(wizard.getByTestId('authorization-method-choices')).toBeVisible();
     await wizard.getByTestId('authorization-method-online').click();
     await expect(wizard.getByTestId('alibaba-authorization-protocol-choices')).toBeVisible();
+    await expectProtocolCopy(page, false);
+    await page.screenshot({ path: testInfo.outputPath('protocol-choices-zh.png'), animations: 'disabled' });
     await wizard.getByTestId('authorization-wizard-back').click();
     await wizard.getByTestId('authorization-method-file').click();
     await wizard.getByLabel('选择授权 JSON 文件', { exact: true }).setInputFiles({
@@ -105,6 +135,14 @@ test('formal extension reopens the authorization guide and safely navigates back
     await english.getByTestId('authorization-wizard-continue').click();
     await expect(page.getByTestId('authorization-method-choices')).toBeVisible();
     await expect(page.getByTestId('authorization-protection')).toHaveCount(0);
+    await page.getByTestId('authorization-method-online').click();
+    await expectProtocolCopy(page, true);
+    await page.screenshot({
+      path: testInfo.outputPath('protocol-choices-en-dark-mobile.png'),
+      animations: 'disabled'
+    });
+    await page.getByTestId('authorization-wizard-back').click();
+    await expect(page.getByTestId('authorization-method-choices')).toBeVisible();
     await page.getByTestId('authorization-wizard-back').click();
     await expect(page.getByRole('dialog', { name: 'Authorization guide', exact: true })).toBeVisible();
     await page.getByTestId('cancel-authorization-protocol').click();

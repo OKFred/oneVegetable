@@ -23,7 +23,7 @@ export const zh = {
   connectionManagement: '备份与管理',
   useExistingAuthorization: '导入已有授权',
   topEntryHelp: '已有旧应用可重新授权；已有完整凭据可直接导入。无需寻找失效的旧应用管理入口。',
-  newMerchantIop: '没有旧版应用？使用 IOP（推荐）',
+  newMerchantIop: '没有旧版应用？连接新版应用（IOP）',
   topApplicationHelp:
     '填写旧应用的 AppKey、AppSecret 和已登记 Callback；应用名称可留空。随后仍需在 Alibaba 登录并确认授权。',
   readApplicationBackup: '从旧授权文件读取应用资料',
@@ -108,8 +108,8 @@ export const zh = {
   confirmationCancel: '取消',
   confirmationContinue: '确认继续',
   protocolChoice: '切换新版 / 旧版授权',
-  protocolTop: '已有旧版应用（TOP）',
-  protocolIop: '新版应用（IOP，推荐）',
+  protocolTop: '连接旧版应用（TOP）',
+  protocolIop: '连接新版应用（IOP）',
   toolTitleTop: '连接 Alibaba · 旧版应用',
   toolTitleIop: '连接 Alibaba · 新版应用',
   dualGuide:
@@ -249,7 +249,7 @@ export const en: Record<keyof typeof zh, string> = {
   useExistingAuthorization: 'Import existing authorization',
   topEntryHelp:
     'Reauthorize an existing legacy app, or import complete credentials. No legacy app console is required.',
-  newMerchantIop: 'No legacy app? Use IOP (recommended)',
+  newMerchantIop: 'No legacy app? Connect a new app (IOP)',
   topApplicationHelp:
     'Enter the legacy AppKey, AppSecret and registered Callback. App Name is optional. You must still sign in and approve on Alibaba.',
   readApplicationBackup: 'Read app details from an old authorization file',
@@ -344,8 +344,8 @@ export const en: Record<keyof typeof zh, string> = {
   confirmationCancel: 'Cancel',
   confirmationContinue: 'Confirm and continue',
   protocolChoice: 'Switch new / legacy authorization',
-  protocolTop: 'Existing legacy app (TOP)',
-  protocolIop: 'New app (IOP, recommended)',
+  protocolTop: 'Connect a legacy app (TOP)',
+  protocolIop: 'Connect a new app (IOP)',
   toolTitleTop: 'Connect Alibaba · Legacy app',
   toolTitleIop: 'Connect Alibaba · New app',
   dualGuide:

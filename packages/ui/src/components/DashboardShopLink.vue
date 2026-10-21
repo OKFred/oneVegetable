@@ -150,7 +150,7 @@ onBeforeUnmount(() => {
     >
       <Store class="size-4" />{{ t('shell.dashboard.shop.visit') }}<ExternalLink class="size-3.5" />
     </a>
-    <Button variant="outline" size="sm" :disabled="busy" data-testid="dashboard-shop-edit" @click="edit">
+    <Button variant="outline" :disabled="busy" data-testid="dashboard-shop-edit" @click="edit">
       <Settings2 class="size-4" />{{ t(url ? 'shell.dashboard.shop.edit' : 'shell.dashboard.shop.set') }}
     </Button>
   </div>

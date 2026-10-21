@@ -1012,7 +1012,7 @@ for (const legacyPage of ['none', 'not-found'] as const) {
     await expect(tool.locator('#discover')).toBeHidden();
     await expect(tool.locator('#topReauthorize')).toHaveText('重新授权');
     await expect(tool.locator('#topImport')).toHaveText('导入已有授权');
-    await expect(tool.locator('#topUseIop')).toContainText('推荐');
+    await expect(tool.locator('#topUseIop')).toHaveText('没有旧版应用？连接新版应用（IOP）');
     await tool.locator('#topReauthorize').click();
     await expect(tool.locator('#appKey')).toBeFocused();
     await expect(tool.locator('#status')).toHaveText('尚未配置');
@@ -1483,7 +1483,7 @@ test('TOP reads only app metadata from a backup and exchanges a fresh token with
   expect(context.pages().some((page) => page.url().includes('crosstrade.alibaba.com'))).toBe(false);
 });
 
-test('TOP entry buttons align and recommend IOP in both languages and themes', async () => {
+test('TOP entry buttons and neutral protocol labels align in both languages and themes', async () => {
   const tool = await openTool('top');
   await prepareProtection(tool);
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -1491,6 +1491,12 @@ test('TOP entry buttons align and recommend IOP in both languages and themes', a
     for (const language of ['zh-CN', 'en-US'] as const) {
       if ((await tool.locator('html').getAttribute('lang')) !== language)
         await tool.locator('#language').click();
+      await expect(tool.locator('#protocolIop')).toHaveText(
+        language === 'zh-CN' ? '连接新版应用（IOP）' : 'Connect a new app (IOP)'
+      );
+      await expect(tool.locator('#protocolTop')).toHaveText(
+        language === 'zh-CN' ? '连接旧版应用（TOP）' : 'Connect a legacy app (TOP)'
+      );
       const boxes = await Promise.all(
         ['topReauthorize', 'topImport'].map((id) => tool.locator(`#${id}`).boundingBox())
       );
@@ -2133,7 +2139,7 @@ for (const [body, code] of [
     expect(reads + topCalls + creates + refreshes).toBe(0);
     await choice.getByTestId('authorization-method-online').click();
     await expect(choice.getByRole('button', { name: /连接新版应用/u })).toBeEnabled();
-    await expect(choice.getByRole('button', { name: /连接已有旧版应用/u })).toBeEnabled();
+    await expect(choice.getByRole('button', { name: /连接旧版应用/u })).toBeEnabled();
     await choice.getByRole('button', { name: '取消', exact: true }).click();
     await expect(choice).toHaveCount(0);
     expect(context.pages()).toHaveLength(pagesBeforeChoice);

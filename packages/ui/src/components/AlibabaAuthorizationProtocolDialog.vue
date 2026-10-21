@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
-import { ArrowLeft, ArrowRight, FileUp, Globe, Sparkles } from '@lucide/vue';
+import { ArrowLeft, ArrowRight, FileUp, Globe } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import {
   validateVaultPassphrase,
@@ -429,9 +429,7 @@ function chooseOnline(): void {
         @click="select('iop')"
       >
         <span class="min-w-0">
-          <span class="flex items-center gap-2 font-medium">
-            <Sparkles class="size-4 shrink-0" aria-hidden="true" />{{ text('chooseProtocolIop') }}
-          </span>
+          <span class="block font-medium">{{ text('chooseProtocolIop') }}</span>
           <span class="mt-1 block text-xs leading-5 text-muted-foreground">{{
             text('chooseProtocolIopHelp')
           }}</span>

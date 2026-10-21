@@ -382,7 +382,8 @@ describe('SettingsView diagnostics', () => {
     expect(acquisition.readPrerequisite).not.toHaveBeenCalled();
     expect(acquisition.start).not.toHaveBeenCalled();
     const iop = document.body.querySelector<HTMLButtonElement>('[data-testid="choose-authorization-iop"]');
-    expect(iop?.textContent).toContain('连接新版应用（推荐）');
+    expect(iop?.textContent).toContain('连接新版应用');
+    expect(iop?.textContent).not.toContain('推荐');
     iop?.click();
     await flushPromises();
     expect(openIopTool).toHaveBeenCalledOnce();

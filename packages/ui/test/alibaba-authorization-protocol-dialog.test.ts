@@ -347,8 +347,16 @@ describe('Alibaba authorization protocol selection', () => {
   });
   it.each(['iop', 'top'] as const)('only starts %s on the direct choice click stack', async (protocol) => {
     const view = await dialog();
-    expect(view.body.text()).toContain('连接新版应用（推荐）');
-    expect(view.body.text()).toContain('连接已有旧版应用');
+    expect(view.body.text()).toContain('连接新版应用');
+    expect(view.body.text()).toContain('连接旧版应用');
+    const iop = view.body.get('[data-testid="choose-authorization-iop"]');
+    expect(iop.text()).toContain('功能陆续接入中，具体请关注平台官方自身开发进度。');
+    expect(iop.text()).not.toContain('推荐');
+    expect(iop.get('span.font-medium').findAll('svg')).toHaveLength(0);
+    expect(iop.findAll('svg')).toHaveLength(1);
+    expect(view.body.get('[data-testid="choose-authorization-top"]').text()).toContain(
+      'TOP 经典方案，现有功能支持更成熟，仅面向已有 TOP 应用的老用户。'
+    );
     expect(view.body.text()).toContain('不会互相覆盖');
     expect(view.select).not.toHaveBeenCalled();
     let clicking = false;
@@ -382,8 +390,15 @@ describe('Alibaba authorization protocol selection', () => {
     document.documentElement.classList.add('dark');
     const view = await dialog('renew');
     expect(view.body.get('[role="dialog"]').text()).toContain('Which authorization do you want to renew?');
-    expect(view.body.text()).toContain('Connect a new app (recommended)');
-    expect(view.body.text()).toContain('Connect an existing legacy app');
+    expect(view.body.text()).toContain('Connect a new app');
+    expect(view.body.text()).toContain('Connect a legacy app');
+    expect(view.body.text()).toContain(
+      'Features are being added gradually. Please follow the platform’s official development updates.'
+    );
+    expect(view.body.text()).toContain(
+      'TOP offers more mature support for existing features, for users with a legacy TOP app only.'
+    );
+    expect(view.body.get('[data-testid="choose-authorization-iop"]').text()).not.toContain('recommended');
     expect(view.body.text()).toContain('never replace each other');
     expect(view.select).not.toHaveBeenCalled();
   });

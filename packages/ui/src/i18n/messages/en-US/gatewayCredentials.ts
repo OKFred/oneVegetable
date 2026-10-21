@@ -40,12 +40,12 @@ export const gatewayCredentials = {
   chooseRenewProtocol: 'Which authorization do you want to renew?',
   chooseProtocolDescription:
     'New here? Start with a new app. Have a legacy app or authorization file? Choose legacy. Both are saved separately and never replace each other.',
-  chooseProtocolIop: 'Connect a new app (recommended)',
+  chooseProtocolIop: 'Connect a new app',
   chooseProtocolIopHelp:
-    'New apps in Alibaba Application Center use IOP. We will guide you through sign-in and approval.',
-  chooseProtocolTop: 'Connect an existing legacy app',
+    'Features are being added gradually. Please follow the platform’s official development updates.',
+  chooseProtocolTop: 'Connect a legacy app',
   chooseProtocolTopHelp:
-    'Use your existing TOP app or authorization file. New app details cannot replace missing legacy details.',
+    'TOP offers more mature support for existing features, for users with a legacy TOP app only.',
   protocolToolUnavailable:
     'This version has no authorization tool for this protocol. Update the extension or import its credential bundle.',
   authorizationToolFailed: 'Could not open the authorization tool. Please try again.',
