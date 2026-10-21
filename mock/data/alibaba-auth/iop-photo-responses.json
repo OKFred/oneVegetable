@@ -1,4 +1,10 @@
 {
+  "groupRead": {
+    "code": "0",
+    "result": {
+      "groups": [{ "id": 1001, "name": "Fixture images", "level1": 1, "level2": 0, "level3": 0 }]
+    }
+  },
   "upload": {
     "code": "0",
     "request_id": "fixture-iop-upload",

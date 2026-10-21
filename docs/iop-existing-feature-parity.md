@@ -186,3 +186,23 @@ The public SDK parameters match the implementation. Four additional read-only co
 - 另外 2 条 Worker/D1/BFF 集成回放通过，仅重建专用测试数据库；真实业务数据和线上环境未修改。
 
 At the actual 24-row page size, both isolated formal-MV3 photo-list runs still fail scope validation, although group reads, encrypted storage, persisted IOP configuration and context pinning pass. Four platform reads perform no TOP fallback, refresh, mutation or configuration replacement. These are failed photo-list acceptance receipts, not a claim that IOP-only assets are fully usable. Existing TOP compatibility and the safety stop remain in place.
+
+## 官网目录与官方 SDK 分组范围复查
+
+- 公开定义仍只有 `groupId/currentPage/pageSize`；分组查询将 `groups[].id` 描述为唯一标识，将 `level1/2/3` 描述为层级顺序，不支持用层级坐标替换真实 ID。请求与响应中的分组字段都映射到服务字段 `groupId`，但没有发现另一套 ID 转换的公开依据。
+- 在远程 Windows 复用已登录的 Alibaba 页面，进入 **Products → Tools → Image bank**：已有测试父分组显示 **1 张**，其子分组明确显示 **No photos**。测试名称、父子关系与之前创建的资源一致；没有改名、移动、删除或上传。这是官网人工页面核对，不调用其私有接口代替 OpenAPI。
+- 另外检查公开文档链接的 Java SDK 字节码：它将公共签名参数放在 URL 查询串，将业务参数放在 POST 表单。按此方式对同一父、子分组各做一次第一页、24 条的只读查询，签名参数值保持不变。两次仍返回 24 条：父查询为 1 条目标组、23 条未返回分组标识；子查询为 1 条父组、23 条未返回分组标识。两次均被现有范围校验拒绝。
+- 此结果排除了“仅需模仿 SDK 拆分 Query/Form 就能修复”的假设。当前证据更支持公开服务的筛选/映射异常，但根因仍需 Alibaba 确认；不能把推断写成平台已确认故障，也不把未注明分组的 23 条都称为已证实的异组素材。
+- 脱敏回执：`artifacts/iop-feature-parity/2026-10-21-photo-sdk-split-comparison.json`。仅记录数量、分组匹配分类和 requestId/traceId，不记录带 Token 的 URL、凭据、图片地址或完整业务响应。官网核对截图单独保存在忽略目录，不提交测试账号内容。
+- `reconcile-iop-photobank-real.ts` 增加显式 `--sdk-query-form` 和 `--photo-page-size=24`，用于平台排障，不改变生产网关。传输助手只接受公开图片列表路径；结果摘要区分匹配、异组、缺失和非法分组，不保存返回内容。文档参数别名比较与 SDK 比较互斥，所有请求禁止自动重试。
+
+  ```powershell
+  pnpm exec tsx scripts/reconcile-iop-photobank-real.ts --confirm-read-only --credential=artifacts/local-dual-authorization/iop-credentials.json --receipt=artifacts/iop-feature-parity/2026-10-21-photobank.json --sdk-query-form --photo-page-size=24 --output=artifacts/iop-feature-parity/photo-sdk-recheck.json
+  ```
+
+  这是两次只读诊断（分组、图片各一次），不是素材功能成功验收；请使用不存在的新输出文件，避免覆盖历史回执。响应校验不通过时保存 `needs-attention` 并以退出码 `2` 结束，不能把“诊断执行完”当成“图片列表通过”。SDK 模式将临时 Token 放入官方 HTTPS 请求查询串，只存于请求内存，不打印 URL，不新增生产传输方式。
+
+- 继续保留安全边界：双授权在出网前使用 TOP 查询图片；仅 IOP 不过滤伪造空组、不扫描全库、不借用官网私有接口、不重复上传待核对素材。分组列表及已验收的新增/改名保持可用，删除和依赖可信分组列表的最终核对仍不能宣称已通过。
+- 文档依据：[IOP 图片列表](https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=/icbu/product/photobank/list&methodType=GET/POST)、[IOP 分组列表](https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=/icbu/product/photobank/group/list&methodType=GET/POST)、[文档提供的 Java SDK](https://icbu-open-platform-public.oss-us-east-1.aliyuncs.com/sdk/1.0.4-1690374097817bk5i.jar)。SDK 下载名与内嵌版本不一致，仅作静态检查及有限传输对照，不运行其默认日志实现。
+
+The official Image bank shows one image in the known test parent and no images in its child. Two bounded public-IOP probes matching the official Java SDK's common-query/business-form separation still return 24 rows, including the parent's image for the child and 23 rows without group IDs. This is evidence of an unresolved public-service filtering/mapping problem, not a confirmed provider root cause or a successful IOP-only photo-list acceptance. The operator-only comparison is reproducible and redacted; production scope guards, TOP compatibility and no-resend rules remain unchanged.

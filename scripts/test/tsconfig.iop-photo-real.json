@@ -5,6 +5,8 @@
     "../reconcile-iop-photobank-real.ts",
     "../smoke-iop-workbench-real.ts",
     "./iop-photo-delete-proof.test.ts",
+    "./iop-photo-probe.test.ts",
+    "./iop-photo-reconcile.test.ts",
     "./iop-workbench-read.test.ts"
   ]
 }
