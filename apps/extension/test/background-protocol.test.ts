@@ -32,6 +32,8 @@ import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session
 import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
 import { s3LocalStore } from '../lib/s3-local-store';
 import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
+import { resetIopAuthorization } from '../lib/iop-authorization-runtime';
+import { authorizationProfiles } from '../lib/alibaba-authorizations';
 
 const setSyncAccessLevel = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const displayGate = vi.hoisted(() => ({ enabled: false }));
@@ -262,6 +264,97 @@ afterEach(() => {
   restoreXmlGlobals();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe('standalone authorization applies directly to the encrypted workbench', () => {
+  const authorizationSender = {
+    ...sender,
+    url: 'chrome-extension://protocol-test-extension/authorization.html'
+  };
+  const tool = (action: string, protocol: 'top' | 'iop', payload: unknown = {}) =>
+    sendEnvelope(
+      {
+        kind: 'iop-authorization-request',
+        action,
+        protocol,
+        payload
+      },
+      authorizationSender
+    );
+  beforeEach(async () => {
+    await resetIopAuthorization();
+  });
+  afterEach(async () => {
+    await resetIopAuthorization();
+  });
+  for (const protocol of ['top', 'iop'] as const) {
+    it(`${protocol}: turns a prepared but empty workbench into a usable first profile only after apply`, async () => {
+      const bundle = { ...credentialFixtures.oauthBundle, protocol };
+      expect(await tool('import', protocol, { bundle, passphrase: '123456' })).toMatchObject({ ok: true });
+      expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+        data: { top: null, iop: null }
+      });
+      const response = await tool('apply-to-workbench', protocol);
+      expect(response).toMatchObject({ ok: true, data: { applied: true, protocol } });
+      const restored = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      expect(restored.settings).toMatchObject({
+        protocol,
+        appKey: bundle.application.appKey,
+        appSecret: bundle.application.appSecret,
+        accessToken: bundle.oauth.accessToken
+      });
+      expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+        data: { defaultProtocol: protocol, [protocol]: { configured: true } }
+      });
+      expect(JSON.stringify(response)).not.toContain(bundle.oauth.accessToken);
+      expect(fetch).not.toHaveBeenCalled();
+    });
+    it(`${protocol}: preserves the other profile, chosen default and unrelated local data`, async () => {
+      await createPair(false);
+      const initial = (await send('credential-vault-request', 'authorizations'))
+        .data as unknown as AlibabaAuthorizationsSummary;
+      const selected = initial.iop?.configurationId;
+      expect(
+        await send('credential-vault-request', 'set-default-authorization', {
+          protocol: 'iop',
+          configurationId: selected
+        })
+      ).toMatchObject({ ok: true });
+      const before = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      state.local['fixture:unrelated-task'] = { status: 'paused' };
+      const bundle = { ...credentialFixtures.oauthBundle, protocol };
+      expect(await tool('import', protocol, { bundle, passphrase: '123456' })).toMatchObject({ ok: true });
+      expect(await tool('apply-to-workbench', protocol)).toMatchObject({ ok: true });
+      const after = await unlockCredentialVault(
+        state.local[SETTINGS_STORAGE_KEY] as CredentialVaultRecord,
+        '123456'
+      );
+      expect(after.settings.protocol).toBe('iop');
+      const other = protocol === 'iop' ? 'top' : 'iop';
+      expect(authorizationProfiles(after.settings)[other]).toEqual(
+        authorizationProfiles(before.settings)[other]
+      );
+      expect(state.local['fixture:unrelated-task']).toEqual({ status: 'paused' });
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  }
+  it('a failed atomic workbench write leaves the original settings and standalone bundle intact', async () => {
+    await createPair(false);
+    const bundle = { ...credentialFixtures.oauthBundle, protocol: 'iop' };
+    await tool('import', 'iop', { bundle, passphrase: '123456' });
+    const before = JSON.stringify(state.local[SETTINGS_STORAGE_KEY]);
+    vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(new Error('disk full'));
+    expect(await tool('apply-to-workbench', 'iop')).toMatchObject({ ok: false });
+    expect(JSON.stringify(state.local[SETTINGS_STORAGE_KEY])).toBe(before);
+    expect(await tool('export', 'iop')).toMatchObject({ ok: true, data: bundle });
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe('extension background protocol persistence and dispatch', () => {

@@ -4,19 +4,17 @@ import { AlibabaIopTokenClient, IOP_API_ORIGIN, PUBLIC_AUTH_ORIGIN } from '@one-
 import { isRequestId } from '@one-vegetable/core/network';
 import { isTrustedExtensionPageSender, type ExtensionRuntimeSenderIdentity } from './trusted-runtime-sender';
 import {
-  failure,
   IopAuthorizationController,
-  isRecord,
-  required,
-  parseCallback,
   type AuthorizationStorage,
   type AuthorizationProtectionBridge
 } from './iop-authorization';
+import { failure, isRecord, required, parseCallback } from './authorization-input';
 import { TopAuthorizationTokenClient } from './top-authorization-token-client';
 import { IopApplicationReader, IOP_APPLICATION_READER_ORIGINS } from './iop-application-reader';
 import { TOP_APPLICATION_READER_ORIGINS } from './iop-authorization-storage';
 import { readTopApplication } from './top-application-reader';
 import type { AuthorizationProtectionKey } from './authorization-protection';
+import type { AlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
 
 const applicationReader = new IopApplicationReader();
 let protection:
@@ -27,6 +25,10 @@ let protection:
   | undefined;
 export function configureAuthorizationProtection(bridge: NonNullable<typeof protection>): void {
   protection = bridge;
+}
+let applyWorkbenchBundle: ((bundle: AlibabaOpenApiCredentialBundle) => Promise<void>) | undefined;
+export function configureAuthorizationWorkbench(apply: NonNullable<typeof applyWorkbenchBundle>): void {
+  applyWorkbenchBundle = apply;
 }
 const sharedProtection: AuthorizationProtectionBridge = {
   async prepare(passphrase) {
@@ -113,6 +115,46 @@ browser.tabs.onUpdated.addListener((tabId, change) => {
   if (change.url) void topController.acceptCallback(change.url, tabId).catch(() => undefined);
 });
 
+/** Never navigate a merchant page or put OAuth parameters in an extension URL. */
+function callbackReturn(toolTabId: unknown, protocol: 'top' | 'iop'): () => Promise<void> {
+  return async () => {
+    let activated = false;
+    let windowId: number | undefined;
+    if (typeof toolTabId === 'number' && Number.isSafeInteger(toolTabId) && toolTabId >= 0) {
+      try {
+        // Tab URLs are redacted without the broad "tabs" permission. Query only
+        // this extension's own contexts instead of requesting browsing access.
+        const [context] = await browser.runtime.getContexts({ contextTypes: ['TAB'], tabIds: [toolTabId] });
+        if (
+          context &&
+          isTrustedExtensionPageSender(
+            { id: browser.runtime.id, url: context.documentUrl ?? '' },
+            browser.runtime.id,
+            browser.runtime.getURL('/authorization.html')
+          ) &&
+          (new URL(context.documentUrl ?? '').searchParams.get('protocol') === 'top' ? 'top' : 'iop') ===
+            protocol
+        ) {
+          await browser.tabs.update(toolTabId, { active: true });
+          windowId = context.windowId;
+          activated = true;
+        }
+      } catch {
+        // The initiating tab may have been closed. Open a clean result page instead.
+      }
+    }
+    if (!activated) {
+      const tab = await browser.tabs.create({
+        url: browser.runtime.getURL(`/authorization.html?protocol=${protocol}`),
+        active: true
+      });
+      windowId = tab.windowId;
+    }
+    if (windowId !== undefined)
+      await browser.windows.update(windowId, { focused: true }).catch(() => undefined);
+  };
+}
+
 /** Shared workbench manual lock; standalone lock affects only its chosen protocol. */
 export async function lockAllAlibabaAuthorizations(): Promise<void> {
   const results = await Promise.allSettled([controller.lock(), topController.lock()]);
@@ -172,20 +214,23 @@ export async function handleAuthorization(
       case 'start': {
         const callbackUrl = required(payload.callbackUrl);
         await requirePermissions(protocol, callbackUrl);
-        await selected.start({
-          appName: required(payload.appName),
-          appKey: required(payload.appKey),
-          appSecret: required(payload.appSecret),
-          callbackUrl,
-          passphrase: passphrase(payload.passphrase)
-        });
+        await selected.start(
+          {
+            appName: required(payload.appName),
+            appKey: required(payload.appKey),
+            appSecret: required(payload.appSecret),
+            callbackUrl,
+            passphrase: passphrase(payload.passphrase)
+          },
+          callbackReturn(value.toolTabId, protocol)
+        );
         data = await selected.status();
         break;
       }
       case 'reauthorize':
         await selected.status();
         await requirePermissions(protocol, selected.callbackUrl());
-        await selected.reauthorize();
+        await selected.reauthorize(callbackReturn(value.toolTabId, protocol));
         data = await selected.status();
         break;
       case 'callback':
@@ -212,6 +257,20 @@ export async function handleAuthorization(
       case 'export':
         data = await selected.export();
         break;
+      case 'apply-to-workbench': {
+        const apply = applyWorkbenchBundle;
+        if (!apply) throw failure('AUTH_ACTION_FAILED');
+        // Check the business origin, not the token endpoint. Denial must not change either store.
+        if (
+          !(await browser.permissions.contains({
+            origins: [`${protocol === 'iop' ? IOP_API_ORIGIN : 'https://eco.taobao.com'}/*`]
+          }))
+        )
+          throw failure('AUTH_PERMISSION_REQUIRED');
+        await selected.applyToWorkbench(apply);
+        data = { applied: true, protocol };
+        break;
+      }
       case 'lock':
         await selected.lock();
         data = await selected.status();

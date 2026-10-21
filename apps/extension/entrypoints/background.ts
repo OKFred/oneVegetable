@@ -7,6 +7,7 @@ import {
   handleAuthorization,
   handlePublicAuthorization,
   configureAuthorizationProtection,
+  configureAuthorizationWorkbench,
   rotateAuthorizationProtection,
   lockAllAlibabaAuthorizations,
   resetIopAuthorization
@@ -363,6 +364,9 @@ configureAuthorizationProtection({
   status: () => serializeVaultOperation(() => executeCredentialVaultOperation('status', undefined)),
   prepareStatus: (passphrase) =>
     serializeVaultOperation(() => executeCredentialVaultOperation('prepare-authorization', { passphrase }))
+});
+configureAuthorizationWorkbench(async (bundle) => {
+  await serializeVaultOperation(() => saveAcquiredCredentialsToVault(bundle, undefined));
 });
 const alibabaCredentialAcquisition = new ExtensionAlibabaCredentialAcquisitionController();
 const productMutations = new ExtensionProductDisplayMutationLifecycle({

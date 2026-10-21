@@ -11,7 +11,7 @@ import {
   type ExtensionAlibabaSecretResult
 } from './alibaba-credential-page-driver';
 import { clickAlibabaGuidedTarget, type AlibabaGuidedTarget } from './alibaba-guided-click';
-import { failure, parseCallback } from './iop-authorization';
+import { failure, parseCallback } from './authorization-input';
 import {
   authorizationDiscoveryReason,
   type AuthorizationDiscoveryReason

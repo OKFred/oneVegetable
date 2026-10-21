@@ -5,7 +5,7 @@ import {
   revealAlibabaLegacyApplicationSecret,
   showAlibabaAuthorizationGuide
 } from './alibaba-credential-page-driver';
-import { failure, parseCallback } from './iop-authorization';
+import { failure, parseCallback } from './authorization-input';
 import type { IopApplicationReadResult } from './iop-application-reader';
 import { authorizationDiscoveryReason } from './authorization-discovery-reason';
 

@@ -56,12 +56,25 @@ export default defineConfig({
               includeDependenciesRecursively: false
             },
             {
-              // Retain the existing validator/auth grouping; do not merge the shared
-              // protocol selector with worker-only profile helpers (Options uses it too).
+              // Pure input helpers live separately, so readers never import runtime registration.
+              name: 'iop-authorization',
+              test: /[\\/]apps[\\/]extension[\\/]lib[\\/]iop-authorization(?:-runtime)?\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'authorization-services',
+              test: /[\\/]apps[\\/]extension[\\/]lib[\\/](?:iop-application-reader|top-application-reader|top-authorization-token-client|authorization-protection|credential-vault-session)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'product-mutation-lifecycle',
+              test: /[\\/]apps[\\/]extension[\\/]lib[\\/]product-display-mutation-lifecycle\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              // Retain validator grouping; Options also uses the shared protocol selector.
               name(id) {
                 const path = id.replaceAll('\\', '/');
-                if (/\/apps\/extension\/lib\/iop-authorization(?:-runtime)?\.ts$/u.test(path))
-                  return 'iop-authorization';
                 if (path.endsWith('/packages/core/src/validation-equal.ts')) return 'validation-equal';
                 return /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
                   path

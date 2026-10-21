@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseAlibabaTokenResponse } from '@one-vegetable/core/credential-bundle';
+import { GatewayException } from '@one-vegetable/core/errors';
 import { IOP_API_ORIGIN, PUBLIC_AUTH_CALLBACK, PUBLIC_AUTH_ORIGIN } from '@one-vegetable/core/alibaba-iop';
 import type * as IopModule from '@one-vegetable/core/alibaba-iop';
 import tokens from '../../../mock/data/alibaba-auth/iop-token-responses.json';
@@ -25,13 +26,17 @@ const mocks = vi.hoisted(() => {
       for (const key of keys) Reflect.deleteProperty(data, key);
       return Promise.resolve();
     }),
-    open: vi.fn((_options: { url: string }) => Promise.resolve({ id: 42 })),
+    open: vi.fn((_options: { url: string; active?: boolean }) => Promise.resolve({ id: 42, windowId: 3 })),
+    getTab: vi.fn((_id: number) => Promise.resolve({ id: 7, windowId: 3, url: '' })),
+    activate: vi.fn((_id: number, _options: { active: boolean }) => Promise.resolve({ id: 7, windowId: 3 })),
+    focus: vi.fn((_id: number, _options: { focused: boolean }) => Promise.resolve()),
     permission: vi.fn(() => Promise.resolve(true)),
     token: vi.fn(),
     topToken: vi.fn(),
     discover: vi.fn(),
     discoverTop: vi.fn(),
-    listener: vi.fn()
+    listener: vi.fn((_listener: (tabId: number, change: { url?: string }) => void) => undefined),
+    applyWorkbench: vi.fn((_bundle: unknown) => Promise.resolve())
   };
 });
 vi.mock('../lib/top-authorization-token-client', () => ({
@@ -54,9 +59,19 @@ vi.mock('wxt/browser', () => ({
   browser: {
     runtime: {
       id: 'local-test-extension',
-      getURL: (path: string) => `chrome-extension://local-test-extension${path}`
+      getURL: (path: string) => `chrome-extension://local-test-extension${path}`,
+      getContexts: async (filter: { tabIds: number[] }) => {
+        const tab = await mocks.getTab(filter.tabIds[0] ?? -1);
+        return [{ tabId: tab.id, windowId: tab.windowId, documentUrl: tab.url }];
+      }
     },
-    tabs: { create: mocks.open, onUpdated: { addListener: mocks.listener } },
+    tabs: {
+      create: mocks.open,
+      get: mocks.getTab,
+      update: mocks.activate,
+      onUpdated: { addListener: mocks.listener }
+    },
+    windows: { update: mocks.focus },
     permissions: { contains: mocks.permission },
     storage: {
       local: {
@@ -83,11 +98,13 @@ vi.mock('@one-vegetable/core/alibaba-iop', async (original) => {
 import {
   handleAuthorization,
   configureAuthorizationProtection,
+  configureAuthorizationWorkbench,
   rotateAuthorizationProtection,
   handlePublicAuthorization,
   lockAllAlibabaAuthorizations,
   resetIopAuthorization
 } from '../lib/iop-authorization-runtime';
+const navigationListener = mocks.listener.mock.calls[0]?.[0];
 
 const trusted = {
   id: 'local-test-extension',
@@ -106,6 +123,7 @@ function external(action: string, extra: Record<string, unknown> = {}) {
   return { kind: 'one-vegetable-public-auth', requestId: crypto.randomUUID(), action, ...extra };
 }
 beforeEach(async () => {
+  configureAuthorizationWorkbench(mocks.applyWorkbench);
   await resetIopAuthorization();
   for (const key of Object.keys(mocks.data)) Reflect.deleteProperty(mocks.data, key);
   const storage = {
@@ -133,6 +151,10 @@ beforeEach(async () => {
   mocks.permission.mockResolvedValue(true);
   mocks.token.mockResolvedValue(parseAlibabaTokenResponse(tokens.success));
   mocks.topToken.mockResolvedValue(parseAlibabaTokenResponse(tokens.success));
+  mocks.getTab.mockResolvedValue({ id: 7, windowId: 3, url: trusted.url });
+  mocks.activate.mockResolvedValue({ id: 7, windowId: 3 });
+  mocks.focus.mockResolvedValue();
+  mocks.applyWorkbench.mockResolvedValue();
 });
 afterEach(async () => {
   await resetIopAuthorization();
@@ -336,6 +358,275 @@ describe('narrow public authorization bridge', () => {
     expect(JSON.stringify(status)).not.toContain(tokens.success.access_token);
     expect(JSON.stringify(mocks.data)).not.toContain('fixture-code');
     expect(JSON.stringify(mocks.data)).not.toContain(tokens.success.refresh_token);
+  });
+});
+
+describe('apply the selected standalone bundle to the workbench', () => {
+  for (const protocol of ['top', 'iop'] as const) {
+    it(`${protocol}: applies only on an explicit trusted action, without exporting secrets or calling Alibaba`, async () => {
+      const bundle = { ...credential.oauthBundle, protocol };
+      await handleAuthorization(command('import', { bundle, passphrase: '123456' }, protocol), trusted);
+      expect(mocks.applyWorkbench).not.toHaveBeenCalled();
+      const result = await handleAuthorization(
+        command('apply-to-workbench', { bundle: { arbitrary: true } }, protocol),
+        trusted
+      );
+      expect(result).toMatchObject({ ok: true, data: { applied: true, protocol } });
+      expect(mocks.applyWorkbench).toHaveBeenCalledExactlyOnceWith(bundle);
+      expect(mocks.permission).toHaveBeenLastCalledWith({
+        origins: [`${protocol === 'iop' ? IOP_API_ORIGIN : 'https://eco.taobao.com'}/*`]
+      });
+      expect(mocks.token).not.toHaveBeenCalled();
+      expect(mocks.topToken).not.toHaveBeenCalled();
+      expect(JSON.stringify(result)).not.toContain(bundle.application.appSecret);
+      expect(JSON.stringify(result)).not.toContain(bundle.oauth.accessToken);
+    });
+    it(`${protocol}: rejects denied business permission and preserves the standalone bundle on save failure`, async () => {
+      const bundle = { ...credential.oauthBundle, protocol };
+      await handleAuthorization(command('import', { bundle, passphrase: '123456' }, protocol), trusted);
+      const before = JSON.stringify(mocks.data);
+      mocks.permission.mockResolvedValueOnce(false);
+      expect(await handleAuthorization(command('apply-to-workbench', {}, protocol), trusted)).toMatchObject({
+        ok: false,
+        error: { code: 'AUTH_PERMISSION_REQUIRED' }
+      });
+      expect(mocks.applyWorkbench).not.toHaveBeenCalled();
+      expect(JSON.stringify(mocks.data)).toBe(before);
+      mocks.applyWorkbench.mockRejectedValueOnce(new Error('CREDENTIAL_VAULT_LOCKED'));
+      expect(await handleAuthorization(command('apply-to-workbench', {}, protocol), trusted)).toMatchObject({
+        ok: false,
+        error: { code: 'CREDENTIAL_VAULT_LOCKED' }
+      });
+      expect(JSON.stringify(mocks.data)).toBe(before);
+      expect(await handleAuthorization(command('export', {}, protocol), trusted)).toMatchObject({
+        ok: true,
+        data: bundle
+      });
+      expect(await handleAuthorization(command('apply-to-workbench', {}, protocol), trusted)).toMatchObject({
+        ok: true
+      });
+      expect(await handleAuthorization(command('status', {}, protocol), trusted)).toMatchObject({
+        data: { errorCode: null }
+      });
+    });
+  }
+  it('rejects websites, the workbench and public callback bridge as apply callers', async () => {
+    for (const source of [
+      { id: trusted.id, url: 'https://example.com/' },
+      { id: trusted.id, url: 'chrome-extension://local-test-extension/options.html' },
+      { id: 'another-extension', url: trusted.url }
+    ])
+      expect(await handleAuthorization(command('apply-to-workbench'), source)).toMatchObject({
+        ok: false,
+        error: { code: 'AUTH_ORIGIN_DENIED' }
+      });
+    expect(
+      await handlePublicAuthorization(external('apply-to-workbench'), {
+        url: PUBLIC_AUTH_CALLBACK,
+        tab: { id: 42 }
+      })
+    ).toMatchObject({ ok: false });
+    expect(mocks.applyWorkbench).not.toHaveBeenCalled();
+  });
+  it('never applies an empty, locked or unresolved bundle', async () => {
+    expect(await handleAuthorization(command('apply-to-workbench'), trusted)).toMatchObject({ ok: false });
+    await handleAuthorization(
+      command('import', { bundle: { ...credential.oauthBundle, protocol: 'iop' }, passphrase: '123456' }),
+      trusted
+    );
+    mocks.data['one-vegetable-iop-refresh-receipt-v1'] = {
+      status: 'sending',
+      requestId: crypto.randomUUID()
+    };
+    expect(await handleAuthorization(command('apply-to-workbench'), trusted)).toMatchObject({
+      ok: false,
+      error: { code: 'AUTH_REFRESH_RESULT_UNKNOWN' }
+    });
+    await handleAuthorization(command('lock'), trusted);
+    expect(await handleAuthorization(command('apply-to-workbench'), trusted)).toMatchObject({ ok: false });
+    expect(mocks.applyWorkbench).not.toHaveBeenCalled();
+  });
+  it('does not apply twice or refresh while a workbench save is in flight', async () => {
+    await handleAuthorization(
+      command('import', { bundle: { ...credential.oauthBundle, protocol: 'iop' }, passphrase: '123456' }),
+      trusted
+    );
+    let finish: (() => void) | undefined;
+    mocks.applyWorkbench.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    const applying = handleAuthorization(command('apply-to-workbench'), trusted);
+    await vi.waitFor(() => {
+      expect(mocks.applyWorkbench).toHaveBeenCalledOnce();
+    });
+    expect(await handleAuthorization(command('apply-to-workbench'), trusted)).toMatchObject({
+      ok: false,
+      error: { code: 'AUTH_TASK_ACTIVE' }
+    });
+    expect(await handleAuthorization(command('refresh'), trusted)).toMatchObject({
+      ok: false,
+      error: { code: 'AUTH_TASK_ACTIVE' }
+    });
+    finish?.();
+    expect(await applying).toMatchObject({ ok: true });
+    expect(mocks.token).not.toHaveBeenCalled();
+  });
+});
+
+describe('return to the initiating authorization tool', () => {
+  async function start(protocol: 'top' | 'iop', callbackUrl = PUBLIC_AUTH_CALLBACK) {
+    mocks.getTab.mockResolvedValue({ id: 7, windowId: 3, url: `${trusted.url}?protocol=${protocol}` });
+    expect(
+      await handleAuthorization(
+        {
+          ...command(
+            'start',
+            { ...credential.oauthBundle.application, callbackUrl, passphrase: '123456' },
+            protocol
+          ),
+          toolTabId: 7
+        },
+        trusted
+      )
+    ).toMatchObject({ ok: true });
+    return new URL(mocks.open.mock.calls[0]?.[0].url ?? '').searchParams.get('state') ?? '';
+  }
+  async function receive(state: string, extra: Record<string, string> = { code: 'fixture-authorized-code' }) {
+    return handlePublicAuthorization(external('callback', { state, ...extra }), {
+      url: PUBLIC_AUTH_CALLBACK,
+      tab: { id: 42 }
+    });
+  }
+  for (const protocol of ['top', 'iop'] as const) {
+    it(`${protocol}: returns once to the same tab and window without navigating or closing callback`, async () => {
+      const state = await start(protocol);
+      expect(await receive(state)).toMatchObject({ ok: true, data: { received: true } });
+      await vi.waitFor(() => {
+        expect(mocks.focus).toHaveBeenCalledExactlyOnceWith(3, { focused: true });
+      });
+      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(7, { active: true });
+      expect(mocks.open).toHaveBeenCalledOnce();
+      expect(await receive(state)).toMatchObject({ data: { received: false } });
+      expect(mocks.activate).toHaveBeenCalledOnce();
+    });
+    it(`${protocol}: observes arbitrary registered callbacks through tabs.onUpdated`, async () => {
+      const state = await start(protocol, 'https://example.com/merchant-callback');
+      expect(navigationListener).toBeTypeOf('function');
+      const url = `https://example.com/merchant-callback?state=${state}&code=fixture-authorized-code`;
+      navigationListener?.(43, { url });
+      navigationListener?.(42, { url: url.replace(state, 'wrong-state') });
+      navigationListener?.(42, { url: url.replace('/merchant-callback?', '/different?') });
+      expect(mocks.activate).not.toHaveBeenCalled();
+      expect(mocks.token).not.toHaveBeenCalled();
+      expect(mocks.topToken).not.toHaveBeenCalled();
+      navigationListener?.(42, { url });
+      navigationListener?.(42, { url });
+      await vi.waitFor(() => {
+        expect(mocks.activate).toHaveBeenCalledOnce();
+      });
+      await vi.waitFor(() => {
+        expect(protocol === 'iop' ? mocks.token : mocks.topToken).toHaveBeenCalledOnce();
+      });
+    });
+    it(`${protocol}: returns for provider denial and token failure without claiming success`, async () => {
+      const state = await start(protocol);
+      expect(await receive(state, { error: 'denied' })).toMatchObject({ ok: false });
+      await vi.waitFor(() => {
+        expect(mocks.activate).toHaveBeenCalledOnce();
+      });
+      expect(await handleAuthorization(command('status', {}, protocol), trusted)).toMatchObject({
+        data: { errorCode: 'OAUTH_PROVIDER_ERROR', state: 'empty' }
+      });
+      expect(mocks.token).not.toHaveBeenCalled();
+      expect(mocks.topToken).not.toHaveBeenCalled();
+      const client = protocol === 'iop' ? mocks.token : mocks.topToken;
+      client.mockRejectedValueOnce(
+        new GatewayException({
+          code: protocol === 'iop' ? 'IOP_TOKEN_REJECTED' : 'TOP_TOKEN_REJECTED',
+          message: 'rejected',
+          retryable: false
+        })
+      );
+      mocks.open.mockClear();
+      const nextState = await start(protocol);
+      expect(await receive(nextState)).toMatchObject({ ok: false });
+      await vi.waitFor(() => {
+        expect(mocks.activate).toHaveBeenCalledTimes(2);
+      });
+      expect(await handleAuthorization(command('status', {}, protocol), trusted)).toMatchObject({
+        data: { state: 'empty', errorCode: protocol === 'iop' ? 'IOP_TOKEN_REJECTED' : 'TOP_TOKEN_REJECTED' }
+      });
+    });
+  }
+  it('does not steal focus for wrong state, tab, callback or cancelled tasks', async () => {
+    const state = await start('iop');
+    await receive('wrong-state');
+    await handlePublicAuthorization(external('callback', { state, code: 'fixture-code' }), {
+      url: PUBLIC_AUTH_CALLBACK,
+      tab: { id: 43 }
+    });
+    await handlePublicAuthorization(external('callback', { state, code: 'fixture-code' }), {
+      url: `${PUBLIC_AUTH_CALLBACK}/different`,
+      tab: { id: 42 }
+    });
+    await handleAuthorization(command('cancel'), trusted);
+    await receive(state);
+    expect(mocks.activate).not.toHaveBeenCalled();
+    expect(mocks.focus).not.toHaveBeenCalled();
+    expect(mocks.open).toHaveBeenCalledOnce();
+  });
+  it.each(['closed', 'navigated', 'other-protocol'])(
+    'opens only a clean result tool when source is %s',
+    async (reason) => {
+      const state = await start('iop');
+      if (reason === 'closed') mocks.getTab.mockRejectedValueOnce(new Error('No tab'));
+      else
+        mocks.getTab.mockResolvedValueOnce({
+          id: 7,
+          windowId: 3,
+          url: reason === 'navigated' ? 'https://example.com/' : `${trusted.url}?protocol=top`
+        });
+      await receive(state);
+      await vi.waitFor(() => {
+        expect(mocks.open).toHaveBeenCalledTimes(2);
+      });
+      expect(mocks.activate).not.toHaveBeenCalled();
+      expect(mocks.open).toHaveBeenLastCalledWith({ url: `${trusted.url}?protocol=iop`, active: true });
+      expect(JSON.stringify(mocks.open.mock.calls.slice(1))).not.toMatch(
+        /fixture-authorized-code|access_token|state=/u
+      );
+    }
+  );
+  it('a focus failure cannot turn successful token exchange into a failure', async () => {
+    const state = await start('iop');
+    mocks.focus.mockRejectedValueOnce(new Error('window closed'));
+    expect(await receive(state)).toMatchObject({ data: { received: true } });
+    expect(await handleAuthorization(command('status'), trusted)).toMatchObject({
+      data: { state: 'ready', errorCode: null }
+    });
+    expect(mocks.token).toHaveBeenCalledOnce();
+  });
+  it('reauthorization returns to the tool which initiated renewal', async () => {
+    await handleAuthorization(
+      command('import', { bundle: credential.oauthBundle, passphrase: '123456' }, 'top'),
+      trusted
+    );
+    mocks.getTab.mockResolvedValue({ id: 7, windowId: 3, url: `${trusted.url}?protocol=top` });
+    expect(
+      await handleAuthorization({ ...command('reauthorize', {}, 'top'), toolTabId: 7 }, trusted)
+    ).toMatchObject({ ok: true });
+    const state = new URL(mocks.open.mock.calls[0]?.[0].url ?? '').searchParams.get('state') ?? '';
+    const callback = `${credential.oauthBundle.application.callbackUrl}?state=${state}&code=fixture-authorized-code`;
+    navigationListener?.(42, { url: callback });
+    await vi.waitFor(() => {
+      expect(mocks.activate).toHaveBeenCalledOnce();
+    });
+    await vi.waitFor(() => {
+      expect(mocks.topToken).toHaveBeenCalledOnce();
+    });
   });
 });
 

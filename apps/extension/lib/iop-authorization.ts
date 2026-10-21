@@ -16,6 +16,8 @@ import {
 import { GatewayException } from '@one-vegetable/core/errors';
 import { validateVaultPassphrase } from '@one-vegetable/core/credential-vault';
 import type { AuthorizationProtectionKey } from './authorization-protection';
+import { failure, parseCallback, required } from './authorization-input';
+export { failure, parseCallback, required } from './authorization-input';
 
 export interface AuthorizationProtectionBridge {
   prepare(passphrase: string): Promise<AuthorizationProtectionKey>;
@@ -70,6 +72,7 @@ interface AuthorizationJob {
   state: string;
   tabId: number;
   deadline: number;
+  returnToTool: (() => Promise<void>) | undefined;
   protection:
     | { passphrase: string }
     | { vault: OpenAlibabaAuthorizationVault }
@@ -196,13 +199,16 @@ export class IopAuthorizationController {
     };
   }
 
-  async start(input: {
-    appName: string;
-    appKey: string;
-    appSecret: string;
-    callbackUrl: string;
-    passphrase: string;
-  }): Promise<void> {
+  async start(
+    input: {
+      appName: string;
+      appKey: string;
+      appSecret: string;
+      callbackUrl: string;
+      passphrase: string;
+    },
+    returnToTool?: () => Promise<void>
+  ): Promise<void> {
     await this.exclusive(async () => {
       if (this.job) throw failure('AUTH_TASK_ACTIVE');
       await this.restore(true);
@@ -223,30 +229,35 @@ export class IopAuthorizationController {
       };
       // Validate the passphrase and application before opening any remote page.
       if (this.protection) {
-        await this.beginJob(application, { shared: await this.protection.prepare(input.passphrase) });
+        await this.beginJob(
+          application,
+          { shared: await this.protection.prepare(input.passphrase) },
+          returnToTool
+        );
       } else if (input.passphrase === '' && this.unlocked) {
-        await this.beginJob(application, { vault: this.unlocked });
+        await this.beginJob(application, { vault: this.unlocked }, returnToTool);
       } else {
         validateVaultPassphrase(input.passphrase);
-        await this.beginJob(application, { passphrase: input.passphrase });
+        await this.beginJob(application, { passphrase: input.passphrase }, returnToTool);
       }
     });
   }
 
-  async reauthorize(): Promise<void> {
+  async reauthorize(returnToTool?: () => Promise<void>): Promise<void> {
     await this.exclusive(async () => {
       if (this.job) throw failure('AUTH_TASK_ACTIVE');
       await this.restore(true);
       const vault = this.requireUnlocked();
       // A fresh OAuth code is not a retry of an uncertain token refresh. Retain
       // its receipt until a newly authorized bundle has been safely persisted.
-      await this.beginJob(vault.bundle.application, { vault });
+      await this.beginJob(vault.bundle.application, { vault }, returnToTool);
     });
   }
 
   private async beginJob(
     application: AlibabaOpenApiCredentialBundle['application'],
-    protection: AuthorizationJob['protection']
+    protection: AuthorizationJob['protection'],
+    returnToTool?: () => Promise<void>
   ): Promise<void> {
     const callback = parseCallback(application.callbackUrl);
     const state = crypto.randomUUID();
@@ -264,7 +275,7 @@ export class IopAuthorizationController {
       url.searchParams.set('sp', 'ICBU');
     }
     const tabId = await this.openTab(url.href);
-    this.job = { application, protection, state, tabId, deadline: this.clock() + 600_000 };
+    this.job = { application, protection, state, tabId, deadline: this.clock() + 600_000, returnToTool };
     this.expiryTimer = setTimeout(() => {
       this.endJob();
       this.errorCode = 'AUTH_TASK_EXPIRED';
@@ -298,6 +309,11 @@ export class IopAuthorizationController {
       this.errorCode = 'OAUTH_STATE_MISMATCH';
       throw failure('OAUTH_STATE_MISMATCH');
     }
+    // Only a task-bound callback may focus the tool. Navigation/bridge duplicates
+    // must not steal focus twice, and focusing must never delay or retry exchange.
+    const returnToTool = job.returnToTool;
+    job.returnToTool = undefined;
+    if (returnToTool) void returnToTool().catch(() => undefined);
     if (actual.searchParams.has('error')) {
       this.endJob();
       this.errorCode = 'OAUTH_PROVIDER_ERROR';
@@ -470,6 +486,21 @@ export class IopAuthorizationController {
     return structuredClone(this.requireUnlocked().bundle);
   }
 
+  /** Keep this protocol stable while the trusted background updates the workbench. */
+  async applyToWorkbench(apply: (bundle: AlibabaOpenApiCredentialBundle) => Promise<void>): Promise<void> {
+    await this.exclusive(async () => {
+      if (this.job) throw failure('AUTH_TASK_ACTIVE');
+      await this.restore(true);
+      const vault = this.requireUnlocked();
+      const receipt = (await this.storage.get(this.receiptKey))[this.receiptKey];
+      if (this.pendingSave || (receipt !== undefined && receipt !== null))
+        throw failure('AUTH_REFRESH_RESULT_UNKNOWN');
+      // Secrets remain within the service worker. No page message or download is needed.
+      await apply(structuredClone(vault.bundle));
+      this.errorCode = null;
+    });
+  }
+
   async save(): Promise<void> {
     await this.exclusive(async () => {
       if (!this.pendingSave) throw failure('AUTH_INPUT_INVALID');
@@ -575,33 +606,6 @@ export class IopAuthorizationController {
       this.busy = false;
     }
   }
-}
-export function parseCallback(text: string): URL {
-  let url: URL;
-  try {
-    url = new URL(text);
-  } catch {
-    throw failure('CALLBACK_INVALID');
-  }
-  if (
-    url.protocol !== 'https:' ||
-    url.username ||
-    url.password ||
-    url.hash ||
-    url.search ||
-    url.hostname === 'localhost' ||
-    /^\d+\.\d+\.\d+\.\d+$/u.test(url.hostname) ||
-    url.hostname.includes(':')
-  )
-    throw failure('CALLBACK_INVALID');
-  return url;
-}
-export function required(value: unknown): string {
-  if (typeof value !== 'string' || !value.trim() || value.length > 4096) throw failure('AUTH_INPUT_INVALID');
-  return value.trim();
-}
-export function failure(code: string): GatewayException {
-  return new GatewayException({ code, message: code, retryable: false });
 }
 function isDefiniteRejection(error: unknown): boolean {
   return (
