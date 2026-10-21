@@ -64,6 +64,7 @@ export async function requestPageDetail(
     identity,
     language,
     request.kind,
+    request.kind === 'order' ? (request.order.role ?? 'seller') : null,
     request.kind === 'order' ? request.order.id : request.id,
     request.kind === 'inventory' ? request.source : null
   ]);

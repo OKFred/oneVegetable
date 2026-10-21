@@ -5,6 +5,8 @@ export const orders = {
   jushitaNotice:
     'alibaba.seller.order.get can only be called from Jushita, so full order details are explicitly unavailable. The page combines only order summaries, funds, and logistics, preserving other results if one API fails.',
   workspaceLabel: 'Trade workspace',
+  roleLabel: 'Order role',
+  roles: { seller: 'Sales orders', buyer: 'Purchase orders' },
   workspaces: {
     orders: 'Orders and aggregated details',
     finance: 'Funds and fulfillment',
@@ -36,6 +38,8 @@ export const orders = {
     modifiedDateStart: 'Modified from',
     modifiedDateEnd: 'Modified until',
     buyer: 'Filter by buyer login',
+    purchaseSearchNotice:
+      'Purchase orders are read-only. Buyer-login search is unavailable because IOP has no public other_login_id parameter. Use filters or Search to query again.',
     allStatuses: 'All order statuses',
     unpay: 'Awaiting payment',
     paid: 'Paid',

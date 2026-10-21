@@ -4,6 +4,8 @@ export const orders = {
   jushitaNotice:
     'alibaba.seller.order.get 仅允许聚石塔内调用，所以完整详情明确标记为不可用。页面只组合订单摘要、资金和物流；部分接口失败时保留其余结果。',
   workspaceLabel: '交易工作区',
+  roleLabel: '订单角色',
+  roles: { seller: '销售订单', buyer: '采购订单' },
   workspaces: {
     orders: '订单与聚合详情',
     finance: '资金与履约',
@@ -35,6 +37,8 @@ export const orders = {
     modifiedDateStart: '修改时间开始',
     modifiedDateEnd: '修改时间结束',
     buyer: '按买家登录名过滤',
+    purchaseSearchNotice:
+      '采购订单仅供只读查询。IOP 无公开的 other_login_id 参数，不支持买家登录名搜索；可使用筛选或搜索按钮重新查询。',
     allStatuses: '全部订单状态',
     unpay: '待付款',
     paid: '已付款',

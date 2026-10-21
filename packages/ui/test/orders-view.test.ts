@@ -19,6 +19,7 @@ import { provideServices } from '../src/lib/services';
 import { formatDateTime } from '../src/lib/date-time';
 import { uiI18n } from '../src/i18n';
 import OrdersView from '../src/views/OrdersView.vue';
+import { useAppPreferences } from '../src/lib/preferences';
 import iopDetailFixture from '../../../mock/data/iop-order-public-detail.json';
 
 function mountView(mode: 'mock' | 'extension' = 'mock', gateway = new MockGatewayClient(0)) {
@@ -87,9 +88,10 @@ describe('OrdersView', () => {
   it('uses neutral pressed workspace toggles', async () => {
     const wrapper = mountView();
     await flushPromises();
-    const selected = wrapper.get('button[aria-pressed="true"]');
+    const workspaces = wrapper.get('[data-testid="order-workspaces"]');
+    const selected = workspaces.get('button[aria-pressed="true"]');
     expect(selected.classes()).toContain('bg-secondary');
-    expect(wrapper.findAll('button[aria-pressed="false"]')).toHaveLength(3);
+    expect(workspaces.findAll('button[aria-pressed="false"]')).toHaveLength(3);
     await button(wrapper, '地址 Schema').trigger('click');
     expect(selected.attributes('aria-pressed')).toBe('false');
     expect(selected.classes()).not.toContain('bg-secondary');
@@ -463,6 +465,277 @@ describe('OrdersView native IOP public detail', () => {
     });
     expect(document.body.querySelector('[data-testid="iop-order-public-detail-error"]')).toBeNull();
     expect(detailElement('order-logistics').textContent).toContain('FICTIONAL-TRACK-ALPHA');
+  });
+});
+
+function roleGateway(options: { listWait?: Promise<void>; detailWait?: Promise<void> } = {}) {
+  const gateway = new MockGatewayClient(0);
+  const original = gateway.request.bind(gateway);
+  const request = vi
+    .spyOn(gateway, 'request')
+    .mockImplementation(
+      async <K extends OperationId>(operation: K, payload: RequestOf<K>): Promise<ResponseOf<K>> => {
+        if (operation === 'listTradeOrders') {
+          const query = payload as RequestOf<'listTradeOrders'>;
+          const aggregate = roleAggregate(query.role);
+          if (aggregate.order.role === 'seller') await options.listWait;
+          return {
+            items: [aggregate.order],
+            page: query.page,
+            pageSize: query.pageSize ?? 20,
+            total: 45
+          } as ResponseOf<K>;
+        }
+        if (operation === 'getTradeOrderAggregate') {
+          const order = (payload as RequestOf<'getTradeOrderAggregate'>).order;
+          const role = order.role ?? 'seller';
+          if (role === 'seller') await options.detailWait;
+          return roleAggregate(role) as ResponseOf<K>;
+        }
+        return original(operation, payload);
+      }
+    );
+  return { gateway, request };
+}
+
+function roleAggregate(role: 'seller' | 'buyer' = 'seller') {
+  const aggregate = structuredClone(iopDetailFixture.ready);
+  return {
+    ...aggregate,
+    order: { ...aggregate.order, role, status: `${role}-status`, buyerLoginId: `${role}-buyer` },
+    publicDetail: { ...aggregate.publicDetail, buyerName: `${role}-detail` },
+    logistics: { ...aggregate.logistics, trackingNumber: `${role}-tracking` }
+  };
+}
+
+describe('OrdersView sales and purchase isolation', () => {
+  const wrappers: ReturnType<typeof mountView>[] = [];
+  function mountRoles(gateway: MockGatewayClient) {
+    const wrapper = mountView('mock', gateway);
+    wrappers.push(wrapper);
+    return wrapper;
+  }
+  beforeEach(() => {
+    localStorage.clear();
+    globalThis.history.replaceState(null, '', '#/orders');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Unexpected live call')));
+  });
+  afterEach(() => {
+    for (const wrapper of wrappers.splice(0)) wrapper.unmount();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    uiI18n.global.locale.value = 'zh-CN';
+    document.documentElement.classList.remove('dark');
+  });
+
+  it.each(['zh-CN', 'en-US'] as const)(
+    'keeps purchase orders readonly, clears hidden buyer search and supports requery in %s dark mode',
+    async (locale) => {
+      localStorage.setItem(
+        APP_PREFERENCES_STORAGE_KEY,
+        JSON.stringify({ uiLocale: locale, alibabaLanguage: 'en_US', theme: 'dark' })
+      );
+      const { gateway, request } = roleGateway();
+      const wrapper = mountRoles(gateway);
+      await vi.waitFor(() => {
+        expect(wrapper.text()).toContain('seller-status');
+      });
+      expect(request).toHaveBeenCalledWith('listTradeOrders', { role: 'seller', page: 1, pageSize: 20 });
+      const searchInput = wrapper.get('[data-testid="order-toolbar"] input');
+      await searchInput.setValue('old-sales-buyer');
+      await wrapper.get('form').trigger('submit');
+      await vi.waitFor(() => {
+        expect(request).toHaveBeenCalledWith('listTradeOrders', {
+          role: 'seller',
+          page: 1,
+          pageSize: 20,
+          buyerLoginId: 'old-sales-buyer'
+        });
+      });
+      await button(wrapper, uiI18n.global.t('orders.roles.buyer')).trigger('click');
+      await vi.waitFor(() => {
+        expect(wrapper.text()).toContain('buyer-status');
+      });
+      expect(wrapper.find('[data-testid="order-toolbar"] input').exists()).toBe(false);
+      expect(wrapper.get('[data-testid="purchase-search-notice"]').text()).toBe(
+        uiI18n.global.t('orders.filters.purchaseSearchNotice')
+      );
+      expect(wrapper.find('[data-testid="order-workspaces"]').exists()).toBe(false);
+      expect(request).toHaveBeenCalledWith('listTradeOrders', { role: 'buyer', page: 1, pageSize: 20 });
+      const activeRole = wrapper.get('[data-testid="order-role-tabs"] button[aria-pressed="true"]');
+      expect(activeRole.text()).toBe(uiI18n.global.t('orders.roles.buyer'));
+      expect(activeRole.classes()).toContain('bg-secondary');
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+      const before = request.mock.calls.length;
+      await wrapper.get('form').trigger('submit');
+      await vi.waitFor(() => {
+        expect(request.mock.calls).toHaveLength(before + 1);
+      });
+      await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+      await vi.waitFor(() => {
+        expect(document.body.textContent).toContain('buyer-detail');
+      });
+      expect(document.body.textContent).not.toContain(uiI18n.global.t('orders.drawer.payment'));
+      expect(
+        request.mock.calls.some(([op]) =>
+          [
+            'createTradeOrder',
+            'getTradeTtAccount',
+            'getTradeAddressSchema',
+            'getTradeServiceCharge'
+          ].includes(op)
+        )
+      ).toBe(false);
+      bodyButton(uiI18n.global.t('common.dialog.closeDetails')).click();
+      await flushPromises();
+      await button(wrapper, uiI18n.global.t('orders.roles.seller')).trigger('click');
+      await vi.waitFor(() => {
+        expect(wrapper.find('[data-testid="order-toolbar"] input').exists()).toBe(true);
+      });
+      expect((wrapper.get('[data-testid="order-toolbar"] input').element as HTMLInputElement).value).toBe('');
+      const purchaseQueries = request.mock.calls.filter(
+        ([op, payload]) =>
+          op === 'listTradeOrders' && (payload as RequestOf<'listTradeOrders'>).role === 'buyer'
+      );
+      expect(purchaseQueries.length).toBeGreaterThan(1);
+      expect(
+        purchaseQueries.every(([, payload]) => payload !== undefined && !('buyerLoginId' in payload))
+      ).toBe(true);
+    }
+  );
+
+  it('isolates late sales list responses from the purchase query with the same order ID', async () => {
+    const waiting = Promise.withResolvers<undefined>();
+    const { gateway } = roleGateway({ listWait: waiting.promise });
+    const wrapper = mountRoles(gateway);
+    await button(wrapper, '采购订单').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('buyer-status');
+    });
+    waiting.resolve(undefined);
+    await flushPromises();
+    expect(wrapper.text()).toContain('buyer-status');
+    expect(wrapper.text()).not.toContain('seller-status');
+  });
+
+  it('resets paging and selection and rejects a late sales drawer aggregate for the same ID', async () => {
+    const waiting = Promise.withResolvers<undefined>();
+    const { gateway, request } = roleGateway({ detailWait: waiting.promise });
+    const wrapper = mountRoles(gateway);
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('seller-status');
+    });
+    await wrapper.get('button[aria-label="下一页"]').trigger('click');
+    await vi.waitFor(() => {
+      expect(request).toHaveBeenCalledWith('listTradeOrders', { role: 'seller', page: 2, pageSize: 20 });
+      expect(wrapper.find('tbody input[type="checkbox"]').exists()).toBe(true);
+    });
+    await wrapper.get('tbody input[type="checkbox"]').setValue(true);
+    expect(wrapper.get('tbody input[type="checkbox"]').element).toHaveProperty('checked', true);
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    await button(wrapper, '采购订单').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('buyer-status');
+    });
+    expect(document.body.querySelector('[data-testid="order-summary"]')).toBeNull();
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('page')).toBe(1);
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('selectionScope')).toContain('buyer');
+    expect(wrapper.get('tbody input[type="checkbox"]').element).toHaveProperty('checked', false);
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('buyer-detail');
+    });
+    waiting.resolve(undefined);
+    await flushPromises();
+    expect(detailElement('iop-order-public-detail').textContent).toContain('buyer-detail');
+    expect(document.body.textContent).not.toContain('seller-detail');
+    expect(detailElement('order-logistics').textContent).toContain('buyer-tracking');
+  });
+
+  it('masks TT data again after switching roles and preserves the original sales hash route', async () => {
+    const { gateway } = roleGateway();
+    const wrapper = mountRoles(gateway);
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    bodyButton('TT 汇款').click();
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[data-testid="tt-account-number"]')).not.toBeNull();
+    });
+    bodyButton('显示完整汇款账号').click();
+    await flushPromises();
+    const revealed = detailElement('tt-account-number').textContent;
+    await button(wrapper, '采购订单').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('buyer-status');
+    });
+    expect(document.body.textContent).not.toContain(revealed);
+    await button(wrapper, '销售订单').trigger('click');
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    expect(globalThis.location.hash).toBe(`#/orders/orders/${iopDetailFixture.ready.order.id}/overview`);
+    bodyButton('TT 汇款').click();
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[data-testid="tt-account-number"]')).not.toBeNull();
+    });
+    expect(detailElement('tt-account-number').textContent).not.toBe(revealed);
+    expect(detailElement('tt-account-number').textContent).toContain('•');
+  });
+
+  it('clears expanded column data and ignores a late sales page-detail result after a role change', async () => {
+    localStorage.setItem(
+      'one-vegetable:columns:v2:orders',
+      JSON.stringify({
+        version: 2,
+        visible: ['select', 'id', 'status', 'trackingNumber', 'actions'],
+        order: ['select', 'id', 'status', 'trackingNumber', 'actions']
+      })
+    );
+    const waiting = Promise.withResolvers<undefined>();
+    const { gateway, request } = roleGateway({ detailWait: waiting.promise });
+    const wrapper = mountRoles(gateway);
+    await vi.waitFor(() => {
+      expect(request.mock.calls.some(([op]) => op === 'getTradeOrderAggregate')).toBe(true);
+    });
+    await button(wrapper, '采购订单').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('buyer-status');
+    });
+    expect(wrapper.text()).not.toContain('seller-tracking');
+    waiting.resolve(undefined);
+    await vi.waitFor(() => {
+      expect(wrapper.get('tbody').text()).toContain('buyer-tracking');
+    });
+    expect(wrapper.get('tbody').text()).not.toContain('seller-tracking');
+    expect(request.mock.calls.filter(([op]) => op === 'getTradeOrderAggregate')).toHaveLength(2);
+  });
+
+  it('does not request business data when only the UI locale changes in either role', async () => {
+    const { gateway, request } = roleGateway();
+    const wrapper = mountRoles(gateway);
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('seller-status');
+    });
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('seller-detail');
+    });
+    const preferences = useAppPreferences();
+    let before = request.mock.calls.length;
+    preferences.uiLocale.value = 'en-US';
+    await flushPromises();
+    expect(wrapper.text()).toContain('Purchase orders');
+    expect(request.mock.calls).toHaveLength(before);
+    bodyButton('Close details').click();
+    await flushPromises();
+    await button(wrapper, 'Purchase orders').trigger('click');
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('buyer-detail');
+    });
+    before = request.mock.calls.length;
+    preferences.uiLocale.value = 'zh-CN';
+    await flushPromises();
+    expect(wrapper.text()).toContain('采购订单');
+    expect(request.mock.calls).toHaveLength(before);
   });
 });
 

@@ -6,7 +6,7 @@ import Input from './ui/Input.vue';
 import { platformDateFilter, validFilterRange } from '../lib/list-filters';
 import type { TradeOrderListQuery } from '@one-vegetable/core';
 
-type Filters = Omit<TradeOrderListQuery, 'page' | 'pageSize' | 'buyerLoginId'>;
+type Filters = Omit<TradeOrderListQuery, 'role' | 'page' | 'pageSize' | 'buyerLoginId'>;
 const props = defineProps<{ modelValue: Filters }>();
 const emit = defineEmits<{ 'update:modelValue': [value: Filters] }>();
 const { t } = useUiI18n();

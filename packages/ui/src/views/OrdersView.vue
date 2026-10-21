@@ -57,22 +57,25 @@ import { useUnsavedEditing } from '../lib/unsaved-editing';
 
 type Workspace = 'orders' | 'finance' | 'addresses' | 'assurance';
 type OrderDrawerTab = 'overview' | 'payment';
+type OrderRole = 'seller' | 'buyer';
+type OrderListFiltersValue = Omit<TradeOrderListQuery, 'role' | 'page' | 'pageSize' | 'buyerLoginId'>;
 
 const { gateway, mode } = useServices();
 const { t } = useUiI18n();
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const workspace = ref<Workspace>('orders');
+const orderRole = ref<OrderRole>('seller');
 const status = ref('');
 const buyerLoginId = ref('');
 const buyerSearch = ref('');
-const orderFilters = ref<Omit<TradeOrderListQuery, 'page' | 'pageSize' | 'buyerLoginId'>>({});
+const orderFilters = ref<OrderListFiltersValue>({});
 function applyOrderFilters(value: typeof orderFilters.value): void {
   orderFilters.value = value;
   status.value = value.status ?? '';
   orderPage.value = 1;
 }
 function applyBuyerSearch(): void {
-  const nextBuyer = buyerSearch.value.trim();
+  const nextBuyer = orderRole.value === 'seller' ? buyerSearch.value.trim() : '';
   if (buyerLoginId.value === nextBuyer && orderPage.value === 1) {
     void orders.refetch();
     return;
@@ -104,7 +107,9 @@ const orderSheetOpen = ref(false);
 const orderDrawerTab = ref<OrderDrawerTab>('overview');
 const ttAccountRevealed = ref(false);
 const tradeOrderMutation = useOperationAvailability(['createTradeOrder']);
-const mutationBlocked = computed(() => !tradeOrderMutation.isAllowed('createTradeOrder'));
+const mutationBlocked = computed(
+  () => orderRole.value !== 'seller' || !tradeOrderMutation.isAllowed('createTradeOrder')
+);
 const mutationDisabledReason = computed(() =>
   operationAvailabilityMessage(
     tradeOrderMutation.reasonCode('createTradeOrder'),
@@ -115,6 +120,7 @@ const mutationDisabledReason = computed(() =>
 const orders = useQuery({
   queryKey: computed(() => [
     'trade-orders',
+    orderRole.value,
     status.value,
     buyerLoginId.value,
     orderFilters.value,
@@ -124,10 +130,11 @@ const orders = useQuery({
   queryFn: () =>
     gateway.request('listTradeOrders', {
       ...orderFilters.value,
+      role: orderRole.value,
       page: orderPage.value,
       pageSize: orderPageSize.value,
       ...(status.value ? { status: status.value } : {}),
-      ...(buyerLoginId.value ? { buyerLoginId: buyerLoginId.value } : {})
+      ...(orderRole.value === 'seller' && buyerLoginId.value ? { buyerLoginId: buyerLoginId.value } : {})
     })
 });
 const selectedOrder = computed(() =>
@@ -146,25 +153,31 @@ const aggregate = useQuery({
   queryKey: computed(() => [
     'trade-order-aggregate',
     detailViewId,
+    orderRole.value,
     selectedOrderId.value,
     preferredLanguage.value
   ]),
   retry: false,
   enabled: computed(() => orderSheetOpen.value && selectedOrder.value !== undefined),
-  queryFn: () => {
+  queryFn: async () => {
     const order = selectedOrder.value;
     if (!order) throw new Error(t('orders.errors.selectOrder'));
-    return requestPageDetail(gateway, mode, preferredLanguage.value, { kind: 'order', order }).then(
-      (data) => {
-        if (!('order' in data)) throw new Error('INVALID_RESPONSE');
-        return data;
-      }
-    );
+    const role = orderRole.value;
+    const data = await requestPageDetail(gateway, mode, preferredLanguage.value, {
+      kind: 'order',
+      order: { ...order, role }
+    });
+    if (!('order' in data) || (data.order.role ?? 'seller') !== role) throw new Error('INVALID_RESPONSE');
+    return data;
   }
 });
 const drawerAggregate = computed(() => {
   const data = aggregate.data.value;
-  return orderSheetOpen.value && data?.order.id === selectedOrderId.value ? data : null;
+  return orderSheetOpen.value &&
+    data?.order.id === selectedOrderId.value &&
+    (data.order.role ?? 'seller') === orderRole.value
+    ? data
+    : null;
 });
 const publicDetail = computed(() => {
   const detail = drawerAggregate.value?.publicDetail;
@@ -184,6 +197,8 @@ const orderDetails = ref<Record<string, TradeOrderAggregate>>({});
 const accountContext = useGalleryTransfers()?.currentContext;
 const detailBoundary = computed(() =>
   JSON.stringify([
+    orderRole.value,
+    orderFilters.value,
     status.value,
     buyerLoginId.value,
     orderPage.value,
@@ -199,9 +214,15 @@ const pageDetails = usePageDetails(
   detailBoundary,
   (row) => row.id,
   (row, identity) =>
-    requestPageDetail(gateway, mode, preferredLanguage.value, { kind: 'order', order: row }, identity),
+    requestPageDetail(
+      gateway,
+      mode,
+      preferredLanguage.value,
+      { kind: 'order', order: { ...row, role: orderRole.value } },
+      identity
+    ),
   (row, data) => {
-    if ('order' in data) {
+    if ('order' in data && (data.order.role ?? 'seller') === orderRole.value) {
       orderDetails.value = { ...orderDetails.value, [row.id]: data };
       if (!data.fund || !data.logistics) throw new Error('DETAIL_PARTIALLY_UNAVAILABLE');
     }
@@ -231,24 +252,31 @@ function detailValue(row: TradeOrderSummary, field: string): unknown {
 }
 const fulfillmentChannels = useQuery({
   queryKey: computed(() => ['trade-fulfillment-channels', preferredLanguage.value]),
-  enabled: computed(() => workspace.value === 'finance'),
+  enabled: computed(() => orderRole.value === 'seller' && workspace.value === 'finance'),
   queryFn: () => gateway.request('listTradeFulfillmentChannels', { language: preferredLanguage.value })
 });
 const serviceCharge = useQuery({
   queryKey: computed(() => ['trade-service-charge', serviceCurrency.value]),
-  enabled: computed(() => workspace.value === 'finance'),
+  enabled: computed(() => orderRole.value === 'seller' && workspace.value === 'finance'),
   queryFn: () => gateway.request('getTradeServiceCharge', { currency: serviceCurrency.value })
 });
 const ttAccount = useQuery({
-  queryKey: computed(() => ['trade-tt-account', selectedOrderId.value]),
+  queryKey: computed(() => ['trade-tt-account', orderRole.value, selectedOrderId.value]),
   enabled: computed(
-    () => orderSheetOpen.value && orderDrawerTab.value === 'payment' && selectedOrderId.value !== ''
+    () =>
+      orderRole.value === 'seller' &&
+      orderSheetOpen.value &&
+      orderDrawerTab.value === 'payment' &&
+      selectedOrderId.value !== ''
   ),
   queryFn: () => gateway.request('getTradeTtAccount', { orderId: selectedOrderId.value })
 });
 const addressSchema = useQuery({
   queryKey: computed(() => ['trade-address-schema', addressCountry.value, preferredLanguage.value]),
-  enabled: computed(() => workspace.value === 'addresses' && addressCountry.value.trim() !== ''),
+  enabled: computed(
+    () =>
+      orderRole.value === 'seller' && workspace.value === 'addresses' && addressCountry.value.trim() !== ''
+  ),
   queryFn: () =>
     gateway.request('getTradeAddressSchema', {
       countryCode: addressCountry.value.trim().toUpperCase(),
@@ -257,7 +285,9 @@ const addressSchema = useQuery({
 });
 const addresses = useQuery({
   queryKey: computed(() => ['trade-addresses', buyerEmail.value]),
-  enabled: computed(() => workspace.value === 'addresses' && buyerEmail.value.includes('@')),
+  enabled: computed(
+    () => orderRole.value === 'seller' && workspace.value === 'addresses' && buyerEmail.value.includes('@')
+  ),
   queryFn: () => gateway.request('listTradeAddresses', { buyerEmail: buyerEmail.value.trim() })
 });
 
@@ -317,6 +347,7 @@ function setOrderSheetOpen(open: boolean): void {
 }
 
 async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
+  if (orderRole.value === 'buyer' && nextWorkspace !== 'orders') return;
   const discarded = editing.dirty.value;
   if (workspace.value !== nextWorkspace && !(await editing.confirmLeave())) return;
   if (workspace.value !== nextWorkspace && discarded) {
@@ -336,7 +367,19 @@ async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
   updateOrdersHash();
 }
 
+async function setOrderRole(role: OrderRole): Promise<void> {
+  if (role === orderRole.value) return;
+  await setWorkspace('orders');
+  if (workspace.value !== 'orders') return;
+  buyerLoginId.value = '';
+  buyerSearch.value = '';
+  orderPage.value = 1;
+  orderDetails.value = {};
+  orderRole.value = role;
+}
+
 function setOrderDrawerTab(tab: OrderDrawerTab): void {
+  if (orderRole.value === 'buyer' && tab !== 'overview') return;
   orderDrawerTab.value = tab;
   ttAccountRevealed.value = false;
   updateOrdersHash();
@@ -447,13 +490,14 @@ function syncOrdersFromHash(): void {
   if (route?.page !== 'orders') return;
   const requestedWorkspace = route.segments[0];
   workspace.value =
-    requestedWorkspace && workspaceIds.has(requestedWorkspace as Workspace)
+    orderRole.value === 'seller' && requestedWorkspace && workspaceIds.has(requestedWorkspace as Workspace)
       ? (requestedWorkspace as Workspace)
       : 'orders';
   const requestedOrderId = route.segments[1] ?? '';
   if (workspace.value === 'orders' && requestedOrderId) {
     selectedOrderId.value = requestedOrderId;
-    orderDrawerTab.value = route.segments[2] === 'payment' ? 'payment' : 'overview';
+    orderDrawerTab.value =
+      orderRole.value === 'seller' && route.segments[2] === 'payment' ? 'payment' : 'overview';
     orderSheetOpen.value = true;
   } else {
     selectedOrderId.value = '';
@@ -489,6 +533,23 @@ onBeforeUnmount(() => {
 
 <template>
   <PageHeader :title="t('orders.title')" :description="t('orders.description')" />
+  <div
+    class="mb-4 flex flex-wrap gap-2"
+    role="group"
+    :aria-label="t('orders.roleLabel')"
+    data-testid="order-role-tabs"
+  >
+    <Button
+      v-for="role in ['seller', 'buyer'] as const"
+      :key="role"
+      size="sm"
+      :variant="orderRole === role ? 'secondary' : 'ghost'"
+      :aria-pressed="orderRole === role"
+      @click="setOrderRole(role)"
+    >
+      {{ t(`orders.roles.${role}`) }}
+    </Button>
+  </div>
   <Card
     v-if="!hasPublicDetailSource"
     class="mb-4 flex items-start gap-3 border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
@@ -499,7 +560,12 @@ onBeforeUnmount(() => {
     </p>
   </Card>
 
-  <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('orders.workspaceLabel')">
+  <div
+    v-if="orderRole === 'seller'"
+    class="mb-4 flex flex-wrap gap-2"
+    :aria-label="t('orders.workspaceLabel')"
+    data-testid="order-workspaces"
+  >
     <Button
       v-for="item in workspaces"
       :key="item.id"
@@ -516,11 +582,15 @@ onBeforeUnmount(() => {
     <ListToolbar data-testid="order-toolbar" @search="applyBuyerSearch">
       <template #search>
         <Input
+          v-if="orderRole === 'seller'"
           v-model="buyerSearch"
           class="min-w-0 flex-1"
           data-feedback-redact
           :placeholder="t('orders.filters.buyer')"
         />
+        <p v-else class="min-w-0 flex-1 text-sm text-muted-foreground" data-testid="purchase-search-notice">
+          {{ t('orders.filters.purchaseSearchNotice') }}
+        </p>
         <ListActionButton :icon="Search" type="submit" :disabled="orders.isFetching.value">{{
           t('common.filters.search')
         }}</ListActionButton>
@@ -553,7 +623,7 @@ onBeforeUnmount(() => {
         v-model:page-size="orderPageSize"
         :total-rows="orders.data.value?.total ?? 0"
         :pagination-disabled="orders.isFetching.value"
-        :selection-scope="JSON.stringify([orderFilters, buyerLoginId])"
+        :selection-scope="JSON.stringify([orderRole, orderFilters, buyerLoginId])"
         :empty-text="t('orders.noMatch')"
         min-width="900px"
         :get-row-key="(order) => order.id"
@@ -827,6 +897,7 @@ onBeforeUnmount(() => {
           {{ t('orders.drawer.overview') }}
         </Button>
         <Button
+          v-if="orderRole === 'seller'"
           size="sm"
           :variant="orderDrawerTab === 'payment' ? 'default' : 'outline'"
           role="tab"

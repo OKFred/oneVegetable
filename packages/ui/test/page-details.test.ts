@@ -2,8 +2,9 @@
 import { effectScope, nextTick, ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
-import { GatewayException } from '@one-vegetable/core';
+import { GatewayException, type TradeOrderAggregate } from '@one-vegetable/core';
 import { requestPageDetail, usePageDetails } from '../src/lib/page-details';
+import iopDetailFixture from '../../../mock/data/iop-order-public-detail.json';
 
 describe('page details', () => {
   afterEach(() => vi.useRealTimers());
@@ -140,6 +141,60 @@ describe('page details', () => {
     query.mockResolvedValue({ productId: 'one', score: 4, issues: [] });
     await service?.load(true);
     expect(query).toHaveBeenCalledTimes(2);
+    scope.stop();
+  });
+
+  it('isolates both in-flight order details and cached results by role, defaulting omitted role to seller', async () => {
+    const gateway = new MockGatewayClient(0);
+    const waiting = Promise.withResolvers<TradeOrderAggregate>();
+    const base = structuredClone(iopDetailFixture.ready) as TradeOrderAggregate;
+    const sales = { ...base, order: { ...base.order, role: 'seller' as const } };
+    const purchase = { ...base, order: { ...base.order, role: 'buyer' as const } };
+    const request = vi
+      .spyOn(gateway, 'request')
+      .mockImplementationOnce(() => waiting.promise)
+      .mockResolvedValueOnce(purchase);
+    const sellerJob = requestPageDetail(gateway, 'mock', 'en_US', { kind: 'order', order: sales.order });
+    await vi.waitFor(() => {
+      expect(request).toHaveBeenCalledTimes(1);
+    });
+    const buyerJob = requestPageDetail(gateway, 'mock', 'en_US', { kind: 'order', order: purchase.order });
+    expect(await buyerJob).toEqual(purchase);
+    expect(request).toHaveBeenCalledTimes(2);
+    waiting.resolve(sales);
+    expect(await sellerJob).toEqual(sales);
+    expect(
+      await requestPageDetail(gateway, 'mock', 'en_US', { kind: 'order', order: purchase.order })
+    ).toEqual(purchase);
+    expect(
+      await requestPageDetail(gateway, 'mock', 'en_US', {
+        kind: 'order',
+        order: iopDetailFixture.ready.order
+      })
+    ).toEqual(sales);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls[1]?.[1]).toEqual({ order: purchase.order, language: 'en_US' });
+  });
+
+  it('clears expanded states on role changes and drops late same-ID results', async () => {
+    const waiting = Promise.withResolvers<TradeOrderAggregate>();
+    const scope = effectScope();
+    const role = ref('seller');
+    const accept = vi.fn();
+    const query = vi.fn(() => waiting.promise);
+    const service = scope.run(() =>
+      usePageDetails(ref([iopDetailFixture.ready.order]), role, (row) => row.id, query, accept)
+    );
+    const job = service?.load();
+    await Promise.resolve();
+    expect(service?.states.value).toEqual({ [iopDetailFixture.ready.order.id]: 'loading' });
+    role.value = 'buyer';
+    await nextTick();
+    expect(service?.states.value).toEqual({});
+    waiting.resolve(structuredClone(iopDetailFixture.ready) as TradeOrderAggregate);
+    expect(await job).toBeNull();
+    expect(accept).not.toHaveBeenCalled();
+    expect(service?.errors.value).toEqual({});
     scope.stop();
   });
 });
