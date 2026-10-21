@@ -12,6 +12,7 @@ import { X } from '@lucide/vue';
 
 import { useUiI18n } from '../../i18n';
 import Button from './Button.vue';
+import { useDialogLayer } from '../../composables/use-dialog-layer';
 
 const { t } = useUiI18n();
 
@@ -28,14 +29,15 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ 'update:open': [open: boolean] }>();
+const { overlayStyle, contentStyle, isTopmost } = useDialogLayer(() => props.open);
 
 function updateOpen(open: boolean): void {
-  if (!open && !props.dismissible) return;
+  if (!open && (!props.dismissible || !isTopmost.value)) return;
   emit('update:open', open);
 }
 
 function preventDismiss(event: Event): void {
-  if (!props.dismissible) event.preventDefault();
+  if (!props.dismissible || !isTopmost.value) event.preventDefault();
 }
 </script>
 
@@ -43,11 +45,13 @@ function preventDismiss(event: Event): void {
   <DialogRoot :open="open" @update:open="updateOpen">
     <DialogPortal>
       <DialogOverlay
-        class="ov-dialog-overlay fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm"
+        class="ov-dialog-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+        :style="overlayStyle"
         @click="updateOpen(false)"
       />
       <DialogContent
-        class="ov-dialog-content fixed left-1/2 top-1/2 z-[61] flex max-h-[min(88vh,760px)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
+        class="ov-dialog-content fixed left-1/2 top-1/2 flex max-h-[min(88vh,760px)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
+        :style="contentStyle"
         :class="size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : 'max-w-xl'"
         @escape-key-down="preventDismiss"
         @interact-outside="preventDismiss"

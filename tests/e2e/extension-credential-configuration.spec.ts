@@ -100,7 +100,8 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         await page.getByTestId('select-authorization-iop').click();
         const configuration = page.getByRole('dialog', {
           name: en ? 'IOP authorization settings' : 'IOP 授权配置',
-          exact: true
+          exact: true,
+          includeHidden: true
         });
         await expect(configuration.getByTestId('credential-import-actions')).toBeVisible();
         await expect(configuration.getByTestId('credential-connection-actions')).toBeVisible();
@@ -120,6 +121,10 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
           exact: true
         });
         await expect(discard).toBeVisible();
+        expect(await page.locator('[role="dialog"][data-state="open"]').count()).toBe(3);
+        expect(await discard.evaluate((element) => Number(getComputedStyle(element).zIndex))).toBeGreaterThan(
+          await configuration.evaluate((element) => Number(getComputedStyle(element).zIndex))
+        );
         expect(await discard.evaluate((element) => element.contains(document.activeElement))).toBe(true);
         await discard
           .getByRole('button', { name: en ? 'Continue editing' : '继续编辑', exact: true })
@@ -146,6 +151,40 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         expect(
           await configuration.evaluate((element) => element.getBoundingClientRect().width)
         ).toBeLessThanOrEqual(width);
+        const clear = configuration.getByRole('button', {
+          name: en ? 'Clear configuration' : '清除配置',
+          exact: true
+        });
+        for (const method of ['cancel', 'escape', 'close', 'overlay']) {
+          await clear.click();
+          const confirmation = page.getByRole('dialog', {
+            name: en ? 'Clear this local authorization?' : '确认清除此本机授权？',
+            exact: true
+          });
+          await expect(confirmation).toBeVisible();
+          expect(
+            await confirmation.evaluate((element) => Number(getComputedStyle(element).zIndex))
+          ).toBeGreaterThan(
+            await configuration.evaluate((element) => Number(getComputedStyle(element).zIndex))
+          );
+          expect(await confirmation.evaluate((element) => element.contains(document.activeElement))).toBe(
+            true
+          );
+          await page.keyboard.press('Tab');
+          expect(await confirmation.evaluate((element) => element.contains(document.activeElement))).toBe(
+            true
+          );
+          if (method === 'cancel') {
+            await page.screenshot({ path: `artifacts/nested-clear-${locale}-${width}.png` });
+            await confirmation.getByRole('button', { name: en ? 'Cancel' : '取消', exact: true }).click();
+          } else if (method === 'escape') await page.keyboard.press('Escape');
+          else if (method === 'close') await confirmation.locator('header button').click();
+          else await page.mouse.click(8, 8);
+          await expect(confirmation).toBeHidden();
+          await expect(configuration).toBeVisible();
+          await expect(clear).toBeFocused();
+          await expect(clear).toBeEnabled();
+        }
         await configuration.getByRole('button', { name: en ? 'Done' : '完成', exact: true }).click();
         await expect(page.getByTestId('default-authorization-top')).toHaveAttribute('aria-pressed', 'true');
         await page.getByTestId('default-authorization-iop').click();

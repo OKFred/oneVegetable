@@ -13,6 +13,7 @@ import {
 import Button from './ui/Button.vue';
 import Tooltip from './ui/Tooltip.vue';
 import { useUiI18n } from '../i18n';
+import { useDialogLayer } from '../composables/use-dialog-layer';
 
 export interface MediaInformation {
   label: string;
@@ -35,6 +36,10 @@ const emit = defineEmits<{
   keydown: [event: KeyboardEvent];
 }>();
 const { t } = useUiI18n();
+const { overlayStyle, contentStyle, isTopmost, preventBackgroundDismiss } = useDialogLayer(() => props.open);
+function updateOpen(open: boolean): void {
+  if (open || isTopmost.value) emit('update:open', open);
+}
 const informationOpen = ref(false);
 const original = computed(() => {
   if (!props.originalUrl) return null;
@@ -57,12 +62,19 @@ watch(informationOpen, (open) => {
 </script>
 
 <template>
-  <DialogRoot :open="open" @update:open="emit('update:open', $event)">
+  <DialogRoot :open="open" @update:open="updateOpen">
     <DialogPortal>
-      <DialogOverlay class="ov-dialog-overlay fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm" />
+      <DialogOverlay
+        class="ov-dialog-overlay fixed inset-0 bg-slate-950/95 backdrop-blur-sm"
+        :style="overlayStyle"
+      />
       <DialogContent
-        class="ov-preview-content fixed inset-0 z-[71] flex flex-col overflow-hidden text-white outline-none"
+        class="ov-preview-content fixed inset-0 flex flex-col overflow-hidden text-white outline-none"
+        :style="contentStyle"
         aria-modal="true"
+        @escape-key-down="preventBackgroundDismiss"
+        @interact-outside="preventBackgroundDismiss"
+        @pointer-down-outside="preventBackgroundDismiss"
         @keydown="emit('keydown', $event)"
       >
         <DialogTitle class="sr-only">{{ title }}</DialogTitle>

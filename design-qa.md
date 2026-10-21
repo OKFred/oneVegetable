@@ -50,6 +50,24 @@ No actionable P0/P1/P2 findings remain in the compared states.
 - [x] Verify light/dark, Chinese/English, desktop/mobile and protocol isolation.
 - [x] Preserve existing workbench data and permissions; do not deploy or publish.
 
+## Nested-dialog and spacing follow-up
+
+User review exposed two additional states not covered by the original ready-state captures:
+
+- [P2, fixed] Authorization form actions and advanced JSON import actions lacked separation from the preceding control. Add a scoped 16px action margin and assert the rendered distances in both languages, themes and desktop/mobile sizes.
+- [P2, fixed] The later generic back-link rule replaced the step rail's flex layout, so its icon gap was ignored. Use inline-flex with an explicit 8px gap; the browser test measures the actual icon-to-label distance.
+- [P1, fixed] Independently mounted modal portals reused fixed z-index values. A confirmation could be visually behind its configuration while owning focus, making the screen appear unresponsive. Shared activation-order layers now cover all six Reka dialog containers: ModalDialog, Sheet, ListFilterDialog, MediaPreviewShell, PhotoBankPicker and OnboardingDialog. Background dialogs cannot dismiss through the active layer. The two legacy custom dialog masks now use Reka's portal, focus and scroll guards as well.
+
+Audit scope includes credential configuration/manual entry/clear confirmation, unsaved-editing confirmation, product and template import/export, template preview/composition, picture selection/upload/preview, group management, video association and drawer workflows. A source-coverage test requires every Reka DialogContent container to use the shared layer manager; fixed per-container dialog layer numbers are rejected.
+
+Post-fix evidence:
+
+- 349 unit-test files / 3135 tests passed.
+- 24 focused browser cases passed: four bilingual desktop/mobile credential-configuration flows; four authorization styling flows; fourteen Web/extension business flows; two first-run guide/import flows.
+- Credential cases exercise three simultaneous levels, foreground clickability, Tab focus containment, Cancel, Escape, X, backdrop dismissal and focus restoration without clearing either fixture profile.
+- Real remote Chrome was reloaded. The existing IOP profile remained configured. Its clear-confirmation dialog was opened above the configuration dialog, then cancelled; the original configuration stayed open. No actual authorization was removed or renewed, and no Alibaba write request was sent.
+- Remote screenshots: `artifacts/dialog-layer-validation/remote-clear-confirmation.jpg` and `artifacts/dialog-layer-validation/remote-authorization-spacing.jpg`.
+
 ## Follow-up polish
 
 - The preview uses the application's existing packaged icon and system fonts intentionally. Rebranding or replacing the logo is outside this change.

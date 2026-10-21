@@ -13,26 +13,41 @@ import {
 import { useUiI18n } from '../i18n';
 import Button from './ui/Button.vue';
 import ListActionButton from './ListActionButton.vue';
+import { useDialogLayer } from '../composables/use-dialog-layer';
 
-withDefaults(defineProps<{ open: boolean; activeCount?: number; invalid?: boolean; title?: string }>(), {
-  activeCount: 0,
-  invalid: false,
-  title: ''
-});
+const props = withDefaults(
+  defineProps<{ open: boolean; activeCount?: number; invalid?: boolean; title?: string }>(),
+  {
+    activeCount: 0,
+    invalid: false,
+    title: ''
+  }
+);
 const emit = defineEmits<{ 'update:open': [open: boolean]; apply: []; reset: [] }>();
 const { t } = useUiI18n();
+const { overlayStyle, contentStyle, isTopmost, preventBackgroundDismiss } = useDialogLayer(() => props.open);
+function updateOpen(open: boolean): void {
+  if (open || isTopmost.value) emit('update:open', open);
+}
 </script>
 <template>
-  <DialogRoot :open="open" @update:open="emit('update:open', $event)">
+  <DialogRoot :open="open" @update:open="updateOpen">
     <DialogTrigger as-child
       ><ListActionButton :icon="Funnel"
         >{{ t('common.filters.title') }}<span v-if="activeCount"> · {{ activeCount }}</span></ListActionButton
       ></DialogTrigger
     >
     <DialogPortal>
-      <DialogOverlay class="ov-dialog-overlay fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm" />
+      <DialogOverlay
+        class="ov-dialog-overlay fixed inset-0 bg-black/50 backdrop-blur-sm"
+        :style="overlayStyle"
+      />
       <DialogContent
-        class="ov-dialog-content fixed left-1/2 top-1/2 z-[81] max-h-[90dvh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-background p-6 shadow-xl"
+        class="ov-dialog-content fixed left-1/2 top-1/2 max-h-[90dvh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-background p-6 shadow-xl"
+        :style="contentStyle"
+        @escape-key-down="preventBackgroundDismiss"
+        @interact-outside="preventBackgroundDismiss"
+        @pointer-down-outside="preventBackgroundDismiss"
       >
         <DialogTitle class="pr-8 text-lg font-semibold">{{ title || t('common.filters.title') }}</DialogTitle>
         <DialogDescription class="mb-5 mt-1 text-sm text-muted-foreground">{{

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { defineComponent, h } from 'vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ALIBABA_GATEWAY } from '@one-vegetable/core';
@@ -46,27 +46,28 @@ describe('OnboardingDialog', () => {
     const wrapper = mount(Host, { attachTo: globalThis.document.body });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('四步连接 Alibaba 开放平台');
-    expect(wrapper.findAll('img')).toHaveLength(4);
-    expect(wrapper.text()).toContain('注册开发者');
-    expect(wrapper.text()).toContain('等待审核');
-    expect(wrapper.text()).toContain('创建应用');
-    expect(wrapper.text()).toContain('授权并保存');
-    expect(wrapper.text()).toContain('不存在官方隶属、合作、认可或背书关系');
-    expect(wrapper.get('a[href="https://rulechannel.alibaba.com/icbu"]').attributes('rel')).toBe(
+    const dialog = new DOMWrapper(document.body).get('[role="dialog"]');
+    expect(dialog.text()).toContain('四步连接 Alibaba 开放平台');
+    expect(dialog.findAll('img')).toHaveLength(4);
+    expect(dialog.text()).toContain('注册开发者');
+    expect(dialog.text()).toContain('等待审核');
+    expect(dialog.text()).toContain('创建应用');
+    expect(dialog.text()).toContain('授权并保存');
+    expect(dialog.text()).toContain('不存在官方隶属、合作、认可或背书关系');
+    expect(dialog.get('a[href="https://rulechannel.alibaba.com/icbu"]').attributes('rel')).toBe(
       'noopener noreferrer'
     );
-    const startButton = wrapper.findAll('button').find((button) => button.text().includes('开始授权向导'));
+    const startButton = dialog.findAll('button').find((button) => button.text().includes('开始授权向导'));
     if (!startButton) throw new Error('Missing credential setup action');
     expect(startButton.attributes('disabled')).toBeDefined();
-    await wrapper.get('input[type="checkbox"]').setValue(true);
+    await dialog.get('input[type="checkbox"]').setValue(true);
     expect(startButton.attributes('disabled')).toBeUndefined();
     await startButton.trigger('click');
     await flushPromises();
 
     expect(complete).toHaveBeenCalledOnce();
     expect(wrapper.findComponent(OnboardingDialog).emitted('ready')).toEqual([['credential-acquisition']]);
-    expect(wrapper.text()).not.toContain('四步连接 Alibaba 开放平台');
+    expect(document.body.textContent).not.toContain('四步连接 Alibaba 开放平台');
     wrapper.unmount();
   });
 
@@ -98,10 +99,11 @@ describe('OnboardingDialog', () => {
     const wrapper = mount(Host, { attachTo: globalThis.document.body });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('管理员可以先尝试云端自动连接');
-    expect(wrapper.text()).toContain('若平台要求人机验证，流程会停止并引导你改用本机插件');
-    expect(wrapper.text()).not.toContain('App Secret:');
-    expect(wrapper.text()).not.toContain('Access Token:');
+    const dialog = new DOMWrapper(document.body).get('[role="dialog"]');
+    expect(dialog.text()).toContain('管理员可以先尝试云端自动连接');
+    expect(dialog.text()).toContain('若平台要求人机验证，流程会停止并引导你改用本机插件');
+    expect(dialog.text()).not.toContain('App Secret:');
+    expect(dialog.text()).not.toContain('Access Token:');
     wrapper.unmount();
   });
 });

@@ -2,6 +2,14 @@
 import { computed, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { Check, Eye, ImagePlus, Upload, X } from '@lucide/vue';
+import {
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle
+} from 'reka-ui';
 
 import type { Photo, PhotoGroup } from '@one-vegetable/core';
 
@@ -12,11 +20,11 @@ import PhotoUploadDialog from './PhotoUploadDialog.vue';
 import TablePagination from './TablePagination.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
-import Card from './ui/Card.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import { useListIdentityScope } from '../lib/list-identity-scope';
 import { useOperationAvailability } from '../composables/use-operation-availability';
+import { useDialogLayer } from '../composables/use-dialog-layer';
 
 const props = withDefaults(
   defineProps<{
@@ -33,6 +41,10 @@ const identityScope = useListIdentityScope();
 const { t } = useUiI18n();
 const queryClient = useQueryClient();
 const open = ref(false);
+const { overlayStyle, contentStyle, isTopmost, preventBackgroundDismiss } = useDialogLayer(() => open.value);
+function updatePickerOpen(value: boolean): void {
+  if (value || isTopmost.value) open.value = value;
+}
 const photoAccess = useOperationAvailability(['listPhotos'], { enabled: open });
 const requiresPhotoGroup = computed(
   () =>
@@ -69,7 +81,10 @@ watch(pageSize, () => {
 });
 
 watch(open, (value) => {
-  if (!value) uploadDialogOpen.value = false;
+  if (!value) {
+    uploadDialogOpen.value = false;
+    previewOpen.value = false;
+  }
 });
 
 function choose(photo: Photo): void {
@@ -195,132 +210,127 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
       <Badge variant="secondary">{{ modelValue.length }}/{{ max }}</Badge>
     </Button>
 
-    <Teleport to="body">
-      <Transition name="ov-modal">
-        <div
-          v-if="open"
-          class="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4"
-          @click.self="open = false"
+    <DialogRoot :open="open" @update:open="updatePickerOpen">
+      <DialogPortal>
+        <DialogOverlay class="ov-dialog-overlay fixed inset-0 bg-slate-950/60" :style="overlayStyle" />
+        <DialogContent
+          class="ov-dialog-content fixed left-1/2 top-1/2 flex max-h-[88vh] w-[calc(100%-2rem)] max-w-6xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
+          :style="contentStyle"
+          @escape-key-down="preventBackgroundDismiss"
+          @interact-outside="preventBackgroundDismiss"
+          @pointer-down-outside="preventBackgroundDismiss"
         >
-          <Card class="ov-modal-panel flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden">
-            <header class="flex items-center justify-between border-b p-4">
-              <div>
-                <h2 class="font-semibold">{{ t('photos.picker.title') }}</h2>
-                <p class="mt-1 text-xs text-muted-foreground">
-                  {{ t('photos.picker.description', { selected: modelValue.length, maximum: max }) }}
-                </p>
-              </div>
-              <div class="flex items-center gap-2">
-                <Button variant="outline" size="sm" @click="openUploadDialog">
-                  <Upload class="size-4" />{{ t('photos.picker.upload') }}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  :aria-label="t('photos.picker.close')"
-                  @click="open = false"
-                  ><X class="size-4"
-                /></Button>
-              </div>
-            </header>
-            <div class="grid min-h-0 flex-1 md:grid-cols-[220px_1fr]">
-              <aside class="overflow-auto border-r p-3">
-                <PhotoGroupNavigation
-                  :model-value="selectedGroup"
-                  :allow-all="!requiresPhotoGroup"
-                  @update:model-value="changeGroup"
-                  @select="selectGroup"
-                />
-                <div class="mt-4 rounded-md bg-muted p-3 text-xs leading-5 text-muted-foreground">
-                  <p class="font-medium text-foreground">
-                    {{ t('photos.picker.currentGroup', { name: selectedGroupName }) }}
-                  </p>
-                  <p class="mt-1">{{ t('photos.picker.selectionOnly') }}</p>
-                  <p v-if="requiresPhotoGroup && selectedGroup === '-1'" class="mt-1">
-                    {{ t('errors.codes.ALIBABA_IOP_PHOTO_GROUP_REQUIRED') }}
-                  </p>
-                </div>
-              </aside>
-              <main class="min-h-0 overflow-auto p-4">
-                <p
-                  v-if="uploadNotice"
-                  class="mb-3 rounded-md border p-3 text-xs text-emerald-700"
-                  role="status"
-                >
-                  {{ uploadNotice }}
-                </p>
-                <QueryState
-                  :loading="photos.isFetching.value || photoAccess.isPending.value"
-                  :error="photos.error.value"
-                >
-                  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    <div
-                      v-for="photo in photos.data.value?.items ?? []"
-                      :key="photo.id"
-                      class="group relative overflow-hidden rounded-lg border text-left hover:border-primary"
-                      :class="selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''"
-                    >
-                      <button
-                        type="button"
-                        class="block w-full text-left"
-                        :aria-label="
-                          t(
-                            selectedIds.has(photo.id)
-                              ? 'photos.picker.selectedAction'
-                              : 'photos.picker.selectAction',
-                            { name: photo.name }
-                          )
-                        "
-                        @click="choose(photo)"
-                      >
-                        <img
-                          :src="photoPreviewUrl(photo)"
-                          :alt="photo.name"
-                          class="aspect-square w-full bg-muted object-cover"
-                          @load="rememberDimensions(photo, $event)"
-                        />
-                        <span class="block p-2">
-                          <span class="block truncate text-sm font-medium">{{ photo.name }}</span>
-                          <span class="text-xs text-muted-foreground"
-                            >{{ dimensionsLabel(photo) }} · {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
-                          >
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        class="absolute left-2 top-2 rounded-full bg-background/90 p-1.5 opacity-0 shadow transition-opacity hover:bg-background group-hover:opacity-100 focus-visible:opacity-100"
-                        :aria-label="t('photos.previewPhoto', { name: photo.name })"
-                        @click="showPreview(photos.data.value?.items ?? [], photo)"
-                      >
-                        <Eye class="size-4" />
-                      </button>
-                      <span
-                        v-if="selectedIds.has(photo.id)"
-                        class="absolute right-2 top-2 rounded-full bg-primary p-1 text-primary-foreground"
-                        ><Check class="size-3"
-                      /></span>
-                    </div>
-                  </div>
-                </QueryState>
-              </main>
+          <header class="flex items-center justify-between border-b p-4">
+            <div>
+              <DialogTitle as="h2" class="font-semibold">{{ t('photos.picker.title') }}</DialogTitle>
+              <DialogDescription class="mt-1 text-xs text-muted-foreground">
+                {{ t('photos.picker.description', { selected: modelValue.length, maximum: max }) }}
+              </DialogDescription>
             </div>
-            <footer class="flex flex-wrap items-center justify-between gap-2 border-t p-4">
-              <TablePagination
-                v-model:page="page"
-                v-model:page-size="pageSize"
-                :total="photos.data.value?.total ?? null"
-                :has-next-page="
-                  photos.data.value?.hasNextPage ?? photos.data.value?.items.length === pageSize
-                "
-                :page-size-options="[24, 48, 96]"
-                :disabled="photos.isFetching.value"
+            <div class="flex items-center gap-2">
+              <Button variant="outline" size="sm" @click="openUploadDialog">
+                <Upload class="size-4" />{{ t('photos.picker.upload') }}
+              </Button>
+              <Button variant="ghost" size="icon" :aria-label="t('photos.picker.close')" @click="open = false"
+                ><X class="size-4"
+              /></Button>
+            </div>
+          </header>
+          <div class="grid min-h-0 flex-1 md:grid-cols-[220px_1fr]">
+            <aside class="overflow-auto border-r p-3">
+              <PhotoGroupNavigation
+                :model-value="selectedGroup"
+                :allow-all="!requiresPhotoGroup"
+                @update:model-value="changeGroup"
+                @select="selectGroup"
               />
-              <Button @click="open = false">{{ t('photos.picker.finish') }}</Button>
-            </footer>
-          </Card>
-        </div>
-      </Transition>
-    </Teleport>
+              <div class="mt-4 rounded-md bg-muted p-3 text-xs leading-5 text-muted-foreground">
+                <p class="font-medium text-foreground">
+                  {{ t('photos.picker.currentGroup', { name: selectedGroupName }) }}
+                </p>
+                <p class="mt-1">{{ t('photos.picker.selectionOnly') }}</p>
+                <p v-if="requiresPhotoGroup && selectedGroup === '-1'" class="mt-1">
+                  {{ t('errors.codes.ALIBABA_IOP_PHOTO_GROUP_REQUIRED') }}
+                </p>
+              </div>
+            </aside>
+            <main class="min-h-0 overflow-auto p-4">
+              <p
+                v-if="uploadNotice"
+                class="mb-3 rounded-md border p-3 text-xs text-emerald-700"
+                role="status"
+              >
+                {{ uploadNotice }}
+              </p>
+              <QueryState
+                :loading="photos.isFetching.value || photoAccess.isPending.value"
+                :error="photos.error.value"
+              >
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  <div
+                    v-for="photo in photos.data.value?.items ?? []"
+                    :key="photo.id"
+                    class="group relative overflow-hidden rounded-lg border text-left hover:border-primary"
+                    :class="selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''"
+                  >
+                    <button
+                      type="button"
+                      class="block w-full text-left"
+                      :aria-label="
+                        t(
+                          selectedIds.has(photo.id)
+                            ? 'photos.picker.selectedAction'
+                            : 'photos.picker.selectAction',
+                          { name: photo.name }
+                        )
+                      "
+                      @click="choose(photo)"
+                    >
+                      <img
+                        :src="photoPreviewUrl(photo)"
+                        :alt="photo.name"
+                        class="aspect-square w-full bg-muted object-cover"
+                        @load="rememberDimensions(photo, $event)"
+                      />
+                      <span class="block p-2">
+                        <span class="block truncate text-sm font-medium">{{ photo.name }}</span>
+                        <span class="text-xs text-muted-foreground"
+                          >{{ dimensionsLabel(photo) }} · {{ Math.ceil(photo.fileSize / 1024) }} KiB</span
+                        >
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      class="absolute left-2 top-2 rounded-full bg-background/90 p-1.5 opacity-0 shadow transition-opacity hover:bg-background group-hover:opacity-100 focus-visible:opacity-100"
+                      :aria-label="t('photos.previewPhoto', { name: photo.name })"
+                      @click="showPreview(photos.data.value?.items ?? [], photo)"
+                    >
+                      <Eye class="size-4" />
+                    </button>
+                    <span
+                      v-if="selectedIds.has(photo.id)"
+                      class="absolute right-2 top-2 rounded-full bg-primary p-1 text-primary-foreground"
+                      ><Check class="size-3"
+                    /></span>
+                  </div>
+                </div>
+              </QueryState>
+            </main>
+          </div>
+          <footer class="flex flex-wrap items-center justify-between gap-2 border-t p-4">
+            <TablePagination
+              v-model:page="page"
+              v-model:page-size="pageSize"
+              :total="photos.data.value?.total ?? null"
+              :has-next-page="photos.data.value?.hasNextPage ?? photos.data.value?.items.length === pageSize"
+              :page-size-options="[24, 48, 96]"
+              :disabled="photos.isFetching.value"
+            />
+            <Button @click="open = false">{{ t('photos.picker.finish') }}</Button>
+          </footer>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
 
     <PhotoUploadDialog
       v-model:open="uploadDialogOpen"

@@ -40,6 +40,7 @@ function updateOpen(open: boolean): void {
     :open="open"
     :title="title"
     :description="description || undefined"
+    :dismissible="!pending"
     size="sm"
     @update:open="updateOpen"
   >

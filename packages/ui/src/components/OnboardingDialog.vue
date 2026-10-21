@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ArrowRight, Check, ShieldCheck } from '@lucide/vue';
+import {
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle
+} from 'reka-ui';
 
 import applicationSetupImage from '../assets/onboarding/application-setup.webp';
 import developerRegistrationImage from '../assets/onboarding/developer-registration.webp';
@@ -8,13 +16,14 @@ import oauthSecureImage from '../assets/onboarding/oauth-secure.webp';
 import { useUiI18n } from '../i18n';
 import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import Button from './ui/Button.vue';
-import Card from './ui/Card.vue';
 import { useServices } from '../lib/services';
+import { useDialogLayer } from '../composables/use-dialog-layer';
 
 const emit = defineEmits<{ ready: [destination?: 'credential-acquisition'] }>();
 const { locale, t } = useUiI18n();
 const { onboarding, mode } = useServices();
 const visible = ref(false);
+const { overlayStyle, contentStyle } = useDialogLayer(() => visible.value);
 const acknowledged = ref(false);
 const saving = ref(false);
 const error = ref('');
@@ -78,22 +87,26 @@ async function finish(destination?: 'credential-acquisition'): Promise<void> {
 </script>
 
 <template>
-  <Transition name="ov-modal">
-    <div
-      v-if="visible"
-      class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="onboarding-title"
-    >
-      <Card class="ov-modal-panel my-6 w-full max-w-5xl p-5 shadow-2xl sm:p-6">
+  <DialogRoot :open="visible">
+    <DialogPortal>
+      <DialogOverlay
+        class="ov-dialog-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+        :style="overlayStyle"
+      />
+      <DialogContent
+        class="ov-dialog-content fixed left-1/2 top-1/2 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-background p-5 shadow-2xl outline-none sm:p-6"
+        :style="contentStyle"
+        @escape-key-down.prevent
+        @interact-outside.prevent
+        @pointer-down-outside.prevent
+      >
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
           {{ t('auth.onboarding.eyebrow') }}
         </p>
-        <h1 id="onboarding-title" class="mt-2 text-2xl font-semibold sm:text-3xl">
+        <DialogTitle as="h1" class="mt-2 text-2xl font-semibold sm:text-3xl">
           {{ t('auth.onboarding.title') }}
-        </h1>
-        <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+        </DialogTitle>
+        <DialogDescription class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
           {{
             t(
               mode === 'extension'
@@ -101,7 +114,7 @@ async function finish(destination?: 'credential-acquisition'): Promise<void> {
                 : 'auth.onboarding.introduction.selfHosted'
             )
           }}
-        </p>
+        </DialogDescription>
         <ol
           class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
           :aria-label="t('auth.onboarding.journey.label')"
@@ -172,7 +185,7 @@ async function finish(destination?: 'credential-acquisition'): Promise<void> {
             </Button>
           </div>
         </div>
-      </Card>
-    </div>
-  </Transition>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>

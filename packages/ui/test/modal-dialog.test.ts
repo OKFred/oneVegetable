@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { defineComponent, h, nextTick, ref } from 'vue';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
 import ModalDialog from '../src/components/ui/ModalDialog.vue';
@@ -67,6 +67,79 @@ describe('ModalDialog', () => {
 
     expect(open.value).toBe(true);
     expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('请重新登录');
+    wrapper.unmount();
+  });
+
+  it('places an earlier-mounted confirmation above a later-mounted configuration', async () => {
+    const confirmationOpen = ref(false);
+    const configurationOpen = ref(true);
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h('div', [
+            h(
+              ModalDialog,
+              {
+                open: confirmationOpen.value,
+                title: '确认清除',
+                'onUpdate:open': (value: boolean) => {
+                  confirmationOpen.value = value;
+                }
+              },
+              () =>
+                h(
+                  'button',
+                  {
+                    onClick: () => {
+                      confirmationOpen.value = false;
+                    }
+                  },
+                  '取消清除'
+                )
+            ),
+            h(
+              ModalDialog,
+              {
+                open: configurationOpen.value,
+                title: 'IOP 授权配置',
+                'onUpdate:open': (value: boolean) => {
+                  configurationOpen.value = value;
+                }
+              },
+              () =>
+                h(
+                  'button',
+                  {
+                    onClick: () => {
+                      confirmationOpen.value = true;
+                    }
+                  },
+                  '清除配置'
+                )
+            )
+          ]);
+      }
+    });
+    const wrapper = mount(Host, { attachTo: document.body });
+    await flushPromises();
+    [...document.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent === '清除配置')
+      ?.click();
+    await flushPromises();
+    const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')];
+    const confirmation = dialogs.find((element) => element.textContent.includes('取消清除'));
+    const configuration = dialogs.find((element) => element.textContent.includes('IOP 授权配置'));
+    expect(confirmation).toBeDefined();
+    expect(configuration).toBeDefined();
+    expect(Number(confirmation?.style.zIndex)).toBeGreaterThan(Number(configuration?.style.zIndex));
+    const overlay = [...document.querySelectorAll<HTMLElement>('.ov-dialog-overlay')].find(
+      (element) => Number(element.style.zIndex) === Number(confirmation?.style.zIndex) - 1
+    );
+    expect(Number(overlay?.style.zIndex)).toBeGreaterThan(Number(configuration?.style.zIndex));
+    confirmation?.querySelector<HTMLButtonElement>('button[aria-label]')?.click();
+    await flushPromises();
+    expect(confirmationOpen.value).toBe(false);
+    expect(configurationOpen.value).toBe(true);
     wrapper.unmount();
   });
 });
