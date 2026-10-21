@@ -15,6 +15,8 @@ import { TOP_APPLICATION_READER_ORIGINS } from './iop-authorization-storage';
 import { readTopApplication } from './top-application-reader';
 import type { AuthorizationProtectionKey } from './authorization-protection';
 import type { AlibabaOpenApiCredentialBundle } from '@one-vegetable/core/credential-bundle';
+import { restoreAlibabaAuthorization } from '@one-vegetable/core/alibaba-authorization-vault';
+import { IOP_VAULT_KEY, TOP_VAULT_KEY, IOP_RECEIPT_KEY, TOP_RECEIPT_KEY } from './iop-authorization-storage';
 
 const applicationReader = new IopApplicationReader();
 let protection:
@@ -91,6 +93,34 @@ const topController = new IopAuthorizationController(
   sharedProtection
 );
 const controllers = { iop: controller, top: topController };
+/** Called only after the trusted workbench has unlocked its sensitive-settings view. */
+export async function exportWorkbenchAuthorization(
+  protocol: 'top' | 'iop',
+  expected: { appKey: string; accessToken: string },
+  sessionKeyMaterial: string
+): Promise<AlibabaOpenApiCredentialBundle> {
+  const selected = controllers[protocol];
+  const release = selected.holdProtection();
+  try {
+    const receiptKey = protocol === 'iop' ? IOP_RECEIPT_KEY : TOP_RECEIPT_KEY;
+    const receipt = (await trustedLocalStorage.get(receiptKey))[receiptKey];
+    if (receipt !== undefined && receipt !== null) throw failure('AUTH_REFRESH_RESULT_UNKNOWN');
+    const key = protocol === 'iop' ? IOP_VAULT_KEY : TOP_VAULT_KEY;
+    let bundle: AlibabaOpenApiCredentialBundle;
+    try {
+      const stored = (await trustedLocalStorage.get(key))[key];
+      bundle = (await restoreAlibabaAuthorization(stored, sessionKeyMaterial, protocol)).bundle;
+    } catch {
+      throw failure('AUTH_BACKUP_UNAVAILABLE');
+    }
+    if (bundle.application.appKey !== expected.appKey || bundle.oauth.accessToken !== expected.accessToken)
+      throw failure('AUTH_BACKUP_STALE');
+    // Read-only export: do not unlock the tool, change its saved state, or start OAuth.
+    return structuredClone(bundle);
+  } finally {
+    release();
+  }
+}
 /** Clear both local copies of one protocol; never revoke the provider grant or touch the other protocol. */
 export async function clearWorkbenchAuthorization(
   protocol: 'top' | 'iop',

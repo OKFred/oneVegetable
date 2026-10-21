@@ -1,4 +1,5 @@
 import type { GalleryRequestOptions } from './gallery-transfer-context';
+import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 import type { AlibabaProtocol, AlibabaAuthorizationBinding } from './alibaba-protocol-routing';
 import type {
   AlibabaAuthorizationsSummary,
@@ -422,6 +423,7 @@ export interface SettingsRepository {
   save(settings: GatewaySettings): Promise<void>;
   authorizations?(): Promise<AlibabaAuthorizationsSummary>;
   loadAuthorization?(protocol: AlibabaProtocol): Promise<GatewaySettings>;
+  exportAuthorization?(protocol: AlibabaProtocol): Promise<AlibabaOpenApiCredentialBundle>;
   setDefaultAuthorization?(
     protocol: AlibabaProtocol,
     configurationId: string
@@ -444,6 +446,8 @@ export interface CredentialVaultPolicy {
 
 export interface CredentialVaultStatus {
   protocol?: 'top' | 'iop';
+  /** Background signing is available independently of the sensitive-settings view lock. */
+  gatewayAvailable?: boolean;
   deviceProtected?: boolean;
   state: CredentialVaultState;
   hasAppKey: boolean;
@@ -482,6 +486,7 @@ export type CredentialVaultOperation =
   | 'update-policy'
   | 'authorizations'
   | 'get-authorization'
+  | 'export-authorization'
   | 'set-default-authorization'
   | 'confirm-authorizations'
   | 'clear-authorization'

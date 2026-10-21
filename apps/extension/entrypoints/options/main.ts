@@ -210,6 +210,7 @@ const settings: SettingsRepository = {
   load: () => requestVault('get-settings', undefined),
   authorizations: () => requestVault('authorizations', undefined),
   loadAuthorization: (protocol) => requestVault('get-authorization', { protocol }),
+  exportAuthorization: (protocol) => requestVault('export-authorization', { protocol }),
   setDefaultAuthorization: (protocol, configurationId) =>
     requestVault('set-default-authorization', { protocol, configurationId }),
   confirmAuthorizations: (topConfigurationId, iopConfigurationId) =>
@@ -408,6 +409,10 @@ interface VaultOperationMap {
   };
   authorizations: { request: undefined; response: AlibabaAuthorizationsSummary };
   'get-authorization': { request: { protocol: 'top' | 'iop' }; response: GatewaySettings };
+  'export-authorization': {
+    request: { protocol: 'top' | 'iop' };
+    response: AlibabaOpenApiCredentialBundle;
+  };
   'confirm-authorizations': {
     request: { topConfigurationId: string; iopConfigurationId: string };
     response: AlibabaAuthorizationsSummary;

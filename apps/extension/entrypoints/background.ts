@@ -12,6 +12,7 @@ import {
   rotateAuthorizationProtection,
   lockAllAlibabaAuthorizations,
   clearWorkbenchAuthorization,
+  exportWorkbenchAuthorization,
   resetIopAuthorization
 } from '../lib/iop-authorization-runtime';
 import { defineBackground } from 'wxt/utils/define-background';
@@ -661,7 +662,7 @@ async function executeCredentialVaultOperation(
       const context = requireGalleryContext(expected);
       assertGalleryContextId(context.identity, await opaqueGalleryId('extension:local-admin'));
       const settings = await resolveAuthorization(
-        (await getUnlockedVault(state)).settings,
+        (await getGatewayVault(state)).settings,
         undefined,
         undefined,
         context.gateway,
@@ -681,7 +682,15 @@ async function executeCredentialVaultOperation(
     case 'authorizations': {
       if (state.kind === 'empty') return summarizeAuthorizations();
       if (state.kind === 'legacy') return readAuthorizationsSummary(state.settings);
-      return readAuthorizationsSummary((await getUnlockedVault(state)).settings);
+      return readAuthorizationsSummary((await getGatewayVault(state)).settings);
+    }
+    case 'export-authorization': {
+      const current = await getUnlockedVault(state);
+      const protocol = requiredAuthorizationProtocol(asRecord(payload).protocol);
+      const profile = authorizationProfiles(current.settings)[protocol];
+      if (!profile) throw gatewayFailure('AUTH_BACKUP_UNAVAILABLE', 'AUTH_BACKUP_UNAVAILABLE');
+      const protection = await vaultSession.protection(current.record);
+      return exportWorkbenchAuthorization(protocol, profile, protection.sessionKeyMaterial);
     }
     case 'get-authorization': {
       const protocol = requiredAuthorizationProtocol(asRecord(payload).protocol);
@@ -748,7 +757,7 @@ async function executeCredentialVaultOperation(
       const started = Date.now();
       let configurationId: string | null = null;
       try {
-        const current = await getUnlockedVault(state);
+        const current = await getGatewayVault(state);
         const protocol = requiredAuthorizationProtocol(asRecord(payload).protocol);
         const profile = authorizationProfiles(current.settings)[protocol];
         if (!profile) throw gatewayFailure('CREDENTIAL_VAULT_EMPTY', 'CREDENTIAL_VAULT_EMPTY');
@@ -932,19 +941,22 @@ async function credentialVaultStatus(
 ): Promise<CredentialVaultStatus & AuthorizationStatus> {
   const activeSession = state.kind === 'vault' ? await vaultSession.read(state.record) : undefined;
   const activeVault = activeSession?.value;
-  const allSettings = state.kind === 'legacy' ? state.settings : activeVault?.settings;
+  const gatewaySession =
+    activeSession ?? (state.kind === 'vault' ? await vaultSession.readForGateway(state.record) : undefined);
+  const allSettings = state.kind === 'legacy' ? state.settings : gatewaySession?.value.settings;
   const settings =
     allSettings && selectedProtocol ? authorizationProfiles(allSettings)[selectedProtocol] : allSettings;
   const effectiveState = state.kind === 'vault' ? (activeSession ? 'unlocked' : 'locked') : state.kind;
   return {
     state: effectiveState,
+    gatewayAvailable: state.kind === 'legacy' || Boolean(gatewaySession),
     deviceProtected: state.kind === 'vault' && Boolean(await authorizationProtection.deviceKey(state.record)),
     ...(settings?.protocol === undefined ? {} : { protocol: settings.protocol }),
     ...(allSettings ? { pool: authorizationAvailability(allSettings) } : {}),
     hasAppKey: Boolean(settings?.appKey),
     hasAppSecret: Boolean(settings?.appSecret),
     hasAccessToken: Boolean(settings?.accessToken),
-    appKey: settings?.appKey ?? '',
+    appKey: effectiveState === 'locked' ? '' : (settings?.appKey ?? ''),
     endpoint: settings?.endpoint ?? ALIBABA_GATEWAY,
     signMethod: settings?.signMethod ?? 'hmac',
     idleTimeoutMinutes: activeVault?.policy.idleTimeoutMinutes ?? null,
@@ -978,8 +990,23 @@ let identityInitialization: { ciphertext: string; pending: Promise<CredentialVau
 async function getUnlockedVault(
   state: ReturnType<typeof inspectCredentialStorage>
 ): Promise<CredentialVaultSessionValue> {
+  return readVault(state, false);
+}
+
+async function getGatewayVault(
+  state: ReturnType<typeof inspectCredentialStorage>
+): Promise<CredentialVaultSessionValue> {
+  return readVault(state, true);
+}
+
+async function readVault(
+  state: ReturnType<typeof inspectCredentialStorage>,
+  gatewayOnly: boolean
+): Promise<CredentialVaultSessionValue> {
   if (state.kind !== 'vault') throw vaultStateError(state.kind);
-  const activeSession = await vaultSession.read(state.record, true);
+  const activeSession = gatewayOnly
+    ? await vaultSession.readForGateway(state.record, true)
+    : await vaultSession.read(state.record, true);
   if (!activeSession) throw vaultStateError(state.kind);
   const current = activeSession.value;
   const settings = initializeAuthorizationIdentities(current.settings);
@@ -1602,7 +1629,7 @@ async function loadAuthorizationSettings(): Promise<GatewaySettings> {
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY);
   const present = Object.prototype.hasOwnProperty.call(stored, SETTINGS_STORAGE_KEY);
   const state = inspectCredentialStorage(stored[SETTINGS_STORAGE_KEY], present);
-  return (await getUnlockedVault(state)).settings;
+  return (await getGatewayVault(state)).settings;
 }
 
 async function loadProductAdapter(
@@ -1701,6 +1728,7 @@ function asCredentialVaultRequest(value: unknown): CredentialVaultRequest | null
     value.operation !== 'update-policy' &&
     value.operation !== 'authorizations' &&
     value.operation !== 'get-authorization' &&
+    value.operation !== 'export-authorization' &&
     value.operation !== 'confirm-authorizations' &&
     value.operation !== 'set-default-authorization' &&
     value.operation !== 'clear-authorization' &&
@@ -1818,9 +1846,13 @@ function validateCredentialVaultPayload(
     return;
   }
   if (
-    ['get-authorization', 'clear-authorization', 'refresh-authorization', 'test-authorization'].includes(
-      operation
-    )
+    [
+      'get-authorization',
+      'export-authorization',
+      'clear-authorization',
+      'refresh-authorization',
+      'test-authorization'
+    ].includes(operation)
   ) {
     requiredAuthorizationProtocol(requireOnlyKeys(payload, ['protocol']).protocol);
     return;

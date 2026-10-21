@@ -15,6 +15,7 @@ import {
 
 export interface AuthorizationStatus {
   state: CredentialVaultStatus['state'];
+  gatewayAvailable?: boolean;
   protocol?: unknown;
   pool?: AlibabaProtocolAvailability | undefined;
 }
@@ -53,9 +54,16 @@ export function applyExtensionCapabilityProtocol<T extends { method: string; rea
     ...mapped,
     realCallEnabled:
       mapped.realCallEnabled &&
-      ['empty', 'legacy', 'unlocked'].includes(status.state) &&
+      hasGatewayAccess(status) &&
       (status.protocol === undefined || status.protocol === 'top' || status.protocol === 'iop')
   };
+}
+
+function hasGatewayAccess(status: AuthorizationStatus): boolean {
+  return (
+    ['empty', 'legacy', 'unlocked'].includes(status.state) ||
+    (status.state === 'locked' && status.gatewayAvailable === true)
+  );
 }
 
 /** Options startup only asks about operation IDs, never target capability methods. */
@@ -102,7 +110,7 @@ export function createExtensionOperationAvailabilityClient(
         const status = await readStatus(options);
         const protocol = status.protocol;
         if (
-          !['empty', 'legacy', 'unlocked'].includes(status.state) ||
+          !hasGatewayAccess(status) ||
           (options?.galleryContext !== undefined && protocol === undefined) ||
           (protocol !== undefined && protocol !== 'top' && protocol !== 'iop')
         )

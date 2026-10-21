@@ -99,6 +99,10 @@ export const errors = {
       'The platform rejected the TOP token refresh request. Check the application authorization and permissions, or authorize TOP again.',
     AUTH_REFRESH_RESULT_UNKNOWN:
       'The refresh result is unknown. Do not resend this refresh request; reauthorize this protocol and import the new authorization.',
+    AUTH_BACKUP_UNAVAILABLE:
+      'No complete online authorization file is available. Keep your original import file or complete online authorization again.',
+    AUTH_BACKUP_STALE:
+      'The authorization tool file does not match the current configuration. Nothing was exported. Authorize this protocol again before backing it up.',
     AUTH_REFRESH_EXPIRED:
       'The recorded refresh period has expired. Reauthorize this protocol and import the new authorization.',
     AUTH_PERMISSION_REQUIRED:

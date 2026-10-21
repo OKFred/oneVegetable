@@ -32,7 +32,7 @@ import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session
 import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
 import { s3LocalStore } from '../lib/s3-local-store';
 import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
-import { resetIopAuthorization } from '../lib/iop-authorization-runtime';
+import { handleAuthorization, resetIopAuthorization } from '../lib/iop-authorization-runtime';
 import { authorizationProfiles } from '../lib/alibaba-authorizations';
 
 const setSyncAccessLevel = vi.hoisted(() => vi.fn(() => Promise.resolve()));
@@ -603,6 +603,112 @@ describe('extension background protocol persistence and dispatch', () => {
     ).toMatchObject({ ok: false });
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
+  it('keeps signed reads available while locking sensitive settings and export', async () => {
+    await create();
+    await send('credential-vault-request', 'lock');
+    const status = await send('credential-vault-request', 'status');
+    expect(status).toMatchObject({
+      ok: true,
+      data: {
+        state: 'locked',
+        gatewayAvailable: true,
+        appKey: '',
+        lockReason: 'manual',
+        protocol: 'iop'
+      }
+    });
+    expect(JSON.stringify(status)).not.toContain(settings.appSecret);
+    expect(JSON.stringify(status)).not.toContain(settings.accessToken);
+    expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { iop: { configured: true } }
+    });
+    for (const operation of ['get-settings', 'get-authorization', 'export-authorization']) {
+      expect(
+        await send(
+          'credential-vault-request',
+          operation,
+          operation === 'get-settings' ? undefined : { protocol: 'iop' }
+        )
+      ).toMatchObject({
+        ok: false,
+        error: { code: 'CREDENTIAL_VAULT_LOCKED' }
+      });
+    }
+    vi.mocked(fetch).mockResolvedValue(Response.json(business.products));
+    const result = await send('gateway-request', 'listProducts', { page: 1, pageSize: 2 });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(result.ok).toBe(true);
+    expect(await send('credential-vault-request', 'status')).toMatchObject({
+      ok: true,
+      data: { state: 'locked', gatewayAvailable: true, appKey: '', lockReason: 'manual' }
+    });
+  });
+
+  it('does not synthesize a complete authorization backup from manually entered settings', async () => {
+    await resetIopAuthorization();
+    await create();
+    expect(await send('credential-vault-request', 'export-authorization', { protocol: 'iop' })).toMatchObject(
+      {
+        ok: false,
+        error: { code: 'AUTH_BACKUP_UNAVAILABLE' }
+      }
+    );
+    expect(
+      await sendEnvelope(
+        { kind: 'credential-vault-request', operation: 'export-authorization', payload: { protocol: 'iop' } },
+        { ...sender, url: 'https://i.alibaba.com/explore/open-api' }
+      )
+    ).toMatchObject({ ok: false });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it.each(['top', 'iop'] as const)(
+    'backs up only a matching complete %s bundle after explicit view unlock',
+    async (protocol) => {
+      await resetIopAuthorization();
+      const profile = protocol === 'top' ? topSettings : settings;
+      await create(profile);
+      const bundle = {
+        ...credentialFixtures.oauthBundle,
+        schemaVersion: 1 as const,
+        protocol,
+        application: {
+          ...credentialFixtures.oauthBundle.application,
+          appKey: profile.appKey,
+          appSecret: profile.appSecret
+        },
+        oauth: { ...credentialFixtures.oauthBundle.oauth, accessToken: profile.accessToken }
+      };
+      expect(
+        await handleAuthorization(
+          {
+            kind: 'iop-authorization-request',
+            requestId: crypto.randomUUID(),
+            protocol,
+            action: 'import',
+            payload: { bundle, passphrase: '123456' }
+          },
+          { ...sender, url: 'chrome-extension://protocol-test-extension/authorization.html' }
+        )
+      ).toMatchObject({ ok: true });
+      await send('credential-vault-request', 'lock');
+      expect(await send('credential-vault-request', 'export-authorization', { protocol })).toMatchObject({
+        ok: false,
+        error: { code: 'CREDENTIAL_VAULT_LOCKED' }
+      });
+      await send('credential-vault-request', 'unlock', { passphrase: '123456' });
+      expect(await send('credential-vault-request', 'export-authorization', { protocol })).toMatchObject({
+        ok: true,
+        data: bundle
+      });
+      await send('credential-vault-request', 'save', { ...profile, accessToken: 'fixture-new-access-token' });
+      expect(await send('credential-vault-request', 'export-authorization', { protocol })).toMatchObject({
+        ok: false,
+        error: { code: 'AUTH_BACKUP_STALE' }
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  );
   it('returns a safe empty profile for first-time import without requiring an existing vault', async () => {
     for (const protocol of ['top', 'iop'] as const) {
       expect(await send('credential-vault-request', 'get-authorization', { protocol })).toMatchObject({
@@ -1763,6 +1869,7 @@ describe('extension background protocol persistence and dispatch', () => {
       'get-settings',
       'authorizations',
       'get-authorization',
+      'export-authorization',
       'save',
       'confirm-authorizations',
       'clear-authorization',
@@ -1781,6 +1888,7 @@ describe('extension background protocol persistence and dispatch', () => {
   it.each([
     ['authorizations', { extra: true }],
     ['get-authorization', { protocol: 'bad' }],
+    ['export-authorization', { protocol: 'iop', extra: true }],
     ['clear-authorization', { protocol: 'top', extra: true }],
     ['confirm-authorizations', { topConfigurationId: 'test' }],
     ['save', { ...settings, protocolCredentials: { top: topSettings } }],

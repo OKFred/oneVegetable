@@ -7,6 +7,29 @@ import {
 } from '../lib/operation-availability';
 
 describe('context-bound extension availability', () => {
+  it('allows background operations while only the sensitive settings view is locked', async () => {
+    const client = createExtensionOperationAvailabilityClient(() =>
+      Promise.resolve({
+        state: 'locked',
+        gatewayAvailable: true,
+        protocol: 'top'
+      })
+    );
+    expect(await client.get(['listProducts', 'createTradeOrder'])).toMatchObject({
+      items: [{ allowed: true }, { allowed: false, reasonCode: 'REAL_MUTATION_DISABLED' }]
+    });
+  });
+
+  it.each([
+    { state: 'locked' as const },
+    { state: 'locked' as const, gatewayAvailable: false },
+    { state: 'invalid' as const, gatewayAvailable: true }
+  ])('fails closed when a locked or invalid record has no usable background key: %j', async (status) => {
+    const client = createExtensionOperationAvailabilityClient(() => Promise.resolve(status));
+    expect(await client.get(['listProducts'])).toMatchObject({
+      items: [{ allowed: false, reasonCode: 'OPERATION_AVAILABILITY_UNAVAILABLE' }]
+    });
+  });
   it('forwards context and uses the background-matched IOP profile rather than dual default routing', async () => {
     const readStatus = vi.fn(() =>
       Promise.resolve<AuthorizationStatus>({

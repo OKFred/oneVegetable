@@ -80,6 +80,8 @@ export const errors = {
     TOP_TOKEN_REJECTED: '平台拒绝了 TOP Token 刷新请求。请检查应用授权和权限，或重新进行 TOP 授权。',
     AUTH_REFRESH_RESULT_UNKNOWN: '刷新结果不确定，请勿重发本次刷新请求；请重新进行对应协议授权并导入新授权。',
     AUTH_REFRESH_EXPIRED: '已记录的续期有效期已过，请重新进行对应协议授权并导入新授权。',
+    AUTH_BACKUP_UNAVAILABLE: '没有可备份的完整在线授权文件。请保留原导入文件，或重新完成在线授权。',
+    AUTH_BACKUP_STALE: '授权工具中的文件与当前配置不一致，未导出。请重新完成对应授权后再备份。',
     AUTH_PERMISSION_REQUIRED:
       '请先允许当前协议所需站点访问：TOP 为 https://oauth.alibaba.com，IOP 为 https://openapi-api.alibaba.com，再尝试续期。',
     ALIBABA_DRAFT_UPDATE_UNSUPPORTED: 'Alibaba 暂不支持覆盖更新已有平台草稿。',
