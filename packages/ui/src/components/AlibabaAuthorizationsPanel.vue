@@ -20,6 +20,8 @@ const props = withDefaults(
     canSetDefault?: boolean;
     compact?: boolean;
     configureActions?: boolean;
+    conciseActions?: boolean;
+    clearEmptyProfiles?: boolean;
   }>(),
   { configureBusy: undefined }
 );
@@ -36,9 +38,14 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
 
 <template>
   <Card class="space-y-4 p-5" data-testid="alibaba-authorizations-panel" :aria-busy="busy">
-    <h2 class="flex items-center gap-2 font-semibold">
-      <Link2 class="size-4" aria-hidden="true" />{{ t('dualTitle') }}
-    </h2>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="flex items-center gap-2 font-semibold">
+        <Link2 class="size-4" aria-hidden="true" />{{ t('dualTitle') }}
+      </h2>
+      <div v-if="$slots.actions" class="ml-auto flex justify-end gap-2">
+        <slot name="actions" />
+      </div>
+    </div>
     <p class="text-sm leading-6 text-muted-foreground">{{ t('dualDescription') }}</p>
     <div class="grid gap-3 lg:grid-cols-2" role="group" :aria-label="t('selectProfile')">
       <AlibabaAuthorizationProfile
@@ -66,9 +73,11 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
             <Link2 v-else class="size-4" aria-hidden="true" />
             {{
               t(
-                summary.defaultProtocol === protocol && summary[protocol]?.configured
-                  ? 'defaultSelected'
-                  : 'setDefault'
+                conciseActions
+                  ? 'defaultAction'
+                  : summary.defaultProtocol === protocol && summary[protocol]?.configured
+                    ? 'defaultSelected'
+                    : 'setDefault'
               )
             }}
           </Button>
@@ -86,9 +95,16 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
               aria-hidden="true"
             />
             <Link2 v-else class="size-4" aria-hidden="true" />{{
-              t(configureActions && summary[protocol]?.configured ? 'updateProfile' : 'configureProfile', {
-                protocol: protocol.toUpperCase()
-              })
+              t(
+                conciseActions
+                  ? 'configureAction'
+                  : configureActions && summary[protocol]?.configured
+                    ? 'updateProfile'
+                    : 'configureProfile',
+                {
+                  protocol: protocol.toUpperCase()
+                }
+              )
             }}
           </Button>
           <Button
@@ -103,11 +119,11 @@ const automatic = computed(() => Boolean(props.summary.top?.configured && props.
           <Button
             v-if="canClear"
             variant="outline"
-            :disabled="busy || !summary[protocol]?.configured"
+            :disabled="busy || (!clearEmptyProfiles && !summary[protocol]?.configured)"
             :data-testid="`clear-authorization-${protocol}`"
             @click="emit('clear', protocol)"
           >
-            <Trash2 class="size-4" aria-hidden="true" />{{ t('clear') }}
+            <Trash2 class="size-4" aria-hidden="true" />{{ t(conciseActions ? 'clearAction' : 'clear') }}
           </Button>
         </div>
       </AlibabaAuthorizationProfile>

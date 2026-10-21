@@ -9,6 +9,11 @@ export const gatewayCredentials = {
   dualTitle: 'TOP + IOP authorizations',
   acquireCredentials: 'Connect Alibaba account',
   authorizationWizard: 'Authorization guide',
+  quickSetup: 'Quick setup',
+  defaultAction: 'Default',
+  configureAction: 'Configure',
+  clearAction: 'Clear',
+  profileCleared: 'Local {protocol} authorization cleared. You can reconnect or import it again.',
   wizardContinue: 'Continue setup',
   wizardBack: 'Back',
   protectionReady:
@@ -96,6 +101,8 @@ export const gatewayCredentials = {
     'Replace only {protocol} for all users of this server. The other profile is preserved. No Alibaba products are changed.',
   profileClearBody:
     'Clear only {protocol}; the other profile remains configured. This does not revoke the platform grant.',
+  extensionProfileClearBody:
+    'Clear {protocol} from this workbench and the local authorization tool. The other authorization and other local data are kept. You can reconnect or import later; the Alibaba platform grant is not revoked.',
   bindingConfirmed: 'User confirmed the same merchant; capability routing enabled',
   bindingRequired: 'Same-merchant confirmation required for automatic capability routing',
   bindingNeedsBoth:

@@ -16,7 +16,7 @@ TOP has two explicit paths: **Reauthorize** uses saved app metadata or manually 
 
 ### 给首次使用者
 
-1. 在设置点击“连接 Alibaba 账号”。首次先准备可选的本机保护口令（可留空），已解锁时不再重复询问。接着选择“导入已有授权文件”或“在线获取新授权”，不会默认打开线上流程。
+1. 在设置首张授权卡片右上角点击“一键配置”。首次先准备可选的本机保护口令（可留空），已解锁时不再重复询问。接着选择“导入已有授权文件”或“在线获取新授权”，不会默认打开线上流程。
    - 已有文件：选择完整授权 JSON，预览文件名、应用名及自动识别的 TOP/IOP；点击“导入并保存”才替换对应档案，另一份保持不变。无需打开平台；确认导入 IOP 时仅申请新版业务网关 openapi-api.alibaba.com 的访问权限，拒绝时不保存，保留文件预览以便重试。文件格式通过不等于平台权限或有效期通过，首次只读调用仍可能要求重新授权。文件限 256 KiB，历史未声明 protocol 的文件按 TOP 处理。到此已完成，不必执行下面的在线获取步骤。
    - 在线获取：首次优先选“连接新版应用”；以前使用旧应用的用户选“连接已有旧版应用”。两者不混用，不需要一开始就配齐两份。
 2. 点击“前往 Alibaba 连接”，按官网提示登录或完成验证。应用资料会尝试自动读取；需要手动填写时再展开表单。不要把 Alibaba 登录密码填作本机保护口令。
@@ -67,7 +67,10 @@ After a task-bound callback passes the tab, origin/path and state checks, both T
 - 工作台新增双协议兼容：历史包及未指定协议的设置仍使用 TOP；新版 IOP 包可以显式导入，但不会自动替换旧用户配置。两种应用的 AppKey、Secret、Token 不可混用。当前 IOP 仅开放已适配的商品、分组、Schema 渲染和指定图片分组查询；其他能力及真实写入明确禁用，详见 [双协议兼容](alibaba-gateway-protocols.md)。
 - Token 续期可能轮换 Refresh Token，需同步替换其他使用该授权包的服务。后台不静默续期、重试或重放商品任务。
 - 发出交换/续期前先保存脱敏执行意图。结果不明时禁止再次续期和导出旧包；重新授权。仅本机保存失败且新凭据仍在内存时，可“再次保存”，不会再调用平台。
-- 清除本机授权包不等于撤销 Alibaba 平台授权。
+- 设置卡片提供“默认、配置、清除”。“清除”需确认，同时清理对应协议的工作台档案、授权工具包及恢复材料；另一协议、S3、模板和任务不动，不撤销 Alibaba 平台授权。即使工作台显示尚未配置，也可用此按钮清理旧版遗留的工具包。打开的授权工具会同步回到“尚未配置”，不会自动重新授权或恢复旧 Token。
+- 授权工具就绪页另有“重新授权”入口，使用已保存的同协议应用资料；需用户确认，不自动接受 Alibaba 协议。独立工具中的清除只影响该工具包，不能用来替代设置页的工作台清除。
+- “开放平台凭证保护”仅展示锁定和更换口令两个操作；后者打开独立弹窗，取消或关闭未修改的弹窗不会更换口令。
+- **Quick setup** is at the top-right of the first authorization card. **Default**, **Configure** and **Clear** apply to each profile separately. Confirmed **Clear** removes both the selected workbench profile and its local authorization-tool package/recovery material, including historical tool-only remnants. It does not revoke the Alibaba grant or remove the other protocol, S3 configuration, templates or tasks. Open tools return to the unconfigured step without automatic OAuth or token restoration. Passphrase rotation is opened explicitly in a separate dialog.
 - 本服务与 alibaba.com 无官方关联，使用前请阅读平台规则。
 
 ## 授权 JSON 数组导入

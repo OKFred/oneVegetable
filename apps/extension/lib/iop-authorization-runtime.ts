@@ -91,6 +91,13 @@ const topController = new IopAuthorizationController(
   sharedProtection
 );
 const controllers = { iop: controller, top: topController };
+/** Clear both local copies of one protocol; never revoke the provider grant or touch the other protocol. */
+export async function clearWorkbenchAuthorization(
+  protocol: 'top' | 'iop',
+  commitWorkbench: () => Promise<void>
+): Promise<void> {
+  await controllers[protocol].clear(commitWorkbench);
+}
 export async function rotateAuthorizationProtection(
   previousKey: string,
   next: AuthorizationProtectionKey,

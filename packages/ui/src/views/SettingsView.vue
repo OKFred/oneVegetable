@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
-  BookOpen,
   Database,
   ExternalLink,
   FileUp,
@@ -12,10 +11,8 @@ import {
   PlugZap,
   RefreshCw,
   RotateCw,
-  RotateCcw,
   Save,
   ShieldCheck,
-  Trash2,
   UnlockKeyhole,
   WandSparkles
 } from '@lucide/vue';
@@ -146,6 +143,7 @@ const vaultPassphrase = ref('');
 const vaultPassphraseConfirmation = ref('');
 const newVaultPassphrase = ref('');
 const newVaultPassphraseConfirmation = ref('');
+const passphraseConfigurationOpen = ref(false);
 const vaultBusy = ref(false);
 const vaultError = ref<unknown>(null);
 const credentialImportError = ref<unknown>(null);
@@ -759,6 +757,7 @@ async function clearAuthorization(): Promise<void> {
     model.value = await loadSelectedAuthorization();
     credentialEditing.markClean();
     notifyGatewayConfigurationChanged();
+    toast.success(credentialText('profileCleared', { protocol: protocol.toUpperCase() }));
   } catch (cause) {
     vaultError.value = userVisibleCause(cause, credentialText('error'));
   } finally {
@@ -781,12 +780,22 @@ async function rotateVaultPassphrase(): Promise<void> {
     applyVaultStatus(await vault.rotate(newVaultPassphrase.value));
     clearVaultPassphrases();
     passphraseEditing.markClean();
+    passphraseConfigurationOpen.value = false;
     feedback.value = t('settings.vault.rotatedFeedback');
+    toast.success(t('settings.vault.rotatedFeedback'));
   } catch (error: unknown) {
     vaultError.value = userVisibleCause(error, t('settings.vault.rotateError'));
   } finally {
     vaultBusy.value = false;
   }
+}
+
+async function closePassphraseConfiguration(open: boolean): Promise<void> {
+  if (open || vaultBusy.value || !(await passphraseEditing.confirmLeave())) return;
+  newVaultPassphrase.value = '';
+  newVaultPassphraseConfirmation.value = '';
+  passphraseEditing.markClean();
+  passphraseConfigurationOpen.value = false;
 }
 
 function applyVaultStatus(status: CredentialVaultStatus): void {
@@ -848,18 +857,22 @@ function confirmLanguagePreference(): void {
         class="min-w-0 space-y-4"
         :aria-label="t('settings.sections.credentials')"
       >
-        <div
-          v-if="mode === 'extension' && alibabaCredentialAcquisition"
-          class="flex flex-wrap justify-end gap-2"
+        <Card
+          v-if="
+            mode === 'extension' &&
+            alibabaCredentialAcquisition &&
+            !(settingsEditable && dualSettings && authorizationSummary)
+          "
+          class="flex flex-wrap justify-end gap-2 p-5"
         >
           <Button
             type="button"
             data-testid="open-authorization-guide"
             :disabled="credentialActionBusy"
             @click="openAuthorizationGuide"
-            ><BookOpen class="size-4" />{{ credentialText('authorizationWizard') }}</Button
+            ><WandSparkles class="size-4" />{{ credentialText('quickSetup') }}</Button
           >
-        </div>
+        </Card>
         <GatewayAuthorizationsPanel
           v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'"
           dialog-configuration
@@ -893,13 +906,26 @@ function confirmLanguagePreference(): void {
           :can-set-default="Boolean(settings.setDefaultAuthorization)"
           compact
           configure-actions
+          concise-actions
+          clear-empty-profiles
+          :can-clear="Boolean(settings.clearAuthorization)"
           extension
           @select="configureAuthorization"
           @set-default="chooseDefaultAuthorization"
           @confirm="confirmAuthorizations"
           @renew="protocolDialogPurpose = 'renew'"
           @clear="requestClearAuthorization"
-        />
+        >
+          <template v-if="alibabaCredentialAcquisition" #actions>
+            <Button
+              type="button"
+              data-testid="open-authorization-guide"
+              :disabled="credentialActionBusy"
+              @click="openAuthorizationGuide"
+              ><WandSparkles class="size-4" />{{ credentialText('quickSetup') }}</Button
+            >
+          </template>
+        </AlibabaAuthorizationsPanel>
         <ErrorNotice
           v-if="authorizationError"
           :error="authorizationError"
@@ -1002,39 +1028,13 @@ function confirmLanguagePreference(): void {
               <Button variant="outline" :disabled="vaultBusy" @click="lockVault">
                 <LockKeyhole class="size-4" />{{ t('settings.vault.lockNow') }}
               </Button>
-            </div>
-            <div class="rounded-lg border p-4">
-              <p class="text-sm font-medium">{{ t('settings.vault.rotateTitle') }}</p>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ t('settings.vault.rotateDescription') }}
-              </p>
-              <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                <Input
-                  v-model="newVaultPassphrase"
-                  type="password"
-                  :aria-label="t('settings.vault.newPassphrase')"
-                  autocomplete="new-password"
-                  :placeholder="
-                    t('settings.vault.minimumCharacters', {
-                      count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS
-                    })
-                  "
-                />
-                <Input
-                  v-model="newVaultPassphraseConfirmation"
-                  type="password"
-                  :aria-label="t('settings.vault.confirmNewPassphrase')"
-                  autocomplete="new-password"
-                  :placeholder="t('settings.vault.enterAgain')"
-                />
-              </div>
               <Button
-                class="mt-3"
                 variant="outline"
-                :disabled="vaultBusy || !newVaultPassphrase || !newVaultPassphraseConfirmation"
-                @click="rotateVaultPassphrase"
+                data-testid="open-vault-passphrase"
+                :disabled="vaultBusy"
+                @click="passphraseConfigurationOpen = true"
               >
-                <RotateCcw class="size-4" />{{ t('settings.vault.rotate') }}
+                <KeyRound class="size-4" />{{ t('settings.vault.rotateTitle') }}
               </Button>
             </div>
           </div>
@@ -1093,6 +1093,56 @@ function confirmLanguagePreference(): void {
           </div>
           <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
         </Card>
+
+        <ModalDialog
+          :open="passphraseConfigurationOpen"
+          :title="t('settings.vault.rotateTitle')"
+          :description="t('settings.vault.rotateDescription')"
+          :dismissible="!vaultBusy"
+          @update:open="closePassphraseConfiguration"
+        >
+          <form
+            v-if="passphraseConfigurationOpen"
+            data-feedback-redact
+            @submit.prevent="rotateVaultPassphrase"
+          >
+            <div class="grid gap-3 sm:grid-cols-2">
+              <Input
+                v-model="newVaultPassphrase"
+                type="password"
+                :aria-label="t('settings.vault.newPassphrase')"
+                autocomplete="new-password"
+                :placeholder="
+                  t('settings.vault.minimumCharacters', { count: CREDENTIAL_VAULT_MIN_PASSPHRASE_CHARACTERS })
+                "
+              />
+              <Input
+                v-model="newVaultPassphraseConfirmation"
+                type="password"
+                :aria-label="t('settings.vault.confirmNewPassphrase')"
+                autocomplete="new-password"
+                :placeholder="t('settings.vault.enterAgain')"
+              />
+            </div>
+            <ErrorNotice v-if="vaultError" class="mt-3" :error="vaultError" compact />
+            <div class="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                :disabled="vaultBusy"
+                @click="closePassphraseConfiguration(false)"
+                >{{ t('common.actions.cancel') }}</Button
+              >
+              <Button
+                type="submit"
+                :disabled="vaultBusy || !newVaultPassphrase || !newVaultPassphraseConfirmation"
+              >
+                <LoaderCircle v-if="vaultBusy" class="size-4 animate-spin" />
+                <Save v-else class="size-4" />{{ t('settings.vault.rotate') }}
+              </Button>
+            </div>
+          </form>
+        </ModalDialog>
 
         <CredentialConfigurationDialog
           v-if="settingsEditable && (!dualSettings || configurationOpen)"
@@ -1225,17 +1275,6 @@ function confirmLanguagePreference(): void {
                 </p>
               </div>
             </CredentialActionsSection>
-            <div class="mt-4 flex justify-end border-t pt-4">
-              <Button
-                variant="outline"
-                :disabled="
-                  credentialActionBusy || !configuredProfile?.configured || !settings.clearAuthorization
-                "
-                @click="requestClearAuthorization(selectedProtocol)"
-              >
-                <Trash2 class="size-4" />{{ credentialText('clear') }}
-              </Button>
-            </div>
           </template>
           <component
             :is="dualSettings ? ModalDialog : 'div'"
@@ -1360,7 +1399,9 @@ function confirmLanguagePreference(): void {
           :open="clearingAuthorization !== null"
           :title="credentialText('confirmLocalClear')"
           :description="
-            credentialText('profileClearBody', { protocol: clearingAuthorization?.toUpperCase() ?? '' })
+            credentialText('extensionProfileClearBody', {
+              protocol: clearingAuthorization?.toUpperCase() ?? ''
+            })
           "
           :pending="vaultBusy"
           destructive

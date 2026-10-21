@@ -3,11 +3,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { IopAuthorizationSummary } from '../lib/iop-authorization';
 
 const mocks = vi.hoisted(() => ({
-  send: vi.fn<(message: { action: string }) => Promise<unknown>>()
+  send: vi.fn<(message: { action: string }) => Promise<unknown>>(),
+  onStorageChanged: vi.fn()
 }));
 vi.mock('wxt/browser', () => ({
   browser: {
-    runtime: { getURL: (path: string) => `chrome-extension://test${path}`, sendMessage: mocks.send }
+    runtime: { getURL: (path: string) => `chrome-extension://test${path}`, sendMessage: mocks.send },
+    storage: { onChanged: { addListener: mocks.onStorageChanged } }
   }
 }));
 
@@ -56,6 +58,7 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   const input = document.querySelector<HTMLInputElement>('#unlockPassphrase');
   if (!form || !input) throw new Error('Missing authorization controls');
   expect(form.hidden).toBe(true);
+  expect(document.querySelector<HTMLButtonElement>('#restartConnection')?.hidden).toBe(false);
   state = 'locked';
   window.dispatchEvent(new Event('focus'));
   await vi.advanceTimersByTimeAsync(0);
@@ -86,10 +89,15 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   if (!management) throw new Error('Missing management disclosure');
   management.open = true;
   state = 'empty';
-  window.dispatchEvent(new Event('focus'));
+  const onChange = mocks.onStorageChanged.mock.calls[0]?.[0] as (
+    changes: Record<string, unknown>,
+    area: string
+  ) => void;
+  onChange({ 'one-vegetable-top-authorization-v1': {} }, 'local');
   await vi.advanceTimersByTimeAsync(0);
   expect(management.open).toBe(false);
   expect(otherMethods?.hidden).toBe(true);
+  expect(document.querySelector<HTMLButtonElement>('#restartConnection')?.hidden).toBe(true);
   window.dispatchEvent(new Event('pagehide'));
   const count = mocks.send.mock.calls.length;
   await vi.advanceTimersByTimeAsync(60_000);

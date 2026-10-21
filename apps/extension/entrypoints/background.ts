@@ -11,6 +11,7 @@ import {
   configureAuthorizationWorkbench,
   rotateAuthorizationProtection,
   lockAllAlibabaAuthorizations,
+  clearWorkbenchAuthorization,
   resetIopAuthorization
 } from '../lib/iop-authorization-runtime';
 import { defineBackground } from 'wxt/utils/define-background';
@@ -736,10 +737,11 @@ async function executeCredentialVaultOperation(
     }
     case 'clear-authorization': {
       const current = await getUnlockedVault(state);
-      await persistUnlockedSettings(
-        current,
-        clearAuthorizationProfile(current.settings, requiredAuthorizationProtocol(asRecord(payload).protocol))
-      );
+      const protocol = requiredAuthorizationProtocol(asRecord(payload).protocol);
+      const settings = clearAuthorizationProfile(current.settings, protocol);
+      await clearWorkbenchAuthorization(protocol, async () => {
+        await persistUnlockedSettings(current, settings);
+      });
       return null;
     }
     case 'test-authorization': {

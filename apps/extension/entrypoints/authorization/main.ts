@@ -11,6 +11,7 @@ import {
   t
 } from '../../../auth-pages/src/dom';
 import type { IopAuthorizationSummary } from '../../lib/iop-authorization';
+import { IOP_VAULT_KEY, TOP_VAULT_KEY } from '../../lib/iop-authorization-storage';
 import { authorizationStatusPollDelay } from '../../lib/authorization-status';
 import {
   IOP_APPLICATION_READER_ORIGINS,
@@ -64,6 +65,10 @@ el('#nextStep').insertAdjacentHTML(
   '<div id="workbenchStep" class="workbench-next-action" hidden><h3 data-text="workbenchNextTitle"></h3><p class="muted" data-text="workbenchNextHelp"></p><div class="actions" id="workbenchAction"></div></div>'
 );
 el('#workbenchAction').append(el('#applyWorkbench'));
+el('#workbenchStep').insertAdjacentHTML(
+  'beforeend',
+  '<button id="restartConnection" type="button" class="authorization-back" data-text="reauthorize" hidden></button>'
+);
 const management = el('#connectionDetails');
 management.insertAdjacentHTML('beforebegin', '<h2 data-text="authorizationDetails"></h2>');
 management.before(el('#connectionDetails dl'), el('#boundary'));
@@ -186,6 +191,8 @@ function render(): void {
     !protectionReady && protectionState !== ''
   );
   el('#workbenchStep').hidden = !ready;
+  el('#restartConnection').hidden = !ready;
+  el<HTMLButtonElement>('#restartConnection').disabled = busy || !protectionReady || !summary?.canReauthorize;
   el('#nextStep').hidden = ready;
   el('#changeAuthorization').hidden = top || !ready;
   el<HTMLButtonElement>('#changeAuthorization').disabled = busy || !protectionReady;
@@ -318,7 +325,13 @@ async function update(): Promise<void> {
   const previousError = summary?.errorCode;
   const wasWaiting = summary?.state === 'waiting' || summary?.state === 'busy';
   if (data.state === 'empty' && summary?.state !== 'empty') {
+    importGeneration += 1;
     collapseEntryPanels();
+    for (const id of ['appName', 'appKey', 'appSecret', 'passphrase', 'unlockPassphrase', 'callbackPaste'])
+      el<HTMLInputElement>(`#${id}`).value = '';
+    el<HTMLInputElement>('#callback').value = protocol === 'iop' ? PUBLIC_AUTH_CALLBACK : '';
+    el<HTMLInputElement>('#registered').checked = false;
+    resetJsonEditor();
     el<HTMLDetailsElement>('#connectionDetails').open = false;
     el<HTMLDetailsElement>('#protocolSettings').open = false;
   }
@@ -635,6 +648,9 @@ el('#reauthorize').onclick = () => {
       withHostPermission('reauthorize', {}, summary?.callbackUrl ?? undefined);
     });
 };
+el('#restartConnection').onclick = () => {
+  if (!busy && protectionReady && summary?.canReauthorize) el<HTMLButtonElement>('#reauthorize').click();
+};
 el('#export').onclick = () => {
   if (busy) return;
   confirmAction(t('confirmExport'), () => {
@@ -787,6 +803,11 @@ el('#language').addEventListener('click', render);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') void update().catch(showError);
   else scheduleStatusUpdate();
+});
+browser.storage.onChanged.addListener((changes, areaName) => {
+  const key = protocol === 'top' ? TOP_VAULT_KEY : IOP_VAULT_KEY;
+  if (areaName === 'local' && Object.hasOwn(changes, key) && !pageClosed && !busy)
+    void update().catch(showError);
 });
 window.addEventListener('focus', () => {
   if (!pageClosed && document.visibilityState === 'visible') void update().catch(showError);

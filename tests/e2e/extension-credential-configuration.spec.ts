@@ -94,6 +94,13 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         await acquisition.getByTestId('confirm-authorization-file-import').click();
         await expect(acquisition).toBeHidden();
         await expect(page.getByTestId('default-authorization-top')).toHaveAttribute('aria-pressed', 'true');
+        const panel = page.getByTestId('alibaba-authorizations-panel');
+        await expect(panel.getByTestId('open-authorization-guide')).toHaveText(
+          en ? 'Quick setup' : '一键配置'
+        );
+        await expect(panel.getByTestId('default-authorization-top')).toHaveText(en ? 'Default' : '默认');
+        await expect(panel.getByTestId('select-authorization-top')).toHaveText(en ? 'Configure' : '配置');
+        await expect(panel.getByTestId('clear-authorization-top')).toHaveText(en ? 'Clear' : '清除');
         await expect(page.getByTestId('credential-import-actions')).toHaveCount(0);
         const baseline = await worker.evaluate(
           () => (globalThis as unknown as { credentialTestPaths: string[] }).credentialTestPaths.length
@@ -106,6 +113,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         });
         await expect(configuration.getByTestId('credential-import-actions')).toBeVisible();
         await expect(configuration.getByTestId('credential-connection-actions')).toBeVisible();
+        await expect(configuration.getByTestId('clear-authorization-iop')).toHaveCount(0);
         await expect(configuration.getByRole('note')).toHaveCount(0);
         await expect(page.getByTestId('settings-independent-notice')).toHaveCount(1);
         expect(
@@ -154,10 +162,9 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         expect(
           await configuration.evaluate((element) => element.getBoundingClientRect().width)
         ).toBeLessThanOrEqual(width);
-        const clear = configuration.getByRole('button', {
-          name: en ? 'Clear configuration' : '清除配置',
-          exact: true
-        });
+        await configuration.getByRole('button', { name: en ? 'Done' : '完成', exact: true }).click();
+        await expect(configuration).toBeHidden();
+        const clear = panel.getByTestId('clear-authorization-iop');
         for (const method of ['cancel', 'escape', 'close', 'overlay']) {
           await clear.click();
           const confirmation = page.getByRole('dialog', {
@@ -165,11 +172,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
             exact: true
           });
           await expect(confirmation).toBeVisible();
-          expect(
-            await confirmation.evaluate((element) => Number(getComputedStyle(element).zIndex))
-          ).toBeGreaterThan(
-            await configuration.evaluate((element) => Number(getComputedStyle(element).zIndex))
-          );
+          await expect(confirmation).toContainText(en ? 'local authorization tool' : '授权工具');
           expect(await confirmation.evaluate((element) => element.contains(document.activeElement))).toBe(
             true
           );
@@ -184,11 +187,10 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
           else if (method === 'close') await confirmation.locator('header button').click();
           else await page.mouse.click(8, 8);
           await expect(confirmation).toBeHidden();
-          await expect(configuration).toBeVisible();
+          await expect(configuration).toBeHidden();
           await expect(clear).toBeFocused();
           await expect(clear).toBeEnabled();
         }
-        await configuration.getByRole('button', { name: en ? 'Done' : '完成', exact: true }).click();
         await expect(page.getByTestId('default-authorization-top')).toHaveAttribute('aria-pressed', 'true');
         await page.getByTestId('default-authorization-iop').click();
         await expect(page.getByTestId('default-authorization-iop')).toHaveAttribute('aria-pressed', 'true');
@@ -202,6 +204,18 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
         await expect(top).toBeVisible();
         await page.keyboard.press('Escape');
         await expect(top).toBeHidden();
+        const protection = page.getByTestId('alibaba-credential-protection-panel');
+        await expect(protection.getByRole('button')).toHaveCount(2);
+        await page.getByTestId('open-vault-passphrase').click();
+        const rotate = page.getByRole('dialog', {
+          name: en ? 'Change the local protection passphrase' : '更换本机保护口令',
+          exact: true
+        });
+        await expect(
+          rotate.getByLabel(en ? 'New protection passphrase' : '新保护口令', { exact: true })
+        ).toBeVisible();
+        await rotate.getByRole('button', { name: en ? 'Cancel' : '取消', exact: true }).click();
+        await expect(rotate).toBeHidden();
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       } finally {
         await context.close();

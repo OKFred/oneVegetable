@@ -557,13 +557,16 @@ export class IopAuthorizationController {
     if (this.busy || this.protectionChanging) throw failure('AUTH_TASK_ACTIVE');
     this.endJob();
   }
-  async clear(): Promise<void> {
+  async clear(commitWorkbench?: () => Promise<void>): Promise<void> {
     await this.exclusive(async () => {
       this.manuallyLocked = true;
       this.unlocked = null;
       this.endJob();
       this.pendingSave = false;
       await this.storage.remove([this.vaultKey, this.receiptKey, this.sessionKey]);
+      // Keep this protocol exclusive until the workbench has also been cleared.
+      // If either write fails, report failure rather than re-applying a stale token.
+      await commitWorkbench?.();
       this.errorCode = null;
     });
   }

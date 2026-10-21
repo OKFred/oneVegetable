@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { defineComponent, h } from 'vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'vue-sonner';
 
@@ -180,6 +180,14 @@ async function openSettingsAuthorization(wrapper: ReturnType<typeof mountView>):
   await flushPromises();
 }
 
+async function openPassphraseDialog(wrapper: ReturnType<typeof mountView>): Promise<DOMWrapper<HTMLElement>> {
+  await wrapper.get('[data-testid="open-vault-passphrase"]').trigger('click');
+  await flushPromises();
+  const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
+  if (!dialog) throw new Error('Missing passphrase dialog');
+  return new DOMWrapper(dialog);
+}
+
 afterEach(() => {
   uiI18n.global.locale.value = 'zh-CN';
   vi.restoreAllMocks();
@@ -267,7 +275,8 @@ describe('SettingsView diagnostics', () => {
     await unlock?.trigger('click');
     await flushPromises();
     expect(unlockVault).toHaveBeenCalledExactlyOnceWith('');
-    expect(wrapper.find('input[aria-label="新保护口令"]').exists()).toBe(true);
+    expect(wrapper.find('input[aria-label="新保护口令"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="open-vault-passphrase"]').attributes('disabled')).toBeUndefined();
     wrapper.unmount();
   });
 
@@ -326,13 +335,14 @@ describe('SettingsView diagnostics', () => {
       await flushPromises();
       const selector =
         field === 'credentials' ? 'input[aria-label="App Key"]' : 'input[aria-label="新保护口令"]';
-      await wrapper.get(selector).setValue('unsaved-draft');
+      const fields = field === 'credentials' ? wrapper : await openPassphraseDialog(wrapper);
+      await fields.get(selector).setValue('unsaved-draft');
       notifyCredentialVaultChanged();
       await vi.waitFor(() => {
         expect(status).toHaveBeenCalledTimes(2);
       });
       expect(loadSettings).toHaveBeenCalledTimes(1);
-      expect((wrapper.get(selector).element as HTMLInputElement).value).toBe('unsaved-draft');
+      expect((fields.get(selector).element as HTMLInputElement).value).toBe('unsaved-draft');
       expect(editing.dirty.value).toBe(true);
       wrapper.unmount();
       editing.dispose();
@@ -648,13 +658,14 @@ describe('SettingsView diagnostics', () => {
     expect(wrapper.text()).toContain('本机记住解锁');
     expect(wrapper.text()).toContain('重启浏览器或更新扩展不锁定');
     expect(wrapper.text()).toContain('之后仅手动锁定需再输入');
-    expect(wrapper.get('input[aria-label="新保护口令"]').attributes('placeholder')).toBe('至少 6 位');
+    const passphrase = await openPassphraseDialog(wrapper);
+    expect(passphrase.get('input[aria-label="新保护口令"]').attributes('placeholder')).toBe('至少 6 位');
     expect(wrapper.text()).not.toContain('UTF-8 字节');
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
     expect(wrapper.text()).toContain('Unlocking survives browser restarts and extension updates');
     expect(wrapper.text()).toContain('only manual locking requires it again');
-    expect(wrapper.text()).toContain('No idle lock');
+    expect(document.body.textContent).toContain('No idle lock');
     expect(wrapper.text()).toContain('Lock now');
     expect(wrapper.find('select[aria-label="Automatic idle lock duration"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('Save lock policy');
@@ -691,19 +702,38 @@ describe('SettingsView diagnostics', () => {
     const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { editing });
     await flushPromises();
     expect(editing.dirty.value).toBe(false);
-    await wrapper.get('input[aria-label="新保护口令"]').setValue('rotated-test-only');
-    await wrapper.get('input[aria-label="确认新保护口令"]').setValue('rotated-test-only');
+    const passphrase = await openPassphraseDialog(wrapper);
+    await passphrase.get('input[aria-label="新保护口令"]').setValue('rotated-test-only');
+    await passphrase.get('input[aria-label="确认新保护口令"]').setValue('rotated-test-only');
     expect(editing.dirty.value).toBe(true);
-    const rotateButton = wrapper.findAll('button').find((candidate) => candidate.text() === '更换口令');
+    const rotateButton = passphrase.findAll('button').find((candidate) => candidate.text() === '更换口令');
     if (!rotateButton) throw new Error('Missing passphrase rotation button');
     await rotateButton.trigger('click');
     await flushPromises();
     expect(rotateVault).toHaveBeenCalledWith('rotated-test-only');
     expect(editing.dirty.value).toBe(false);
-    expect((wrapper.get('input[aria-label="新保护口令"]').element as HTMLInputElement).value).toBe('');
+    expect(document.body.querySelector('input[aria-label="新保护口令"]')).toBeNull();
     expect(updateVaultPolicy).not.toHaveBeenCalled();
     wrapper.unmount();
     editing.dispose();
+  });
+
+  it('keeps two protection actions and opens rotation only on request; cancel leaves the vault unchanged', async () => {
+    const wrapper = mountView('extension', 'unlocked');
+    await flushPromises();
+    const protection = wrapper.get('[data-testid="alibaba-credential-protection-panel"]');
+    expect(protection.findAll('button')).toHaveLength(2);
+    expect(document.body.querySelector('input[aria-label="新保护口令"]')).toBeNull();
+    const dialog = await openPassphraseDialog(wrapper);
+    await dialog
+      .findAll('button')
+      .find((button) => button.text() === '取消')
+      ?.trigger('click');
+    await flushPromises();
+    expect(document.body.querySelector('input[aria-label="新保护口令"]')).toBeNull();
+    expect(rotateVault).not.toHaveBeenCalled();
+    expect(manualLockVault).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 
   it('saves credentials and settings in one action when creating the extension vault', async () => {

@@ -79,8 +79,8 @@ vi.mock('wxt/browser', () => {
       Object.assign(state[name], items);
       return Promise.resolve();
     },
-    remove: (key: string) => {
-      Reflect.deleteProperty(state[name], key);
+    remove: (key: string | string[]) => {
+      for (const item of Array.isArray(key) ? key : [key]) Reflect.deleteProperty(state[name], item);
       return Promise.resolve();
     },
     clear: () => {
@@ -288,6 +288,44 @@ describe('standalone authorization applies directly to the encrypted workbench',
     await resetIopAuthorization();
   });
   for (const protocol of ['top', 'iop'] as const) {
+    it(`${protocol}: clearing the workbench also clears its tool package, not the other protocol or local tasks`, async () => {
+      await createPair(false);
+      for (const selected of ['top', 'iop'] as const)
+        expect(
+          await tool('import', selected, {
+            bundle: { ...credentialFixtures.oauthBundle, protocol: selected },
+            passphrase: '123456'
+          })
+        ).toMatchObject({ ok: true });
+      state.local['fixture:unrelated-task'] = { status: 'paused' };
+      const other = protocol === 'top' ? 'iop' : 'top';
+      expect(await send('credential-vault-request', 'clear-authorization', { protocol })).toMatchObject({
+        ok: true
+      });
+      expect(await tool('status', protocol)).toMatchObject({
+        ok: true,
+        data: { state: 'empty', canReauthorize: false }
+      });
+      expect(await tool('status', other)).toMatchObject({ ok: true, data: { state: 'ready' } });
+      expect(await send('credential-vault-request', 'authorizations')).toMatchObject({
+        data: { [protocol]: null, [other]: { configured: true } }
+      });
+      expect(state.local[`one-vegetable-${protocol}-authorization-v1`]).toBeUndefined();
+      expect(state.local[`one-vegetable-${protocol}-authorization-session-v1`]).toBeUndefined();
+      expect(state.local['fixture:unrelated-task']).toEqual({ status: 'paused' });
+      // Clear remains useful when the workbench is already empty but an old candidate exists.
+      expect(
+        await tool('import', protocol, {
+          bundle: { ...credentialFixtures.oauthBundle, protocol },
+          passphrase: '123456'
+        })
+      ).toMatchObject({ ok: true });
+      expect(await send('credential-vault-request', 'clear-authorization', { protocol })).toMatchObject({
+        ok: true
+      });
+      expect(await tool('status', protocol)).toMatchObject({ data: { state: 'empty' } });
+      expect(fetch).not.toHaveBeenCalled();
+    });
     it(`${protocol}: turns a prepared but empty workbench into a usable first profile only after apply`, async () => {
       const bundle = { ...credentialFixtures.oauthBundle, protocol };
       expect(await tool('import', protocol, { bundle, passphrase: '123456' })).toMatchObject({ ok: true });

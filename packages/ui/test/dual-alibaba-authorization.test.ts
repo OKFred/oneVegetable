@@ -72,7 +72,10 @@ it.each([
 
 it('saves the extension default and keeps form editing separate from the saved choice', async () => {
   const view = await harness(SettingsView, { extension: true, defaultSwitch: true });
-  expect(view.wrapper.get('[data-testid="default-authorization-top"]').text()).toContain('已选择');
+  expect(view.wrapper.get('[data-testid="default-authorization-top"]').text()).toBe('默认');
+  expect(view.wrapper.get('[data-testid="default-authorization-top"]').attributes('aria-pressed')).toBe(
+    'true'
+  );
   await view.wrapper.get('[data-testid="default-authorization-iop"]').trigger('click');
   await flushPromises();
   expect(view.setDefaultAuthorization).toHaveBeenCalledExactlyOnceWith('iop', 'iop-opaque-configuration');
@@ -1002,7 +1005,9 @@ describe('extension settings profile isolation', () => {
     await button(view.wrapper, '刷新 Token').trigger('click');
     await flushPromises();
     expect(view.refreshAuthorization.mock.calls).toEqual([['iop']]);
-    await button(view.wrapper, '清除配置').trigger('click');
+    await button(view.wrapper, '完成').trigger('click');
+    await flushPromises();
+    await view.wrapper.get('[data-testid="clear-authorization-iop"]').trigger('click');
     await flushPromises();
     expect(view.clearAuthorization).not.toHaveBeenCalled();
     await button(view.wrapper, '确认').trigger('click');

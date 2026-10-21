@@ -634,6 +634,49 @@ for (const protocol of ['top', 'iop'] as const) {
   });
 }
 
+test('clearing a workbench profile resets its open authorization tool and allows a fresh connection without token calls', async () => {
+  const tool = await authorize();
+  await expect(tool.locator('#restartConnection')).toBeVisible();
+  await tool.locator('#restartConnection').click();
+  await expect(tool.getByRole('dialog')).toBeVisible();
+  await tool.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click();
+  expect(creates).toBe(1);
+  const workbench = await openWorkbenchSettings();
+  expect(
+    await tool.evaluate(async () => {
+      const runtime = (
+        globalThis as unknown as { chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } } }
+      ).chrome.runtime;
+      return runtime.sendMessage({
+        kind: 'iop-authorization-request',
+        requestId: crypto.randomUUID(),
+        protocol: 'iop',
+        action: 'apply-to-workbench',
+        payload: {}
+      });
+    })
+  ).toMatchObject({ ok: true });
+  await workbench.reload();
+  await workbench.getByTestId('clear-authorization-iop').click();
+  await workbench
+    .getByRole('dialog', { name: '确认清除此本机授权？', exact: true })
+    .getByRole('button', { name: '确认', exact: true })
+    .click();
+  // No focus/reload of the old tool: chrome.storage change must remove stale readiness.
+  await expect(tool.locator('#status')).toHaveText('尚未配置');
+  await expect(tool.locator('#discover')).toBeVisible();
+  await expect(tool.locator('#discover')).toBeEnabled();
+  await expect(tool.locator('#applyWorkbench')).toBeHidden();
+  await expect(tool.locator('#name')).toHaveText('—');
+  expect(await sendWorkbench(workbench, 'credential-vault-request', 'authorizations')).toMatchObject({
+    data: { iop: null }
+  });
+  // Also cleans up historical tool-only packages when the workbench is already empty.
+  await expect(workbench.getByTestId('clear-authorization-iop')).toBeEnabled();
+  expect(creates).toBe(1);
+  expect(topCreates + refreshes + topRefreshes).toBe(0);
+});
+
 test('new users see a guided next action, not technical fields or disabled renewal controls', async () => {
   const tool = await openTool();
   await expect(tool.locator('#status')).toHaveText('尚未配置');
@@ -1557,7 +1600,8 @@ test('focused authorization layout shares workbench theme tokens, places details
   expect((rails.mainLeft ?? 0) - (rails.stepsRight ?? 0)).toBeGreaterThanOrEqual(20);
   expect(rails.mainLeft).toBe(rails.summaryLeft);
   expect((rails.summaryTop ?? 0) - (rails.mainBottom ?? 0)).toBeGreaterThanOrEqual(20);
-  await expect(tool.locator('#workbenchStep button:visible')).toHaveCount(1);
+  await expect(tool.locator('#workbenchStep button.primary:visible')).toHaveCount(1);
+  await expect(tool.locator('#restartConnection')).toBeVisible();
   const buttonColor = await tool
     .locator('#applyWorkbench')
     .evaluate((element) => getComputedStyle(element).backgroundColor);
