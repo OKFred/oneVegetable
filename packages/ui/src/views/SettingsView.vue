@@ -587,12 +587,16 @@ async function selectAuthorization(protocol: 'top' | 'iop', openConfiguration = 
   const loadAuthorization = settings.loadAuthorization?.bind(settings);
   if (!settingsEditable.value || !loadAuthorization || credentialActionBusy.value) return;
   if (selectedProtocol.value === protocol) {
-    if (openConfiguration) configurationOpen.value = true;
-    else toast.info(credentialText('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
+    if (openConfiguration) {
+      vaultError.value = null;
+      credentialImportError.value = null;
+      configurationOpen.value = true;
+    } else toast.info(credentialText('profileAlreadySelected', { protocol: protocol.toUpperCase() }));
     return;
   }
   if (!(await credentialEditing.confirmLeave())) return;
   switchingAuthorization.value = true;
+  vaultError.value = null;
   credentialImportError.value = null;
   try {
     if (!(await readSensitiveSettings(() => loadAuthorization(protocol)))) return;

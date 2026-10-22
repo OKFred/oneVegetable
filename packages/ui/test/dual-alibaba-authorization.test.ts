@@ -1067,6 +1067,36 @@ describe('extension settings profile isolation', () => {
     expect(view.saveSettings).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { failed: 'top', next: 'iop' },
+    { failed: 'iop', next: 'top' },
+    { failed: 'top', next: 'top' },
+    { failed: 'iop', next: 'iop' }
+  ] as const)(
+    'does not carry a dismissed $failed renewal error into the next $next configuration',
+    async ({ failed, next }) => {
+      const view = await harness(SettingsView, { extension: true });
+      const message = `${failed.toUpperCase()} renewal refused`;
+      view.refreshAuthorization.mockRejectedValue(new Error(message));
+      await view.wrapper.get(`[data-testid="select-authorization-${failed}"]`).trigger('click');
+      await flushPromises();
+      await button(view.wrapper, '刷新 Token').trigger('click');
+      await flushPromises();
+      expect(view.wrapper.text()).toContain(message);
+      await button(view.wrapper, '完成').trigger('click');
+      await flushPromises();
+      await view.wrapper.get(`[data-testid="select-authorization-${next}"]`).trigger('click');
+      await flushPromises();
+      expect(view.wrapper.text()).not.toContain(message);
+      expect(view.refreshAuthorization.mock.calls).toEqual([[failed]]);
+      expect(view.current().top?.configurationId).toBe('top-opaque-configuration');
+      expect(view.current().iop?.configurationId).toBe('iop-opaque-configuration');
+      expect(view.current().defaultProtocol).toBe('top');
+      expect(view.clearAuthorization).not.toHaveBeenCalled();
+      expect(view.saveSettings).not.toHaveBeenCalled();
+    }
+  );
+
   it('keeps the legacy extension editor unchanged when optional repository methods are absent', async () => {
     const view = await harness(SettingsView, { extension: true, legacy: true });
     expect(view.wrapper.find('[data-testid="alibaba-authorizations-panel"]').exists()).toBe(false);
