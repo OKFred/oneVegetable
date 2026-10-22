@@ -17,24 +17,38 @@ test('authenticated Web uses Worker, D1 and documentation replay across every do
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '登录运营工作台' })).toBeVisible();
+  await expect(page.getByText('正在检查初始化状态…', { exact: true })).not.toBeVisible();
 
-  await page.getByRole('button', { name: '初始化管理员' }).click();
-  await page.getByLabel('管理员引导令牌').fill('bff-replay-e2e-bootstrap-token-32-bytes');
-  await page.getByLabel('工作台用户名').fill('replay-admin');
-  await page.getByLabel(/^工作台密码/).fill('Replay-admin-2026!');
-  await page.getByRole('button', { name: '创建管理员' }).click();
+  // A Playwright retry reuses the isolated D1 database, not the browser session.
+  const initialize = page.getByRole('button', { name: '初始化管理员' });
+  if (await initialize.isVisible()) {
+    await initialize.click();
+    await page.getByLabel('管理员引导令牌').fill('bff-replay-e2e-bootstrap-token-32-bytes');
+    await page.getByLabel('工作台用户名').fill('replay-admin');
+    await page.getByLabel(/^工作台密码/).fill('Replay-admin-2026!');
+    await page.getByRole('button', { name: '创建管理员' }).click();
+  } else {
+    await page.getByLabel('工作台用户名').fill('replay-admin');
+    await page.getByLabel(/^工作台密码/).fill('Replay-admin-2026!');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+  }
 
   const onboardingDialog = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
   await expect(onboardingDialog).toBeVisible();
   await expect(onboardingDialog.locator('img')).toHaveCount(4);
   await onboardingDialog.getByRole('checkbox').check();
   await onboardingDialog.getByRole('button', { name: '开始授权向导' }).click();
-  const acquisitionDialog = page.getByRole('dialog', { name: '一键连接 Alibaba' });
-  await expect(acquisitionDialog).toBeVisible();
-  await expect(acquisitionDialog.getByText(/账号和密码只用于当前 HTTPS 请求/u)).toBeVisible();
-  await acquisitionDialog.getByRole('button', { name: '取消' }).click();
+  await expect(page).toHaveURL(/#\/settings$/u);
+  await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '一键连接 Alibaba' })).not.toBeVisible();
+  await page.getByRole('button', { name: '一键配置', exact: true }).click();
+  const protocolDialog = page.getByRole('dialog', { name: '连接 Alibaba 账号' });
+  await expect(protocolDialog).toBeVisible();
+  await expect(protocolDialog.getByRole('button', { name: /^连接新版应用/u })).toBeVisible();
+  await expect(protocolDialog.getByRole('button', { name: /^连接旧版应用/u })).toBeVisible();
+  await protocolDialog.getByRole('button', { name: '取消', exact: true }).click();
 
-  await expect(page.getByRole('heading', { name: '运营总览' })).toBeVisible();
+  await openDomain(page, successfulOperations, '总览', '运营总览', ['getDashboard']);
   const accountMenu = page.getByRole('button', { name: '当前用户：replay-admin', exact: true });
   await expect(accountMenu).toBeVisible();
   await accountMenu.click();
