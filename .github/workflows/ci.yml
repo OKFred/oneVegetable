@@ -17,7 +17,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm test:worker
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install Chromium with bounded dependency downloads
+        timeout-minutes: 10
+        run: |
+          # The runner's Azure HTTP mirror can stall during apt update or downloads.
+          # Keep dependency installation mandatory, using Ubuntu's official HTTPS mirror.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+          printf '%s\n' 'Acquire::Retries "2";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80onevegetable-ci-network >/dev/null
+          pnpm exec playwright install --with-deps chromium
       - run: xvfb-run --auto-servernum pnpm test:e2e
       - run: xvfb-run --auto-servernum pnpm test:e2e:bff-replay
       - run: xvfb-run --auto-servernum pnpm exec playwright test --config playwright.authorization.config.ts
