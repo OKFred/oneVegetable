@@ -1,0 +1,20 @@
+{
+  "top": {
+    "protocol": "top",
+    "application": {
+      "appName": "Fixture legacy application",
+      "appKey": "fixture-legacy-app-key",
+      "appSecret": "fixture-legacy-app-secret",
+      "callbackUrl": "https://merchant.example/callback"
+    }
+  },
+  "iop": {
+    "protocol": "iop",
+    "application": {
+      "appName": "Fixture IOP application",
+      "appKey": "fixture-iop-app-key",
+      "appSecret": "fixture-iop-app-secret",
+      "callbackUrl": "https://merchant.example/callback"
+    }
+  }
+}

@@ -23,6 +23,7 @@ import business from '../../mock/data/alibaba-auth/iop-business-responses.json' 
 import iopVideo from '../../mock/data/video/iop.json' with { type: 'json' };
 import standalone from '../../mock/data/alibaba-auth/standalone-authorization.json' with { type: 'json' };
 import jsonImports from '../../mock/data/alibaba-auth/standalone-json-imports.json' with { type: 'json' };
+import applicationBackups from '../../mock/data/alibaba-auth/top-application-backups.json' with { type: 'json' };
 import viewLock from '../../mock/data/alibaba-auth/credential-view-lock.json' with { type: 'json' };
 import { iopOperationReason } from '../../packages/core/src/alibaba-iop-business';
 import { SETTINGS_STORAGE_KEY } from '../../packages/core/src/settings-storage';
@@ -1766,47 +1767,54 @@ test('shared protection preflight has readable optional controls in both languag
   expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
 });
 
-test('TOP reads only app metadata from a backup and exchanges a fresh token without the legacy console', async () => {
-  const tool = await openTool('top', true);
-  await prepareProtection(tool);
-  await tool.locator('#topReauthorize').click();
-  const bundle = { ...jsonImports.top, application: { ...jsonImports.top.application, ...standalone.top } };
-  await tool.locator('#applicationFile').setInputFiles({
-    name: 'old-top.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(bundle))
+for (const applicationOnly of [false, true]) {
+  test(`TOP reads only app metadata from a ${applicationOnly ? 'minimal application' : 'full credential'} backup and exchanges a fresh token without the legacy console`, async () => {
+    const tool = await openTool('top', true);
+    await prepareProtection(tool);
+    await tool.locator('#topReauthorize').click();
+    const bundle = applicationOnly
+      ? {
+          ...applicationBackups.top,
+          application: { ...applicationBackups.top.application, ...standalone.top }
+        }
+      : { ...jsonImports.top, application: { ...jsonImports.top.application, ...standalone.top } };
+    await tool.locator('#applicationFile').setInputFiles({
+      name: 'old-top.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(bundle))
+    });
+    await expect(tool.locator('#appKey')).toHaveValue(standalone.top.appKey);
+    await expect(tool.locator('#callback')).toHaveValue(standalone.top.callbackUrl);
+    await expect(tool.locator('#status')).toHaveText('尚未配置');
+    const stored = await worker.evaluate(async () => {
+      const api = (
+        globalThis as unknown as {
+          chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
+        }
+      ).chrome;
+      return api.storage.local.get('one-vegetable-top-authorization-v1');
+    });
+    expect(stored).not.toHaveProperty(TOP_VAULT_KEY);
+    expect(topCreates + topRefreshes).toBe(0);
+    await tool.locator('#appName').fill('');
+    await tool.locator('#registered').check();
+    const opened = context.waitForEvent('page');
+    await tool.locator('#start').click();
+    const oauth = await opened;
+    await oauth.waitForURL(`chrome-extension://${extensionId}/top-approval.html**`);
+    await oauth.locator('#approve').click();
+    await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
+    await expectToolActive(tool);
+    expect(topCreates).toBe(1);
+    expect(topRefreshes + creates).toBe(0);
+    expect(await exportBundle(tool)).toMatchObject({
+      protocol: 'top',
+      application: { ...standalone.top, appName: 'TOP application' },
+      oauth: { accessToken: standalone.topToken.access_token }
+    });
+    expect(context.pages().some((page) => page.url().includes('crosstrade.alibaba.com'))).toBe(false);
   });
-  await expect(tool.locator('#appKey')).toHaveValue(standalone.top.appKey);
-  await expect(tool.locator('#callback')).toHaveValue(standalone.top.callbackUrl);
-  await expect(tool.locator('#status')).toHaveText('尚未配置');
-  const stored = await worker.evaluate(async () => {
-    const api = (
-      globalThis as unknown as {
-        chrome: { storage: { local: { get(key: string): Promise<Record<string, unknown>> } } };
-      }
-    ).chrome;
-    return api.storage.local.get('one-vegetable-top-authorization-v1');
-  });
-  expect(stored).not.toHaveProperty(TOP_VAULT_KEY);
-  expect(topCreates + topRefreshes).toBe(0);
-  await tool.locator('#appName').fill('');
-  await tool.locator('#registered').check();
-  const opened = context.waitForEvent('page');
-  await tool.locator('#start').click();
-  const oauth = await opened;
-  await oauth.waitForURL(`chrome-extension://${extensionId}/top-approval.html**`);
-  await oauth.locator('#approve').click();
-  await expect(tool.locator('#status')).toHaveText('授权文件已安全保存', { timeout: 20_000 });
-  await expectToolActive(tool);
-  expect(topCreates).toBe(1);
-  expect(topRefreshes + creates).toBe(0);
-  expect(await exportBundle(tool)).toMatchObject({
-    protocol: 'top',
-    application: { ...standalone.top, appName: 'TOP application' },
-    oauth: { accessToken: standalone.topToken.access_token }
-  });
-  expect(context.pages().some((page) => page.url().includes('crosstrade.alibaba.com'))).toBe(false);
-});
+}
 
 test('TOP preparation has aligned entry buttons and no protocol-switch or management controls', async () => {
   const tool = await openTool('top');

@@ -12,6 +12,7 @@ import {
 import type { IopAuthorizationSummary } from '../../lib/iop-authorization';
 import { IOP_VAULT_KEY, TOP_VAULT_KEY } from '../../lib/iop-authorization-storage';
 import { authorizationStatusPollDelay } from '../../lib/authorization-status';
+import { parseTopApplicationBackup } from '../../lib/top-application-backup';
 import {
   IOP_APPLICATION_READER_ORIGINS,
   TOP_APPLICATION_READER_ORIGINS
@@ -491,7 +492,7 @@ el<HTMLInputElement>('#applicationFile').onchange = (event) => {
     .text()
     .then((text) => {
       if (generation !== importGeneration || protocol !== 'top' || pageClosed) return;
-      const { application } = parseAuthorizationJson(text, 'top');
+      const application = parseTopApplicationBackup(text);
       for (const [id, key] of [
         ['appName', 'appName'],
         ['appKey', 'appKey'],
