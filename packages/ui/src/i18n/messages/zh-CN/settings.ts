@@ -2,7 +2,9 @@ export const settings = {
   bffCredentials: {
     boundary: 'App Key、App Secret、Access Token 由后端保管，网页不回显。',
     cloud: 'Cloudflare 用户请由管理员导入授权包或发起授权。',
-    admin: '前往管理后台配置'
+    admin: '前往管理后台配置',
+    security:
+      '凭据由当前服务端加密保存，仅管理员可配置，不在网页回显。更换或清除会影响使用此服务的所有用户；插件的本机口令不用于保护服务端凭据。'
   },
   page: {
     title: '设置',

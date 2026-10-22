@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { KeyRound, PlugZap, RefreshCw, RotateCw, Trash2, Upload } from '@lucide/vue';
+import { KeyRound, PlugZap, RefreshCw, RotateCw, Trash2, Upload, WandSparkles } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { parseManualGatewayCredential } from '@one-vegetable/core';
 import { parseAlibabaCredentialImport } from '@one-vegetable/core/credential-bundle';
@@ -25,8 +25,17 @@ import AlibabaIndependentNotice from './AlibabaIndependentNotice.vue';
 import CredentialExpiryNotice from './CredentialExpiryNotice.vue';
 import GatewayProtocolNotice from './settings/GatewayProtocolNotice.vue';
 import CredentialActionsSection from './CredentialActionsSection.vue';
+import GatewayAuthorizationSetupGuide from './GatewayAuthorizationSetupGuide.vue';
 
-const props = defineProps<{ protocol?: 'top' | 'iop' | undefined; embedded?: boolean }>();
+const props = withDefaults(
+  defineProps<{
+    protocol?: 'top' | 'iop' | undefined;
+    embedded?: boolean;
+    initialGuide?: boolean;
+    showClear?: boolean;
+  }>(),
+  { protocol: undefined, showClear: true }
+);
 const { control, runtime } = useServices();
 const t = useGatewayCredentialsI18n();
 const { t: uiText } = useUiI18n();
@@ -35,6 +44,8 @@ const latestTest = ref<GatewayCredentialTestResult | null>(null);
 const admin = ref(false);
 const busy = ref(false);
 const actionPending = ref(false);
+const setupGuideOpen = ref(props.initialGuide);
+const setupDialogOpen = ref(false);
 const error = ref<unknown>(null);
 const unavailable = ref(false);
 const dialog = ref(false);
@@ -71,12 +82,20 @@ const valid = computed(() =>
   Boolean(fields.appKey.trim() && fields.appSecret.trim() && fields.accessToken.trim())
 );
 const emit = defineEmits<{ changed: []; statusChanged: []; busyChanged: [busy: boolean] }>();
-watch(actionPending, (value) => {
-  emit('busyChanged', value);
-});
+watch(
+  () => actionPending.value || setupDialogOpen.value,
+  (value) => {
+    emit('busyChanged', value);
+  }
+);
 defineExpose({
   reload,
-  canClose: () => !actionPending.value && !dialog.value && !confirmation.value && !discardManual.value
+  canClose: () =>
+    !actionPending.value &&
+    !setupDialogOpen.value &&
+    !dialog.value &&
+    !confirmation.value &&
+    !discardManual.value
 });
 
 onMounted(async () => {
@@ -134,6 +153,11 @@ async function reload(): Promise<void> {
     unavailable.value = true;
     error.value = cause;
   }
+}
+async function credentialsAcquired(): Promise<void> {
+  await reload();
+  emit('changed');
+  notifyGatewayConfigurationChanged();
 }
 async function chooseFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement;
@@ -307,8 +331,22 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
               "
               ><KeyRound class="size-4" />{{ t('manual') }}</Button
             >
+            <Button
+              variant="outline"
+              :disabled="busy"
+              :aria-expanded="!!setupGuideOpen"
+              @click="setupGuideOpen = !setupGuideOpen"
+            >
+              <WandSparkles class="size-4" />{{ t('quickSetup') }}
+            </Button>
             <slot />
           </div>
+          <GatewayAuthorizationSetupGuide
+            v-if="setupGuideOpen"
+            :protocol="protocol ?? summary?.protocol ?? 'top'"
+            @dialog-changed="setupDialogOpen = $event"
+            @completed="credentialsAcquired"
+          />
         </CredentialActionsSection>
         <p class="text-sm font-medium">{{ summary?.configured ? t('configured') : t('empty') }}</p>
         <p class="text-sm" data-testid="gateway-protocol-summary">
@@ -377,14 +415,14 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
             </p>
           </div>
         </CredentialActionsSection>
-        <div class="flex justify-end border-t pt-4">
+        <div v-if="showClear" class="flex justify-end border-t pt-4">
           <Button variant="outline" :disabled="busy || !summary?.configured" @click="confirmation = 'clear'"
             ><Trash2 class="size-4" />{{ t('clear') }}</Button
           >
         </div>
       </template>
     </template>
-    <AlibabaIndependentNotice />
+    <AlibabaIndependentNotice v-if="!embedded" />
   </component>
   <ModalDialog
     :open="dialog"

@@ -1,21 +1,19 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { startRegistration } from '@simplewebauthn/browser';
-import { Copy, KeyRound, PauseCircle, PlayCircle, RefreshCw, Shield, Sparkles } from '@lucide/vue';
+import { Copy, KeyRound, PauseCircle, PlayCircle, RefreshCw, Shield } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser';
 import type { ControlPasskeyCredential, ControlRealMutationStatus } from '@one-vegetable/core';
 
 import { useServices } from '../lib/services';
-import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import Button from './ui/Button.vue';
 import ListActionButton from './ListActionButton.vue';
 import Card from './ui/Card.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import ModalDialog from './ui/ModalDialog.vue';
-import AlibabaCloudCredentialAcquisitionDialog from './AlibabaCloudCredentialAcquisitionDialog.vue';
 import { useUiI18n } from '../i18n';
 
 type Confirmation =
@@ -26,14 +24,12 @@ type Confirmation =
 const { control } = useServices();
 const { t } = useUiI18n();
 const GatewayAuthorizationsPanel = defineAsyncComponent(() => import('./GatewayAuthorizationsPanel.vue'));
-const credentialPanel = ref<{ reload: () => Promise<void> } | null>(null);
 const mutationControl = ref<ControlRealMutationStatus | null>(null);
 const passkeys = ref<ControlPasskeyCredential[]>([]);
 const confirmation = ref<Confirmation | null>(null);
 const recoveryCodes = ref<string[]>([]);
 const loading = ref(false);
 const error = ref<unknown>(null);
-const acquisitionOpen = ref(false);
 
 const confirmationTitle = computed(() => {
   if (confirmation.value?.kind === 'passkey-remove') {
@@ -133,10 +129,6 @@ async function confirm(): Promise<void> {
   }
 }
 
-async function credentialsAcquired(): Promise<void> {
-  notifyGatewayConfigurationChanged();
-  await credentialPanel.value?.reload();
-}
 async function copyRecoveryCodes(): Promise<void> {
   try {
     await globalThis.navigator.clipboard.writeText(recoveryCodes.value.join('\n'));
@@ -168,11 +160,7 @@ function userError(cause: unknown, fallback: string): Error {
     <ErrorNotice v-if="error" :error="error" :fallback="t('admin.selfHosted.errors.panel')" />
 
     <div class="space-y-4" data-testid="self-hosted-settings-sections">
-      <GatewayAuthorizationsPanel ref="credentialPanel" v-slot="{ protocol }" dialog-configuration>
-        <Button v-if="protocol !== 'iop'" variant="outline" size="sm" @click="acquisitionOpen = true"
-          ><Sparkles class="size-4" />{{ t('admin.selfHosted.connect') }}</Button
-        >
-      </GatewayAuthorizationsPanel>
+      <GatewayAuthorizationsPanel dialog-configuration />
 
       <Card class="p-5" data-testid="real-mutation-settings">
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -248,11 +236,6 @@ function userError(cause: unknown, fallback: string): Error {
       :pending="loading"
       @update:open="confirmation = $event ? confirmation : null"
       @confirm="confirm"
-    />
-
-    <AlibabaCloudCredentialAcquisitionDialog
-      v-model:open="acquisitionOpen"
-      @completed="credentialsAcquired"
     />
 
     <ModalDialog

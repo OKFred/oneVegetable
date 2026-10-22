@@ -211,7 +211,7 @@ describe('dashboard authorization renewal', () => {
       await h.wrapper.get('button').trigger('click');
       await h.body.get('[data-testid="choose-authorization-top"]').trigger('click');
       await flushPromises();
-      expect(h.body.get('[role="dialog"] a').attributes('href')).toBe(cloudflare ? '#/admin' : '#/settings');
+      expect(h.body.get('[role="dialog"] a').attributes('href')).toBe('#/settings');
       expect(h.body.get('[role="dialog"]').text()).toContain('重新授权');
       expect(h.body.findAll('button').some((button) => button.text() === '刷新 Token')).toBe(false);
       expect(h.refresh).not.toHaveBeenCalled();

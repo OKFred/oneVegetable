@@ -183,16 +183,18 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await expect(renewal).toBeHidden();
     await page.getByTestId('select-authorization-top').click();
     await expect(panel).toBeVisible();
-    await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
+    await configuration.getByRole('button', { name: en ? 'Done' : '完成', exact: true }).click();
+    await page.getByTestId('clear-authorization-top').click();
     const clear = page.getByRole('dialog', {
       name: en ? 'Clear server credentials?' : '确认清除服务端凭据？',
       exact: true
     });
     await clear.getByRole('button', { name: en ? 'Cancel' : '取消', exact: true }).click();
     expect(writes.some((path) => path.endsWith('/clear'))).toBe(false);
-    await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
+    await page.getByTestId('clear-authorization-top').click();
     await clear.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTestId('select-authorization-top').click();
     await expect(panel.getByText(en ? 'Not configured' : '尚未配置', { exact: true })).toBeVisible();
     await page.reload();
     await page.getByTestId('select-authorization-top').click();
@@ -253,8 +255,10 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
     await expect(panel.getByTestId('credential-expiry')).toContainText('2030-01-02');
     expect(renewalRequests).toBe(1);
 
-    await panel.getByRole('button', { name: en ? 'Clear configuration' : '清除配置', exact: true }).click();
+    await configuration.getByRole('button', { name: en ? 'Done' : '完成', exact: true }).click();
+    await page.getByTestId('clear-authorization-top').click();
     await clear.getByRole('button', { name: en ? 'Confirm' : '确认', exact: true }).click();
+    await page.getByTestId('select-authorization-top').click();
     await expect(panel.getByText(en ? 'Not configured' : '尚未配置', { exact: true })).toBeVisible();
 
     // Exercise the actual BFF missing-S3 response, not an intercepted error or a live storage account.

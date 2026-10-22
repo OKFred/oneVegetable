@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { RotateCw, Settings } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import type { ControlGatewayCredentialSummary } from '@one-vegetable/core';
@@ -14,7 +14,7 @@ import AlibabaAuthorizationProtocolDialog from './AlibabaAuthorizationProtocolDi
 import { openAlibabaAuthorizationTool } from '../lib/alibaba-authorization-tool';
 
 defineProps<{ protocol?: 'top' | 'iop' | undefined }>();
-const { mode, control, settings, vault, runtime, alibabaCredentialAcquisition, openCredentialAcquisition } =
+const { mode, control, settings, vault, alibabaCredentialAcquisition, openCredentialAcquisition } =
   useServices();
 const { t } = useUiI18n();
 const credentialText = useGatewayCredentialsI18n();
@@ -27,9 +27,7 @@ const summary = ref<ControlGatewayCredentialSummary | null>(null);
 const error = ref<unknown>(null);
 const unlocked = ref(true);
 const targetProtocol = ref<'top' | 'iop' | undefined>();
-const destination = computed(() =>
-  runtime?.backendMeta?.runtime === 'cloudflare' ? '#/admin' : '#/settings'
-);
+const destination = '#/settings';
 
 function requestBegin(): void {
   if (loading.value || refreshing.value) return;

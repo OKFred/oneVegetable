@@ -31,7 +31,7 @@ export const auth = {
     local: '本地账号 · 不透明会话 · ABAC'
   },
   identityNotice:
-    '这是 oneVegetable 工作台身份，不是 Alibaba 国际站登录账号。Alibaba OpenAPI 凭据需在登录后的管理后台导入。',
+    '这是 oneVegetable 工作台身份，不是 Alibaba 国际站登录账号。登录后由管理员在设置 → 开放平台凭据完成配置。',
   sessionExpired: {
     title: '需要重新登录',
     description: '登录状态已失效，本次操作没有继续。重新登录后会返回当前页面，请再次执行刚才的操作。',
@@ -73,7 +73,7 @@ export const auth = {
       extension:
         '向导会复用当前 Chrome 的 Alibaba 登录状态，带你完成开发者注册、应用配置和 OAuth 授权；遇到验证码或平台协议时由你在 Alibaba 页面亲自处理。',
       selfHosted:
-        '管理员可以先尝试云端自动连接；遇到滑块、验证码或安全确认时，改用 Chrome 插件完成授权，再将凭证安全导入当前站点。'
+        '管理员可在设置 → 开放平台凭据发起一键配置。通过 Chrome 插件完成新版 IOP 或旧版 TOP 授权，再将授权文件安全导入当前站点；已有文件也可直接导入。'
     },
     journey: {
       label: 'Alibaba 开放平台授权步骤',

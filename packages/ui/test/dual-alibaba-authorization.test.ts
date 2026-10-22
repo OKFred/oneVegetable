@@ -203,6 +203,7 @@ async function harness(
     locked?: boolean;
     empty?: boolean;
     defaultSwitch?: boolean;
+    runtime?: 'node' | 'cloudflare';
   } = {}
 ) {
   let current = options.summary ?? dualSummary();
@@ -365,9 +366,9 @@ async function harness(
         runtime: {
           metaStatus: 'ready',
           backendMeta: {
-            runtime: 'node',
-            database: 'sqlite',
-            environment: 'local-node',
+            runtime: options.runtime ?? 'node',
+            database: options.runtime === 'cloudflare' ? 'd1' : 'sqlite',
+            environment: options.runtime === 'cloudflare' ? 'self-hosted' : 'local-node',
             gatewayMode: 'real',
             apiPrefix: '/api/v1',
             version: '2.15.1'
@@ -449,18 +450,101 @@ async function manualSave(wrapper: VueWrapper): Promise<void> {
 }
 
 describe('independent authorization metadata and automatic capability routing', () => {
+  it.each(['node', 'cloudflare'] as const)(
+    'offers the same quick setup in %s settings without changing or testing credentials',
+    async (runtime) => {
+      const view = await harness(SettingsView, { runtime });
+      await vi.dynamicImportSettled();
+      await flushPromises();
+      expect(view.wrapper.find('[data-testid="bff-credential-guide"]').exists()).toBe(false);
+      expect(view.wrapper.text()).not.toContain('复制浏览器配置可能解密凭证');
+      expect(view.wrapper.text()).toContain('凭据由当前服务端加密保存');
+      await view.wrapper.get('[data-testid="open-authorization-guide"]').trigger('click');
+      await flushPromises();
+      expect(view.wrapper.find('[data-testid="authorization-protection"]').exists()).toBe(false);
+      await view.wrapper.get('[data-testid="choose-authorization-iop"]').trigger('click');
+      await flushPromises();
+      const guide = view.wrapper.get('[data-testid="gateway-authorization-setup-guide"]');
+      expect(guide.text()).toContain('连接 IOP 授权');
+      expect(guide.text()).toContain('无需额外部署授权服务');
+      expect(guide.findAll('a').map((link) => link.attributes('rel'))).toEqual([
+        'noopener noreferrer',
+        'noopener noreferrer'
+      ]);
+      expect(guide.text()).not.toContain('云端获取 TOP 授权');
+      expect(view.status).toHaveBeenLastCalledWith('iop');
+      expect(view.wrapper.find('[data-testid="alibaba-authorization-protocol-choices"]').exists()).toBe(
+        false
+      );
+      uiI18n.global.locale.value = 'en-US';
+      await flushPromises();
+      expect(guide.text()).toContain('Connect IOP authorization');
+      expect(guide.text()).toContain('no extra authorization server');
+      await button(view.wrapper, 'Done').trigger('click');
+      expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(false);
+      expect(view.importCredential).not.toHaveBeenCalled();
+      expect(view.save).not.toHaveBeenCalled();
+      expect(view.test).not.toHaveBeenCalled();
+      expect(view.refresh).not.toHaveBeenCalled();
+      expect(view.clear).not.toHaveBeenCalled();
+      expect(view.current().defaultProtocol).toBe('top');
+    }
+  );
+
+  it('keeps server clear beside configuration and only clears the confirmed protocol', async () => {
+    const view = await harness(GatewayAuthorizationsPanel, { props: { dialogConfiguration: true } });
+    const top = view.current().top;
+    await view.wrapper.get('[data-testid="clear-authorization-iop"]').trigger('click');
+    expect(view.clear).not.toHaveBeenCalled();
+    await button(view.wrapper, '取消').trigger('click');
+    expect(view.clear).not.toHaveBeenCalled();
+    await view.wrapper.get('[data-testid="clear-authorization-iop"]').trigger('click');
+    await button(view.wrapper, '确认').trigger('click');
+    await flushPromises();
+    expect(view.clear).toHaveBeenCalledExactlyOnceWith(37, 'iop');
+    expect(view.current().top).toEqual(top);
+    expect(view.current().iop).toBeNull();
+    expect(view.save).not.toHaveBeenCalled();
+    expect(view.refresh).not.toHaveBeenCalled();
+  });
+
+  it('does not expose server setup or credential metadata to non-admin users', async () => {
+    const view = await harness(SettingsView, { role: 'user', runtime: 'cloudflare' });
+    expect(view.wrapper.find('[data-testid="open-authorization-guide"]').exists()).toBe(false);
+    expect(view.wrapper.find('[data-testid="alibaba-authorizations-panel"]').exists()).toBe(false);
+    expect(view.wrapper.text()).toContain('只有管理员可以管理 Alibaba 凭据');
+    expect(view.read).not.toHaveBeenCalled();
+    expect(view.status).not.toHaveBeenCalled();
+  });
+
+  it('does not adopt a replacement credential revision while a clear confirmation is open', async () => {
+    const view = await harness(GatewayAuthorizationsPanel, { props: { dialogConfiguration: true } });
+    await view.wrapper.get('[data-testid="clear-authorization-iop"]').trigger('click');
+    const replacement = { ...view.current(), iop: { ...profile('iop'), revision: 99 } };
+    view.replace(replacement);
+    const panel = view.wrapper.getComponent(GatewayAuthorizationsPanel as Component);
+    await (panel.vm as unknown as { reload: () => Promise<void> }).reload();
+    view.clear.mockRejectedValueOnce(new Error('ENTITY_VERSION_CONFLICT'));
+    await button(view.wrapper, '确认').trigger('click');
+    await flushPromises();
+    expect(view.clear).toHaveBeenCalledExactlyOnceWith(37, 'iop');
+    expect(view.current().iop?.revision).toBe(99);
+    expect(view.wrapper.text()).toContain('ENTITY_VERSION_CONFLICT');
+    expect(view.refresh).not.toHaveBeenCalled();
+  });
+
   it('opens an unconfigured protocol and preserves the other profile during a confirmed save', async () => {
     const summary = dualSummary();
     summary.iop = null;
     const view = await harness(GatewayAuthorizationsPanel, { props: { dialogConfiguration: true }, summary });
     const top = view.current().top;
-    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('配置 IOP');
+    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('配置');
     await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
     await flushPromises();
     await manualSave(view.wrapper);
     expect(view.save).toHaveBeenCalledWith(expect.objectContaining({ protocol: 'iop' }), null, null, 'iop');
     expect(view.current().top).toEqual(top);
-    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('更新 IOP');
+    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('配置');
     expect(view.test).not.toHaveBeenCalled();
   });
 
@@ -510,7 +594,7 @@ describe('independent authorization metadata and automatic capability routing', 
     expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(false);
     expect(view.status).not.toHaveBeenCalled();
     expect(view.wrapper.get('[data-testid="authorization-binding"]').element.tagName).toBe('DETAILS');
-    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('更新 IOP');
+    expect(view.wrapper.get('[data-testid="select-authorization-iop"]').text()).toBe('配置');
     await view.wrapper.get('[data-testid="select-authorization-iop"]').trigger('click');
     await flushPromises();
     expect(view.status).toHaveBeenLastCalledWith('iop');

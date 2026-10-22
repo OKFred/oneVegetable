@@ -288,7 +288,8 @@ function requestCredentialAcquisition(): void {
   if (props.mode === 'extension' && props.alibabaCredentialAcquisition) {
     authorizationProtocolOpen.value = true;
   } else if (props.mode === 'bff' && props.control) {
-    credentialAcquisitionOpen.value = true;
+    globalThis.location.hash = pageHash('settings');
+    toast.info(credentialText('webSetupOpenSettings'));
   }
 }
 
@@ -330,10 +331,6 @@ const views: Record<PageId, Component> = {
 const AlibabaCredentialAcquisitionDialog = defineAsyncComponent(
   () => import('./components/AlibabaCredentialAcquisitionDialog.vue')
 );
-const AlibabaCloudCredentialAcquisitionDialog =
-  typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
-    ? null
-    : defineAsyncComponent(() => import('./components/AlibabaCloudCredentialAcquisitionDialog.vue'));
 const activeView = computed(() => views[page.value]);
 const onboardingActive = computed(
   () =>
@@ -556,11 +553,6 @@ function avatarInitials(name: string): string {
       :acquisition="alibabaCredentialAcquisition"
       @imported="notifyGatewayConfigurationChanged()"
       @select="selectAcquisitionProtocol"
-    />
-    <AlibabaCloudCredentialAcquisitionDialog
-      v-if="mode === 'bff' && control"
-      v-model:open="credentialAcquisitionOpen"
-      data-testid="cloud-credential-acquisition"
     />
     <ExtensionReviewPrompt
       v-if="

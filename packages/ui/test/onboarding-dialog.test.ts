@@ -100,7 +100,8 @@ describe('OnboardingDialog', () => {
     await flushPromises();
 
     const dialog = new DOMWrapper(document.body).get('[role="dialog"]');
-    expect(dialog.text()).toContain('管理员可以先尝试云端自动连接');
+    expect(dialog.text()).toContain('管理员可在设置 → 开放平台凭据发起一键配置');
+    expect(dialog.text()).toContain('新版 IOP 或旧版 TOP');
     expect(dialog.text()).toContain('若平台要求人机验证，流程会停止并引导你改用本机插件');
     expect(dialog.text()).not.toContain('App Secret:');
     expect(dialog.text()).not.toContain('Access Token:');

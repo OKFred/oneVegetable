@@ -73,7 +73,7 @@ describe('SelfHostedAdminPanel', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Alibaba 凭据配置');
     });
-    expect(wrapper.text()).toContain('一键连接');
+    expect(wrapper.text()).toContain('一键配置');
     expect(wrapper.text()).toContain('已配置');
     expect(wrapper.text()).toContain('Windows Hello');
     expect(wrapper.get('[data-testid="self-hosted-settings-sections"]').classes()).not.toContain('grid');

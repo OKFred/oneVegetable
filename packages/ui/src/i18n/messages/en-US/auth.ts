@@ -32,7 +32,7 @@ export const auth = {
     local: 'Local account · Opaque session · ABAC'
   },
   identityNotice:
-    'This is your oneVegetable workspace identity, not your Alibaba.com account. Import Alibaba OpenAPI credentials from Administration after signing in.',
+    'This is your oneVegetable workspace identity, not your Alibaba.com account. After signing in, an administrator can configure credentials in Settings → API credentials.',
   sessionExpired: {
     title: 'Sign in again',
     description:
@@ -77,7 +77,7 @@ export const auth = {
       extension:
         'The assistant reuses your current Alibaba session in Chrome and guides developer registration, application setup, and OAuth. You personally handle CAPTCHAs and platform agreements on Alibaba.',
       selfHosted:
-        'An administrator can try cloud connection first. If a slider, CAPTCHA, or security confirmation appears, finish authorization in the Chrome extension and import the credentials securely.'
+        'An administrator can start Quick setup in Settings → API credentials. Authorize IOP or legacy TOP in the Chrome extension, then securely import the file here. Existing files can be imported directly.'
     },
     journey: {
       label: 'Alibaba Open Platform authorization steps',

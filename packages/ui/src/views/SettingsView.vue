@@ -1019,7 +1019,7 @@ function confirmLanguagePreference(): void {
           >
         </Card>
         <GatewayAuthorizationsPanel
-          v-if="mode === 'bff' && runtime?.backendMeta?.runtime === 'node'"
+          v-if="mode === 'bff' && (control || runtime?.backendMeta?.runtime === 'node')"
           dialog-configuration
         />
         <Card v-else-if="mode === 'bff'" class="space-y-3 p-5" data-testid="bff-credential-guide">
@@ -1609,7 +1609,7 @@ function confirmLanguagePreference(): void {
           "
           @select="selectAuthorizationProtocol"
         />
-        <Card class="flex items-start gap-3 p-5 text-muted-foreground"
+        <Card v-if="mode === 'extension'" class="flex items-start gap-3 p-5 text-muted-foreground"
           ><ShieldCheck class="mt-0.5 size-5 shrink-0" />
           <div>
             <p class="font-medium">{{ t('settings.security.title') }}</p>
@@ -1618,6 +1618,13 @@ function confirmLanguagePreference(): void {
             </p>
           </div></Card
         >
+        <Card v-else-if="mode === 'bff'" class="flex items-start gap-3 p-5 text-muted-foreground">
+          <ShieldCheck class="mt-0.5 size-5 shrink-0" />
+          <div>
+            <p class="font-medium">{{ t('settings.security.title') }}</p>
+            <p class="mt-1 text-sm leading-6">{{ t('settings.bffCredentials.security') }}</p>
+          </div>
+        </Card>
       </section>
       <section
         v-if="(mode === 'bff' && control) || s3Storage"

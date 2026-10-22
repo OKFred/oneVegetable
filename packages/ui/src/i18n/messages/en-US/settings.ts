@@ -2,7 +2,9 @@ export const settings = {
   bffCredentials: {
     boundary: 'Credentials stay on the backend and are not displayed here.',
     cloud: 'Cloudflare admins can import a bundle or start authorization.',
-    admin: 'Open admin configuration'
+    admin: 'Open admin configuration',
+    security:
+      'Credentials are encrypted on this backend and managed by admins, never displayed on this page. Replacing or clearing them affects everyone using this service; the extension’s local passphrase does not protect server credentials.'
   },
   page: {
     title: 'Settings',

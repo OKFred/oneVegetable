@@ -163,7 +163,7 @@ describe('OneVegetableApp hash navigation', () => {
     }
   );
 
-  it('guides a signed-in self-hosted administrator into the cloud authorization assistant', async () => {
+  it('guides a signed-in self-hosted administrator to the shared settings entry without starting cloud authorization', async () => {
     const openTool = vi.fn();
     const OnboardingStub = defineComponent({
       emits: { ready: (_destination?: 'credential-acquisition') => true },
@@ -210,9 +210,8 @@ describe('OneVegetableApp hash navigation', () => {
     await wrapper.get('[data-testid="finish-cloud-onboarding"]').trigger('click');
     await flushPromises();
 
-    expect(wrapper.get('[data-testid="cloud-credential-acquisition"]').attributes('data-testid')).toBe(
-      'cloud-credential-acquisition'
-    );
+    expect(globalThis.location.hash).toBe('#/settings');
+    expect(wrapper.find('[data-testid="cloud-credential-acquisition"]').exists()).toBe(false);
     expect(wrapper.find('nav').exists()).toBe(true);
     expect(wrapper.findComponent(AlibabaAuthorizationProtocolDialog).exists()).toBe(false);
     expect(openTool).not.toHaveBeenCalled();

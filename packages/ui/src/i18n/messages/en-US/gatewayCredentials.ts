@@ -10,6 +10,20 @@ export const gatewayCredentials = {
   acquireCredentials: 'Connect Alibaba account',
   authorizationWizard: 'Authorization guide',
   quickSetup: 'Quick setup',
+  webSetupTitle: 'Connect {protocol} authorization',
+  webSetupOpenSettings: 'In API credentials, choose Quick setup, then select new or legacy authorization.',
+  webSetupDescription:
+    'This website cannot read your Alibaba app directly. Authorize in the extension, then import the file here; no extra authorization server is needed. Already have a file? Use “Import authorization JSON” above.',
+  webSetupInstall: 'Install or open the oneVegetable Chrome extension, then go to Settings → Quick setup.',
+  webSetupAuthorize: 'Choose {protocol}, confirm authorization on Alibaba, then export credentialInfo.json.',
+  webSetupImport:
+    'Return here, import the authorization JSON, confirm saving, then test the connection. The other protocol stays unchanged.',
+  webSetupStore: 'Chrome Web Store',
+  webSetupTutorial: 'Authorization tutorial',
+  webSetupCloudOptions: 'Alternative: obtain legacy TOP authorization in the cloud',
+  webSetupCloudNotice:
+    'For existing TOP apps only. This uses Browser Run quota and stops at verification challenges with extension guidance. IOP keys are never used.',
+  webSetupCloudTop: 'Obtain TOP authorization in the cloud',
   defaultAction: 'Default',
   configureAction: 'Configure',
   clearAction: 'Clear',
