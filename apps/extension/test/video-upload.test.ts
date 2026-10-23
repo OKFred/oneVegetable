@@ -38,8 +38,69 @@ describe('extension video upload durable protocol', () => {
       handleVideoUpload({ requestId, command: { action: 'list' }, context }, true, s3, loadSettings)
     ).resolves.toEqual({ requestId, ok: true, data: { tasks: [], uploadEnabled: true } });
     expect(loadSettings).toHaveBeenCalledOnce();
+    expect(loadSettings).toHaveBeenCalledWith(context.gateway);
     expect(s3.contextId).toHaveBeenCalledOnce();
     expect(s3.videoClient).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+  it('keeps a pinned video profile after the image default changes and blocks changed credentials without resend', async () => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    const send = vi.fn().mockRejectedValue(new Error('unexpected network request'));
+    vi.stubGlobal('fetch', send);
+    const top: GatewaySettings = {
+      appKey: 'video-top-app',
+      appSecret: 'fixture-secret',
+      accessToken: 'video-token',
+      endpoint: 'https://example.invalid/router',
+      signMethod: 'hmac'
+    };
+    const iop = { ...top, appKey: 'image-iop-app', endpoint: 'https://example.invalid/rest' };
+    const context = {
+      identity: await opaqueGalleryId('extension:local-admin'),
+      gateway: await galleryGatewayId(top),
+      storage: null
+    };
+    const loadSettings = vi.fn<(expectedGateway?: string) => Promise<GatewaySettings>>((expectedGateway) =>
+      Promise.resolve(expectedGateway === context.gateway ? top : iop)
+    );
+    const s3 = { contextId: vi.fn().mockResolvedValue(null), videoClient: vi.fn() };
+    const request = {
+      requestId: crypto.randomUUID(),
+      context,
+      command: { action: 'create', title: 'Pinned video', source: { kind: 'url', url: fixture.sourceUrl } }
+    };
+    expect(await handleVideoUpload(request, true, s3, loadSettings)).toMatchObject({ ok: true });
+    const repository = new ExtensionVideoUploadRepository();
+    const before = await repository.list('extension:local-admin');
+    expect(before).toHaveLength(1);
+    const task = before[0]?.task;
+    if (!task) throw new Error('fixture');
+    expect(task.context).toEqual(context);
+    loadSettings.mockResolvedValue({ ...top, appKey: 'reconfigured-video-app' });
+    loadSettings.mockClear();
+    expect(
+      await handleVideoUpload(
+        {
+          requestId: crypto.randomUUID(),
+          context,
+          command: {
+            action: 'submit',
+            taskId: task.id,
+            revision: task.revision,
+            confirmed: true,
+            sourceUrl: fixture.sourceUrl
+          }
+        },
+        true,
+        s3,
+        loadSettings
+      )
+    ).toMatchObject({
+      ok: false,
+      error: { code: 'GALLERY_CONTEXT_CHANGED', retryable: false }
+    });
+    expect(loadSettings).toHaveBeenCalledExactlyOnceWith(context.gateway);
+    expect(await repository.list('extension:local-admin')).toEqual(before);
     expect(send).not.toHaveBeenCalled();
   });
   it('persists across background repository restarts and atomically rejects stale updates', async () => {

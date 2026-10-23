@@ -9741,11 +9741,12 @@ export interface components {
         };
         GalleryTransferContextRequest: {
             requestId: components["schemas"]["RequestId"];
-            /**
-             * @description Optional read-only operation whose pre-dispatch authorization must be pinned. Omit for the existing image-upload transfer context.
-             * @enum {string}
-             */
-            operation?: "listVideos" | "listVideoRelatedProducts" | "resolveVideoRelatedProduct";
+            /** @description Optional registered workbench operation whose pre-dispatch authorization must be pinned. This only selects a configuration and never executes or authorizes the operation. Omit for the existing image-upload transfer context. */
+            operation?: string;
+            /** @description Routing parameters for the selected operation, including the target method and parameters for callCapability. Never include credentials or file contents. */
+            payload?: {
+                [key: string]: unknown;
+            };
         };
         GalleryTransferContextResponse: {
             requestId: components["schemas"]["RequestId"];

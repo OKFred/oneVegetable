@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   opaqueGalleryId,
   requireGalleryContext,
+  validGalleryContextRequest,
   assertGalleryContextId,
   type GalleryRequestOptions
 } from '@one-vegetable/core/gallery-transfer-context';
@@ -608,19 +609,15 @@ export function createApiApp(options: ApiAppOptions): Hono {
   });
 
   api.post('/gallery-transfers/context/get', async (context) => {
-    const parsed = await parseEnvelope(context, ['requestId', 'operation']);
+    const parsed = await parseEnvelope(context, ['requestId', 'operation', 'payload']);
     if (!parsed.ok) return parsed.response;
-    const readOperation = parsed.body.operation;
-    if (
-      readOperation !== undefined &&
-      (typeof readOperation !== 'string' ||
-        !['listVideos', 'listVideoRelatedProducts', 'resolveVideoRelatedProduct'].includes(readOperation))
-    )
+    if (!validGalleryContextRequest(parsed.body))
       return failure(context, parsed.requestId, 400, {
         code: 'INVALID_REQUEST_BODY',
         message: 'INVALID_REQUEST_BODY',
         retryable: false
       });
+    const selectedOperation = parsed.body.operation;
     try {
       const session = options.authService ? await authenticateRequest(context, options.authService) : null;
       if (!session) throw new AuthError('AUTH_REQUIRED', 'AUTH_REQUIRED', 401);
@@ -631,8 +628,8 @@ export function createApiApp(options: ApiAppOptions): Hono {
         data: {
           identity: await opaqueGalleryId(session.principal.actorId),
           gateway:
-            readOperation !== undefined && dynamicGateway.operationGatewayContextId
-              ? await dynamicGateway.operationGatewayContextId(readOperation as OperationId, {})
+            selectedOperation !== undefined && dynamicGateway.operationGatewayContextId
+              ? await dynamicGateway.operationGatewayContextId(selectedOperation, parsed.body.payload ?? {})
               : dynamicGateway.galleryGatewayContextId
                 ? await dynamicGateway.galleryGatewayContextId()
                 : await opaqueGalleryId(`local:${options.gatewayMode}`),

@@ -30,6 +30,7 @@ import {
   galleryGatewayId,
   opaqueGalleryId,
   requireGalleryContext,
+  validGalleryContextRequest,
   assertGalleryContextId
 } from '@one-vegetable/core/gallery-transfer-context';
 import type { GalleryTransferContext } from '@one-vegetable/core/gallery-transfer-task';
@@ -245,7 +246,17 @@ export default defineBackground({
       }
       const trustedOptionsPage = isTrustedOptionsPageSender(sender);
       if (value && typeof value === 'object' && 'kind' in value && value.kind === 'video-upload-request') {
-        return storageAccessReady.then(() => handleVideoUpload(value, trustedOptionsPage, s3, loadSettings));
+        return storageAccessReady.then(() =>
+          handleVideoUpload(value, trustedOptionsPage, s3, async (expectedGateway?: string) =>
+            resolveAuthorization(
+              await loadAuthorizationSettings(),
+              'callCapability',
+              { method: 'alibaba.icbu.video.upload' },
+              expectedGateway,
+              'GALLERY_CONTEXT_CHANGED'
+            )
+          )
+        );
       }
       if (
         typeof value === 'object' &&
@@ -261,11 +272,14 @@ export default defineBackground({
               throw gatewayFailure('INVALID_REQUEST_ID', 'INVALID_REQUEST_ID');
             if (!trustedOptionsPage)
               throw gatewayFailure('GALLERY_CONTEXT_UNTRUSTED', 'GALLERY_CONTEXT_UNTRUSTED');
-            const readOperation = 'operation' in value ? value.operation : undefined;
+            const selection = {
+              requestId,
+              ...('operation' in value ? { operation: value.operation } : {}),
+              ...('payload' in value ? { payload: value.payload } : {})
+            };
             if (
-              readOperation !== undefined &&
-              (value.kind !== 'gallery-transfer-context' ||
-                !VIDEO_OPERATIONS.some((operation) => operation === readOperation))
+              !validGalleryContextRequest(selection) ||
+              (value.kind !== 'gallery-transfer-context' && selection.operation !== undefined)
             )
               throw gatewayFailure('INVALID_REQUEST_BODY', 'INVALID_REQUEST_BODY');
             await storageAccessReady;
@@ -278,8 +292,9 @@ export default defineBackground({
                   await resolveAuthorization(
                     await loadAuthorizationSettings(),
                     value.kind === 'gallery-transfer-context'
-                      ? ((readOperation as (typeof VIDEO_OPERATIONS)[number] | undefined) ?? 'uploadPhoto')
-                      : 'updateProduct'
+                      ? (selection.operation ?? 'uploadPhoto')
+                      : 'updateProduct',
+                    selection.payload
                   )
                 ),
                 ...(value.kind === 'gallery-transfer-context' ? { storage: await s3.contextId() } : {})
@@ -1619,10 +1634,6 @@ function productMutationDiagnosticMethod(
 
 function readResultTraceId(value: unknown): string | null {
   return readString(asRecord(value), ['traceId', 'trace_id', 'request_id']) ?? null;
-}
-
-async function loadSettings(): Promise<GatewaySettings> {
-  return resolveAuthorization(await loadAuthorizationSettings());
 }
 
 async function loadAuthorizationSettings(): Promise<GatewaySettings> {

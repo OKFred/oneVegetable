@@ -1,13 +1,33 @@
 import { GatewayException } from './errors';
-import type { GatewayCredentials } from './types';
+import type { GatewayCredentials, OperationId } from './types';
 import type { S3StorageConfiguration } from './s3-storage';
 import { validGalleryTransferContext, type GalleryTransferContext } from './gallery-transfer-task';
-import { validateGalleryTransferContext } from './generated/validators-gallery';
+import {
+  validateGalleryTransferContext,
+  validateGalleryTransferContextRequest
+} from './generated/validators-gallery';
+import { isOperationId } from './operation-id';
+import type { components } from './generated/api';
 import type { ProductOperationOptions } from './product-operation-context';
 
 export interface GalleryRequestOptions extends ProductOperationOptions {
   requestId?: string;
   galleryContext?: GalleryTransferContext;
+}
+
+/** Context selection is metadata only; actual dispatch still enforces operation authorization. */
+export function validGalleryContextRequest(
+  value: unknown
+): value is components['schemas']['GalleryTransferContextRequest'] & {
+  operation?: OperationId;
+} {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    validateGalleryTransferContextRequest(value) &&
+    (!('operation' in value) || value.operation === undefined || isOperationId(value.operation))
+  );
 }
 export async function opaqueGalleryId(value: string): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));

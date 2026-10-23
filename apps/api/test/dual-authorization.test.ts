@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/node-gateway-credentials.json';
 import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
+import showcaseFixture from '../../../mock/data/showcase-management.json';
+import skuFixture from '../../../mock/data/product-sku-inventory.json';
+import { BffGatewayClient } from '@one-vegetable/core';
 import { galleryGatewayId, opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
 import { validateAlibabaAuthorizationsSummary } from '@one-vegetable/core/gateway-credential-validators';
 import { applyNodeMigrations, openNodeDatabase, type NodeDatabaseHandle } from '../src/db/node-database';
@@ -30,7 +33,7 @@ afterEach(() => {
 });
 const now = Date.parse('2026-09-12T00:00:00Z');
 
-async function harness(transport?: NetworkTransport) {
+async function harness(transport?: NetworkTransport, preferred: 'top' | 'iop' = 'top') {
   const db = openNodeDatabase(':memory:');
   databases.push(db);
   applyNodeMigrations(db);
@@ -47,15 +50,15 @@ async function harness(transport?: NetworkTransport) {
     ...(transport ? { transport } : {})
   });
   await service.import({
-    bundle: fixture.oauthBundle,
+    bundle: preferred === 'top' ? fixture.oauthBundle : { ...fixture.oauthBundle, protocol: 'iop' },
     actorId: 'admin',
     expectedRevision: null,
     remark: null
   });
   await (
-    await dual.service('iop')
+    await dual.service(preferred === 'top' ? 'iop' : 'top')
   ).import({
-    bundle: { ...fixture.oauthBundle, protocol: 'iop' },
+    bundle: { ...fixture.oauthBundle, protocol: preferred === 'top' ? 'iop' : 'top' },
     actorId: 'admin',
     expectedRevision: null,
     remark: null
@@ -76,7 +79,101 @@ function present<T>(value: T | null | undefined): T {
 }
 
 describe('independent TOP and IOP credentials', () => {
-  it('returns video-specific TOP contexts without rebinding IOP image transfers or admitting arbitrary operations', async () => {
+  it.each(['top', 'iop'] as const)(
+    'dispatches BFF showcase and SKU reads to TOP after acquiring their contexts with default %s',
+    async (preferred) => {
+      const { dual, db } = await harness(undefined, preferred);
+      const auth = new AuthService({
+        repository: new SqlAuthRepository(db.executor),
+        bootstrapToken: 'bootstrap-token'
+      });
+      const session = await auth.bootstrap({
+        requestId: crypto.randomUUID(),
+        bootstrapToken: 'bootstrap-token',
+        username: 'admin',
+        password: 'correct-password'
+      });
+      const methods: string[] = [];
+      const vendorSend = vi.fn<NetworkTransport['send']>((input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        expect(url.origin).toBe('https://eco.taobao.com');
+        const parameters =
+          init.body instanceof URLSearchParams
+            ? init.body
+            : new URLSearchParams(typeof init.body === 'string' ? init.body : '');
+        const method = parameters.get('method') ?? '';
+        methods.push(method);
+        const data =
+          method === 'alibaba.scbp.showcase.status'
+            ? showcaseFixture.status
+            : method === 'alibaba.scbp.showcase.list'
+              ? showcaseFixture.before
+              : method === skuFixture.method
+                ? skuFixture.response
+                : null;
+        if (data === null) throw new Error(`Unexpected fixture method: ${method}`);
+        return Promise.resolve(Response.json({ [method.replaceAll('.', '_') + '_response']: data }));
+      });
+      const gateway = new CredentialBackedAlibabaGatewayClient(dual, {
+        transport: { send: vendorSend },
+        maxAttempts: 1
+      });
+      const app = createApiApp({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'test',
+        gatewayMode: 'real',
+        gateway,
+        authService: auth
+      });
+      const client = new BffGatewayClient({
+        baseUrl: 'http://localhost',
+        transport: {
+          send: async (input, init) =>
+            app.request(input instanceof Request ? input.url : String(input), {
+              ...init,
+              headers: {
+                ...Object.fromEntries(new Headers(init.headers)),
+                Cookie: `ov_session=${session.sessionToken}`
+              }
+            })
+        }
+      });
+      expect((await dual.authorizations()).defaultProtocol).toBe(preferred);
+      const legacy = await client.galleryTransferContext();
+      const showcase = await client.galleryTransferContext('getProductShowcase');
+      expect(showcase.gateway).not.toBe(legacy.gateway);
+      expect(
+        await client.request('getProductShowcase', undefined, { galleryContext: showcase })
+      ).toMatchObject({
+        total: 2,
+        used: 1
+      });
+      const inventory = await client.galleryTransferContext('getProductInventory', { source: 'sku' });
+      expect(inventory.gateway).toBe(showcase.gateway);
+      expect(
+        await client.request(
+          'getProductInventory',
+          { productId: '1000000', source: 'sku', language: 'en_US' },
+          { galleryContext: inventory }
+        )
+      ).toMatchObject({ status: 'ready', records: [{ inventory: 444 }] });
+      expect(methods).toEqual([
+        'alibaba.scbp.showcase.status',
+        'alibaba.scbp.showcase.list',
+        skuFixture.method
+      ]);
+      // An old IOP-bound context remains bound. Fixing new context acquisition must not
+      // silently rebind an existing task or try a second provider after a rejection.
+      await expect(
+        client.request('getProductShowcase', undefined, { galleryContext: legacy })
+      ).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_METHOD_UNSUPPORTED' }
+      });
+      expect(vendorSend).toHaveBeenCalledTimes(3);
+    }
+  );
+  it('selects operation-specific contexts without rebinding legacy image transfers or admitting unknown operations', async () => {
     const { dual, db } = await harness();
     const auth = new AuthService({
       repository: new SqlAuthRepository(db.executor),
@@ -111,9 +208,32 @@ describe('independent TOP and IOP credentials', () => {
     expect(upload.data.gateway).toBe(await gateway.operationGatewayContextId('uploadPhoto', {}));
     expect(video.data.gateway).toBe(await gateway.operationGatewayContextId('listVideos', {}));
     expect(video.data.gateway).not.toBe(upload.data.gateway);
+    const contexts = [
+      { operation: 'getProductShowcase' },
+      { operation: 'sortShowcaseProduct' },
+      { operation: 'replaceShowcaseProduct' },
+      { operation: 'addShowcaseProducts' },
+      { operation: 'removeShowcaseProducts' },
+      { operation: 'getProductInventory', payload: { source: 'sku' } },
+      { operation: 'getTradeOrderAggregate' },
+      { operation: 'verifyProductVideoAssociation' },
+      { operation: 'listPhotos', payload: { groupId: '1001' } },
+      { operation: 'callCapability', payload: { method: 'alibaba.icbu.video.upload' } }
+    ];
+    const dispatch = vi.spyOn(gateway, 'request');
+    for (const selection of contexts) {
+      const response = await post(selection);
+      expect(response.status, selection.operation).toBe(200);
+      expect(await response.json()).toMatchObject({ data: { gateway: video.data.gateway } });
+    }
+    const inventory = await post({ operation: 'getProductInventory', payload: { source: 'product' } });
+    expect(await inventory.json()).toMatchObject({ data: { gateway: upload.data.gateway } });
+    expect(dispatch).not.toHaveBeenCalled();
     expect((await post({ operation: 'listVideos' }, false)).status).toBe(401);
-    for (const operation of ['uploadPhoto', 'updateProduct', ['listVideos'], {}, null])
+    for (const operation of ['not-registered', '__proto__', ['listVideos'], {}, null])
       expect((await post({ operation })).status).toBe(400);
+    expect((await post({ payload: {} })).status).toBe(400);
+    expect((await post({ operation: 'getProductShowcase', payload: [] })).status).toBe(400);
   });
   it.each(['mock', 'replay'] as const)(
     'retains %s TOP availability only for the exact local context and rejects an unprovable real gateway',

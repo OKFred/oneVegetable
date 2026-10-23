@@ -34,6 +34,16 @@ describe('BffGatewayClient', () => {
     expect((await client.galleryTransferContext('listVideos')).gateway).toBe('top-read');
     expect(bodies[0]).not.toHaveProperty('operation');
     expect(bodies[1]).toMatchObject({ operation: 'listVideos' });
+    await client.galleryTransferContext('getProductInventory', { source: 'sku' });
+    expect(bodies[2]).toMatchObject({ operation: 'getProductInventory', payload: { source: 'sku' } });
+    await client.galleryTransferContext('callCapability', {
+      method: 'alibaba.icbu.video.upload',
+      parameters: {}
+    });
+    expect(bodies[3]).toMatchObject({
+      operation: 'callCapability',
+      payload: { method: 'alibaba.icbu.video.upload', parameters: {} }
+    });
   });
   it('sends all operation parameters in a JSON body and correlates the response requestId', async () => {
     const send = vi.fn<NetworkTransport['send']>((_input, init) => {

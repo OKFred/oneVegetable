@@ -17663,10 +17663,17 @@
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "operation": {
             "type": "string",
-            "enum": ["listVideos", "listVideoRelatedProducts", "resolveVideoRelatedProduct"],
-            "description": "Optional read-only operation whose pre-dispatch authorization must be pinned. Omit for the existing image-upload transfer context."
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Optional registered workbench operation whose pre-dispatch authorization must be pinned. This only selects a configuration and never executes or authorizes the operation. Omit for the existing image-upload transfer context."
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Routing parameters for the selected operation, including the target method and parameters for callCapability. Never include credentials or file contents."
           }
-        }
+        },
+        "dependentRequired": { "payload": ["operation"] }
       },
       "GalleryTransferContextResponse": {
         "type": "object",

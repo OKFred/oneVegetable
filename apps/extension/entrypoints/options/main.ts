@@ -683,13 +683,17 @@ class ExtensionGatewayClient implements GatewayClient {
       throw new Error('PRODUCT_CONTEXT_UNAVAILABLE');
     return requireProductOperationContext(response.data);
   }
-  async galleryTransferContext(operation?: GalleryReadContextOperation) {
+  async galleryTransferContext(
+    operation?: GalleryReadContextOperation,
+    payload?: Readonly<Record<string, unknown>>
+  ) {
     const { requireGalleryContext } = await import('@one-vegetable/core/gallery-transfer-context');
     const requestId = crypto.randomUUID();
     const response: unknown = await browser.runtime.sendMessage({
       kind: 'gallery-transfer-context',
       requestId,
-      ...(operation === undefined ? {} : { operation })
+      ...(operation === undefined ? {} : { operation }),
+      ...(payload === undefined ? {} : { payload })
     });
     if (
       typeof response !== 'object' ||

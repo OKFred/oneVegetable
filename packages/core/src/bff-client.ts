@@ -51,8 +51,11 @@ export class BffGatewayClient implements GatewayClient {
     });
   }
 
-  async galleryTransferContext(operation?: GalleryReadContextOperation) {
-    return requireGalleryContext(await this.#context('gallery-transfers', operation));
+  async galleryTransferContext(
+    operation?: GalleryReadContextOperation,
+    payload?: Readonly<Record<string, unknown>>
+  ) {
+    return requireGalleryContext(await this.#context('gallery-transfers', operation, payload));
   }
 
   async productOperationContext() {
@@ -61,7 +64,8 @@ export class BffGatewayClient implements GatewayClient {
 
   async #context(
     resource: 'gallery-transfers' | 'product-mutation-jobs',
-    operation?: GalleryReadContextOperation
+    operation?: GalleryReadContextOperation,
+    payload?: Readonly<Record<string, unknown>>
   ): Promise<unknown> {
     const requestId = createRequestId();
     const response = await this.#network.request({
@@ -70,7 +74,11 @@ export class BffGatewayClient implements GatewayClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       requestId,
-      body: JSON.stringify({ requestId, ...(operation === undefined ? {} : { operation }) }),
+      body: JSON.stringify({
+        requestId,
+        ...(operation === undefined ? {} : { operation }),
+        ...(payload === undefined ? {} : { payload })
+      }),
       responseType: 'json'
     });
     if (!isApiResponse(response.data) || response.data.requestId !== requestId)

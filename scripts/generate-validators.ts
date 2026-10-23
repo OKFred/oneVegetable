@@ -180,7 +180,13 @@ targets.set(
 targets.set('validators-core.ts', compileValidators(coreValidators, 'fast'));
 targets.set(
   'validators-gallery.ts',
-  compileValidators({ validateGalleryTransferContext: schemas.GalleryTransferContext }, 'fast')
+  compileValidators(
+    {
+      validateGalleryTransferContext: schemas.GalleryTransferContext,
+      validateGalleryTransferContextRequest: schemas.GalleryTransferContextRequest
+    },
+    'fast'
+  )
 );
 
 for (const domain of domains) {

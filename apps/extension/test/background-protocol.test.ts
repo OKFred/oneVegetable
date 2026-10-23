@@ -23,6 +23,8 @@ import { createProductOperationContext } from '../../../packages/core/src/produc
 import { installNodeXmlDomGlobals } from '../../../scripts/node-xml-dom';
 import business from '../../../mock/data/alibaba-auth/iop-business-responses.json';
 import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
+import showcaseFixture from '../../../mock/data/showcase-management.json';
+import skuFixture from '../../../mock/data/product-sku-inventory.json';
 import credentialFixtures from '../../../mock/data/node-gateway-credentials.json';
 import connection from '../../../mock/data/alibaba-auth/credential-connection.json';
 import displayFixture from '../../../mock/data/iop-display-extension.json';
@@ -1405,7 +1407,7 @@ describe('extension background protocol persistence and dispatch', () => {
     ).toMatchObject({ ok: false, error: { code: 'PRODUCT_CONTEXT_CHANGED' } });
     expect(fetch).not.toHaveBeenCalled();
   });
-  it('uses TOP for a paired video read context, keeps image uploads on IOP and rejects non-video context requests', async () => {
+  it('selects each operation context before dispatch, retains legacy image uploads and rejects unknown operations', async () => {
     await createPair();
     const upload = await sendEnvelope({ kind: 'gallery-transfer-context' });
     const video = await sendEnvelope({ kind: 'gallery-transfer-context', operation: 'listVideos' });
@@ -1421,13 +1423,104 @@ describe('extension background protocol persistence and dispatch', () => {
     expect(fetch).toHaveBeenCalledOnce();
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toMatchObject({ href: ALIBABA_GATEWAY });
     vi.mocked(fetch).mockClear();
-    for (const operation of ['uploadPhoto', 'updateProduct', [], {}, null]) {
+    for (const operation of ['not-registered', '__proto__', [], {}, null]) {
       expect(await sendEnvelope({ kind: 'gallery-transfer-context', operation })).toMatchObject({
         ok: false,
         error: { code: 'INVALID_REQUEST_BODY' }
       });
     }
+    expect(await sendEnvelope({ kind: 'gallery-transfer-context', payload: {} })).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_REQUEST_BODY' }
+    });
+    for (const operation of [
+      'getProductShowcase',
+      'addShowcaseProducts',
+      'removeShowcaseProducts',
+      'sortShowcaseProduct',
+      'replaceShowcaseProduct',
+      'getTradeOrderAggregate',
+      'verifyProductVideoAssociation'
+    ]) {
+      expect(await sendEnvelope({ kind: 'gallery-transfer-context', operation })).toMatchObject({
+        ok: true,
+        data: await fixtureContext(topSettings)
+      });
+    }
+    expect(
+      await sendEnvelope({
+        kind: 'gallery-transfer-context',
+        operation: 'getProductInventory',
+        payload: { source: 'sku' }
+      })
+    ).toMatchObject({ ok: true, data: await fixtureContext(topSettings) });
+    expect(
+      await sendEnvelope({
+        kind: 'gallery-transfer-context',
+        operation: 'getProductInventory',
+        payload: { source: 'product' }
+      })
+    ).toMatchObject({ ok: true, data: await fixtureContext() });
+    expect(
+      await sendEnvelope({
+        kind: 'gallery-transfer-context',
+        operation: 'callCapability',
+        payload: { method: 'alibaba.icbu.video.upload' }
+      })
+    ).toMatchObject({ ok: true, data: await fixtureContext(topSettings) });
     expect(fetch).not.toHaveBeenCalled();
+  });
+  it('carries showcase and SKU contexts through the real background listener to TOP requests', async () => {
+    await createPair();
+    const methods: string[] = [];
+    vi.mocked(fetch).mockImplementation((_input, init) => {
+      const parameters = new URLSearchParams(init?.body as string);
+      const method = parameters.get('method') ?? '';
+      expect(parameters.get('session')).toBe(topSettings.accessToken);
+      expect(parameters.has('access_token')).toBe(false);
+      methods.push(method);
+      const data =
+        method === 'alibaba.scbp.showcase.status'
+          ? showcaseFixture.status
+          : method === 'alibaba.scbp.showcase.list'
+            ? showcaseFixture.before
+            : method === skuFixture.method
+              ? skuFixture.response
+              : null;
+      if (!data) throw new Error('Unexpected read method');
+      return Promise.resolve(Response.json({ [method.replaceAll('.', '_') + '_response']: data }));
+    });
+    const showcase = await sendEnvelope({
+      kind: 'gallery-transfer-context',
+      operation: 'getProductShowcase'
+    });
+    expect(
+      await sendEnvelope({
+        kind: 'gateway-request',
+        operation: 'getProductShowcase',
+        payload: {},
+        galleryContext: showcase.data
+      })
+    ).toMatchObject({ ok: true, data: { total: 2, used: 1 } });
+    const sku = await sendEnvelope({
+      kind: 'gallery-transfer-context',
+      operation: 'getProductInventory',
+      payload: { source: 'sku' }
+    });
+    expect(
+      await sendEnvelope({
+        kind: 'gateway-request',
+        operation: 'getProductInventory',
+        payload: { productId: '1000000', source: 'sku', language: 'en_US' },
+        galleryContext: sku.data
+      })
+    ).toMatchObject({ ok: true, data: { status: 'ready', records: [{ inventory: 444 }] } });
+    expect(methods).toEqual([
+      'alibaba.scbp.showcase.status',
+      'alibaba.scbp.showcase.list',
+      skuFixture.method
+    ]);
+    for (const [url] of vi.mocked(fetch).mock.calls) expect(url).toMatchObject({ href: ALIBABA_GATEWAY });
   });
   it('keeps denied dual-profile writes closed and never sends a second uncertain write', async () => {
     await createPair();

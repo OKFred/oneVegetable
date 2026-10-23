@@ -353,13 +353,15 @@ export interface OperationMap {
 export type OperationId = keyof OperationMap;
 export type RequestOf<K extends OperationId> = OperationMap[K]['request'];
 export type ResponseOf<K extends OperationId> = OperationMap[K]['response'];
-export type GalleryReadContextOperation = NonNullable<
-  components['schemas']['GalleryTransferContextRequest']['operation']
->;
+/** Retained export name for clients that previously requested video-only read contexts. */
+export type GalleryReadContextOperation = OperationId;
 
 export interface GatewayClient {
   productOperationContext?(): Promise<ProductOperationContext>;
-  galleryTransferContext?(operation?: GalleryReadContextOperation): Promise<GalleryTransferContext>;
+  galleryTransferContext?(
+    operation?: GalleryReadContextOperation,
+    payload?: Readonly<Record<string, unknown>>
+  ): Promise<GalleryTransferContext>;
   request<K extends OperationId>(
     operation: K,
     request: RequestOf<K>,

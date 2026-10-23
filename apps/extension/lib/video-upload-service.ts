@@ -22,7 +22,7 @@ export async function handleVideoUpload(
   value: unknown,
   trusted: boolean,
   s3: Pick<ExtensionS3Service, 'contextId' | 'videoClient'>,
-  loadSettings: () => Promise<GatewaySettings>
+  loadSettings: (expectedGateway?: string) => Promise<GatewaySettings>
 ): Promise<unknown> {
   let requestId: string = crypto.randomUUID();
   try {
@@ -39,7 +39,7 @@ export async function handleVideoUpload(
     requestId = value.requestId;
     const ownerId = 'extension:local-admin';
     const service = new VideoUploadService(new ExtensionVideoUploadRepository(), async (expected, id) => {
-      const settings = await loadSettings();
+      const settings = await loadSettings(expected.gateway);
       const actual = {
         identity: await opaqueGalleryId(ownerId),
         gateway: await galleryGatewayId(settings),

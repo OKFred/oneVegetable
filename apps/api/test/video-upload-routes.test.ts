@@ -38,7 +38,11 @@ afterEach(() => {
   database = undefined;
   vi.restoreAllMocks();
 });
-async function setup(environment = 'local-node', runtime: 'node' | 'cloudflare' = 'node') {
+async function setup(
+  environment = 'local-node',
+  runtime: 'node' | 'cloudflare' = 'node',
+  operationRouting = false
+) {
   database = openNodeDatabase(':memory:');
   applyNodeMigrations(database);
   const authRepository = new SqlAuthRepository(database.executor);
@@ -58,6 +62,7 @@ async function setup(environment = 'local-node', runtime: 'node' | 'cloudflare' 
     signMethod: 'hmac-sha256' as const
   };
   const requireCredentials = vi.fn().mockResolvedValue(credentials);
+  const resolveForOperation = vi.fn().mockResolvedValue(credentials);
   const storage = new S3StorageConfigurationService(
     new SqlS3StorageConfigurationRepository(database.executor),
     await S3StorageConfigurationCipher.create(btoa('k'.repeat(32)).replace(/=+$/u, ''))
@@ -82,6 +87,7 @@ async function setup(environment = 'local-node', runtime: 'node' | 'cloudflare' 
     repository,
     credentials: {
       requireCredentials,
+      ...(operationRouting ? { resolveForOperation } : {}),
       status: () =>
         Promise.resolve({
           source: 'environment',
@@ -126,7 +132,9 @@ async function setup(environment = 'local-node', runtime: 'node' | 'cloudflare' 
     storage,
     repository,
     call,
-    requireCredentials
+    requireCredentials,
+    resolveForOperation,
+    credentials
   };
 }
 async function data(response: Response): Promise<VideoUploadResult> {
@@ -143,6 +151,32 @@ const create: VideoUploadCommand = {
 };
 
 describe('video upload trusted routes', () => {
+  it('resolves the video method with its pin and never falls back or resends on a changed route', async () => {
+    const env = await setup('local-node', 'node', true);
+    const task = required((await data(await env.call(create))).tasks[0]);
+    expect(env.resolveForOperation).toHaveBeenCalledOnce();
+    expect(env.resolveForOperation.mock.calls[0]).toMatchObject([
+      'callCapability',
+      { method: 'alibaba.icbu.video.upload' },
+      { galleryContext: env.context }
+    ]);
+    const before = await env.repository.get(task.id, env.session.user.id);
+    env.resolveForOperation.mockResolvedValue({ ...env.credentials, appKey: 'changed-profile' });
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('unexpected network request'));
+    const response = await env.call({
+      action: 'submit',
+      taskId: task.id,
+      revision: task.revision,
+      confirmed: true,
+      sourceUrl: fixture.sourceUrl
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: 'GALLERY_CONTEXT_CHANGED' } });
+    expect(env.resolveForOperation).toHaveBeenCalledTimes(2);
+    expect(env.requireCredentials).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await env.repository.get(task.id, env.session.user.id)).toEqual(before);
+  });
   it('requires an active administrator, origin and CSRF before reading credentials', async () => {
     const env = await setup();
     expect((await env.call(create, {}, { ...env.headers, Cookie: '' })).status).toBe(401);
