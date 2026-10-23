@@ -125,7 +125,7 @@ function fail(error: unknown): void {
 }
 async function currentContext(): Promise<GalleryTransferContext> {
   if (!services.gateway.galleryTransferContext) throw new VideoUploadError('VIDEO_UPLOAD_UNAVAILABLE');
-  return services.gateway.galleryTransferContext();
+  return services.gateway.galleryTransferContext('callCapability', { method: 'alibaba.icbu.video.upload' });
 }
 async function load(): Promise<void> {
   if (!control) return;
@@ -302,9 +302,27 @@ async function useInProduct(): Promise<void> {
       context.value = current;
       throw new VideoUploadError('GALLERY_TASK_CONTEXT_CHANGED');
     }
+    // Association consumers use the page anchor, not the upload's purpose-specific pin.
+    const anchor = await services.gateway.galleryTransferContext?.();
+    const latest = await currentContext();
+    const latestAnchor = await services.gateway.galleryTransferContext?.();
+    if (!isCurrent(ticket) || selectedId.value !== task.id) return;
+    if (!sameVideoContext(latest, task.context)) {
+      context.value = latest;
+      throw new VideoUploadError('GALLERY_TASK_CONTEXT_CHANGED');
+    }
+    if (
+      !anchor ||
+      !latestAnchor ||
+      anchor.identity !== latest.identity ||
+      anchor.storage !== latest.storage ||
+      !sameVideoContext(anchor, latestAnchor)
+    )
+      throw new VideoUploadError('GALLERY_TASK_CONTEXT_CHANGED');
     emit('associate', {
       videoId: task.videoId,
-      identity: JSON.stringify([current.identity, current.gateway])
+      identity: JSON.stringify([anchor.identity, anchor.gateway]),
+      sourceContext: Object.freeze({ ...task.context })
     });
     close();
   } catch (error) {
@@ -342,7 +360,10 @@ function invalidateContext(): void {
 watch(
   () => accountContext?.value,
   (next) => {
-    if (props.open && context.value && (!next || !sameVideoContext(context.value, next))) invalidateContext();
+    if (!props.open || !context.value) return;
+    if (next?.identity !== context.value.identity || next.storage !== context.value.storage)
+      invalidateContext();
+    else void checkIdentity();
   }
 );
 const focus = () => {

@@ -10,6 +10,7 @@ import taskFixture from '../../../mock/data/gallery-transfer-task.json';
 import { validateGalleryTransferTask } from '@one-vegetable/core/gallery-transfer-task';
 import type { AppServices } from '../src/lib/services';
 import { GatewayException } from '@one-vegetable/core/errors';
+import { LazyGalleryTransferDriver } from '../src/lib/gallery-transfer-lazy-driver';
 
 function setup() {
   const gateway = new MockGatewayClient(0);
@@ -21,9 +22,26 @@ function setup() {
       save: () => Promise.reject(new Error('unused'))
     }
   };
-  return { gateway, driver: new BrowserGalleryTransferDriver(services, () => undefined) };
+  return { gateway, services, driver: new BrowserGalleryTransferDriver(services, () => undefined) };
 }
 describe('gallery transfer readback', () => {
+  it.each(['browser', 'lazy'] as const)(
+    '%s context selects photo listing and refuses to rebind a historical task',
+    async (kind) => {
+      const s = setup();
+      const task = validateGalleryTransferTask(structuredClone(taskFixture));
+      const context = vi.spyOn(s.gateway, 'galleryTransferContext').mockResolvedValue(task.context);
+      const driver =
+        kind === 'browser' ? s.driver : new LazyGalleryTransferDriver(s.services, () => undefined);
+      expect(await driver.context(task)).toEqual(task.context);
+      expect(context).toHaveBeenCalledWith('listPhotos', {});
+      const before = structuredClone(task);
+      context.mockResolvedValue({ ...task.context, gateway: 'paired-top-route' });
+      await expect(driver.context(task)).rejects.toThrow('GALLERY_CONTEXT_CHANGED');
+      expect(task).toEqual(before);
+      expect(context).toHaveBeenCalledTimes(2);
+    }
+  );
   it.each([
     'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
     'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',

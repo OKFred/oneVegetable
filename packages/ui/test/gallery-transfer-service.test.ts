@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
-import { decodeBase64, type GatewaySettings } from '@one-vegetable/core';
+import { decodeBase64, type GatewayClient, type GatewaySettings } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import type { S3StorageControl, S3ObjectContent } from '@one-vegetable/core/s3-storage';
 import photoFixture from '../../../mock/data/photos.json';
@@ -35,7 +35,7 @@ afterEach(() => {
 const unsupported = () => Promise.reject(new Error('unused'));
 function setup() {
   const gateway = new MockGatewayClient(0);
-  vi.spyOn(gateway, 'galleryTransferContext').mockResolvedValue({
+  const currentContext = vi.spyOn(gateway, 'galleryTransferContext').mockResolvedValue({
     ...photoFixture.transferContext,
     storage: 'test-s3'
   });
@@ -102,9 +102,50 @@ function setup() {
     exportMapping: 'flat',
     exportPrefix: 'test'
   };
-  return { service, gateway, input, put, get, objects, bytes };
+  return { service, gateway, input, put, get, objects, bytes, currentContext };
 }
 describe('persistent gallery plan and adapters', () => {
+  it('pins a new multi-step plan to photo listing despite an image-upload default change', async () => {
+    const s = setup();
+    const top = { ...photoFixture.transferContext, gateway: 'paired-top', storage: 'test-s3' };
+    let imageGateway = 'default-iop';
+    const context = vi.fn<NonNullable<GatewayClient['galleryTransferContext']>>((operation) =>
+      Promise.resolve({
+        ...top,
+        gateway: operation === 'listPhotos' ? top.gateway : imageGateway
+      })
+    );
+    s.gateway.galleryTransferContext = context;
+    const request = vi.spyOn(s.gateway as GatewayClient, 'request');
+    const task = await s.service.preview(s.input);
+    expect(task.context).toEqual(top);
+    await s.service.create(task, null, false);
+    imageGateway = 'changed-image-default';
+    await s.service.run(task.id);
+    expect((await s.service.repository.get(task.id)).status).toBe('completed');
+    expect(request.mock.calls.filter(([operation]) => operation === 'uploadPhoto')).toHaveLength(1);
+    for (const [, , options] of request.mock.calls) expect(options?.galleryContext).toEqual(top);
+    for (const args of context.mock.calls) expect(args).toEqual(['listPhotos', {}]);
+  });
+  it('preserves an uncertain receipt after routing changes and never uploads through the new route', async () => {
+    const s = setup();
+    const task = await s.service.preview(s.input);
+    await s.service.create(task, null, false);
+    await s.service.repository.update(task.id, (current) => {
+      current.status = 'attention';
+      const asset = current.items[0];
+      if (!asset) throw new Error('fixture');
+      Object.assign(asset, { status: 'unknown', fileId: 'old-receipt', requestId: crypto.randomUUID() });
+    });
+    const before = await s.service.repository.get(task.id);
+    s.currentContext.mockResolvedValue({ ...task.context, gateway: 'new-route' });
+    const request = vi.spyOn(s.gateway, 'request');
+    await s.service.run(task.id);
+    await s.service.run(task.id, true);
+    expect(s.service.error.value).toBe('GALLERY_CONTEXT_CHANGED');
+    expect(await s.service.repository.get(task.id)).toEqual(before);
+    expect(request).not.toHaveBeenCalled();
+  });
   it('plans a third-level group under the actual existing parent and honors the unchecked option', async () => {
     const s = setup();
     s.input.importMapping = 'rules';

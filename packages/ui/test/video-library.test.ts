@@ -9,21 +9,81 @@ import {
 } from '../src/lib/video-library';
 import { GatewayException } from '../../core/src/errors';
 import { pageDetailIdentity } from '../src/lib/page-details';
-import type { GatewayClient, GalleryReadContextOperation } from '../../core/src/types';
+import type { GatewayClient, OperationId } from '../../core/src/types';
 describe('video read cache and cancellation', () => {
+  it('keeps an uploaded target pinned before and after its exact read with an unchanged IOP anchor', async () => {
+    const gateway: GatewayClient = new MockGatewayClient(0);
+    const anchor = { identity: 'owner', gateway: 'iop-anchor', storage: null };
+    const original = { ...anchor, gateway: 'original-top' };
+    let active = original;
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve(operation ? active : anchor)
+    );
+    const page = await gateway.request('listVideos', { page: 1, pageSize: 20 });
+    const video = page.items[0];
+    if (!video?.id) throw new Error('Missing video fixture');
+    const target = {
+      videoId: video.id,
+      identity: JSON.stringify([anchor.identity, anchor.gateway]),
+      sourceContext: original
+    };
+    const request = vi.spyOn(gateway, 'request').mockResolvedValue(page);
+    active = { ...original, gateway: 'replacement-top' };
+    await expect(resolveVideoProductTarget(gateway, 'extension', 'en_US', target)).rejects.toThrow(
+      'GALLERY_CONTEXT_CHANGED'
+    );
+    expect(request).not.toHaveBeenCalled();
+    active = original;
+    request.mockImplementation(() => {
+      active = { ...original, gateway: 'replacement-during-read' };
+      return Promise.resolve(page);
+    });
+    await expect(resolveVideoProductTarget(gateway, 'extension', 'en_US', target)).rejects.toThrow(
+      'GALLERY_CONTEXT_CHANGED'
+    );
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+      'listVideos',
+      { page: 1, pageSize: 20, id: video.id },
+      { galleryContext: original }
+    );
+    expect(target.sourceContext).toEqual(original);
+  });
+  it('rejects a removed read context even with a warm cache and never retries permission errors', async () => {
+    const gateway: GatewayClient = new MockGatewayClient(0);
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    let removed = false;
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation) => {
+      if (operation && removed) throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
+      return Promise.resolve(operation ? { ...upload, gateway: 'top-video' } : upload);
+    });
+    const identity = await pageDetailIdentity(gateway, 'extension');
+    const request = vi.spyOn(gateway, 'request');
+    await requestVideo(gateway, 'extension', 'en_US', 'listVideos', { page: 1, pageSize: 20 }, identity);
+    removed = true;
+    await expect(
+      requestVideo(gateway, 'extension', 'en_US', 'listVideos', { page: 1, pageSize: 20 }, identity)
+    ).rejects.toThrow('GALLERY_CONTEXT_UNAVAILABLE');
+    expect(request).toHaveBeenCalledOnce();
+    removed = false;
+    request.mockClear().mockRejectedValue(new Error('PERMISSION_DENIED'));
+    await expect(
+      requestVideo(gateway, 'extension', 'en_US', 'listVideos', { page: 2, pageSize: 20 }, identity)
+    ).rejects.toThrow('PERMISSION_DENIED');
+    expect(request).toHaveBeenCalledOnce();
+  });
   it('pins the video route independently from image upload and invalidates cache when that route changes', async () => {
     const gateway: GatewayClient = new MockGatewayClient(0);
     let videoGateway = 'top-video-profile';
     const upload = { identity: 'account', gateway: 'iop-upload-profile', storage: null };
     const context = vi
       .spyOn(gateway, 'galleryTransferContext')
-      .mockImplementation((operation?: GalleryReadContextOperation) =>
+      .mockImplementation((operation?: OperationId) =>
         Promise.resolve(operation ? { ...upload, gateway: videoGateway } : upload)
       );
     const request = vi.spyOn(gateway, 'request');
     const identity = await pageDetailIdentity(gateway, 'extension');
     await requestVideo(gateway, 'extension', 'en_US', 'listVideos', { page: 1, pageSize: 20 }, identity);
-    expect(context).toHaveBeenCalledWith('listVideos');
+    expect(context).toHaveBeenCalledWith('listVideos', { page: 1, pageSize: 20 });
     expect(request).toHaveBeenLastCalledWith(
       'listVideos',
       { page: 1, pageSize: 20 },
@@ -41,9 +101,8 @@ describe('video read cache and cancellation', () => {
     const gateway: GatewayClient = new MockGatewayClient(0);
     const root = { identity: 'account', gateway: 'iop-upload', storage: null };
     let readGateway = 'top-before';
-    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation(
-      (operation?: GalleryReadContextOperation) =>
-        Promise.resolve(operation ? { ...root, gateway: readGateway } : root)
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation?: OperationId) =>
+      Promise.resolve(operation ? { ...root, gateway: readGateway } : root)
     );
     const data = await gateway.request('listVideos', { page: 1, pageSize: 20 });
     const request = vi.spyOn(gateway, 'request').mockImplementation(() => {

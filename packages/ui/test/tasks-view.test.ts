@@ -6,6 +6,7 @@ import fixture from '../../../mock/data/task-center/summaries.json';
 import TasksView from '../src/views/TasksView.vue';
 import { provideServices } from '../src/lib/services';
 import { provideListIdentityScope } from '../src/lib/list-identity-scope';
+import { GATEWAY_CONFIGURATION_EVENT } from '../src/lib/gateway-configuration-events';
 import { loadTaskCenterSnapshot, type TaskSummary } from '../src/lib/task-center';
 import type * as TaskCenterModule from '../src/lib/task-center';
 import { uiI18n } from '../src/i18n';
@@ -86,6 +87,93 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe('unified task center', () => {
+  it.each(['video-upload', 'video-association'] as const)(
+    'opens the TOP %s source while retaining the IOP page guard',
+    async (source) => {
+      const anchor = { ...fixture.context, gateway: 'iop-gateway' };
+      load.mockResolvedValue({
+        ...snapshot(),
+        context: anchor,
+        sourceContexts: { [source]: fixture.context }
+      });
+      const s = setup();
+      s.current.mockImplementation((operation) => Promise.resolve(operation ? fixture.context : anchor));
+      await flushPromises();
+      const item = fixture.items.find((item) => item.source === source);
+      if (!item) throw new Error('missing fixture');
+      await openDetails(s, item.id);
+      await button(s.body, source === 'video-association' ? '查看关联回执与核对' : '打开原任务').trigger(
+        'click'
+      );
+      await flushPromises();
+      if (source === 'video-association') {
+        expect(button(s.body, 'Hold verification').exists()).toBe(true);
+        expect(s.current).toHaveBeenCalledWith('verifyProductVideoAssociation');
+      } else {
+        expect(location.hash).toBe(`#/photos/videos/uploads/${item.sourceId}`);
+        expect(s.current).toHaveBeenCalledWith('callCapability', { method: 'alibaba.icbu.video.upload' });
+      }
+      expect(s.current.mock.calls.filter((args) => args.length === 0)).toHaveLength(2);
+      expect(s.request).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects a TOP source replacement even when the IOP page anchor is unchanged', async () => {
+    const anchor = { ...fixture.context, gateway: 'iop-gateway' };
+    load.mockResolvedValue({
+      ...snapshot(),
+      context: anchor,
+      sourceContexts: { 'video-upload': fixture.context }
+    });
+    const s = setup();
+    s.current.mockImplementation((operation) =>
+      Promise.resolve(operation ? { ...fixture.context, gateway: 'replaced-top' } : anchor)
+    );
+    await flushPromises();
+    const item = fixture.items.find((item) => item.source === 'video-upload');
+    if (!item) throw new Error('missing fixture');
+    await openDetails(s, item.id);
+    await button(s.body, '打开原任务').trigger('click');
+    await flushPromises();
+    expect(location.hash).toBe('#/tasks');
+    expect(s.wrapper.text()).not.toContain('Fixture video');
+    expect(s.request).not.toHaveBeenCalled();
+  });
+
+  it('ignores a late purpose-context handoff after configuration invalidation', async () => {
+    const anchor = { ...fixture.context, gateway: 'iop-gateway' };
+    load.mockResolvedValue({
+      ...snapshot(),
+      context: anchor,
+      sourceContexts: { 'video-upload': fixture.context }
+    });
+    const s = setup();
+    let finish: ((value: typeof fixture.context) => void) | undefined;
+    s.current.mockImplementation((operation) =>
+      operation
+        ? new Promise((resolve) => {
+            finish = resolve;
+          })
+        : Promise.resolve(anchor)
+    );
+    await flushPromises();
+    const item = fixture.items.find((item) => item.source === 'video-upload');
+    if (!item) throw new Error('missing fixture');
+    await openDetails(s, item.id);
+    await button(s.body, '打开原任务').trigger('click');
+    await flushPromises();
+    expect(finish).toBeTypeOf('function');
+    load.mockResolvedValue({ ...snapshot(), items: [] });
+    globalThis.dispatchEvent(new Event(GATEWAY_CONFIGURATION_EVENT));
+    await flushPromises();
+    finish?.({ ...fixture.context, gateway: 'late-top' });
+    await flushPromises();
+    expect(location.hash).toBe('#/tasks');
+    expect(s.wrapper.text()).not.toContain('Fixture video');
+    expect(s.body.find('[role="dialog"]').exists()).toBe(false);
+    expect(s.request).not.toHaveBeenCalled();
+  });
+
   it('prioritizes attention, filters a draft on apply, preserves selection and never executes a task', async () => {
     const s = setup();
     await flushPromises();

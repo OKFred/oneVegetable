@@ -4,6 +4,7 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import type { VideoAssociationResult } from '@one-vegetable/core/video-association';
 import type { GatewayClient } from '@one-vegetable/core';
+import type { GalleryTransferContext } from '@one-vegetable/core/gallery-transfer-task';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { VIDEO_MOCK_DATA } from '../../core/src/generated/mock-data';
 import ProductVideoAssociation from '../src/components/ProductVideoAssociation.vue';
@@ -66,6 +67,7 @@ function setup(
     availability?: 'missing' | 'denied';
     productId?: string;
     gateway?: MockGatewayClient;
+    preset?: { identity: string; sourceContext: Readonly<GalleryTransferContext> };
   } = {}
 ) {
   const gateway = options.gateway ?? new MockGatewayClient(0);
@@ -90,7 +92,8 @@ function setup(
       return () =>
         h(ProductVideoAssociation, {
           productId: props.productId,
-          language: props.language === 'zh_CN' ? 'zh_CN' : 'en_US'
+          language: props.language === 'zh_CN' ? 'zh_CN' : 'en_US',
+          ...(options.preset ? { preset: { video: fixture, ...options.preset } } : {})
         });
     }
   });
@@ -135,9 +138,10 @@ async function submit(wrapper: VueWrapper) {
 async function seed(
   gateway: MockGatewayClient,
   state: VideoAssociationReceipt['state'] = 'sending',
-  mode: AppServices['mode'] = 'mock'
+  mode: AppServices['mode'] = 'mock',
+  owner?: string
 ) {
-  const identity = await pageDetailIdentity(gateway, mode);
+  const identity = owner ?? (await pageDetailIdentity(gateway, mode));
   const key = VIDEO_ASSOCIATION_PREFIX + JSON.stringify([mode, identity, target.productId]);
   const receipt: VideoAssociationReceipt = {
     version: 1,
@@ -154,6 +158,220 @@ async function seed(
 }
 
 describe('product video association component', () => {
+  it('blocks a replaced upload source at downstream preset consumption without writing or rebinding receipts', async () => {
+    const gateway = new MockGatewayClient(0);
+    const client: GatewayClient = gateway;
+    const anchor = { identity: 'account', gateway: 'iop-anchor', storage: null };
+    const source = { ...anchor, gateway: 'original-top' };
+    let active = source;
+    vi.spyOn(client, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve(operation ? active : anchor)
+    );
+    const request = requestSpy(client);
+    const { wrapper } = setup({
+      gateway,
+      preset: { identity: JSON.stringify([anchor.identity, anchor.gateway]), sourceContext: source }
+    });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="associate-video"]').attributes('disabled')).toBeUndefined();
+    await wrapper.get('[data-testid="associate-video"]').trigger('click');
+    active = { ...source, gateway: 'replacement-top' };
+    await wrapper.get('[data-testid="confirm"]').trigger('click');
+    await flushPromises();
+    expect(request).not.toHaveBeenCalled();
+    expect(Object.keys(localStorage)).toEqual([]);
+    expect(wrapper.get('[data-testid="associate-video"]').attributes('disabled')).toBeDefined();
+    expect(source.gateway).toBe('original-top');
+  });
+  it('rejects a downstream preset whose source was already replaced before mounting', async () => {
+    const gateway = new MockGatewayClient(0);
+    const client: GatewayClient = gateway;
+    const anchor = { identity: 'account', gateway: 'iop-anchor', storage: null };
+    const source = { ...anchor, gateway: 'original-top' };
+    vi.spyOn(client, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve(operation ? { ...source, gateway: 'replacement-top' } : anchor)
+    );
+    const request = requestSpy(client);
+    const { wrapper } = setup({
+      gateway,
+      preset: { identity: JSON.stringify([anchor.identity, anchor.gateway]), sourceContext: source }
+    });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="associate-video"]').attributes('disabled')).toBeDefined();
+    expect(request).not.toHaveBeenCalled();
+    expect(Object.keys(localStorage)).toEqual([]);
+  });
+  it('stores a new mock write under its operation owner, not its separate IOP page anchor', async () => {
+    const gateway = new MockGatewayClient(0);
+    const client: GatewayClient = gateway;
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    const operationOwner = { ...upload, gateway: 'top-association' };
+    vi.spyOn(client, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve(operation ? operationOwner : upload)
+    );
+    const request = requestSpy(client).mockResolvedValue({ outcome: 'unknown', traceId: null, code: null });
+    const { wrapper } = setup({ gateway });
+    await submit(wrapper);
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+      'associateProductVideo',
+      { ...target, confirmed: true },
+      expect.objectContaining({ galleryContext: operationOwner })
+    );
+    const key =
+      VIDEO_ASSOCIATION_PREFIX +
+      JSON.stringify([
+        'mock',
+        JSON.stringify([operationOwner.identity, operationOwner.gateway]),
+        target.productId
+      ]);
+    expect(Object.keys(localStorage)).toEqual([key]);
+    expect(readStored(key)).toMatchObject({ state: 'unknown', request: target });
+  });
+  it.each(['unknown', 'unconfirmed', 'sending'] as const)(
+    'does not verify, rewrite or rebind a historical IOP %s receipt through TOP',
+    async (state) => {
+      const gateway = new MockGatewayClient(0);
+      const client: GatewayClient = gateway;
+      const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+      const verification = { ...upload, gateway: 'top-verification' };
+      vi.spyOn(client, 'galleryTransferContext').mockImplementation((operation) =>
+        Promise.resolve(operation ? verification : upload)
+      );
+      const legacyKey = await seed(gateway, state, 'extension');
+      const before = localStorage.getItem(legacyKey);
+      const request = requestSpy(client).mockResolvedValue({
+        outcome: 'confirmed',
+        traceId: 'wrong-owner',
+        code: null
+      });
+      const { wrapper } = setup({ gateway, mode: 'extension' });
+      await flushPromises();
+      expect(wrapper.find('[data-testid="video-association-receipt"]').exists()).toBe(true);
+      expect(wrapper.get('[data-testid="verify-video"]').attributes('disabled')).toBeDefined();
+      await wrapper.get('[data-testid="verify-video"]').trigger('click');
+      await flushPromises();
+      expect(request).not.toHaveBeenCalled();
+      expect(localStorage.getItem(legacyKey)).toBe(before);
+      expect(Object.keys(localStorage)).toEqual([legacyKey]);
+      expect(wrapper.text()).not.toContain('wrong-owner');
+    }
+  );
+  it('verifies only an owned TOP receipt while preserving a simultaneous unknown IOP receipt', async () => {
+    const gateway = new MockGatewayClient(0);
+    const client: GatewayClient = gateway;
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    const verification = { ...upload, gateway: 'top-verification' };
+    vi.spyOn(client, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve(operation ? verification : upload)
+    );
+    const legacyKey = await seed(gateway, 'unknown', 'extension');
+    const legacyValue = localStorage.getItem(legacyKey);
+    const topKey = await seed(
+      gateway,
+      'unknown',
+      'extension',
+      JSON.stringify([verification.identity, verification.gateway])
+    );
+    const request = requestSpy(client).mockResolvedValue({
+      outcome: 'confirmed',
+      traceId: 'top-readback',
+      code: null
+    });
+    const { wrapper } = setup({ gateway, mode: 'extension' });
+    await flushPromises();
+    await wrapper.get('[data-testid="verify-video"]').trigger('click');
+    await flushPromises();
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+      'verifyProductVideoAssociation',
+      target,
+      expect.objectContaining({ galleryContext: verification })
+    );
+    expect(readStored(topKey)).toMatchObject({ state: 'confirmed', traceId: 'top-readback' });
+    expect(localStorage.getItem(legacyKey)).toBe(legacyValue);
+    expect(wrapper.get('[data-testid="associate-video"]').attributes('disabled')).toBeDefined();
+  });
+  it('rejects a payload-selected verification context that does not own the loaded TOP receipt', async () => {
+    const gateway = new MockGatewayClient(0);
+    const client: GatewayClient = gateway;
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    const verification = { ...upload, gateway: 'top-verification' };
+    vi.spyOn(client, 'galleryTransferContext').mockImplementation((operation, payload) =>
+      Promise.resolve(operation ? (payload ? upload : verification) : upload)
+    );
+    const key = await seed(
+      gateway,
+      'unknown',
+      'extension',
+      JSON.stringify([verification.identity, verification.gateway])
+    );
+    const before = localStorage.getItem(key);
+    const request = requestSpy(client).mockResolvedValue({
+      outcome: 'confirmed',
+      traceId: 'wrong-owner',
+      code: null
+    });
+    const { wrapper } = setup({ gateway, mode: 'extension' });
+    await flushPromises();
+    await wrapper.get('[data-testid="verify-video"]').trigger('click');
+    await flushPromises();
+    expect(request).not.toHaveBeenCalled();
+    expect(localStorage.getItem(key)).toBe(before);
+    expect(Object.keys(localStorage)).toEqual([key]);
+  });
+  it('verifies through TOP with an IOP page anchor, without enabling or resending writes', async () => {
+    const gateway = new MockGatewayClient(0);
+    const client: GatewayClient = gateway;
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    const verification = { ...upload, gateway: 'top-verification' };
+    const context = vi
+      .spyOn(client, 'galleryTransferContext')
+      .mockImplementation((operation) => Promise.resolve(operation ? verification : upload));
+    const key = await seed(
+      gateway,
+      'unknown',
+      'extension',
+      JSON.stringify([verification.identity, verification.gateway])
+    );
+    const request = requestSpy(client).mockResolvedValue({
+      outcome: 'confirmed',
+      traceId: 'readback',
+      code: null
+    });
+    const { wrapper, get } = setup({ gateway, mode: 'extension' });
+    await flushPromises();
+    expect(wrapper.get('[data-testid="associate-video"]').attributes('disabled')).toBeDefined();
+    await wrapper.get('[data-testid="verify-video"]').trigger('click');
+    await flushPromises();
+    expect(context).toHaveBeenCalledWith('verifyProductVideoAssociation', target);
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+      'verifyProductVideoAssociation',
+      target,
+      expect.objectContaining({ galleryContext: verification })
+    );
+    expect(get).toHaveBeenCalledWith(expect.anything(), { galleryContext: verification });
+    expect(readStored(key)).toMatchObject({ state: 'confirmed' });
+  });
+  it('does not confirm a receipt when the verification route changes in flight', async () => {
+    const gateway = new MockGatewayClient(0);
+    const client: GatewayClient = gateway;
+    let route = 'top-before';
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    vi.spyOn(client, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve(operation ? { ...upload, gateway: route } : upload)
+    );
+    const key = await seed(gateway, 'unknown', 'extension', JSON.stringify([upload.identity, route]));
+    const request = requestSpy(client).mockImplementation(() => {
+      route = 'top-after';
+      return Promise.resolve({ outcome: 'confirmed', traceId: 'stale-result', code: null });
+    });
+    const { wrapper } = setup({ gateway, mode: 'extension' });
+    await flushPromises();
+    await wrapper.get('[data-testid="verify-video"]').trigger('click');
+    await flushPromises();
+    expect(request).toHaveBeenCalledOnce();
+    expect(readStored(key)).toMatchObject({ state: 'unknown', traceId: null });
+    expect(wrapper.text()).not.toContain('stale-result');
+  });
   it.each(['main', 'detail'] as const)(
     'confirms a separate %s write, persists before send, and never saves or publishes',
     async (type) => {

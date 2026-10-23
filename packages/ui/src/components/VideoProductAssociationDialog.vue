@@ -87,7 +87,11 @@ onBeforeUnmount(() => {
           :key="product.id"
           :product-id="product.id"
           :language="alibabaLanguage"
-          :preset="{ video, identity: target.identity }"
+          :preset="{
+            video,
+            identity: target.identity,
+            ...(target.sourceContext ? { sourceContext: target.sourceContext } : {})
+          }"
           @busy="busy = $event"
         />
       </template>

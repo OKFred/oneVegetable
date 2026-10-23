@@ -1,22 +1,50 @@
 // @vitest-environment jsdom
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, ref, shallowRef } from 'vue';
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { GatewayException } from '@one-vegetable/core/errors';
+import type { GatewayClient } from '@one-vegetable/core';
+import type { GalleryTransferContext } from '@one-vegetable/core/gallery-transfer-task';
+import { VIDEO_MOCK_DATA } from '../../core/src/generated/mock-data';
 import type { VideoUploadControl, VideoUploadTask } from '@one-vegetable/core/video-upload';
 import fixture from '../../../mock/data/video/upload.json';
 import taskFixture from '../../../mock/data/video/upload-task.json';
 import VideoUploadDialog from '../src/components/VideoUploadDialog.vue';
-import { provideServices } from '../src/lib/services';
+import VideoProductAssociationDialog from '../src/components/VideoProductAssociationDialog.vue';
+import ProductPicker from '../src/components/ProductPicker.vue';
+import ProductVideoAssociation from '../src/components/ProductVideoAssociation.vue';
+import { provideServices, type AppServices } from '../src/lib/services';
+import type { VideoProductTarget } from '../src/lib/video-library';
 import { uiI18n } from '../src/i18n';
 
 vi.mock('vue-sonner', () => ({ toast: { info: vi.fn(), success: vi.fn() } }));
 const mounted: VueWrapper[] = [];
-function setup(initial: VideoUploadTask[] = [], enabled = true) {
+function setup(
+  initial: VideoUploadTask[] = [],
+  enabled = true,
+  options: { paired?: boolean; handoff?: boolean; replacementAfterEmit?: GalleryTransferContext } = {}
+) {
   let tasks = initial;
-  const gateway = new MockGatewayClient(0);
-  vi.spyOn(gateway, 'galleryTransferContext').mockResolvedValue(fixture.context);
+  const gateway: GatewayClient = new MockGatewayClient(0);
+  const pageContext = options.paired ? { ...fixture.context, gateway: 'paired-image-iop' } : fixture.context;
+  const context = vi
+    .spyOn(gateway, 'galleryTransferContext')
+    .mockImplementation((operation) =>
+      Promise.resolve(
+        options.paired && (operation === undefined || operation === 'listProducts')
+          ? pageContext
+          : fixture.context
+      )
+    );
+  const request = vi.spyOn(gateway, 'request');
+  const availability = vi.fn<NonNullable<AppServices['operationAvailability']>['get']>((operations) =>
+    Promise.resolve({
+      items: operations.map((operation) => ({ operation, allowed: true, reasonCode: null }))
+    })
+  );
+  const target = shallowRef<VideoProductTarget | null>(null);
+  const open = ref(true);
   const call = vi.fn<VideoUploadControl['videoUpload']>().mockImplementation((command) => {
     if (command.action === 'create')
       tasks = [{ ...taskFixture, schemaVersion: 1, source: 'url', objectKey: null, status: 'prepared' }];
@@ -29,14 +57,42 @@ function setup(initial: VideoUploadTask[] = [], enabled = true) {
         gateway,
         mode: 'bff',
         videoUploads: { videoUpload: call },
+        operationAvailability: { get: availability },
         settings: { load: vi.fn(), save: vi.fn() }
       });
-      return () => h(VideoUploadDialog, { open: true });
+      return () => [
+        h(VideoUploadDialog, {
+          open: open.value,
+          'onUpdate:open': (value: boolean) => {
+            if (options.handoff) open.value = value;
+          },
+          onAssociate: (value: VideoProductTarget) => {
+            const replacement = options.replacementAfterEmit;
+            if (replacement)
+              context.mockImplementation((operation) =>
+                Promise.resolve(
+                  operation === undefined || operation === 'listProducts' ? pageContext : replacement
+                )
+              );
+            if (options.handoff) target.value = value;
+          }
+        }),
+        target.value ? h(VideoProductAssociationDialog, { target: target.value }) : null
+      ];
     }
   });
   const wrapper = mount(Host, { attachTo: document.body });
   mounted.push(wrapper);
-  return { wrapper, call, gateway, body: new DOMWrapper(document.body) };
+  return {
+    wrapper,
+    call,
+    gateway,
+    context,
+    request,
+    availability,
+    pageContext,
+    body: new DOMWrapper(document.body)
+  };
 }
 function findButton(body: DOMWrapper<Element>, label: string) {
   const target = body.findAll('button').find((button) => button.text() === label);
@@ -44,6 +100,165 @@ function findButton(body: DOMWrapper<Element>, label: string) {
   return target;
 }
 describe('video upload dialog', () => {
+  it('hands a confirmed TOP upload to the real association dialog and IOP product picker using the page anchor', async () => {
+    const video = VIDEO_MOCK_DATA.responses.listVideos.items[0];
+    if (!video?.id) throw new Error('Missing video fixture');
+    const task: VideoUploadTask = {
+      ...taskFixture,
+      schemaVersion: 1,
+      source: 'url',
+      status: 'confirmed',
+      videoId: video.id
+    };
+    const before = structuredClone(task);
+    const s = setup([task], true, { paired: true, handoff: true });
+    await flushPromises();
+    await s.body.get('select').setValue(task.id);
+    await s.body.get('[data-testid="upload-use-in-product"]').trigger('click');
+    await vi.waitFor(
+      () => {
+        expect(s.wrapper.findComponent(ProductPicker).findAll('li').length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 }
+    );
+    const stamp = JSON.stringify([s.pageContext.identity, s.pageContext.gateway]);
+    expect(s.wrapper.getComponent(VideoUploadDialog).emitted('associate')).toEqual([
+      [{ videoId: video.id, identity: stamp, sourceContext: fixture.context }]
+    ]);
+    const picker = s.wrapper.getComponent(ProductPicker);
+    expect(picker.props('expectedIdentity')).toBe(stamp);
+    expect(s.request).toHaveBeenCalledWith(
+      'listVideos',
+      { page: 1, pageSize: 20, id: video.id },
+      { galleryContext: fixture.context }
+    );
+    expect(s.request).toHaveBeenCalledWith('listProducts', expect.anything(), {
+      galleryContext: s.pageContext
+    });
+    await picker.get('li button').trigger('click');
+    await vi.waitFor(() => {
+      expect(s.wrapper.findComponent(ProductVideoAssociation).exists()).toBe(true);
+      expect(s.availability).toHaveBeenCalledWith(
+        ['associateProductVideo', 'verifyProductVideoAssociation'],
+        { galleryContext: fixture.context }
+      );
+    });
+    expect(s.wrapper.getComponent(ProductVideoAssociation).props('preset')).toMatchObject({
+      identity: stamp,
+      sourceContext: fixture.context
+    });
+    expect(
+      s.wrapper
+        .getComponent(ProductVideoAssociation)
+        .get('[data-testid="associate-video"]')
+        .attributes('disabled')
+    ).toBeDefined();
+    expect(s.request.mock.calls.map(([operation]) => operation)).toEqual(['listVideos', 'listProducts']);
+    expect(s.call.mock.calls).toEqual([[{ action: 'list' }, fixture.context]]);
+    expect(task).toEqual(before);
+    expect(task.context.gateway).not.toBe(s.pageContext.gateway);
+  });
+  it('rejects a TOP replacement after emission with the same IOP anchor and zero provider dispatches', async () => {
+    const video = VIDEO_MOCK_DATA.responses.listVideos.items[0];
+    if (!video?.id) throw new Error('Missing video fixture');
+    const task: VideoUploadTask = {
+      ...taskFixture,
+      schemaVersion: 1,
+      source: 'url',
+      status: 'confirmed',
+      videoId: video.id
+    };
+    const before = structuredClone(task);
+    const s = setup([task], true, {
+      paired: true,
+      handoff: true,
+      replacementAfterEmit: { ...fixture.context, gateway: 'replacement-top' }
+    });
+    await flushPromises();
+    await s.body.get('select').setValue(task.id);
+    await s.body.get('[data-testid="upload-use-in-product"]').trigger('click');
+    await flushPromises();
+    expect(s.wrapper.getComponent(VideoUploadDialog).emitted('associate')).toEqual([
+      [
+        {
+          videoId: video.id,
+          identity: JSON.stringify([s.pageContext.identity, s.pageContext.gateway]),
+          sourceContext: fixture.context
+        }
+      ]
+    ]);
+    expect(s.wrapper.findComponent(VideoProductAssociationDialog).exists()).toBe(true);
+    expect(s.wrapper.findComponent(ProductPicker).exists()).toBe(false);
+    expect(s.wrapper.findComponent(ProductVideoAssociation).exists()).toBe(false);
+    expect(s.context).toHaveBeenCalledWith('listVideos', { page: 1, pageSize: 20, id: video.id });
+    expect(s.request).not.toHaveBeenCalled();
+    expect(task).toEqual(before);
+  });
+  it.each(['identity', 'gateway', 'storage'] as const)(
+    'keeps an old TOP task read-only when its %s differs, even with a valid IOP page anchor',
+    async (field) => {
+      const task: VideoUploadTask = {
+        ...taskFixture,
+        schemaVersion: 1,
+        source: 'url',
+        status: 'confirmed',
+        videoId: '10001',
+        context: { ...fixture.context, [field]: `old-${field}` }
+      };
+      const before = structuredClone(task);
+      const s = setup([task], true, { paired: true, handoff: true });
+      await flushPromises();
+      await s.body.get('select').setValue(task.id);
+      expect(s.body.get('fieldset').attributes('disabled')).toBeDefined();
+      await s.body.get('[data-testid="upload-use-in-product"]').trigger('click');
+      await flushPromises();
+      expect(s.wrapper.getComponent(VideoUploadDialog).emitted('associate')).toBeUndefined();
+      expect(s.wrapper.findComponent(VideoProductAssociationDialog).exists()).toBe(false);
+      expect(s.request).not.toHaveBeenCalled();
+      expect(s.call.mock.calls).toEqual([[{ action: 'list' }, fixture.context]]);
+      expect(task).toEqual(before);
+    }
+  );
+  it.each(['identity', 'gateway', 'storage', 'video-route', 'foreign-identity', 'foreign-storage'] as const)(
+    'blocks the %s change during handoff without rebinding the task or opening the picker',
+    async (changed) => {
+      const task: VideoUploadTask = {
+        ...taskFixture,
+        schemaVersion: 1,
+        source: 'url',
+        status: 'confirmed',
+        videoId: '10001'
+      };
+      const before = structuredClone(task);
+      const s = setup([task], true, { paired: true, handoff: true });
+      await flushPromises();
+      await s.body.get('select').setValue(task.id);
+      let anchorReads = 0;
+      let videoContext = fixture.context;
+      s.context.mockImplementation((operation) => {
+        if (operation !== undefined) return Promise.resolve(videoContext);
+        anchorReads++;
+        if (changed === 'video-route') {
+          videoContext = { ...fixture.context, gateway: 'changed-top' };
+          return Promise.resolve(s.pageContext);
+        }
+        const field =
+          changed === 'foreign-identity' ? 'identity' : changed === 'foreign-storage' ? 'storage' : changed;
+        return Promise.resolve(
+          anchorReads > 1 || changed.startsWith('foreign-')
+            ? { ...s.pageContext, [field]: `changed-${field}` }
+            : s.pageContext
+        );
+      });
+      await s.body.get('[data-testid="upload-use-in-product"]').trigger('click');
+      await flushPromises();
+      expect(s.wrapper.getComponent(VideoUploadDialog).emitted('associate')).toBeUndefined();
+      expect(s.wrapper.findComponent(VideoProductAssociationDialog).exists()).toBe(false);
+      expect(s.request).not.toHaveBeenCalled();
+      expect(s.call.mock.calls).toEqual([[{ action: 'list' }, fixture.context]]);
+      expect(task).toEqual(before);
+    }
+  );
   it('only offers a verified upload for a separate product association and rechecks its context', async () => {
     const task: VideoUploadTask = {
       ...taskFixture,
@@ -61,7 +276,8 @@ describe('video upload dialog', () => {
       [
         {
           videoId: task.videoId,
-          identity: JSON.stringify([fixture.context.identity, fixture.context.gateway])
+          identity: JSON.stringify([fixture.context.identity, fixture.context.gateway]),
+          sourceContext: fixture.context
         }
       ]
     ]);
@@ -128,6 +344,9 @@ describe('video upload dialog', () => {
     const s = setup();
     await flushPromises();
     expect(s.call.mock.calls.map(([command]) => command.action)).toEqual(['list']);
+    expect(s.context).toHaveBeenCalledWith('callCapability', {
+      method: 'alibaba.icbu.video.upload'
+    });
     await s.body.get('input[maxlength="180"]').setValue('Fixture');
     await s.body.get('select').setValue('url');
     await s.body.get('input[type="url"]').setValue(fixture.sourceUrl);
@@ -147,6 +366,8 @@ describe('video upload dialog', () => {
     await findButton(s.body, '确认').trigger('click');
     await flushPromises();
     expect(s.call.mock.calls.map(([command]) => command.action)).toEqual(['list', 'create', 'submit']);
+    for (const args of s.context.mock.calls)
+      expect(args).toEqual(['callCapability', { method: 'alibaba.icbu.video.upload' }]);
     expect(s.body.text()).toContain('需手动核对');
   });
   it('restores task records but never schedules uploads or verification on mount', async () => {

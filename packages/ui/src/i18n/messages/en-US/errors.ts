@@ -15,7 +15,7 @@ export const errors = {
       'The requested protocol has no credentials. Configure that profile; the other grant cannot be reused for it.',
     ALIBABA_PROTOCOL_INVALID: 'Invalid gateway protocol. Explicitly choose TOP or IOP.',
     ALIBABA_IOP_METHOD_UNSUPPORTED:
-      'This method is not mapped to IOP. Choose a supported method; no TOP fallback.',
+      'This feature is not available through IOP yet. If you have a legacy TOP app, configure TOP authorization in Settings. Existing tasks will not switch authorization automatically.',
     ALIBABA_IOP_PARAMETER_UNSUPPORTED:
       'IOP does not support this filter. Request blocked; never silently ignored.',
     ALIBABA_IOP_MUTATION_UNVERIFIED:

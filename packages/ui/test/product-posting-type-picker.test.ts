@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/product-type-available.json';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import type { GatewayClient } from '@one-vegetable/core';
 import { provideServices } from '../src/lib/services';
 import { uiI18n } from '../src/i18n';
 import ProductPostingTypePicker from '../src/components/ProductPostingTypePicker.vue';
@@ -12,8 +13,9 @@ afterEach(() => {
   vi.restoreAllMocks();
   uiI18n.global.locale.value = 'zh-CN';
 });
-function setup(locked = false) {
-  const gateway = new MockGatewayClient(0);
+function setup(locked = false, readContext?: NonNullable<GatewayClient['galleryTransferContext']>) {
+  const gateway: GatewayClient = new MockGatewayClient(0);
+  if (readContext) vi.spyOn(gateway, 'galleryTransferContext').mockImplementation(readContext);
   const response = {
     method: fixture.method,
     traceId: 'product-posting-test-trace',
@@ -58,6 +60,23 @@ function setup(locked = false) {
   return { wrapper, gateway, request, response, market, language };
 }
 describe('posting type guidance', () => {
+  it('resolves generic capability context using its actual method and parameters', async () => {
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    const selected = { ...upload, gateway: 'top-capability' };
+    const context = vi.fn<NonNullable<GatewayClient['galleryTransferContext']>>((operation) =>
+      Promise.resolve(operation ? selected : upload)
+    );
+    const { wrapper, request } = setup(false, context);
+    await flushPromises();
+    const payload = {
+      method: fixture.method,
+      parameters: { type_request: { cat_id: 201712702, language: 'zh_cn' } }
+    };
+    expect(context).toHaveBeenCalledWith('callCapability', payload);
+    expect(request).toHaveBeenCalledExactlyOnceWith('callCapability', payload, { galleryContext: selected });
+    expect(context.mock.calls.every(([operation]) => operation === 'callCapability')).toBe(true);
+    wrapper.unmount();
+  });
   it('uses API language only and keeps both available choices', async () => {
     const { wrapper, request, language, market } = setup();
     await flushPromises();
@@ -115,7 +134,8 @@ describe('posting type guidance', () => {
     expect(item.wrapper.getComponent(ProductPostingTypePicker).emitted('blocked')?.at(-1)).toEqual([true]);
     item.wrapper.unmount();
     const changed = setup();
-    const context = await changed.gateway.galleryTransferContext();
+    const context = await changed.gateway.galleryTransferContext?.();
+    if (!context) throw new Error('Missing context fixture');
     vi.spyOn(changed.gateway, 'galleryTransferContext').mockResolvedValue({
       ...context,
       identity: `${context.identity}-changed`

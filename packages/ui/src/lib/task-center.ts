@@ -1,5 +1,5 @@
 import { isProductMutationJobPage, type ProductMutationJob } from '@one-vegetable/core';
-import { requireGalleryContext } from '@one-vegetable/core/gallery-transfer-context';
+import { opaqueGalleryId, requireGalleryContext } from '@one-vegetable/core/gallery-transfer-context';
 import { GatewayException } from '@one-vegetable/core/errors';
 import {
   validateGalleryTransferTask,
@@ -21,6 +21,7 @@ import type { AppServices } from './services';
 import { VIDEO_ASSOCIATION_PREFIX } from './video-association-storage';
 
 export type TaskSource = 'product' | 'gallery' | 'video-upload' | 'video-association';
+export type TaskMediaSource = Exclude<TaskSource, 'product'>;
 export type TaskState =
   'pending' | 'running' | 'submitted' | 'confirmed' | 'attention' | 'failed' | 'cancelled';
 export type TaskGuidance =
@@ -57,6 +58,8 @@ export interface TaskSummary {
 
 export interface TaskCenterSnapshot {
   context: GalleryTransferContext;
+  /** Ephemeral purpose bindings; the no-argument context remains the page anchor. */
+  sourceContexts?: Partial<Record<TaskMediaSource, GalleryTransferContext>>;
   items: TaskSummary[];
   errors: { source: TaskSource; code: string }[];
   unscopedQueueCount: number;
@@ -157,7 +160,10 @@ function summary(
 }
 
 /** A recovered write was rolled back, not successfully applied. Only verified means confirmed. */
-export function mapProductTask(job: ProductMutationJob, context?: GalleryTransferContext): TaskSummary {
+export function mapProductTask(
+  job: ProductMutationJob,
+  context?: GalleryTransferContext | readonly GalleryTransferContext[]
+): TaskSummary {
   const states: Record<ProductMutationJob['status'], TaskState> = {
     submitted: 'submitted',
     auditing: 'submitted',
@@ -180,8 +186,11 @@ export function mapProductTask(job: ProductMutationJob, context?: GalleryTransfe
   // Old receipts never infer ownership. New maintenance receipts ignore unrelated S3 changes.
   item.accountMatch = 'unknown';
   if (job.productContext && context) {
-    item.contextChanged =
-      job.productContext.identity !== context.identity || job.productContext.gateway !== context.gateway;
+    const owner = job.productContext;
+    const contexts = 'identity' in context ? [context] : context;
+    item.contextChanged = !contexts.some(
+      (candidate) => owner.identity === candidate.identity && owner.gateway === candidate.gateway
+    );
     item.accountMatch = item.contextChanged ? 'changed' : 'matched';
   }
   if (job.batchId) item.maintenanceBatchId = job.batchId;
@@ -375,14 +384,16 @@ interface SourceRead {
 }
 const warning = (source: TaskSource, code: string): Warning => ({ source, code });
 
-function readAssociations(
+async function readAssociations(
   storage: Storage,
   mode: AppServices['mode'],
-  context: GalleryTransferContext
-): SourceRead {
+  context: GalleryTransferContext | undefined,
+  anchor: GalleryTransferContext
+): Promise<SourceRead> {
   const items: TaskSummary[] = [],
     errors: Warning[] = [];
-  const stamp = JSON.stringify([context.identity, context.gateway]);
+  const stamp = context ? JSON.stringify([context.identity, context.gateway]) : null;
+  const anchorStamp = JSON.stringify([anchor.identity, anchor.gateway]);
   for (let index = 0; index < storage.length; index++) {
     const key = storage.key(index);
     if (!key?.startsWith(VIDEO_ASSOCIATION_PREFIX)) continue;
@@ -390,14 +401,39 @@ function readAssociations(
       const scope: unknown = JSON.parse(key.slice(VIDEO_ASSOCIATION_PREFIX.length));
       if (!Array.isArray(scope) || scope.length !== 3 || !scope.every((v: unknown) => typeof v === 'string'))
         throw new Error('TASK_ASSOCIATION_INVALID');
-      if (scope[0] !== mode || scope[1] !== stamp) continue;
+      if (scope[0] !== mode) continue;
+      if (context) {
+        if (scope[1] !== stamp && scope[1] !== anchorStamp) continue;
+      } else {
+        // An unavailable purpose never turns the page anchor into an executable fallback.
+        // Retain same-identity history, including retired pins, strictly as read-only receipts.
+        const owner: unknown = JSON.parse(String(scope[1]));
+        if (
+          !Array.isArray(owner) ||
+          owner.length !== 2 ||
+          typeof owner[0] !== 'string' ||
+          typeof owner[1] !== 'string'
+        )
+          throw new Error('TASK_ASSOCIATION_INVALID');
+        if (owner[0] !== anchor.identity) continue;
+        requireGalleryContext({ identity: owner[0], gateway: owner[1], storage: null });
+      }
       const productId: unknown = scope[2];
       if (typeof productId !== 'string' || !/^[1-9][0-9]*$/u.test(productId))
         throw new Error('TASK_ASSOCIATION_INVALID');
       const raw = storage.getItem(key);
       if (raw === null) continue;
       const value: unknown = JSON.parse(raw);
-      items.push(mapVideoAssociationTask(parseVideoAssociationReceipt(value, productId)));
+      const item = mapVideoAssociationTask(parseVideoAssociationReceipt(value, productId));
+      if (!context || scope[1] !== stamp) {
+        item.id += ':previous-context';
+        // Distinguish multiple old pins for the same product without exposing storage-key text.
+        if (!context && scope[1] !== anchorStamp) item.id += `:${await opaqueGalleryId(String(scope[1]))}`;
+        item.contextChanged = true;
+        item.accountMatch = 'changed';
+        item.guidance = 'configuration';
+      }
+      items.push(item);
     } catch {
       errors.push(warning('video-association', 'TASK_ASSOCIATION_INVALID'));
     }
@@ -451,15 +487,28 @@ export function bindTaskBatchItems(
   return { items, unscopedQueueCount, errors };
 }
 
-async function contextFor(services: AppServices): Promise<GalleryTransferContext> {
+async function contextFor(services: AppServices, source?: TaskMediaSource): Promise<GalleryTransferContext> {
   try {
     // No mock/anonymous/settings fallback. Copy scalars so mutation of a shared object is detected.
-    const context = requireGalleryContext(await services.gateway.galleryTransferContext?.());
+    const context = requireGalleryContext(
+      await (source === 'gallery'
+        ? services.gateway.galleryTransferContext?.('listPhotos')
+        : source === 'video-upload'
+          ? services.gateway.galleryTransferContext?.('callCapability', {
+              method: 'alibaba.icbu.video.upload'
+            })
+          : source === 'video-association'
+            ? services.gateway.galleryTransferContext?.('verifyProductVideoAssociation')
+            : services.gateway.galleryTransferContext?.())
+    );
     return { identity: context.identity, gateway: context.gateway, storage: context.storage };
   } catch {
     throw new TaskCenterError('TASK_CONTEXT_UNAVAILABLE');
   }
 }
+
+export const taskSourceContext = (services: AppServices, source: TaskMediaSource) =>
+  contextFor(services, source);
 
 async function isolated(
   source: TaskSource,
@@ -488,6 +537,24 @@ export async function loadTaskCenterSnapshot(
   if (!isCurrent()) throw new TaskCenterError('TASK_CONTEXT_CHANGED');
   const context = await contextFor(services);
   if (!isCurrent()) throw new TaskCenterError('TASK_CONTEXT_CHANGED');
+  const sourceContexts: Partial<Record<TaskMediaSource, GalleryTransferContext>> = {};
+  const contextErrors: Warning[] = [];
+  const mediaSources: TaskMediaSource[] = ['gallery', 'video-upload', 'video-association'];
+  await Promise.all(
+    mediaSources.map(async (source) => {
+      let selected: GalleryTransferContext;
+      try {
+        selected = await taskSourceContext(services, source);
+      } catch (error) {
+        contextErrors.push(warning(source, taskErrorCode(error)));
+        return;
+      }
+      if (!isCurrent() || selected.identity !== context.identity)
+        throw new TaskCenterError('TASK_CONTEXT_CHANGED');
+      sourceContexts[source] = selected;
+    })
+  );
+  if (!isCurrent()) throw new TaskCenterError('TASK_CONTEXT_CHANGED');
   let productHasMore = false;
   const [product, gallery, uploads, associations] = await Promise.all([
     isolated('product', async () => {
@@ -507,7 +574,9 @@ export async function loadTaskCenterSnapshot(
         errors: Warning[] = [];
       for (const job of page.items.slice(0, TASK_PRODUCT_PAGE_SIZE)) {
         try {
-          items.push(mapProductTask(job, context));
+          // Product list/get already enforce workbench ownership. Match the receipt's exact
+          // binding against the available TOP/IOP contexts, never replace it with today's default.
+          items.push(mapProductTask(job, [context, ...Object.values(sourceContexts)]));
         } catch {
           errors.push(warning('product', 'TASK_PRODUCT_INVALID'));
         }
@@ -518,6 +587,8 @@ export async function loadTaskCenterSnapshot(
       return { items, errors };
     }),
     isolated('gallery', async () => {
+      const context = sourceContexts.gallery;
+      if (!context) return { items: [], errors: [] };
       const values: unknown = await repository.list();
       if (!Array.isArray(values)) return { items: [], errors: [warning('gallery', 'TASK_GALLERY_INVALID')] };
       const items: TaskSummary[] = [],
@@ -533,6 +604,8 @@ export async function loadTaskCenterSnapshot(
       return { items, errors };
     }),
     isolated('video-upload', async () => {
+      const context = sourceContexts['video-upload'];
+      if (!context) return { items: [], errors: [] };
       const call =
         services.videoUploads?.videoUpload.bind(services.videoUploads) ??
         services.s3Storage?.videoUpload?.bind(services.s3Storage) ??
@@ -553,14 +626,27 @@ export async function loadTaskCenterSnapshot(
       }
       return { items, errors };
     }),
-    isolated('video-association', () => readAssociations(storage, services.mode, context))
+    isolated('video-association', () =>
+      readAssociations(storage, services.mode, sourceContexts['video-association'], context)
+    )
   ]);
   const queue = bindTaskBatchItems(storage, product.items);
   // Even partially successful results belong to the original context, never the next account.
   const latest = await contextFor(services);
   if (!isCurrent() || taskContextStamp(latest) !== taskContextStamp(context))
     throw new TaskCenterError('TASK_CONTEXT_CHANGED');
+  await Promise.all(
+    mediaSources.map(async (source) => {
+      const selected = sourceContexts[source];
+      if (!selected) return;
+      const latest = await taskSourceContext(services, source);
+      if (!isCurrent() || taskContextStamp(latest) !== taskContextStamp(selected))
+        throw new TaskCenterError('TASK_CONTEXT_CHANGED');
+    })
+  );
+  if (!isCurrent()) throw new TaskCenterError('TASK_CONTEXT_CHANGED');
   const errors = [
+    ...contextErrors,
     ...product.errors,
     ...gallery.errors,
     ...uploads.errors,
@@ -569,6 +655,7 @@ export async function loadTaskCenterSnapshot(
   ];
   return {
     context,
+    sourceContexts,
     items: [...queue.items, ...gallery.items, ...uploads.items, ...associations.items].sort(
       (a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id)
     ),

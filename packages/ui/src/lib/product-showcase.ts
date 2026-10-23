@@ -36,6 +36,16 @@ export function useProductShowcase() {
   let receiptValue = '';
   let lastLoad = 0;
   let inFlight: Promise<void> | null = null;
+  function historicalReceipt(): string {
+    const prefix = `${SHOWCASE_STORAGE_PREFIX}${context.value?.identity ?? 'mock'}:`;
+    for (const key of Object.keys(localStorage)) {
+      if (key !== receiptKey && key.startsWith(prefix)) {
+        const value = localStorage.getItem(key);
+        if (value) return value;
+      }
+    }
+    return '';
+  }
   const displayError = computed(() => {
     const cause = error.value;
     if (!(cause instanceof GatewayException)) return cause;
@@ -54,12 +64,14 @@ export function useProductShowcase() {
   });
   function readReceipt(): void {
     receiptValue = localStorage.getItem(receiptKey) ?? '';
-    unresolved.value = receiptValue !== '';
-    requestId.value = /^[\da-f-]{36}$/.test(receiptValue) ? receiptValue : '';
+    // A receipt from another protocol remains owned by that protocol, never migrated or cleared here.
+    const pending = receiptValue || historicalReceipt();
+    unresolved.value = pending !== '';
+    requestId.value = /^[\da-f-]{36}$/.test(pending) ? pending : '';
     pendingIds.value = [];
     pendingAction.value = null;
     try {
-      const value: unknown = JSON.parse(receiptValue);
+      const value: unknown = JSON.parse(pending);
       if (
         !value ||
         typeof value !== 'object' ||
@@ -89,7 +101,7 @@ export function useProductShowcase() {
   }
 
   async function identity(): Promise<GalleryTransferContext | undefined> {
-    const current = await services.gateway.galleryTransferContext?.();
+    const current = await services.gateway.galleryTransferContext?.('getProductShowcase');
     if (!current && services.mode !== 'mock') throw showcaseError('GALLERY_CONTEXT_UNAVAILABLE');
     return current;
   }
@@ -104,23 +116,16 @@ export function useProductShowcase() {
       error.value = null;
       try {
         const current = await identity();
-        if (
-          snapshot.value &&
-          !force &&
-          sameIdentity(current, context.value) &&
-          Date.now() - lastLoad < 60_000
-        )
-          return;
-        if (!sameIdentity(current, context.value)) snapshot.value = null;
+        const unchanged = sameIdentity(current, context.value);
+        if (!unchanged) snapshot.value = null;
         context.value = current;
         receiptKey = `${SHOWCASE_STORAGE_PREFIX}${current?.identity ?? 'mock'}:${current?.gateway ?? 'mock'}`;
         readReceipt();
-        const availability = await services.operationAvailability?.get([
-          'addShowcaseProducts',
-          'removeShowcaseProducts',
-          'sortShowcaseProduct',
-          'replaceShowcaseProduct'
-        ]);
+        if (snapshot.value && !force && unchanged && Date.now() - lastLoad < 60_000) return;
+        const availability = await services.operationAvailability?.get(
+          ['addShowcaseProducts', 'removeShowcaseProducts', 'sortShowcaseProduct', 'replaceShowcaseProduct'],
+          current ? { galleryContext: current } : undefined
+        );
         allowed.value = {
           sort:
             services.mode === 'mock' ||
@@ -212,6 +217,7 @@ export function useProductShowcase() {
         if (!lock || localStorage.getItem(receiptKey)) throw showcaseError('SHOWCASE_LOCKED');
         const current = await identity();
         if (!sameIdentity(expected, current)) throw showcaseError('GALLERY_CONTEXT_CHANGED');
+        if (historicalReceipt()) throw showcaseError('SHOWCASE_LOCKED');
         requestId.value = crypto.randomUUID();
         const receipt = JSON.stringify({
           requestId: requestId.value,
@@ -254,6 +260,7 @@ export function useProductShowcase() {
     }
   }
   function clearReceipt(): void {
+    if (historicalReceipt()) throw showcaseError('SHOWCASE_LOCKED');
     if (localStorage.getItem(receiptKey) !== receiptValue) throw showcaseError('SHOWCASE_LOCKED');
     localStorage.removeItem(receiptKey);
     unresolved.value = false;
@@ -330,6 +337,7 @@ export function useProductShowcase() {
         const current = await identity();
         if (intent.context !== JSON.stringify(current ?? null))
           throw showcaseError('GALLERY_CONTEXT_CHANGED');
+        if (historicalReceipt()) throw showcaseError('SHOWCASE_LOCKED');
         requestId.value = crypto.randomUUID();
         const oldProductId = intent.request.expectedEntries.find(
           (entry) => entry.windowId === intent.request.windowId

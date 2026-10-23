@@ -59,9 +59,26 @@ export async function requestPageDetail(
   const identity = context ? JSON.stringify([context.identity, context.gateway]) : 'mock';
   if (expectedIdentity !== undefined && expectedIdentity !== identity)
     throw new Error('GALLERY_CONTEXT_CHANGED');
+  const languageCode = language === 'zh_CN' ? 'zh_CN' : 'en_US';
+  const operation =
+    request.kind === 'inventory'
+      ? 'getProductInventory'
+      : request.kind === 'score'
+        ? 'getProductScore'
+        : 'getTradeOrderAggregate';
+  const payload =
+    request.kind === 'inventory'
+      ? { productId: request.id, source: request.source, language: languageCode }
+      : request.kind === 'score'
+        ? { productId: request.id }
+        : { order: request.order, language: languageCode };
+  const readContext = await gateway.galleryTransferContext?.(operation, payload);
+  if ((!readContext && mode !== 'mock') || (context && readContext?.identity !== context.identity))
+    throw new Error('GALLERY_CONTEXT_CHANGED');
   const key = JSON.stringify([
     mode,
-    identity,
+    context,
+    readContext,
     language,
     request.kind,
     request.kind === 'order' ? (request.order.role ?? 'seller') : null,
@@ -74,7 +91,7 @@ export async function requestPageDetail(
   if (pending) return pending;
   const capturedStore = store;
   const job = (async () => {
-    const options = context ? { galleryContext: context } : undefined;
+    const options = readContext ? { galleryContext: readContext } : undefined;
     const data =
       request.kind === 'inventory'
         ? await gateway.request(
@@ -94,7 +111,11 @@ export async function requestPageDetail(
               options
             );
     const latest = await gateway.galleryTransferContext?.();
-    if (context && JSON.stringify([latest?.identity, latest?.gateway]) !== identity)
+    const latestRead = await gateway.galleryTransferContext?.(operation, payload);
+    if (
+      JSON.stringify(latest) !== JSON.stringify(context) ||
+      JSON.stringify(latestRead) !== JSON.stringify(readContext)
+    )
       throw new Error('GALLERY_CONTEXT_CHANGED');
     for (const [oldKey, entry] of capturedStore.cache)
       if (Date.now() - entry.at >= 300_000) capturedStore.cache.delete(oldKey);

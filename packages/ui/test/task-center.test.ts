@@ -5,6 +5,7 @@ import {
   type ProductMutationJob,
   type ProductMutationJobPage,
   type ProductMutationJobClient,
+  type GatewayClient,
   type ControlClient
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -37,6 +38,7 @@ import {
   taskErrorCode,
   taskGuidance,
   taskReasonCode,
+  type TaskMediaSource,
   type TaskState
 } from '../src/lib/task-center';
 
@@ -97,7 +99,9 @@ function readonlyStorage(entries: Record<string, string> = {}) {
 }
 function setup(entries: Record<string, string> = {}) {
   const gateway = new MockGatewayClient(0);
-  const getContext = vi.spyOn(gateway, 'galleryTransferContext').mockResolvedValue({ ...context });
+  const getContext = vi
+    .spyOn(gateway as Required<Pick<GatewayClient, 'galleryTransferContext'>>, 'galleryTransferContext')
+    .mockResolvedValue({ ...context });
   const request = vi.spyOn(gateway, 'request');
   const jobs = {
     list: vi.fn<ProductMutationJobClient['list']>().mockResolvedValue(productPage()),
@@ -120,6 +124,13 @@ function setup(entries: Record<string, string> = {}) {
     videoUploads: { videoUpload }
   };
   return { services, gateway, getContext, request, jobs, videoUpload, repository, storage };
+}
+
+function dualSetup() {
+  const anchor = { ...context, gateway: 'iop-gateway' };
+  const s = setup({ [associationKey(anchor)]: JSON.stringify(fixture.associationReceipt) });
+  s.getContext.mockImplementation((operation) => Promise.resolve(operation ? { ...context } : { ...anchor }));
+  return { ...s, anchor };
 }
 
 describe('task center pure mappings', () => {
@@ -372,6 +383,273 @@ describe('task center pure mappings', () => {
 });
 
 describe('task center read-only snapshot', () => {
+  it('uses TOP purposes under an IOP page anchor and preserves original product and historical receipt bindings', async () => {
+    const top = { ...context, identity: 'a'.repeat(64), gateway: 'b'.repeat(64) };
+    const anchor = { ...top, gateway: 'c'.repeat(64) };
+    const s = setup({
+      [associationKey(top)]: JSON.stringify(fixture.associationReceipt),
+      [associationKey(anchor)]: JSON.stringify(fixture.associationReceipt)
+    });
+    s.getContext.mockImplementation((operation) => Promise.resolve(operation ? { ...top } : { ...anchor }));
+    const oldGallery = { ...gallery(), id: 'old-gallery', context: { ...anchor } };
+    const oldUpload = {
+      ...upload(),
+      id: '33333333-3333-4333-8333-333333333333',
+      context: { ...anchor }
+    };
+    s.repository.list.mockResolvedValue([{ ...gallery(), context: top }, oldGallery]);
+    s.videoUpload.mockResolvedValue({ ...uploadResult(), tasks: [{ ...upload(), context: top }, oldUpload] });
+    const jobs = [
+      {
+        ...product(),
+        id: 'top-job',
+        protocol: 'top' as const,
+        productContext: { identity: top.identity, gateway: top.gateway }
+      },
+      {
+        ...product(),
+        id: 'iop-job',
+        protocol: 'iop' as const,
+        productContext: { identity: anchor.identity, gateway: anchor.gateway }
+      },
+      { ...product(), id: 'old-job', productContext: { identity: top.identity, gateway: 'd'.repeat(64) } },
+      product()
+    ];
+    s.jobs.list.mockResolvedValue({ ...productPage(), items: jobs, total: jobs.length });
+    const before = structuredClone({ jobs, oldGallery, oldUpload });
+    const result = await loadTaskCenterSnapshot(s.services, s.repository, s.storage);
+    expect(result.context).toEqual(anchor);
+    expect(result.sourceContexts).toEqual({
+      gallery: top,
+      'video-upload': top,
+      'video-association': top
+    });
+    for (const id of ['top-job', 'iop-job'])
+      expect(result.items.find((item) => item.id === `product:${id}`)).toMatchObject({
+        accountMatch: 'matched',
+        contextChanged: false
+      });
+    expect(result.items.find((item) => item.id === 'product:old-job')).toMatchObject({
+      accountMatch: 'changed',
+      contextChanged: true
+    });
+    expect(result.items.find((item) => item.id === `product:${product().id}`)?.accountMatch).toBe('unknown');
+    for (const source of ['gallery', 'video-upload', 'video-association'] as const) {
+      const items = result.items.filter((item) => item.source === source);
+      expect(items).toHaveLength(2);
+      expect(items.filter((item) => !item.contextChanged)).toHaveLength(1);
+      expect(items.find((item) => item.contextChanged)).toMatchObject({
+        accountMatch: 'changed',
+        guidance: 'configuration'
+      });
+    }
+    expect(new Set(result.items.map((item) => item.id)).size).toBe(result.items.length);
+    expect(s.videoUpload).toHaveBeenCalledExactlyOnceWith({ action: 'list' }, top);
+    expect(result.errors).toEqual([]);
+    expect({ jobs, oldGallery, oldUpload }).toEqual(before);
+    expect(s.storage.getItem(associationKey(anchor))).toBe(JSON.stringify(fixture.associationReceipt));
+    for (const write of [
+      s.request,
+      s.jobs.get,
+      s.jobs.refresh,
+      s.jobs.recover,
+      s.storage.setItem,
+      s.storage.removeItem,
+      s.storage.clear
+    ])
+      expect(write).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to the upload anchor when a purpose context is unavailable', async () => {
+    const s = dualSetup();
+    s.getContext.mockImplementation((operation) => {
+      if (operation === 'callCapability') return Promise.reject(new Error('private-context-failure'));
+      return Promise.resolve(operation ? { ...context } : { ...s.anchor });
+    });
+    const result = await loadTaskCenterSnapshot(s.services, s.repository, s.storage);
+    expect(s.videoUpload).not.toHaveBeenCalled();
+    expect(result.items.some((item) => item.source === 'gallery' && !item.contextChanged)).toBe(true);
+    expect(result.errors).toEqual([{ source: 'video-upload', code: 'TASK_CONTEXT_UNAVAILABLE' }]);
+    expect(JSON.stringify(result)).not.toContain('private-context-failure');
+  });
+
+  it.each(['sending', 'unknown', 'unconfirmed', 'confirmed', 'rejected'] as const)(
+    'retains a legacy IOP %s receipt as read-only when the TOP association context is unavailable',
+    async (state) => {
+      const s = dualSetup();
+      const key = associationKey(s.anchor);
+      const raw = JSON.stringify({
+        ...fixture.associationReceipt,
+        state,
+        outcome: state === 'sending' ? 'unknown' : state
+      });
+      s.storage = readonlyStorage({ [key]: raw });
+      s.getContext.mockImplementation((operation) => {
+        if (operation === 'verifyProductVideoAssociation')
+          return Promise.reject(new Error('private-top-unavailable'));
+        return Promise.resolve(operation ? { ...context } : { ...s.anchor });
+      });
+      const result = await loadTaskCenterSnapshot(s.services, s.repository, s.storage);
+      expect(result.context).toEqual(s.anchor);
+      expect(result.sourceContexts?.['video-association']).toBeUndefined();
+      expect(result.items.filter((item) => item.source === 'video-association')).toEqual([
+        expect.objectContaining({
+          id: `video-association:1600000000001:previous-context`,
+          sourceId: '1600000000001',
+          rawStatus: state,
+          contextChanged: true,
+          accountMatch: 'changed',
+          guidance: 'configuration'
+        })
+      ]);
+      expect(result.errors).toEqual([{ source: 'video-association', code: 'TASK_CONTEXT_UNAVAILABLE' }]);
+      expect(s.storage.getItem(key)).toBe(raw);
+      expect(
+        s.getContext.mock.calls.filter(([operation]) => operation === 'verifyProductVideoAssociation')
+      ).toHaveLength(1);
+      for (const write of [
+        s.request,
+        s.jobs.get,
+        s.jobs.refresh,
+        s.jobs.recover,
+        s.storage.setItem,
+        s.storage.removeItem,
+        s.storage.clear
+      ])
+        expect(write).not.toHaveBeenCalled();
+      expect(JSON.stringify(result)).not.toContain('private-top-unavailable');
+    }
+  );
+
+  it('keeps distinct same-identity retired receipts but never reads other identities or modes when the purpose is unknown', async () => {
+    const anchor = { ...context, gateway: 'current-iop' };
+    const retired = { ...context, gateway: 'retired-iop' };
+    const foreign = [
+      associationKey({ ...anchor, identity: 'other-account' }),
+      associationKey(anchor, 'mock')
+    ];
+    const malformed =
+      VIDEO_ASSOCIATION_PREFIX +
+      JSON.stringify(['bff', JSON.stringify([context.identity, null]), '1600000000001']);
+    const s = setup({
+      [associationKey(anchor)]: JSON.stringify(fixture.associationReceipt),
+      [associationKey(retired)]: JSON.stringify(fixture.associationReceipt),
+      [malformed]: '{private-malformed',
+      ...Object.fromEntries(foreign.map((key) => [key, '{private-foreign']))
+    });
+    s.getContext.mockImplementation((operation) => {
+      if (operation === 'verifyProductVideoAssociation') return Promise.reject(new Error('TOP_UNAVAILABLE'));
+      return Promise.resolve(operation ? { ...context } : { ...anchor });
+    });
+    const result = await loadTaskCenterSnapshot(s.services, s.repository, s.storage);
+    const receipts = result.items.filter((item) => item.source === 'video-association');
+    expect(receipts).toHaveLength(3);
+    expect(new Set(receipts.map((item) => item.id)).size).toBe(3);
+    for (const item of receipts) {
+      expect(item.id).toContain(':previous-context');
+      expect(item).toMatchObject({
+        contextChanged: true,
+        accountMatch: 'changed',
+        guidance: 'configuration'
+      });
+    }
+    for (const key of [...foreign, malformed]) expect(s.storage.getItem).not.toHaveBeenCalledWith(key);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        { source: 'video-association', code: 'TASK_CONTEXT_UNAVAILABLE' },
+        { source: 'video-association', code: 'TASK_ASSOCIATION_INVALID' }
+      ])
+    );
+    expect(JSON.stringify(result)).not.toContain('retired-iop');
+    expect(JSON.stringify(result)).not.toContain('private-');
+    expect(s.storage.getItem(associationKey(retired))).toBe(JSON.stringify(fixture.associationReceipt));
+    expect(s.request).not.toHaveBeenCalled();
+    expect(s.storage.setItem).not.toHaveBeenCalled();
+    expect(s.storage.removeItem).not.toHaveBeenCalled();
+    expect(s.storage.clear).not.toHaveBeenCalled();
+  });
+
+  it.each(['identity', 'gateway', 'storage'] as const)(
+    'still rejects late historical results if page-anchor %s changes while the purpose is unavailable',
+    async (field) => {
+      const s = dualSetup();
+      const shared = { ...s.anchor };
+      s.getContext.mockImplementation((operation) => {
+        if (operation === 'verifyProductVideoAssociation')
+          return Promise.reject(new Error('TOP_UNAVAILABLE'));
+        return Promise.resolve(operation ? { ...context } : shared);
+      });
+      let finish: (value: VideoUploadResult) => void = () => {
+        throw new Error('not started');
+      };
+      s.videoUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          })
+      );
+      const loading = loadTaskCenterSnapshot(s.services, s.repository, s.storage);
+      await vi.waitFor(() => {
+        expect(s.videoUpload).toHaveBeenCalledTimes(1);
+      });
+      shared[field] = 'changed';
+      finish(uploadResult());
+      await expect(loading).rejects.toThrow('TASK_CONTEXT_CHANGED');
+      expect(s.request).not.toHaveBeenCalled();
+      expect(s.storage.setItem).not.toHaveBeenCalled();
+      expect(s.storage.removeItem).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects a different purpose identity before reading any source or receipt', async () => {
+    const s = dualSetup();
+    s.getContext.mockImplementation((operation) =>
+      Promise.resolve(operation ? { ...context, identity: 'other-account' } : s.anchor)
+    );
+    await expect(loadTaskCenterSnapshot(s.services, s.repository, s.storage)).rejects.toThrow(
+      'TASK_CONTEXT_CHANGED'
+    );
+    for (const read of [s.jobs.list, s.repository.list, s.videoUpload, s.storage.getItem])
+      expect(read).not.toHaveBeenCalled();
+  });
+
+  it.each<TaskMediaSource>(['gallery', 'video-upload', 'video-association'])(
+    'discards late results if the %s purpose changes while the IOP anchor stays the same',
+    async (source) => {
+      for (const field of ['identity', 'gateway', 'storage'] as const) {
+        const s = dualSetup();
+        const shared = { ...context };
+        s.getContext.mockImplementation((operation) => {
+          const selected =
+            operation === 'listPhotos'
+              ? 'gallery'
+              : operation === 'callCapability'
+                ? 'video-upload'
+                : 'video-association';
+          return Promise.resolve(!operation ? s.anchor : selected === source ? shared : { ...context });
+        });
+        let finish: (value: VideoUploadResult) => void = () => {
+          throw new Error('not started');
+        };
+        s.videoUpload.mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              finish = resolve;
+            })
+        );
+        const loading = loadTaskCenterSnapshot(s.services, s.repository, s.storage);
+        await vi.waitFor(() => {
+          expect(s.videoUpload).toHaveBeenCalledTimes(1);
+        });
+        shared[field] = 'changed';
+        finish(uploadResult());
+        await expect(loading).rejects.toThrow('TASK_CONTEXT_CHANGED');
+        expect(s.getContext.mock.calls.filter((args) => args.length === 0)).toHaveLength(2);
+        expect(s.storage.setItem).not.toHaveBeenCalled();
+      }
+    }
+  );
+
   it('can seed the raw gallery fixture into the real repository without model-specific transformation', async () => {
     const s = setup();
     const repository = new IndexedDbGalleryTaskRepository(new IDBFactory());
@@ -411,7 +689,11 @@ describe('task center read-only snapshot', () => {
       title: ''
     });
     expect(snapshot).toMatchObject({ context, errors: [], productHasMore: false, unscopedQueueCount: 1 });
-    expect(s.getContext).toHaveBeenCalledTimes(2);
+    expect(s.getContext).toHaveBeenCalledTimes(8);
+    expect(s.getContext.mock.calls.filter((args) => args.length === 0)).toHaveLength(2);
+    for (const operation of ['listPhotos', 'verifyProductVideoAssociation'])
+      expect(s.getContext.mock.calls.filter(([value]) => value === operation)).toHaveLength(2);
+    expect(s.getContext).toHaveBeenCalledWith('callCapability', { method: 'alibaba.icbu.video.upload' });
     expect(s.jobs.list).toHaveBeenCalledExactlyOnceWith({ page: 1, pageSize: 100 });
     expect(s.videoUpload).toHaveBeenCalledExactlyOnceWith({ action: 'list' }, context);
     for (const operation of [
@@ -466,9 +748,10 @@ describe('task center read-only snapshot', () => {
     'discards every source if %s changes during the batch',
     async (field) => {
       const s = setup();
-      s.getContext
-        .mockResolvedValueOnce({ ...context })
-        .mockResolvedValueOnce({ ...context, [field]: 'other' });
+      let anchorReads = 0;
+      s.getContext.mockImplementation((operation) =>
+        Promise.resolve(!operation && ++anchorReads > 1 ? { ...context, [field]: 'other' } : { ...context })
+      );
       await expect(loadTaskCenterSnapshot(s.services, s.repository, s.storage)).rejects.toMatchObject({
         code: 'TASK_CONTEXT_CHANGED'
       });
@@ -494,7 +777,8 @@ describe('task center read-only snapshot', () => {
     await vi.waitFor(() => {
       expect(s.videoUpload).toHaveBeenCalledTimes(1);
     });
-    expect(s.getContext).toHaveBeenCalledTimes(1);
+    expect(s.getContext).toHaveBeenCalledTimes(4);
+    expect(s.getContext.mock.calls.filter((args) => args.length === 0)).toHaveLength(1);
     shared.gateway = 'changed';
     finish(uploadResult());
     await expect(loading).rejects.toThrow('TASK_CONTEXT_CHANGED');
@@ -516,8 +800,9 @@ describe('task center read-only snapshot', () => {
     );
     expect(s.jobs.list).not.toHaveBeenCalled();
     current = true;
-    s.getContext.mockResolvedValueOnce({ ...context }).mockImplementationOnce(() => {
-      current = false;
+    let anchorReads = 0;
+    s.getContext.mockImplementation((operation) => {
+      if (!operation && ++anchorReads > 1) current = false;
       return Promise.resolve({ ...context });
     });
     await expect(loadTaskCenterSnapshot(s.services, s.repository, s.storage, () => current)).rejects.toThrow(
@@ -527,7 +812,11 @@ describe('task center read-only snapshot', () => {
 
   it('rejects when final context becomes unavailable even if all sources succeed', async () => {
     const s = setup();
-    s.getContext.mockResolvedValueOnce({ ...context }).mockRejectedValueOnce(new Error('private failure'));
+    let anchorReads = 0;
+    s.getContext.mockImplementation((operation) => {
+      if (!operation && ++anchorReads > 1) return Promise.reject(new Error('private failure'));
+      return Promise.resolve({ ...context });
+    });
     await expect(loadTaskCenterSnapshot(s.services, s.repository, s.storage)).rejects.toThrow(
       'TASK_CONTEXT_UNAVAILABLE'
     );

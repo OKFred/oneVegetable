@@ -3,6 +3,7 @@ import { defineComponent, h } from 'vue';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import type { GatewayClient } from '@one-vegetable/core';
 import ProductPicker from '../src/components/ProductPicker.vue';
 import ProductReplacementPicker from '../src/components/ProductReplacementPicker.vue';
 import { provideServices } from '../src/lib/services';
@@ -14,8 +15,11 @@ afterEach(() => {
   });
   vi.restoreAllMocks();
 });
-async function setup(replacement: boolean) {
-  const gateway = new MockGatewayClient(0);
+async function setup(
+  replacement: boolean,
+  gateway: GatewayClient = new MockGatewayClient(0),
+  expectedIdentity = ''
+) {
   const page = await gateway.request('listProducts', {
     page: 1,
     pageSize: 10,
@@ -30,7 +34,9 @@ async function setup(replacement: boolean) {
       setup() {
         provideServices({ gateway, mode: 'mock', settings: { load: vi.fn(), save: vi.fn() } });
         return () =>
-          replacement ? h(ProductReplacementPicker, { excludedIds: [online.id] }) : h(ProductPicker);
+          replacement
+            ? h(ProductReplacementPicker, { excludedIds: [online.id] })
+            : h(ProductPicker, { expectedIdentity });
       }
     })
   );
@@ -41,6 +47,54 @@ async function setup(replacement: boolean) {
   return { wrapper, offline, online };
 }
 describe('shared product picker', () => {
+  it('refuses a mismatched caller identity before sending a product query', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          provideServices({ gateway, mode: 'mock', settings: { load: vi.fn(), save: vi.fn() } });
+          return () => h(ProductPicker, { expectedIdentity: 'different-account' });
+        }
+      })
+    );
+    mounted.push(wrapper);
+    await flushPromises();
+    expect(request).not.toHaveBeenCalled();
+    expect(wrapper.findAll('li')).toHaveLength(0);
+    expect(wrapper.getComponent(ProductPicker).emitted('select')).toBeUndefined();
+  });
+  it('keeps the caller page identity while pinning product reads to their own route', async () => {
+    const gateway: GatewayClient = new MockGatewayClient(0);
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    let route = 'top-products';
+    const context = vi
+      .spyOn(gateway, 'galleryTransferContext')
+      .mockImplementation((operation) => Promise.resolve(operation ? { ...upload, gateway: route } : upload));
+    const request = vi.spyOn(gateway, 'request');
+    const { wrapper, online } = await setup(
+      false,
+      gateway,
+      JSON.stringify([upload.identity, upload.gateway])
+    );
+    expect(context).toHaveBeenCalledWith(
+      'listProducts',
+      expect.objectContaining({ page: 1, pageSize: 10, subject: '' })
+    );
+    expect(request).toHaveBeenLastCalledWith('listProducts', expect.anything(), {
+      galleryContext: { ...upload, gateway: route }
+    });
+    const row = wrapper.findAll('li').find((li) => li.text().includes(online.id));
+    if (!row) throw new Error('Missing row');
+    await row.get('button').trigger('click');
+    await flushPromises();
+    expect(wrapper.getComponent(ProductPicker).emitted('select')).toHaveLength(1);
+    route = 'replacement-top';
+    await row.get('button').trigger('click');
+    await flushPromises();
+    expect(wrapper.getComponent(ProductPicker).emitted('select')).toHaveLength(1);
+    expect(wrapper.findAll('li')).toHaveLength(0);
+  });
   it('allows existing offline products for video selection without enabling a product write', async () => {
     const { wrapper, offline } = await setup(false);
     const row = wrapper.findAll('li').find((li) => li.text().includes(offline.id));

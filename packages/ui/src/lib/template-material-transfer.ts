@@ -67,14 +67,18 @@ function matchingMaterialTasks(
   context: GalleryTransferContext,
   groupId: string
 ): GalleryTransferTaskV1[] {
-  return tasks.filter(
+  const matching = tasks.filter(
     (task) =>
       task.direction === 'import' &&
       task.storage === 'zip' &&
       task.archiveSha256 === sha &&
-      sameGalleryTransferContext(task.context, context) &&
+      task.context.identity === context.identity &&
       task.items.every((item) => item.kind === 'asset' && item.targetGroupId === groupId)
   );
+  // A routing change must not hide an older write-ahead receipt and start a second upload.
+  if (matching.some((task) => !sameGalleryTransferContext(task.context, context)))
+    throw templateError('TEMPLATE_CONTEXT_CHANGED');
+  return matching;
 }
 function assertImportConsent(task: GalleryTransferTaskV1, reuse: boolean): void {
   if (task.status === 'running') throw templateError('GALLERY_TASK_BUSY');
@@ -99,7 +103,7 @@ async function assertContext(
 ): Promise<void> {
   assertTemplateMaterialCurrent(isCurrent);
   if (!services.gateway.galleryTransferContext) throw templateError('TEMPLATE_MATERIAL_UNAVAILABLE');
-  const current = await services.gateway.galleryTransferContext();
+  const current = await services.gateway.galleryTransferContext('listPhotos', {});
   if (!sameGalleryTransferContext(current, expected)) throw templateError('TEMPLATE_CONTEXT_CHANGED');
   assertTemplateMaterialCurrent(isCurrent);
 }
@@ -115,7 +119,7 @@ export async function prepareTemplateMaterialExport(
   const sources = templateImageSources(templates);
   if (sources.length > TEMPLATE_MATERIAL_MAX_ASSETS) throw templateError('TEMPLATE_MATERIAL_LIMIT');
   const bundle = parseTemplateBundle(encodeTemplateBundle(templates));
-  const context = sources.length ? await services.gateway.galleryTransferContext?.() : null;
+  const context = sources.length ? await services.gateway.galleryTransferContext?.('listPhotos', {}) : null;
   if (sources.length && !context) throw templateError('TEMPLATE_MATERIAL_UNAVAILABLE');
   const replacements = new Map<string, string>();
   const metadata = new Map<string, TemplateMaterialAsset>();

@@ -12,7 +12,8 @@ export const errors = {
     ALIBABA_PROTOCOL_CREDENTIALS_NOT_CONFIGURED:
       '请求协议尚未配置凭据，请配置对应授权；不能混用另一协议的授权。',
     ALIBABA_PROTOCOL_INVALID: '网关协议无效，请明确选择 TOP 或 IOP。',
-    ALIBABA_IOP_METHOD_UNSUPPORTED: '此方法尚未映射到 IOP，请选择已支持的方法；不会回退 TOP。',
+    ALIBABA_IOP_METHOD_UNSUPPORTED:
+      '此功能暂不能通过 IOP 调用。若已有旧版 TOP 应用，请在设置中配置 TOP 授权；已开始的任务不会自动切换授权。',
     ALIBABA_IOP_PARAMETER_UNSUPPORTED: 'IOP 尚不支持此筛选参数，已停止请求，不会静默忽略。',
     ALIBABA_IOP_MUTATION_UNVERIFIED: '此 IOP 写方法尚未完成账号验收，保持禁用。',
     ALIBABA_IOP_BUSINESS_REJECTED: '平台明确拒绝了此 IOP 操作，请核对业务条件，不要重复提交。',

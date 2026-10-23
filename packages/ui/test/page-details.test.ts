@@ -2,12 +2,100 @@
 import { effectScope, nextTick, ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
-import { GatewayException, type TradeOrderAggregate } from '@one-vegetable/core';
-import { requestPageDetail, usePageDetails } from '../src/lib/page-details';
+import { GatewayException, type GatewayClient, type TradeOrderAggregate } from '@one-vegetable/core';
+import { pageDetailIdentity, requestPageDetail, usePageDetails } from '../src/lib/page-details';
 import iopDetailFixture from '../../../mock/data/iop-order-public-detail.json';
 
 describe('page details', () => {
   afterEach(() => vi.useRealTimers());
+  it.each(['top-only', 'iop-only', 'dual'])(
+    'resolves SKU inventory and order aggregate routes from their actual payloads with %s',
+    async (configuration) => {
+      const gateway: GatewayClient = new MockGatewayClient(0);
+      const upload = {
+        identity: 'account',
+        gateway: configuration === 'top-only' ? 'top' : 'iop',
+        storage: null
+      };
+      const read = { ...upload, gateway: configuration === 'iop-only' ? 'iop' : 'top' };
+      const context = vi
+        .spyOn(gateway, 'galleryTransferContext')
+        .mockImplementation((operation) => Promise.resolve(operation ? read : upload));
+      const request = vi.spyOn(gateway, 'request');
+      const identity = await pageDetailIdentity(gateway, 'extension');
+      const inventory = { kind: 'inventory', id: '10000001', source: 'sku' } as const;
+      await requestPageDetail(gateway, 'extension', 'en_US', inventory, identity);
+      expect(context).toHaveBeenCalledWith('getProductInventory', {
+        productId: inventory.id,
+        source: 'sku',
+        language: 'en_US'
+      });
+      expect(request).toHaveBeenLastCalledWith('getProductInventory', expect.anything(), {
+        galleryContext: read
+      });
+      await requestPageDetail(
+        gateway,
+        'extension',
+        'en_US',
+        { kind: 'order', order: iopDetailFixture.ready.order },
+        identity
+      );
+      expect(context).toHaveBeenCalledWith('getTradeOrderAggregate', {
+        order: iopDetailFixture.ready.order,
+        language: 'en_US'
+      });
+      expect(request).toHaveBeenLastCalledWith('getTradeOrderAggregate', expect.anything(), {
+        galleryContext: read
+      });
+    }
+  );
+  it('isolates cached details by read context and rejects removed contexts without fallback', async () => {
+    const gateway: GatewayClient = new MockGatewayClient(0);
+    const upload = { identity: 'account', gateway: 'iop', storage: null };
+    let route = 'top-one';
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation) => {
+      if (operation && route === 'removed') throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
+      return Promise.resolve(operation ? { ...upload, gateway: route } : upload);
+    });
+    const request = vi.spyOn(gateway, 'request');
+    const input = { kind: 'score', id: '10000001' } as const;
+    await requestPageDetail(gateway, 'extension', 'en_US', input);
+    await requestPageDetail(gateway, 'extension', 'en_US', input);
+    expect(request).toHaveBeenCalledTimes(1);
+    route = 'top-two';
+    await requestPageDetail(gateway, 'extension', 'en_US', input);
+    expect(request).toHaveBeenCalledTimes(2);
+    route = 'removed';
+    await expect(requestPageDetail(gateway, 'extension', 'en_US', input)).rejects.toThrow(
+      'GALLERY_CONTEXT_UNAVAILABLE'
+    );
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+  it.each(['page', 'read'])('discards late details when the %s context changes', async (changed) => {
+    const gateway: GatewayClient = new MockGatewayClient(0);
+    const root = { identity: 'account', gateway: 'iop', storage: null };
+    let stale = false;
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve({
+        ...root,
+        gateway: operation
+          ? stale && changed === 'read'
+            ? 'top-new'
+            : 'top'
+          : stale && changed === 'page'
+            ? 'iop-new'
+            : 'iop'
+      })
+    );
+    const request = vi.spyOn(gateway, 'request').mockImplementation(() => {
+      stale = true;
+      return Promise.resolve({ productId: '10000001', score: 4, issues: [] });
+    });
+    await expect(
+      requestPageDetail(gateway, 'extension', 'en_US', { kind: 'score', id: '10000001' })
+    ).rejects.toThrow('GALLERY_CONTEXT_CHANGED');
+    expect(request).toHaveBeenCalledOnce();
+  });
   it('rejects changed credentials before networking and isolates languages', async () => {
     const gateway = new MockGatewayClient(0);
     const context = await gateway.galleryTransferContext();
@@ -26,6 +114,7 @@ describe('page details', () => {
     const gateway = new MockGatewayClient(0);
     const context = await gateway.galleryTransferContext();
     vi.spyOn(gateway, 'galleryTransferContext')
+      .mockResolvedValueOnce(context)
       .mockResolvedValueOnce(context)
       .mockResolvedValue({ ...context, identity: 'different-user' });
     await expect(

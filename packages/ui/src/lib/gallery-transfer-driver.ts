@@ -14,6 +14,7 @@ import type { GalleryTransferDriver } from '@one-vegetable/core/gallery-transfer
 import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 import {
   GalleryTaskError,
+  sameGalleryTransferContext,
   type GalleryTransferItemV1 as Item,
   type GalleryTransferTaskV1 as Task
 } from '@one-vegetable/core/gallery-transfer-task';
@@ -103,10 +104,13 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
     private readonly services: AppServices,
     private readonly download: (name: string, bytes: Uint8Array) => void
   ) {}
-  async context() {
+  async context(task?: Task) {
     if (!this.services.gateway.galleryTransferContext)
       throw new GalleryTaskError('GALLERY_CONTEXT_UNAVAILABLE');
-    return this.services.gateway.galleryTransferContext();
+    const context = await this.services.gateway.galleryTransferContext('listPhotos', {});
+    if (task && !sameGalleryTransferContext(task.context, context))
+      throw new GalleryTaskError('GALLERY_CONTEXT_CHANGED');
+    return context;
   }
   async attachArchive(task: Task, bytes: Uint8Array): Promise<void> {
     if ((await galleryAssetSha256(bytes)) !== task.archiveSha256) {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, shallowRef, watch } from 'vue';
-import type { Product, ProductPage } from '@one-vegetable/core';
+import type { Product, ProductPage, RequestOf } from '@one-vegetable/core';
 import { GatewayException } from '@one-vegetable/core/errors';
 import { pageDetailIdentity } from '../lib/page-details';
 import { useServices } from '../lib/services';
@@ -35,6 +35,8 @@ const loading = ref(false);
 const error = shallowRef<unknown>(null);
 const loadedIdentity = ref('');
 const selecting = ref(false);
+let loadedPayload: RequestOf<'listProducts'> | undefined;
+let loadedContexts = '';
 let generation = 0;
 function contextChanged(): never {
   throw new GatewayException({
@@ -57,21 +59,35 @@ async function load(): Promise<void> {
         ? 'mock'
         : '';
     if (!identity || (props.expectedIdentity && identity !== props.expectedIdentity)) contextChanged();
+    const payload = {
+      page: page.value,
+      pageSize: pageSize.value,
+      subject: subject.value.trim(),
+      language: alibabaLanguage.value
+    };
+    const readContext = await gateway.galleryTransferContext?.('listProducts', payload);
+    if ((!readContext && mode !== 'mock') || (context && readContext?.identity !== context.identity))
+      contextChanged();
+    const contexts = JSON.stringify([context, readContext]);
     const response = await gateway.request(
       'listProducts',
-      {
-        page: page.value,
-        pageSize: pageSize.value,
-        subject: subject.value.trim(),
-        language: alibabaLanguage.value
-      },
-      context ? { galleryContext: context } : undefined
+      payload,
+      readContext ? { galleryContext: readContext } : undefined
     );
     const current = await pageDetailIdentity(gateway, mode);
     if (current !== identity) contextChanged();
+    if (
+      JSON.stringify([
+        await gateway.galleryTransferContext?.(),
+        await gateway.galleryTransferContext?.('listProducts', payload)
+      ]) !== contexts
+    )
+      contextChanged();
     if (attempt === generation) {
       result.value = response;
       loadedIdentity.value = identity;
+      loadedPayload = payload;
+      loadedContexts = contexts;
     }
   } catch (cause) {
     if (attempt === generation) error.value = cause;
@@ -93,6 +109,15 @@ async function select(product: Product): Promise<void> {
     if (attempt !== generation || isDisabled()) return;
     if (current !== loadedIdentity.value || (props.expectedIdentity && current !== props.expectedIdentity))
       contextChanged();
+    if (
+      !loadedPayload ||
+      JSON.stringify([
+        await gateway.galleryTransferContext?.(),
+        await gateway.galleryTransferContext?.('listProducts', loadedPayload)
+      ]) !== loadedContexts
+    )
+      contextChanged();
+    if (attempt !== generation || isDisabled()) return;
     emit('select', product);
   } catch (cause) {
     if (attempt === generation) {

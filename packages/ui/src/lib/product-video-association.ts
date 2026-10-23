@@ -2,6 +2,10 @@ import { computed, onScopeDispose, ref, shallowRef } from 'vue';
 import type { RequestOf, ResponseOf } from '@one-vegetable/core';
 import type { Video } from '@one-vegetable/core/video';
 import {
+  sameGalleryTransferContext,
+  type GalleryTransferContext
+} from '@one-vegetable/core/gallery-transfer-task';
+import {
   validateVideoAssociationVerifyRequest,
   validateVideoAssociationResult
 } from '@one-vegetable/core/video-association';
@@ -69,7 +73,12 @@ function persist(key: string, receipt: VideoAssociationReceipt): void {
 }
 
 export function useProductVideoAssociation(
-  target: () => { productId: string; language: Request['language']; blocked: boolean }
+  target: () => {
+    productId: string;
+    language: Request['language'];
+    blocked: boolean;
+    sourceContext?: Readonly<GalleryTransferContext>;
+  }
 ) {
   const services = useServices();
   const receipt = shallowRef<VideoAssociationReceipt | null>(null);
@@ -82,21 +91,71 @@ export function useProductVideoAssociation(
     '' | 'associationStorage' | 'associationUnavailable' | 'associationUnknown' | 'associationBlocked'
   >('');
   const corrupt = ref(false);
+  const historicalPending = ref(false);
+  // Public identity remains the page anchor; storage and dispatch use the receipt owner's context.
+  let receiptIdentity = '';
   let generation = 0;
   let disposed = false;
-  const unresolved = computed(() => corrupt.value || associationReceiptBlocks(receipt.value));
+  const unresolved = computed(
+    () => corrupt.value || historicalPending.value || associationReceiptBlocks(receipt.value)
+  );
   const keyFor = (stamp: string, id: string) =>
     VIDEO_ASSOCIATION_PREFIX + JSON.stringify([services.mode, stamp, id]);
-  async function context() {
-    const value = await services.gateway.galleryTransferContext?.();
+  function assertSourceContext(value: GalleryTransferContext | undefined): void {
+    const expected = target().sourceContext;
+    if (expected && (!value || !sameGalleryTransferContext(expected, value))) throw new Error('context');
+  }
+  async function context(
+    operation?: 'verifyProductVideoAssociation' | 'associateProductVideo',
+    payload?: Readonly<Record<string, unknown>>
+  ) {
+    const value = operation
+      ? await services.gateway.galleryTransferContext?.(operation, payload)
+      : await services.gateway.galleryTransferContext?.();
     if (!value && services.mode !== 'mock') throw new Error('context');
+    if (operation) assertSourceContext(value);
     return { value, stamp: value ? JSON.stringify([value.identity, value.gateway]) : 'mock' };
   }
+  function historicalReceipt(stamp: string, productId: string): VideoAssociationReceipt | null {
+    const account: unknown = stamp === 'mock' ? ['mock'] : JSON.parse(stamp);
+    if (!Array.isArray(account)) throw new Error('receipt');
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(VIDEO_ASSOCIATION_PREFIX) || key === keyFor(stamp, productId)) continue;
+      let parts: unknown;
+      let owner: unknown;
+      try {
+        parts = JSON.parse(key.slice(VIDEO_ASSOCIATION_PREFIX.length));
+        if (
+          !Array.isArray(parts) ||
+          parts[0] !== services.mode ||
+          parts[2] !== productId ||
+          typeof parts[1] !== 'string'
+        )
+          continue;
+        owner = parts[1] === 'mock' ? ['mock'] : JSON.parse(parts[1]);
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(owner) || owner[0] !== account[0]) continue;
+      const saved = readReceipt(key);
+      if (saved && saved.request.productId !== productId) throw new Error('receipt');
+      if (associationReceiptBlocks(saved)) return saved;
+    }
+    return null;
+  }
   async function availability() {
-    const data = await services.operationAvailability?.get([
-      'associateProductVideo',
-      'verifyProductVideoAssociation'
-    ]);
+    const value = await services.gateway.galleryTransferContext?.('verifyProductVideoAssociation');
+    if (!value && services.mode !== 'mock') throw new Error('context');
+    assertSourceContext(value);
+    const data = await services.operationAvailability?.get(
+      ['associateProductVideo', 'verifyProductVideoAssociation'],
+      value ? { galleryContext: value } : undefined
+    );
+    if (
+      JSON.stringify(value) !==
+      JSON.stringify(await services.gateway.galleryTransferContext?.('verifyProductVideoAssociation'))
+    )
+      throw new Error('context');
     return {
       // This iteration deliberately has no real-write opt-in in the UI.
       write:
@@ -115,13 +174,19 @@ export function useProductVideoAssociation(
     identity.value = '';
     receipt.value = null;
     corrupt.value = false;
+    historicalPending.value = false;
+    receiptIdentity = '';
     try {
       if (!decimal(productId)) return;
       const c = await context(),
-        key = keyFor(c.stamp, productId);
+        owner = await context('verifyProductVideoAssociation'),
+        key = keyFor(owner.stamp, productId);
+      if (c.value?.identity !== owner.value?.identity) throw new Error('context');
       let saved: VideoAssociationReceipt | null;
+      let historical: VideoAssociationReceipt | null;
       try {
         saved = readReceipt(key);
+        historical = historicalReceipt(owner.stamp, productId);
         if (saved && saved.request.productId !== productId) throw new Error('receipt');
         if (saved?.state === 'sending' && 'locks' in navigator) {
           await navigator.locks.request(VIDEO_ASSOCIATION_LOCK, { ifAvailable: true }, (lock) => {
@@ -137,17 +202,22 @@ export function useProductVideoAssociation(
         if (current === generation) corrupt.value = true;
         throw new Error('receipt');
       }
-      const beforeDisplay = await context();
+      const beforeDisplay = await context(),
+        beforeOwner = await context('verifyProductVideoAssociation');
       if (current !== generation) return;
-      if (beforeDisplay.stamp !== c.stamp) throw new Error('context');
+      if (beforeDisplay.stamp !== c.stamp || beforeOwner.stamp !== owner.stamp) throw new Error('context');
       identity.value = c.stamp;
-      receipt.value = saved;
+      receiptIdentity = owner.stamp;
+      historicalPending.value = historical !== null;
+      receipt.value = saved ?? historical;
       const decision = await availability().catch(() => ({ write: false, verify: false }));
-      const afterAvailability = await context();
+      const afterAvailability = await context(),
+        afterOwner = await context('verifyProductVideoAssociation');
       if (current !== generation) return;
-      if (afterAvailability.stamp !== c.stamp) throw new Error('context');
+      if (afterAvailability.stamp !== c.stamp || afterOwner.stamp !== owner.stamp) throw new Error('context');
       allowed.value = decision.write;
-      verifyAllowed.value = decision.verify;
+      verifyAllowed.value = decision.verify && associationReceiptBlocks(saved);
+      if (historical) error.value = 'associationBlocked';
     } catch (cause) {
       if (current === generation) {
         identity.value = '';
@@ -191,7 +261,8 @@ export function useProductVideoAssociation(
       return;
     const stamp = intent?.identity ?? identity.value,
       productId = target().productId;
-    const key = keyFor(stamp, productId),
+    const ownerStamp = receiptIdentity;
+    const key = keyFor(ownerStamp, productId),
       current = generation;
     busy.value = true;
     error.value = '';
@@ -204,6 +275,7 @@ export function useProductVideoAssociation(
           decision = await availability();
         if (
           c.stamp !== stamp ||
+          (await context('verifyProductVideoAssociation')).stamp !== ownerStamp ||
           (await context()).stamp !== stamp ||
           current !== generation ||
           productId !== target().productId
@@ -227,7 +299,8 @@ export function useProductVideoAssociation(
             !validRequest(intent.request) ||
             intent.request.productId !== productId ||
             intent.request.language !== target().language ||
-            associationReceiptBlocks(saved)
+            associationReceiptBlocks(saved) ||
+            historicalReceipt(ownerStamp, productId)
           )
             throw new Error('locked');
           sent = {
@@ -240,12 +313,25 @@ export function useProductVideoAssociation(
             code: null,
             updatedAt: Date.now()
           };
-          persist(key, sent); // MUST succeed before any mutation request.
         }
+        const operation = verifying ? 'verifyProductVideoAssociation' : 'associateProductVideo';
+        const payload = verifying ? sent.request : { ...sent.request, confirmed: true as const };
+        const requestContext = await services.gateway.galleryTransferContext?.(operation, payload);
+        assertSourceContext(requestContext);
+        if (
+          (!requestContext && services.mode !== 'mock') ||
+          (requestContext ? JSON.stringify([requestContext.identity, requestContext.gateway]) : 'mock') !==
+            ownerStamp ||
+          (await context()).stamp !== stamp ||
+          current !== generation
+        )
+          throw new Error('context');
+        if (!verifying) persist(key, sent); // MUST succeed before any mutation request.
         receipt.value = sent;
+        verifyAllowed.value = decision.verify && associationReceiptBlocks(sent);
         const options = {
           requestId: verifying ? crypto.randomUUID() : sent.requestId,
-          ...(c.value ? { galleryContext: c.value } : {})
+          ...(requestContext ? { galleryContext: requestContext } : {})
         };
         let next: VideoAssociationReceipt;
         try {
@@ -256,6 +342,13 @@ export function useProductVideoAssociation(
                 { ...sent.request, confirmed: true },
                 options
               );
+          if (
+            verifying &&
+            (JSON.stringify(requestContext) !==
+              JSON.stringify(await services.gateway.galleryTransferContext?.(operation, payload)) ||
+              (await context()).stamp !== stamp)
+          )
+            throw new Error('context');
           if (!validResult(result)) throw new Error('result');
           // A rejected read is not proof that an earlier ambiguous write never happened.
           const outcome = verifying && result.outcome === 'rejected' ? 'unknown' : result.outcome;
@@ -279,10 +372,13 @@ export function useProductVideoAssociation(
         }
         // Persist to the original account even after navigation, but never display it in a new context.
         if (current === generation) {
-          const afterSend = await context();
+          const afterSend = await context(),
+            afterOwner = await context('verifyProductVideoAssociation');
           if (current !== generation) return;
-          if (afterSend.stamp === stamp) receipt.value = next;
-          else invalidate();
+          if (afterSend.stamp === stamp && afterOwner.stamp === ownerStamp) {
+            receipt.value = next;
+            verifyAllowed.value = decision.verify && associationReceiptBlocks(next);
+          } else invalidate();
         }
       });
     } catch {
@@ -299,6 +395,7 @@ export function useProductVideoAssociation(
   function invalidate() {
     generation++;
     identity.value = '';
+    receiptIdentity = '';
     allowed.value = verifyAllowed.value = loading.value = false;
     receipt.value = null;
   }

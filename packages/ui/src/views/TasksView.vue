@@ -16,7 +16,9 @@ import {
   loadTaskCenterSnapshot,
   bindTaskBatchItems,
   taskContextStamp,
+  taskSourceContext,
   taskGuidance,
+  type TaskCenterSnapshot,
   type TaskSource,
   type TaskSummary,
   type TaskState
@@ -60,6 +62,7 @@ const maintenanceBatches = computed(() => {
   }));
 });
 const context = shallowRef<GalleryTransferContext | null>(null);
+const sourceContexts = shallowRef<TaskCenterSnapshot['sourceContexts']>({});
 const errors = ref<{ source: TaskSource; code: string }[]>([]);
 const unscopedQueueCount = ref(0),
   productHasMore = ref(false),
@@ -154,6 +157,7 @@ function clear() {
   items.value = [];
   errors.value = [];
   context.value = null;
+  sourceContexts.value = {};
   selectedId.value = '';
   associationOpen.value = false;
   associationBusy.value = false;
@@ -186,6 +190,7 @@ async function load(more = false) {
     items.value = [...new Map([...retained, ...result.items].map((item) => [item.id, item])).values()];
     errors.value = result.errors;
     context.value = result.context;
+    sourceContexts.value = result.sourceContexts ?? {};
     productHasMore.value = result.productHasMore;
     // The old queue has no owner. Never display its contents as current-account data.
     unscopedQueueCount.value = result.unscopedQueueCount;
@@ -254,6 +259,19 @@ async function openSource(item: TaskSummary) {
     const current = await services.gateway.galleryTransferContext?.();
     if (!currentIntent()) return;
     if (!current || taskContextStamp(current) !== stamp) throw new Error('context');
+    const sourceContext = item.source === 'product' ? null : sourceContexts.value?.[item.source];
+    if (sourceContext && item.source !== 'product') {
+      const latest = await taskSourceContext(services, item.source);
+      if (!currentIntent()) return;
+      if (
+        latest.identity !== current.identity ||
+        taskContextStamp(latest) !== taskContextStamp(sourceContext)
+      )
+        throw new Error('context');
+      const anchor = await services.gateway.galleryTransferContext?.();
+      if (!currentIntent()) return;
+      if (!anchor || taskContextStamp(anchor) !== stamp) throw new Error('context');
+    }
     if (item.source === 'video-association') {
       associationOpen.value = true;
       return;

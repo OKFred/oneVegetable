@@ -8,7 +8,7 @@ import ErrorNotice from './ErrorNotice.vue';
 const props = defineProps<{ language: 'zh_CN' | 'en_US'; locked: boolean; categoryId: number | null }>();
 const market = defineModel<'wholesale' | 'sourcing'>({ required: true });
 const emit = defineEmits<{ blocked: [blocked: boolean] }>();
-const { gateway } = useServices();
+const { gateway, mode } = useServices();
 const s = useProductPostingI18n();
 const choices = ['sourcing', 'wholesale'] as const;
 const support = shallowRef<Record<(typeof choices)[number], boolean> | null>(null);
@@ -39,17 +39,22 @@ async function load(): Promise<void> {
     return;
   }
   try {
-    const context = await gateway.galleryTransferContext?.();
+    const payload = {
+      method: 'alibaba.icbu.product.type.available.get',
+      parameters: { type_request: { cat_id: props.categoryId, language: props.language.toLowerCase() } }
+    };
+    const context = await gateway.galleryTransferContext?.('callCapability', payload);
+    if (!context && mode !== 'mock') throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
     const result = await gateway.request(
       'callCapability',
-      {
-        method: 'alibaba.icbu.product.type.available.get',
-        parameters: { type_request: { cat_id: props.categoryId, language: props.language.toLowerCase() } }
-      },
+      payload,
       context ? { galleryContext: context } : undefined
     );
     if (current !== generation) return;
-    if (JSON.stringify(context) !== JSON.stringify(await gateway.galleryTransferContext?.()))
+    if (
+      JSON.stringify(context) !==
+      JSON.stringify(await gateway.galleryTransferContext?.('callCapability', payload))
+    )
       throw new Error(s('invalid'));
     if (current !== generation) return;
     const data = result.data;

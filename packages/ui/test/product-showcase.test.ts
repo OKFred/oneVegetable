@@ -3,8 +3,9 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import type { GatewayClient } from '@one-vegetable/core';
 import { useProductShowcase } from '../src/lib/product-showcase';
-import { provideServices } from '../src/lib/services';
+import { provideServices, type AppServices } from '../src/lib/services';
 
 vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() } }));
 beforeEach(() => {
@@ -18,8 +19,13 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-function setup() {
-  const gateway = new MockGatewayClient(0);
+function setup(mode: 'mock' | 'extension' = 'mock') {
+  const gateway: GatewayClient = new MockGatewayClient(0);
+  const get = vi.fn<NonNullable<AppServices['operationAvailability']>['get']>((operations) =>
+    Promise.resolve({
+      items: operations.map((operation) => ({ operation, allowed: true, reasonCode: null }))
+    })
+  );
   let controller: ReturnType<typeof useProductShowcase> | undefined;
   const Child = defineComponent({
     setup() {
@@ -31,7 +37,8 @@ function setup() {
     setup() {
       provideServices({
         gateway,
-        mode: 'mock',
+        mode,
+        operationAvailability: { get },
         settings: {
           load: () =>
             Promise.resolve({
@@ -49,10 +56,159 @@ function setup() {
   });
   const wrapper = mount(Host);
   if (!controller) throw new Error('Missing controller');
-  return { controller, wrapper, gateway };
+  return { controller, wrapper, gateway, get };
 }
 const selected = [{ id: '10000001', subject: 'Power station', status: 'online' as const }];
 describe('showcase controller', () => {
+  it.each(['pending', 'corrupt'])(
+    'keeps a historical IOP %s receipt read-only when showcase now selects TOP',
+    async (kind) => {
+      const { controller, wrapper, gateway } = setup('extension');
+      const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+      const showcase = { ...upload, gateway: 'top-showcase' };
+      vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation) =>
+        Promise.resolve(operation ? showcase : upload)
+      );
+      const legacyKey = 'one-vegetable:showcase:v1:account:iop-upload';
+      const raw =
+        kind === 'corrupt'
+          ? '{broken'
+          : JSON.stringify({
+              requestId: '00000000-0000-4000-8000-000000000001',
+              action: 'remove',
+              ids: ['10000001']
+            });
+      localStorage.setItem(legacyKey, raw);
+      const request = vi.spyOn(gateway, 'request');
+      await controller.load();
+      expect(controller.snapshot.value).not.toBeNull();
+      expect(controller.unresolved.value).toBe(true);
+      expect(controller.reason('remove', selected)).not.toBe('');
+      expect(
+        controller.prepareEdit('replace', '8001', { id: '10000002', subject: 'Second', status: 'online' })
+      ).toBeNull();
+      await controller.mutate('remove', selected);
+      await expect(controller.acknowledgeReceipt()).rejects.toThrow('SHOWCASE_LOCKED');
+      expect(request.mock.calls.every(([operation]) => operation === 'getProductShowcase')).toBe(true);
+      expect(localStorage.getItem(legacyKey)).toBe(raw);
+      expect(localStorage.getItem('one-vegetable:showcase:v1:account:top-showcase')).toBeNull();
+      wrapper.unmount();
+    }
+  );
+  it('rechecks historical ownership on a cached load and before a prepared edit sends', async () => {
+    const { controller, wrapper, gateway } = setup('extension');
+    const upload = { identity: 'account', gateway: 'iop-upload', storage: null };
+    const showcase = { ...upload, gateway: 'top-showcase' };
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve(operation ? showcase : upload)
+    );
+    await controller.load();
+    const intent = controller.prepareEdit('replace', '8001', {
+      id: '10000002',
+      subject: 'Second',
+      status: 'online'
+    });
+    if (!intent) throw new Error('Missing replacement intent');
+    const legacyKey = 'one-vegetable:showcase:v1:account:iop-removed';
+    localStorage.setItem(legacyKey, '00000000-0000-4000-8000-000000000001');
+    const request = vi.spyOn(gateway, 'request');
+    await controller.edit(intent);
+    expect(request).not.toHaveBeenCalled();
+    await controller.load();
+    expect(controller.unresolved.value).toBe(true);
+    await expect(controller.acknowledgeReceipt()).rejects.toThrow('SHOWCASE_LOCKED');
+    expect(localStorage.getItem(legacyKey)).toBe('00000000-0000-4000-8000-000000000001');
+    wrapper.unmount();
+  });
+  it('loads a TOP-owned pending receipt without importing another account receipt', async () => {
+    const { controller, wrapper, gateway } = setup('extension');
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation((operation) =>
+      Promise.resolve({
+        identity: 'account',
+        gateway: operation ? 'top-showcase' : 'iop-upload',
+        storage: null
+      })
+    );
+    const raw = JSON.stringify({
+      requestId: '00000000-0000-4000-8000-000000000002',
+      action: 'sort',
+      ids: ['10000001']
+    });
+    localStorage.setItem('one-vegetable:showcase:v1:account:top-showcase', raw);
+    localStorage.setItem('one-vegetable:showcase:v1:other-account:iop-upload', 'keep');
+    await controller.load();
+    expect(controller.unresolved.value).toBe(true);
+    expect(controller.pendingAction.value).toBe('sort');
+    await controller.acknowledgeReceipt();
+    expect(controller.unresolved.value).toBe(false);
+    expect(localStorage.getItem('one-vegetable:showcase:v1:other-account:iop-upload')).toBe('keep');
+    wrapper.unmount();
+  });
+  it.each(['top-only', 'iop-only', 'dual'])(
+    'uses one showcase context for all five operations and availability with %s configuration',
+    async (configuration) => {
+      const { controller, wrapper, gateway, get } = setup('extension');
+      const upload = {
+        identity: 'account',
+        gateway: configuration === 'top-only' ? 'top' : 'iop',
+        storage: null
+      };
+      const showcase = { ...upload, gateway: configuration === 'iop-only' ? 'iop' : 'top' };
+      const context = vi
+        .spyOn(gateway, 'galleryTransferContext')
+        .mockImplementation((operation) => Promise.resolve(operation ? showcase : upload));
+      const request = vi.spyOn(gateway, 'request');
+      await controller.load();
+      await controller.mutate('add', [{ id: '10000002', subject: 'Second', status: 'online' }]);
+      const sort = controller.prepareEdit('sort', '8001', 2);
+      if (!sort) throw new Error('Missing sort intent');
+      await controller.edit(sort);
+      await controller.mutate('remove', selected);
+      const replace = controller.prepareEdit('replace', '8002', {
+        id: '10000001',
+        subject: 'First',
+        status: 'online'
+      });
+      if (!replace) throw new Error('Missing replacement intent');
+      await controller.edit(replace);
+      expect(new Set(request.mock.calls.map(([operation]) => operation))).toEqual(
+        new Set([
+          'getProductShowcase',
+          'addShowcaseProducts',
+          'removeShowcaseProducts',
+          'sortShowcaseProduct',
+          'replaceShowcaseProduct'
+        ])
+      );
+      for (const call of request.mock.calls) expect(call[2]?.galleryContext).toEqual(showcase);
+      for (const call of get.mock.calls) expect(call[1]).toEqual({ galleryContext: showcase });
+      expect(context.mock.calls.every(([operation]) => operation === 'getProductShowcase')).toBe(true);
+      expect(controller.unresolved.value).toBe(false);
+      wrapper.unmount();
+    }
+  );
+  it('rejects changed showcase credentials before sending and does not retry rejected reads', async () => {
+    const { controller, wrapper, gateway } = setup('extension');
+    let route = 'top-original';
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation(() =>
+      Promise.resolve({
+        identity: 'account',
+        gateway: route,
+        storage: null
+      })
+    );
+    await controller.load();
+    route = 'top-replacement';
+    const request = vi.spyOn(gateway, 'request');
+    await controller.mutate('remove', selected);
+    expect(request.mock.calls.every(([operation]) => operation === 'getProductShowcase')).toBe(true);
+    request.mockClear().mockRejectedValue(new Error('PERMISSION_DENIED'));
+    await controller.load(true);
+    expect(request).toHaveBeenCalledOnce();
+    expect(controller.snapshot.value).toBeNull();
+    expect(localStorage.length).toBe(0);
+    wrapper.unmount();
+  });
   it('freezes sort positions and confirms the exact new order', async () => {
     const { controller, wrapper, gateway } = setup();
     await gateway.request('addShowcaseProducts', { product_id_list: ['10000002'] });

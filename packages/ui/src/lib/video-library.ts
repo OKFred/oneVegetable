@@ -5,8 +5,12 @@ import {
   validateVideoRelations,
   validateVideoProductResolution
 } from '@one-vegetable/core/video';
-import { pageDetailIdentity } from './page-details';
 import { GatewayException } from '@one-vegetable/core/errors';
+import { requireGalleryContext } from '@one-vegetable/core/gallery-transfer-context';
+import {
+  sameGalleryTransferContext,
+  type GalleryTransferContext
+} from '@one-vegetable/core/gallery-transfer-task';
 type Operation = 'listVideos' | 'listVideoRelatedProducts' | 'resolveVideoRelatedProduct';
 type Value = ResponseOf<Operation>;
 const cache = new WeakMap<GatewayClient, Map<string, { at: number; value: Value }>>();
@@ -18,6 +22,7 @@ const validators = {
 export interface VideoProductTarget {
   videoId: string;
   identity: string;
+  sourceContext?: Readonly<GalleryTransferContext>;
 }
 
 /** Re-read an exact, confirmed video. A title or an accepted upload is not an identity. */
@@ -35,7 +40,8 @@ export async function resolveVideoProductTarget(
     'listVideos',
     { page: 1, pageSize: 20, id: target.videoId },
     target.identity,
-    true
+    true,
+    target.sourceContext
   );
   const matches = page.items.filter((video) => video.id === target.videoId);
   const video = matches[0];
@@ -50,8 +56,10 @@ export async function requestVideo<K extends Operation>(
   operation: K,
   payload: RequestOf<K>,
   expectedIdentity: string,
-  refresh = false
+  refresh = false,
+  sourceContext?: Readonly<GalleryTransferContext>
 ): Promise<ResponseOf<K>> {
+  const expectedSource = sourceContext ? { ...requireGalleryContext(sourceContext) } : undefined;
   const context = await gateway.galleryTransferContext?.();
   const identity = context
     ? JSON.stringify([context.identity, context.gateway])
@@ -61,14 +69,17 @@ export async function requestVideo<K extends Operation>(
   if (!identity || identity !== expectedIdentity) fail('GALLERY_CONTEXT_CHANGED');
   // Page identity is anchored to the transfer configuration, but each read must
   // pin its own pre-dispatch route. Uploading images may use IOP while video reads use TOP.
-  const readContext = await gateway.galleryTransferContext?.(operation);
-  if (context && readContext?.identity !== context.identity) fail('GALLERY_CONTEXT_CHANGED');
+  const readContext = await gateway.galleryTransferContext?.(operation, payload);
+  if ((!readContext && mode !== 'mock') || (context && readContext?.identity !== context.identity))
+    fail('GALLERY_CONTEXT_CHANGED');
+  if (expectedSource && (!readContext || !sameGalleryTransferContext(expectedSource, readContext)))
+    fail('GALLERY_CONTEXT_CHANGED');
   let entries = cache.get(gateway);
   if (!entries) {
     entries = new Map();
     cache.set(gateway, entries);
   }
-  const key = JSON.stringify([mode, identity, readContext?.gateway, language, operation, payload]);
+  const key = JSON.stringify([mode, context, readContext, language, operation, payload]);
   const old = entries.get(key);
   if (!refresh && old && Date.now() - old.at < 300_000) return old.value;
   const result = await gateway.request(
@@ -76,12 +87,12 @@ export async function requestVideo<K extends Operation>(
     payload,
     readContext ? { galleryContext: readContext } : undefined
   );
-  if ((await pageDetailIdentity(gateway, mode)) !== identity) fail('GALLERY_CONTEXT_CHANGED');
-  if (readContext) {
-    const latest = await gateway.galleryTransferContext?.(operation);
-    if (latest?.identity !== readContext.identity || latest.gateway !== readContext.gateway)
-      fail('GALLERY_CONTEXT_CHANGED');
-  }
+  if (JSON.stringify(await gateway.galleryTransferContext?.()) !== JSON.stringify(context))
+    fail('GALLERY_CONTEXT_CHANGED');
+  const latest = await gateway.galleryTransferContext?.(operation, payload);
+  if (JSON.stringify(latest) !== JSON.stringify(readContext)) fail('GALLERY_CONTEXT_CHANGED');
+  if (expectedSource && (!latest || !sameGalleryTransferContext(expectedSource, latest)))
+    fail('GALLERY_CONTEXT_CHANGED');
   if (!validators[operation](result)) fail('VIDEO_RESPONSE_INVALID');
   if (entries.size >= 200) entries.clear();
   entries.set(key, { at: Date.now(), value: result });

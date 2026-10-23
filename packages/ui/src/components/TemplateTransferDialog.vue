@@ -308,10 +308,12 @@ async function checkUploadPermission(): Promise<void> {
       }
     }
     if (!operationAvailability) return;
-    const context = materialImport.value?.context;
-    const result = context
-      ? await operationAvailability.get(['uploadPhoto', 'listPhotos'], { galleryContext: context })
-      : await operationAvailability.get(['uploadPhoto', 'listPhotos']);
+    const context =
+      materialImport.value?.context ?? (await services.gateway.galleryTransferContext?.('listPhotos', {}));
+    if (!context) throw templateError('TEMPLATE_MATERIAL_UNAVAILABLE');
+    const result = await operationAvailability.get(['uploadPhoto', 'listPhotos'], {
+      galleryContext: context
+    });
     assertCurrent();
     const decision = result.items.find((item) => item.operation === 'uploadPhoto');
     uploadAllowed.value = decision?.allowed === true;

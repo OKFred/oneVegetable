@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import type { Video } from '@one-vegetable/core/video';
+import type { GalleryTransferContext } from '@one-vegetable/core/gallery-transfer-task';
 import { useProductVideoAssociation, type VideoAssociationIntent } from '../lib/product-video-association';
 import { useVideoI18n } from '../i18n/video';
 import { GATEWAY_CONFIGURATION_EVENT } from '../lib/gateway-configuration-events';
@@ -17,13 +18,18 @@ const props = withDefaults(
     productId: string;
     language: 'zh_CN' | 'en_US';
     blocked?: boolean;
-    preset?: { video: Video; identity: string } | null;
+    preset?: { video: Video; identity: string; sourceContext?: Readonly<GalleryTransferContext> } | null;
   }>(),
   { blocked: false, preset: null }
 );
 const emit = defineEmits<{ busy: [value: boolean] }>();
 const vt = useVideoI18n();
-const association = useProductVideoAssociation(() => props);
+const association = useProductVideoAssociation(() => ({
+  productId: props.productId,
+  language: props.language,
+  blocked: props.blocked,
+  ...(props.preset?.sourceContext ? { sourceContext: props.preset.sourceContext } : {})
+}));
 const { receipt, identity, allowed, verifyAllowed, busy, loading, error, unresolved } = association;
 const open = ref(false),
   type = ref<'main' | 'detail'>('main');
@@ -64,7 +70,9 @@ function visibilityChanged() {
   association.invalidate();
   if (globalThis.document.visibilityState === 'visible') void association.load();
 }
-watch([() => props.productId, () => props.language], reset, { immediate: true });
+watch([() => props.productId, () => props.language, () => props.preset?.sourceContext], reset, {
+  immediate: true
+});
 watch(
   busy,
   (value) => {

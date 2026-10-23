@@ -135,6 +135,44 @@ async function materialPackage(withImage = true): Promise<TemplateMaterialPackag
 }
 
 describe('template material runtime with persistent gallery tasks', () => {
+  it('selects listPhotos for the entire template upload and readback lifecycle', async () => {
+    const s = setup();
+    const plan = await prepareTemplateMaterialImport(
+      s.transfers,
+      await materialPackage(),
+      '2001',
+      'Target',
+      () => true
+    );
+    await executeTemplateMaterialImport(s.services, s.transfers, plan, 'copy', () => true);
+    expect(s.context).toHaveBeenCalledWith('listPhotos', {});
+    for (const args of s.context.mock.calls) expect(args).toEqual(['listPhotos', {}]);
+    for (const [, , options] of s.request.mock.calls) expect(options?.galleryContext).toEqual(plan.context);
+    expect(s.request.mock.calls.filter(([operation]) => operation === 'uploadPhoto')).toHaveLength(1);
+  });
+  it('does not hide an old receipt when a new preview selects a different protocol', async () => {
+    const s = setup();
+    const pack = await materialPackage();
+    const plan = await prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true);
+    const task = required(plan.task);
+    await s.transfers.create(task, required(plan.archiveBytes), false);
+    await s.transfers.repository.update(task.id, (current) => {
+      current.status = 'attention';
+      Object.assign(required(current.items[0]), { status: 'unknown', requestId: crypto.randomUUID() });
+    });
+    const before = await s.transfers.repository.get(task.id);
+    s.context.mockResolvedValue({ ...task.context, gateway: 'paired-top' });
+    s.request.mockClear();
+    await expect(
+      prepareTemplateMaterialImport(s.transfers, pack, '2001', 'Target', () => true)
+    ).rejects.toThrow('TEMPLATE_CONTEXT_CHANGED');
+    await expect(
+      executeTemplateMaterialImport(s.services, s.transfers, plan, 'copy', () => true)
+    ).rejects.toThrow('TEMPLATE_CONTEXT_CHANGED');
+    expect(await s.transfers.repository.list()).toEqual([before]);
+    expect(s.request).not.toHaveBeenCalled();
+    expect((await s.client.list()).items).toHaveLength(0);
+  });
   it('preserves IOP scope failures and an existing receipt without creating a template or resending an upload', async () => {
     const s = setup();
     const plan = await prepareTemplateMaterialImport(
@@ -720,6 +758,7 @@ describe('template material runtime with persistent gallery tasks', () => {
     expect(JSON.stringify(exported.package.document)).not.toContain('old-fixture-id');
     expect(required(exported.package.document.templates[0]).html.match(/assets\//gu)).toHaveLength(2);
     expect(exported.context).toEqual(photoFixture.transferContext);
+    for (const args of s.context.mock.calls) expect(args).toEqual(['listPhotos', {}]);
   });
 
   it('does not download or create an export result for an already stale caller', async () => {

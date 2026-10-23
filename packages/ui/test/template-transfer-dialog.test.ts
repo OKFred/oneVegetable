@@ -11,6 +11,8 @@ import { parseTemplateBundle, templateError } from '../../core/src/template-libr
 import type { S3StorageControl } from '../../core/src/s3-storage';
 import type { TemplateMaterialPackage } from '../../core/src/template-materials';
 import type { AppServices } from '../src/lib/services';
+import type { GatewayClient } from '@one-vegetable/core';
+import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import { templateMaterials as materialZh } from '../src/i18n/messages/zh-CN/templateMaterials';
 import { templateMaterials as materialEn } from '../src/i18n/messages/en-US/templateMaterials';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
@@ -226,7 +228,7 @@ async function setup(
 }
 
 describe('template package confirmation and safe writes', () => {
-  it('uses the frozen upload context even when an unbound dual-profile lookup advertises TOP support', async () => {
+  it('uses the selected context from the first preflight even when an unbound lookup advertises TOP support', async () => {
     const get = vi.fn().mockImplementation((_operations, options) =>
       Promise.resolve({
         items: [
@@ -255,7 +257,7 @@ describe('template package confirmation and safe writes', () => {
     const request = vi.spyOn(s.gateway, 'request');
     await s.chooseBytes();
     await s.selectGroup();
-    await s.body.get('[data-testid="template-reuse-existing-photos"]').setValue(true);
+    expect(s.body.find('[data-testid="template-reuse-existing-photos"]').exists()).toBe(false);
     await s.button('Import').trigger('click');
     await vi.waitFor(() => {
       expect(s.body.text()).toContain('Choose a specific group for IOP photos');
@@ -263,6 +265,42 @@ describe('template package confirmation and safe writes', () => {
     expect(get).toHaveBeenCalledWith(['listPhotos'], { galleryContext: photoFixture.transferContext });
     expect(s.body.find('[data-testid="template-reuse-existing-photos"]').exists()).toBe(false);
     expect(request.mock.calls.some(([operation]) => operation === 'listPhotos')).toBe(false);
+    expect(mocks.executeImport).not.toHaveBeenCalled();
+  });
+  it('pins paired-profile preflight to the listing route instead of the image-upload default', async () => {
+    const top = { ...photoFixture.transferContext, gateway: 'paired-top' };
+    const context = vi.fn<NonNullable<GatewayClient['galleryTransferContext']>>((operation) =>
+      Promise.resolve(operation === 'listPhotos' ? top : { ...top, gateway: 'default-image-iop' })
+    );
+    const get = vi.fn().mockImplementation((_operations: unknown, options?: GalleryRequestOptions) =>
+      Promise.resolve({
+        items: [
+          { operation: 'uploadPhoto', allowed: true, reasonCode: null },
+          {
+            operation: 'listPhotos',
+            allowed: true,
+            reasonCode: null,
+            protocolSupport: {
+              constraints: options?.galleryContext?.gateway === top.gateway ? [] : ['photo-group-required']
+            }
+          }
+        ]
+      })
+    );
+    const s = await setup('import', { services: { operationAvailability: { get } } });
+    s.gateway.galleryTransferContext = context;
+    mocks.prepareImport.mockImplementation(
+      (_transfers: unknown, pack: TemplateMaterialPackage, groupId: string) =>
+        Promise.resolve({ package: pack, groupId, context: top })
+    );
+    await s.chooseBytes();
+    await s.selectGroup();
+    expect(s.body.find('[data-testid="template-reuse-existing-photos"]').exists()).toBe(true);
+    await s.button('Import').trigger('click');
+    await flushPromises();
+    expect(context).toHaveBeenCalledWith('listPhotos', {});
+    expect(get).toHaveBeenCalledWith(['uploadPhoto', 'listPhotos'], { galleryContext: top });
+    expect(get).toHaveBeenCalledWith(['listPhotos'], { galleryContext: top });
     expect(mocks.executeImport).not.toHaveBeenCalled();
   });
   it('restricts IOP material imports to a concrete group without offering an all-groups reuse lookup', async () => {
@@ -384,7 +422,9 @@ describe('template material UI without provider writes', () => {
     expect(body.text()).toContain('Safe material preview');
     expect(body.find('script').exists()).toBe(false);
     expect(body.find('img').exists()).toBe(false);
-    expect(availability.get).toHaveBeenCalledWith(['uploadPhoto', 'listPhotos']);
+    expect(availability.get).toHaveBeenCalledWith(['uploadPhoto', 'listPhotos'], {
+      galleryContext: photoFixture.transferContext
+    });
     expect(button('Import').attributes('disabled')).toBeDefined();
     expect(mocks.prepareImport).not.toHaveBeenCalled();
     expect(mocks.executeImport).not.toHaveBeenCalled();

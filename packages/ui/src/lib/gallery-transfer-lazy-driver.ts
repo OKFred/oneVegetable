@@ -1,6 +1,7 @@
 import type { GalleryTransferDriver } from '@one-vegetable/core/gallery-transfer-runner';
 import {
   GalleryTaskError,
+  sameGalleryTransferContext,
   type GalleryTransferTaskV1 as Task,
   type GalleryTransferItemV1 as Item
 } from '@one-vegetable/core/gallery-transfer-task';
@@ -22,10 +23,13 @@ export class LazyGalleryTransferDriver implements GalleryTransferDriver {
     });
     return this.pending;
   }
-  async context() {
+  async context(task?: Task) {
     if (!this.services.gateway.galleryTransferContext)
       throw new GalleryTaskError('GALLERY_CONTEXT_UNAVAILABLE');
-    return this.services.gateway.galleryTransferContext();
+    const context = await this.services.gateway.galleryTransferContext('listPhotos', {});
+    if (task && !sameGalleryTransferContext(task.context, context))
+      throw new GalleryTaskError('GALLERY_CONTEXT_CHANGED');
+    return context;
   }
   async prepare(task: Task, item: Item): Promise<Item> {
     return (await this.load()).prepare(task, item);
