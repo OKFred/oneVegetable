@@ -1,0 +1,3369 @@
+{
+  "schemaVersion": 1,
+  "catalogCheckedAt": "2026-10-20T17:30:48.044Z",
+  "scope": "Offline documentation and implementation evidence only; not application permission, business qualification, runtime routing or write authorization.",
+  "verificationSources": {
+    "top": "Existing TOP capability definition/catalog verification labels; not reverified by this generator.",
+    "iop": "Explicit IOP_METHODS accountVerified flags only; never inherited from TOP."
+  },
+  "entries": [
+    {
+      "method": "/alibaba/order/get",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": []
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/order/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": ["getTradeOrderAggregate:paid-amount-unavailable"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.buynow.order.create",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.buynow.order.create",
+        "source": "https://open.taobao.com/api.htm?docId=54908&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.dropshipping.order.pay",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.dropshipping.order.pay",
+        "source": "https://open.taobao.com/api.htm?docId=55331&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.dropshipping.product.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.dropshipping.product.get",
+        "source": "https://open.taobao.com/api.htm?docId=54717&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.dropshipping.store.save",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.dropshipping.store.save",
+        "source": "https://open.taobao.com/api.htm?docId=61189&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.dropshipping.token.create",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.dropshipping.token.create",
+        "source": "https://open.taobao.com/api.htm?docId=54739&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.annex.upload",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.annex.upload",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=40805",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.attr.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.attr.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=24399",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.attribute.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.attribute.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25348",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:none", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.attrvalue.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.attrvalue.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=24395",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25349",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.get.new",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.get.new",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50064",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:none", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/category/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fcategory%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.id.mapping",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.id.mapping",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=52043",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/category/id/mapping",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fcategory%2Fid%2Fmapping&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": false,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.level.attr.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.level.attr.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=48659",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.postcat.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.postcat.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=24400",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.category.schema.level.get",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.category.schema.level.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=51873",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/schema/level/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Flevel%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": false,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.check.overseas.admittance",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.check.overseas.admittance",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=65625",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.diagnostic.supplier.rank.getpercent",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.diagnostic.supplier.rank.getpercent",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=31873",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.distribution.product.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.distribution.product.get",
+        "source": "https://open.taobao.com/api.htm?docId=69877&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站海外分销. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.distribution.product.query",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.distribution.product.query",
+        "source": "https://open.taobao.com/api.htm?docId=69862&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站海外分销. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.ecology.write",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.ecology.write",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=52174",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.file.urlposting.upload",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.file.urlposting.upload",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=70213",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.industry.topic.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.industry.topic.list",
+        "source": "https://open.taobao.com/api.htm?docId=58593&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.open.product.post",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.open.product.post",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=24271",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.photobank.group.list",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.photobank.group.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=30575",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/photobank/group/list",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fphotobank%2Fgroup%2Flist&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.photobank.group.operate",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.photobank.group.operate",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=41767",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/photobank/group/operate",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fphotobank%2Fgroup%2Foperate&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": ["operatePhotoGroup:photo-group-delete-unverified", "verified-actions:add,rename"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.photobank.list",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.photobank.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=24459",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/photobank/list",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fphotobank%2Flist&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [
+          "getDashboard:photo-group-required",
+          "listPhotos:photo-group-required",
+          "listPhotos:photo-group-scope-unverified"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.photobank.upload",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.photobank.upload",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=24463",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/photobank/upload",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fphotobank%2Fupload&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.add",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.add",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25347",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.add.draft",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.add.draft",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=46164",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.batch.update.display",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.batch.update.display",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=44413",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/update/display",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fupdate%2Fdisplay&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.country.getcountrylist",
+      "documentedProtocols": "unconfirmed",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": "alibaba.icbu.product.country.getcountrylist",
+        "source": "https://open.taobao.com/api.htm",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.get",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25439",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fget&methodType=GET%2FPOST",
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.group.add",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.group.add",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25300",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/group/add",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fgroup%2Fadd&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["mutation-unverified"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.group.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.group.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25299",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": "/alibaba/icbu/product/group/get",
+        "source": null,
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": [
+          "Verified legacy alias absent from this catalog snapshot; documentation remains unconfirmed."
+        ]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.id.decrypt",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.id.decrypt",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=26068",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.id.encrypt",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.id.encrypt",
+        "source": "https://open.taobao.com/api.htm?docId=50558&docType=2",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/product/id/encrypt",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fproduct%2Fid%2Fencrypt&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.inventory.get",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.inventory.get",
+        "source": "https://open.taobao.com/api.htm?docId=64125&docType=2",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/inventory/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Finventory%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": ["getProductInventory:product-inventory-only"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.inventory.update",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.inventory.update",
+        "source": "https://open.taobao.com/api.htm?docId=53178&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/inventory/update",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Finventory%2Fupdate&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.list",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25438",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/product/list",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fproduct%2Flist&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": ["getDashboard:photo-group-required"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.logistics.country.getcoststatus",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.logistics.country.getcoststatus",
+        "source": "https://open.taobao.com/api.htm?docId=58733&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.schema.add",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": "alibaba.icbu.product.schema.add",
+        "source": "https://developer.alibaba.com/docs/doc.htm?articleId=119213&docType=1",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/schema/add",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Fadd&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.schema.add.draft",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": "alibaba.icbu.product.schema.add.draft",
+        "source": "https://developer.alibaba.com/docs/doc.htm?articleId=119212&docType=1",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/schema/add/draft",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Fadd%2Fdraft&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.schema.get",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.schema.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50063",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/product/schema/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Falibaba%2Ficbu%2Fproduct%2Fschema%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": ["getProductSchema:wholesale-only"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.schema.render",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.schema.render",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50188",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/schema/render",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Frender&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.schema.render.draft",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.schema.render.draft",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50205",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/schema/render/draft",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Frender%2Fdraft&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": ["getProductDraft:draft-category-required"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.schema.update",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.schema.update",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50189",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/schema/update",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fschema%2Fupdate&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.score.get",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.score.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47461",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/score/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fscore%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.sku.inventory.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.sku.inventory.get",
+        "source": "https://open.taobao.com/api.htm?docId=57873&docType=2",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.type.available.get",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.type.available.get",
+        "source": "https://open.taobao.com/api.htm?docId=62123&docType=2",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/other/available/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=1&path=%2Ficbu%2Fproduct%2Fother%2Favailable%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.update",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.update",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25357",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.product.update.field",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.product.update.field",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=27010",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:deprecated"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.quotation.post",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.quotation.post",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=32101",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.rfq.myequity",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.rfq.myequity",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=40865",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.rfq.read",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.rfq.read",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=42604",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.rfq.recommend",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.rfq.recommend",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=42211",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.rfq.search",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.rfq.search",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=32084",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.rfqdetail.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.rfqdetail.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=32086",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.risk.send",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.risk.send",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=63136",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:天鹿风控协议需要明确的业务事件接入，并可能携带 WUA、UMID、设备码等敏感环境信息；本项目不从页面采集或通用调试器发送",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.shopclone.externalproductinfo.write",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.shopclone.externalproductinfo.write",
+        "source": "https://open.taobao.com/api.htm?docId=68144&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU站外店铺继承项目三方服务商权限. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.shopclone.externalshopinfo.write",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.shopclone.externalshopinfo.write",
+        "source": "https://open.taobao.com/api.htm?docId=68143&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU站外店铺继承项目三方服务商权限. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.shopclone.icbuproductrights.query",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.shopclone.icbuproductrights.query",
+        "source": "https://open.taobao.com/api.htm?docId=68142&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU站外店铺继承项目三方服务商权限. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.shopclone.icbushopinfo.query",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.shopclone.icbushopinfo.query",
+        "source": "https://open.taobao.com/api.htm?docId=68145&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU站外店铺继承项目三方服务商权限. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.snsoft.account.bill.sync",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.snsoft.account.bill.sync",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=64594",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.snsoft.customer.sync",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.snsoft.customer.sync",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=64507",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.snsoft.sale.order.detail.sync",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.snsoft.sale.order.detail.sync",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=64593",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.snsoft.shipment.finalaccount.sync",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.snsoft.shipment.finalaccount.sync",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=64996",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.supplierfoster.isvtask.notify",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.supplierfoster.isvtask.notify",
+        "source": "https://open.taobao.com/api.htm?docId=75093&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:ISV任务执行结果通知接口 Requires applicable business qualifications and platform grants: ICBU站外店铺继承项目三方服务商权限. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.task.status.notify",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.task.status.notify",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=70214",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:URL 爬取供应商向平台回报任务状态的协议回调，不是卖家交互能力；缺少真实 ISV 任务上下文时禁止调用",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.text.recognize",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.text.recognize",
+        "source": "https://open.taobao.com/api.htm?docId=67168&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU翻译能力. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.text.recognize.trans",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.text.recognize.trans",
+        "source": "https://open.taobao.com/api.htm?docId=67167&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU翻译能力. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.text.trans",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.text.trans",
+        "source": "https://open.taobao.com/api.htm?docId=67157&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.topic.products",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.topic.products",
+        "source": "https://open.taobao.com/api.htm?docId=58594&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.trade.assurance.account.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.trade.assurance.account.get",
+        "source": "https://open.taobao.com/api.htm?docId=31686&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.query",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.video.query",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=49930",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/video/query",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Fquery&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["listVideos:video-title-page-filter-only"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.detail",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.video.relation.product.detail",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50088",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.video.relation.product.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50709",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.relation.product.main",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.video.relation.product.main",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=50089",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/video/relation/product/main",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Frelation%2Fproduct%2Fmain&methodType=GET%2FPOST",
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["mutation-unverified", "not-adapted"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.upload",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.video.upload",
+        "source": "https://open.taobao.com/api.htm?docId=50133&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/video/upload",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Fupload&methodType=GET%2FPOST",
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["mutation-unverified", "not-adapted"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.video.upload.result",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": []
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/video/upload/result",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=6&path=%2Falibaba%2Ficbu%2Fvideo%2Fupload%2Fresult&methodType=GET%2FPOST",
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["not-adapted"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.icbu.xiaoman.va.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbu.xiaoman.va.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=64544",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbulive.product.push",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbulive.product.push",
+        "source": "https://open.taobao.com/api.htm?docId=69202&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU-直播. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.icbulive.productlist.pageget",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.icbulive.productlist.pageget",
+        "source": "https://open.taobao.com/api.htm?docId=69201&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: ICBU-直播. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.intention.order.save",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.intention.order.save",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=52721",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.mydata.self.query.cgsokk",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.mydata.self.query.cgsokk",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=56989",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:仅面向 CGS 小满签约客户，且业务参数要求独立 app_secret；默认关闭并禁止在页面填写密钥",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.buyer.info.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.buyer.info.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47826",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.city.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.address.city.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47959",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.division.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.address.division.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47961",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.province.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.address.province.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47960",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.address.street.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.address.street.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47978",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.charge.calculate",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.charge.calculate",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47869",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.logistics.order.create",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.logistics.order.create",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47873",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.logistics.product.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.logistics.product.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47872",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.logistics.rule.validate",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.logistics.rule.validate",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47870",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:官方标记暂停使用",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:deprecated"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.logistics.solution.semi.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.logistics.solution.semi.list",
+        "source": "https://open.taobao.com/api.htm?docId=70438&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.cancel",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.order.cancel",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47871",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:官方标记暂停使用",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:deprecated"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.cancel.reason.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.order.cancel.reason.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47868",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.detail.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.order.detail.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=48056",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.order.list.query",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.order.list.query",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=56235",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:官方文档明确描述为 ISV 查询，需额外资格验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.onetouch.logistics.express.special.product.type.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.onetouch.logistics.express.special.product.type.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47847",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:需要 OneTouch 物流业务资格，待真实账号验证",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.order.freight.calculate",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.order.freight.calculate",
+        "source": "https://open.taobao.com/api.htm?docId=54972&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.order.logistics.tracking.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.order.logistics.tracking.get",
+        "source": "https://open.taobao.com/api.htm?docId=55278&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.order.pay.result.query",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.order.pay.result.query",
+        "source": "https://open.taobao.com/api.htm?docId=55329&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.order.trade.tt.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.order.trade.tt.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=49773",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.procurement.mysupplier.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.procurement.mysupplier.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=40747",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.procurement.supplier.items.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.procurement.supplier.items.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=40748",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.scbp.showcase.addproduct",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.scbp.showcase.addproduct",
+        "source": "https://open.taobao.com/api.htm?docId=40964&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.scbp.showcase.deleteproduct",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.scbp.showcase.deleteproduct",
+        "source": "https://open.taobao.com/api.htm?docId=40963&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.scbp.showcase.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.scbp.showcase.list",
+        "source": "https://open.taobao.com/api.htm?docId=40938&docType=2",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.scbp.showcase.sort",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.scbp.showcase.sort",
+        "source": "https://open.taobao.com/api.htm?docId=40996&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.scbp.showcase.status",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.scbp.showcase.status",
+        "source": "https://open.taobao.com/api.htm?docId=40936&docType=2",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.scbp.showcase.updateproduct",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.scbp.showcase.updateproduct",
+        "source": "https://open.taobao.com/api.htm?docId=40997&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.address.save",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.address.save",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=52788",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.assurance.credit.card",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.assurance.credit.card",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=49307",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.auth.extend",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.auth.extend",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=67874",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:特定 ISV、业务资格或额外权限，默认关闭",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.coupon.auth.verify",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.coupon.auth.verify",
+        "source": "https://open.taobao.com/api.htm?docId=51234&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站服务市场权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.order.fund.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.order.fund.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=41074",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["getTradeOrderAggregate:paid-amount-unavailable", "not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.order.list",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.order.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=41047",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/order/list",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Flist&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [
+          "getDashboard:photo-group-required",
+          "listOrders:buyer-filter-unsupported",
+          "listTradeOrders:buyer-filter-unsupported"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.seller.order.logistics.get",
+      "documentedProtocols": "both",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.order.logistics.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=41142",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/order/logistics/query",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Flogistics%2Fquery&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": ["getTradeOrderAggregate:paid-amount-unavailable"],
+        "notes": []
+      }
+    },
+    {
+      "method": "alibaba.seller.trade.decode",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.trade.decode",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=53375",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:none", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.trade.query.drafttype",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.trade.query.drafttype",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=53541",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.vendor.order.detail",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.vendor.order.detail",
+        "source": "https://open.taobao.com/api.htm?docId=48967&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站服务市场权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.vendor.order.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.vendor.order.list",
+        "source": "https://open.taobao.com/api.htm?docId=48971&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站服务市场权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.vendor.service.process",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.vendor.service.process",
+        "source": "https://open.taobao.com/api.htm?docId=54661&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站服务市场权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.vendor.service.vendorprocess",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.vendor.service.vendorprocess",
+        "source": "https://open.taobao.com/api.htm?docId=55311&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站服务市场权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.vendor.trade.purchase",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.vendor.trade.purchase",
+        "source": "https://open.taobao.com/api.htm?docId=56479&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站服务市场权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.seller.vendor.write.client",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.seller.vendor.write.client",
+        "source": "https://open.taobao.com/api.htm?docId=57592&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:none",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站服务市场权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.shipping.freight.calculate",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.shipping.freight.calculate",
+        "source": "https://open.taobao.com/api.htm?docId=54716&docType=2",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": [
+          "authorization:required",
+          "restricted:Requires applicable business qualifications and platform grants: 国际站DropShipping权限包. Public documentation only; account authorization has not been verified.",
+          "catalog-disabled",
+          "real-call-disabled",
+          "lifecycle:active"
+        ]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.address.delete",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.address.delete",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=70728",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.address.form.save",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.address.form.save",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=70569",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.address.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.address.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=49839",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.address.list.query",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.address.list.query",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=70578",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.address.schema.query",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.address.schema.query",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=70565",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.fulfillment.channel.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.fulfillment.channel.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47679",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.order.create",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.order.create",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47611",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.order.modify",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.order.modify",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47663",
+        "adapted": true,
+        "accountVerified": false,
+        "constraints": ["authorization:required", "real-call-disabled", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.trade.service.charge.get",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.trade.service.charge.get",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=47767",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    },
+    {
+      "method": "alibaba.wholesale.shippingline.template.list",
+      "documentedProtocols": "top",
+      "top": {
+        "documentation": "confirmed",
+        "method": "alibaba.wholesale.shippingline.template.list",
+        "source": "https://developer.alibaba.com/docs/api.htm?apiId=25394",
+        "adapted": true,
+        "accountVerified": true,
+        "constraints": ["authorization:required", "lifecycle:active"]
+      },
+      "iop": {
+        "documentation": "unconfirmed",
+        "path": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "authorizationRequired": null,
+        "constraints": ["not-adapted"],
+        "notes": ["Absent from this catalog snapshot is not evidence of protocol nonexistence."]
+      }
+    }
+  ]
+}

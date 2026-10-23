@@ -50,6 +50,17 @@ Alibaba OpenAPI 接口按协议分别审计，不把任一站点单独视为完�
 
 每次开始新的领域迭代前，先对两套目录执行差异审计，再决定新增、保留、废弃或默认关闭的方法；不能沿用旧快照数量作为固定目标。
 
+### 协议注册清单（离线）
+
+后续新增或重审 API 必须明确登记 `TOP / IOP / both / unconfirmed`，不能从接口名称、说明文字或“新版推荐”推断协议。机器可核对清单为 `docs/alibaba-protocol-registration.json`：
+
+- 逐逻辑方法记录 TOP 精确方法名与官方来源、IOP 显式映射或目录精确标题对应的路径与官方来源。TOP 通用首页不算方法详情证据；未出现在当前 IOP 目录快照中的条目只记为文档 `unconfirmed`，不能据此宣称平台不支持。
+- `documentedProtocols` 仅描述已确认文档的组合；请同时查看 `top.documentation` 和 `iop.documentation`，`top` 不等于“IOP 不存在”。已实测的旧别名可保留 IOP `accountVerified` 和说明，但不冒充当前公开目录保证。
+- 两个协议分别记录 `adapted`、`accountVerified` 和 `constraints`。TOP 接受结果不继承到 IOP；现有 TOP 验证标签和 `IOP_METHODS` 独立实测标记分别作为历史证据，生成器不执行新的账号验证。文档存在、适配完成和账号实测均不代表当前应用权限、业务资格或写操作授权。
+- 数据仅从现有 capability 定义/目录、显式 `IOP_METHODS` 与检入的 `docs/alibaba-iop-api-docs.json` 生成；不抓取在线文档，不请求供应商，不改变运行时路由。报告只在脚本/单元测试中使用，不导入运行时或 UI。
+
+更新输入后运行 `pnpm exec tsx scripts/generate-protocol-registration.ts`；用 `pnpm exec tsx scripts/generate-protocol-registration.ts --check` 检查漂移。普通 Vitest 单元测试会在内存中重新生成完整数据并比较检入 JSON，新增方法或源证据变化必须同步审阅清单。
+
 ## 快速发品与旧接口取舍
 
 - `docId=27010` 对应的 `alibaba.icbu.product.update.field` 已由国际站官方变更说明列为旧发品链路，不进入快速发品或商品编辑主路径。
