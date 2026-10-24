@@ -1,5 +1,85 @@
 import { test, expect } from '@playwright/test';
 
+test('late initial task context preserves a showcase confirmation bound to the same authorization', async ({
+  page
+}) => {
+  await page.addInitScript(() => {
+    const descriptor = Object.getOwnPropertyDescriptor(IDBRequest.prototype, 'onsuccess');
+    if (!descriptor?.set) throw new Error('Missing native IndexedDB success setter');
+    const callbacks: (() => void)[] = [];
+    let released = false;
+    let opened = 0;
+    let firstReady: (() => void) | undefined;
+    let hydrated: (() => void) | undefined;
+    const first = new Promise<void>((resolve) => {
+      firstReady = resolve;
+    });
+    const second = new Promise<void>((resolve) => {
+      hydrated = resolve;
+    });
+    Object.defineProperties(window, {
+      __ovGalleryFirstOpen: { value: first },
+      __ovGalleryHydrated: { value: second },
+      __ovReleaseGalleryDb: {
+        value: () => {
+          released = true;
+          callbacks.splice(0).forEach((callback) => {
+            callback();
+          });
+        }
+      }
+    });
+    Object.defineProperty(IDBRequest.prototype, 'onsuccess', {
+      ...descriptor,
+      set(this: IDBRequest, listener: EventListener | null) {
+        descriptor.set?.call(
+          this,
+          listener &&
+            ((event: Event) => {
+              const callback = () => {
+                listener.call(this, event);
+              };
+              if (
+                this.result instanceof IDBDatabase &&
+                this.result.name === 'one-vegetable-gallery-transfers-v1'
+              ) {
+                opened++;
+                if (opened === 1) firstReady?.();
+                if (opened === 2) hydrated?.();
+                if (!released) {
+                  callbacks.push(callback);
+                  return;
+                }
+              }
+              callback();
+            })
+        );
+      }
+    });
+  });
+  await page.goto('/#/products');
+  await page.evaluate(
+    () => (window as unknown as { __ovGalleryFirstOpen: Promise<void> }).__ovGalleryFirstOpen
+  );
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole('menuitem', { name: '橱窗管理', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '橱窗管理', exact: true });
+  await expect(drawer.getByText('总额度 2 · 已用 1 · 剩余 1')).toBeVisible();
+  await drawer.getByRole('button', { name: '移出橱窗', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: '确认移出橱窗 1 个商品？', exact: true });
+  await expect(confirmation).toBeVisible();
+  await page.evaluate(() => {
+    (window as unknown as { __ovReleaseGalleryDb(): void }).__ovReleaseGalleryDb();
+  });
+  await page.evaluate(
+    () => (window as unknown as { __ovGalleryHydrated: Promise<void> }).__ovGalleryHydrated
+  );
+  await expect(drawer).toBeVisible();
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole('button', { name: '确认', exact: true }).click();
+  await expect(drawer.getByText('总额度 2 · 已用 0 · 剩余 2')).toBeVisible();
+});
+
 test('showcase drawer confirms removal and addition without changing product listing', async ({ page }) => {
   await page.goto('/#/products');
   await page.getByRole('button', { name: '更多', exact: true }).click();

@@ -927,8 +927,10 @@ watch(accountBoundary, () => {
   if (workspace.value === 'batch-maintenance') workspace.value = 'list';
   clearProductSelection();
   resetEditorSession({ categoryId: '', mode: 'quick' });
-  showcase.invalidate();
-  if (!showcase.busy.value) showcaseOpen.value = false;
+  if (!showcase.matchesAccountContext(accountContext?.value)) {
+    showcase.invalidate();
+    if (!showcase.busy.value) showcaseOpen.value = false;
+  }
 });
 const detailBoundary = computed(() =>
   JSON.stringify([

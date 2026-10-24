@@ -60,6 +60,19 @@ function setup(mode: 'mock' | 'extension' = 'mock') {
 }
 const selected = [{ id: '10000001', subject: 'Power station', status: 'online' as const }];
 describe('showcase controller', () => {
+  it('recognizes late hydration of its verified account without accepting another identity or configuration', async () => {
+    const { controller, wrapper, gateway } = setup();
+    const context = await gateway.galleryTransferContext?.('getProductShowcase');
+    if (!context) throw new Error('Missing fixture context');
+    expect(controller.matchesAccountContext(context)).toBe(false);
+    await controller.load();
+    expect(controller.matchesAccountContext(structuredClone(context))).toBe(true);
+    expect(controller.matchesAccountContext(null)).toBe(false);
+    expect(controller.matchesAccountContext(undefined)).toBe(false);
+    expect(controller.matchesAccountContext({ ...context, identity: 'different-account' })).toBe(false);
+    expect(controller.matchesAccountContext({ ...context, gateway: 'different-configuration' })).toBe(false);
+    wrapper.unmount();
+  });
   it.each(['pending', 'corrupt'])(
     'keeps a historical IOP %s receipt read-only when showcase now selects TOP',
     async (kind) => {

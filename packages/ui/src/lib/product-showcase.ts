@@ -108,6 +108,12 @@ export function useProductShowcase() {
   function sameIdentity(a: GalleryTransferContext | undefined, b: GalleryTransferContext | undefined) {
     return JSON.stringify(a) === JSON.stringify(b);
   }
+  function matchesAccountContext(current: GalleryTransferContext | null | undefined): boolean {
+    // Late task-context hydration is not a change to this independently verified authorization.
+    const bound = context.value;
+    if (!current || !bound) return false;
+    return current.identity === bound.identity && current.gateway === bound.gateway;
+  }
   async function load(force = false): Promise<void> {
     if (busy.value) return;
     if (inFlight) return inFlight;
@@ -399,6 +405,7 @@ export function useProductShowcase() {
     requestId,
     pendingIds,
     pendingAction,
+    matchesAccountContext,
     load,
     reason,
     mutate,
