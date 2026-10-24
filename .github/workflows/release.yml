@@ -64,6 +64,18 @@ jobs:
       - run: xvfb-run --auto-servernum pnpm test:e2e
       - run: xvfb-run --auto-servernum pnpm test:e2e:bff-replay
       - run: pnpm test:e2e:node-credentials
+      # Only the mock/replay suites above write test-results/. Never upload real-smoke artifacts.
+      - name: Preserve mock/replay Playwright failure diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-release-failure-diagnostics
+          path: |
+            test-results/**/trace.zip
+            test-results/**/test-failed-*.png
+            test-results/**/error-context.md
+          if-no-files-found: warn
+          retention-days: 7
       - run: pnpm release:extension
       - name: Render product release notes
         run: pnpm release:notes "${RELEASE_TAG}" --output artifacts/release-notes.md
