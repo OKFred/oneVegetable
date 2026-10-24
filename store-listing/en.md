@@ -4,6 +4,8 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
+Version 2.17.1 fixes operation-context routing for showcase and other dual-authorization workflows, aligns credential setup across Web and extension, and adds clear loading feedback without clearing existing content. Settings sections load on demand and preserve input. IOP photo-group scope limitations remain explicit. No new permissions or real-write capabilities.
+
 New users should start with IOP; merchants with an existing legacy application can continue using TOP. Unmarked historical bundles and existing settings retain TOP compatibility. Save the two authorizations separately, remember a preferred default or route by verified capability. You must ensure they belong to the same merchant; the tool does not verify merchant identity. Configuring one never replaces the other, and uncertain writes are never retried through the other protocol. Full feature equivalence is not promised, unsupported operations stay blocked and real failures never show simulated responses.
 
 Key features (subject to the selected protocol and account permissions):

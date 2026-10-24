@@ -4,6 +4,77 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.17.1',
+      releasedAt: '2026-10-24',
+      title: {
+        'zh-CN': '更可靠的双授权选路与加载体验',
+        'en-US': 'More reliable dual authorization and loading feedback'
+      },
+      summary: {
+        'zh-CN':
+          '修复双授权下的业务上下文错绑，统一 Web 与插件凭据配置，并在等待时显示清晰反馈、保留已加载内容。',
+        'en-US':
+          'Fix operation-context routing with dual authorization, unify credential setup across Web and extension, and show clear loading feedback without clearing existing content.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.17.1',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.17.0...v2.17.1',
+      changes: [
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '按业务用途绑定 TOP/IOP',
+            'en-US': 'Bind TOP/IOP to the actual operation'
+          },
+          description: {
+            'zh-CN':
+              '修正橱窗误用图片上传上下文而被固定到 IOP 的问题，同步核对库存、订单聚合、视频及素材传输依赖。按钮、请求和回读使用一致选路；历史任务不静默换授权，失败后不跨协议重试。',
+            'en-US':
+              'Fix showcase requests being pinned to IOP by an image-upload context, and align inventory, order aggregates, video and asset-transfer dependencies. Controls, requests and readback share routing; historical tasks never silently switch authorization and failures never trigger cross-protocol retries.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '统一凭据配置入口',
+            'en-US': 'Consistent credential setup'
+          },
+          description: {
+            'zh-CN':
+              'Web 与插件使用一致的一键配置、协议选择和更新入口，保留各自适用的导入、填写及连接方式。不会更改默认授权或覆盖另一份凭据。',
+            'en-US':
+              'Align one-click setup, protocol selection and update entry points across Web and extension while retaining applicable import, manual-entry and connection options. Existing default authorization and the other credential remain unchanged.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '加载期间保留当前内容',
+            'en-US': 'Keep content visible while loading'
+          },
+          description: {
+            'zh-CN':
+              '首次加载、较长等待及页面代码加载失败都有明确提示，刷新列表时不清空已有内容。设置分区按需加载，切换时保留未保存输入，中英文同步。',
+            'en-US':
+              'Show explicit feedback for initial loading, longer waits and page-code failures, without clearing existing list content during refresh. Settings sections load on demand and preserve unsaved input, in both languages.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '保留明确的平台边界',
+            'en-US': 'Keep platform limitations explicit'
+          },
+          description: {
+            'zh-CN':
+              'IOP 图片分组范围异常仍严格拦截，不能视为已解决；需要 TOP 的能力仍明确提示。未增加扩展权限、真实写能力或自动重试。',
+            'en-US':
+              'IOP photo-group scope mismatches remain strictly rejected and are not considered resolved; TOP-only capabilities remain explicit. No extension permissions, real-write capabilities or automatic retries are added.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.17.0',
       releasedAt: '2026-10-22',
       title: {
