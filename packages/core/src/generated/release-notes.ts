@@ -4,22 +4,35 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
-      version: '2.17.1',
+      version: '2.17.2',
       releasedAt: '2026-10-24',
       title: {
-        'zh-CN': '更可靠的双授权选路与加载体验',
-        'en-US': 'More reliable dual authorization and loading feedback'
+        'zh-CN': '稳定的双授权与初始化交互',
+        'en-US': 'Reliable dual authorization and startup interactions'
       },
       summary: {
         'zh-CN':
-          '修复双授权下的业务上下文错绑，统一 Web 与插件凭据配置，并在等待时显示清晰反馈、保留已加载内容。',
+          '修复双授权选路及启动初始化中断橱窗确认的问题，统一 Web 与插件凭据配置，并在等待时显示清晰反馈、保留已加载内容。',
         'en-US':
-          'Fix operation-context routing with dual authorization, unify credential setup across Web and extension, and show clear loading feedback without clearing existing content.'
+          'Fix dual-authorization routing and startup initialization interrupting showcase confirmations, unify Web and extension credential setup, and keep content visible with clear loading feedback.'
       },
       source: 'release',
-      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.17.1',
-      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.17.0...v2.17.1',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.17.2',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.17.0...v2.17.2',
       changes: [
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '初始化不再打断橱窗确认',
+            'en-US': 'Keep valid showcase confirmations during startup'
+          },
+          description: {
+            'zh-CN':
+              '素材任务首次读取上下文时，同一份已验证授权不再被误判为账号切换，保留橱窗面板与待确认操作。真正切换身份或凭据时仍清理旧状态，发送前校验和结果核对不变。',
+            'en-US':
+              'Late initial asset-task context no longer treats the same independently verified authorization as an account change or dismisses a showcase confirmation. Actual identity or credential changes still invalidate old state; preflight and readback checks remain unchanged.'
+          }
+        },
         {
           type: 'fix',
           title: {

@@ -1,13 +1,14 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-10-24。当前发布版本为 **2.17.1**；商店上传、提交审核和实际上架是三个独立状态，不能根据本地版本或 GitHub Release 推断。本轮准备新版本包与中英文材料，不查询或改变商店状态，不再次部署 Worker，不覆盖或复用旧版本包。固定源码、双语说明和最终附件见 [v2.17.1 Release](https://github.com/OKFred/oneVegetable/releases/tag/v2.17.1)。
+检查日期：2026-10-24。当前发布版本为 **2.17.2**；商店上传、提交审核和实际上架是三个独立状态，不能根据本地版本或 GitHub Release 推断。本轮准备新版本包与中英文材料，不查询或改变商店状态，不再次部署 Worker，不覆盖或复用旧版本包。固定源码、双语说明和最终附件见 [v2.17.2 Release](https://github.com/OKFred/oneVegetable/releases/tag/v2.17.2)。
 
-## 2.17.1 提交要点
+## 2.17.2 提交要点
 
-- 更新摘要：修复双授权下橱窗及相关流程的上下文选路，统一 Web 与插件配置入口，增加加载反馈并保留已有页面内容。
-- 英文摘要：Fix operation-context routing for dual authorization, align Web and extension credential setup, and add loading feedback without clearing existing content.
+- 更新摘要：修复双授权选路及启动初始化中断橱窗确认，统一 Web 与插件配置入口，增加加载反馈并保留已有内容。
+- 英文摘要：Fix dual-authorization routing and startup context interrupting showcase confirmations, align Web and extension setup, and preserve existing content with loading feedback.
 - 未新增依赖、Manifest 权限或真实写能力；既有权限理由、数据用途及隐私政策继续适用。IOP 图片分组范围异常仍严格拦截，不宣称 IOP 已覆盖全部 TOP 功能。
-- 用新 ZIP 上传已有商店条目，校验 manifest 为 2.17.1，并使用同包附带的 SHA-256。商店截图仍可沿用未变化的功能页；不得用含真实账号或密钥的验收画面。
+- 用新 ZIP 上传已有商店条目，校验 manifest 为 2.17.2，并使用同包附带的 SHA-256。商店截图仍可沿用未变化的功能页；不得用含真实账号或密钥的验收画面。
+- v2.17.1 在发布门禁中发现启动竞态，未创建 GitHub Release；保留原 Tag，不移动或复用，也不要上传其候选 ZIP。2.17.2 包含该功能集及确定性回归修复。
 - 商店由用户手工上传并确认提交；GitHub Release 不代表商店已发布。以下旧版本记录保留为历史材料，不用作本版本验收结果。
 
 2.13.0 新增统一任务中心和独立日志页，集中查看回执及安全后续入口，将请求诊断、操作审计和本地数据管理从管理/设置页迁入日志。**真实商品视频关联写入继续关闭**，不可宣传为已能关联或取消关联；查看记录、选择商品和只读核对不修改商品。2.13.0 内容保留为历史说明；当前发布检查见 [2.16.1 发布准备](release-2.16.1-readiness.md)。
