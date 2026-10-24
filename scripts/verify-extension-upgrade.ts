@@ -10,6 +10,7 @@ import { isCredentialVaultRecord, unlockCredentialVault } from '../packages/core
 import fixture from '../mock/data/extension-upgrade.json' with { type: 'json' };
 import s3Fixture from '../mock/data/extension-s3.json' with { type: 'json' };
 import taskFixture from '../mock/data/gallery-transfer-task.json' with { type: 'json' };
+import { supportsUpgradeCredentialRecovery } from './lib/extension-upgrade-version';
 
 declare const chrome: {
   runtime: { sendMessage(message: unknown): Promise<unknown>; getManifest(): { version: string } };
@@ -243,7 +244,7 @@ async function verifyUpgrade(path: string): Promise<void> {
     const unlockDialog = next.page.getByRole('dialog').filter({
       has: next.page.locator('#startup-vault-passphrase')
     });
-    if (version === '2.16.1') {
+    if (supportsUpgradeCredentialRecovery(version)) {
       assert(
         status.state === 'unlocked' && status.gatewayAvailable === true,
         `${version}: retained recovery key keeps API and settings available after restart`
