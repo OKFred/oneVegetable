@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onScopeDispose, ref, watch } from 'vue';
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
+import { defineAsyncContent } from '../lib/async-content';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import { useListIdentityScope } from '../lib/list-identity-scope';
@@ -8,8 +9,8 @@ import PageHeader from '../components/PageHeader.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import Button from '../components/ui/Button.vue';
 
-const ServerEventLogPanel = defineAsyncComponent(() => import('../components/ServerEventLogPanel.vue'));
-const LocalDiagnosticsPanel = defineAsyncComponent(() => import('../components/LocalDiagnosticsPanel.vue'));
+const ServerEventLogPanel = defineAsyncContent(() => import('../components/ServerEventLogPanel.vue'));
+const LocalDiagnosticsPanel = defineAsyncContent(() => import('../components/LocalDiagnosticsPanel.vue'));
 const { control, mode } = useServices();
 const { t } = useUiI18n();
 const identity = useListIdentityScope();

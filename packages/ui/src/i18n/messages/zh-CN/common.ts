@@ -1,4 +1,9 @@
 export const common = {
+  loadingFeedback: {
+    slow: '加载时间较长，仍在等待响应…',
+    refreshing: '正在更新，已保留当前内容。',
+    componentFailed: '页面模块加载失败，请检查网络后刷新页面。'
+  },
   todoSync: {
     retry: '重试保存',
     clearNotice:

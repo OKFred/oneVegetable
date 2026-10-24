@@ -17,6 +17,7 @@ import { formatDateTime } from '../lib/date-time';
 import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-events';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
+import ContentSkeleton from './ContentSkeleton.vue';
 import Input from './ui/Input.vue';
 import ModalDialog from './ui/ModalDialog.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
@@ -43,6 +44,7 @@ const summary = ref<ControlGatewayCredentialSummary | null>(null);
 const latestTest = ref<GatewayCredentialTestResult | null>(null);
 const admin = ref(false);
 const busy = ref(false);
+const initialized = ref(false);
 const actionPending = ref(false);
 const setupGuideOpen = ref(props.initialGuide);
 const setupDialogOpen = ref(false);
@@ -99,7 +101,10 @@ defineExpose({
 });
 
 onMounted(async () => {
-  if (!control) return;
+  if (!control) {
+    initialized.value = true;
+    return;
+  }
   busy.value = true;
   try {
     admin.value = (await control.session()).principal.role === 'admin';
@@ -107,6 +112,7 @@ onMounted(async () => {
   } catch (cause) {
     error.value = cause;
   } finally {
+    initialized.value = true;
     busy.value = false;
   }
 });
@@ -304,9 +310,10 @@ async function run(kind: 'test' | 'refresh' | 'reload'): Promise<void> {
       {{ t('selectedProfile', { protocol: protocol.toUpperCase() }) }}
     </p>
     <p v-if="protocol && !embedded" class="text-xs text-muted-foreground">{{ t('profileIsolation') }}</p>
-    <p v-if="!busy && !admin" class="text-sm">{{ t('adminOnly') }}</p>
+    <ContentSkeleton v-if="!initialized" />
+    <p v-if="initialized && !busy && !admin" class="text-sm">{{ t('adminOnly') }}</p>
     <ErrorNotice v-if="error" :error="error" :fallback="t('error')" />
-    <template v-if="admin">
+    <template v-if="initialized && admin">
       <p v-if="unavailable" class="text-sm">{{ t('unavailable') }}</p>
       <template v-else>
         <input

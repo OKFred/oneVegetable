@@ -382,6 +382,8 @@ function matrixBadge(cell: CapabilityMatrixCell) {
   </div>
   <QueryState
     :loading="capabilities.isPending.value"
+    :refreshing="capabilities.isFetching.value && !capabilities.isPending.value"
+    :has-content="capabilities.data.value !== undefined"
     :error="capabilities.error.value"
     retryable
     @retry="capabilities.refetch()"

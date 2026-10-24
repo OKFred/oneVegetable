@@ -10,6 +10,7 @@ import ErrorNotice from './ErrorNotice.vue';
 import GalleryImportRulesSettings from './GalleryImportRulesSettings.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
+import ContentSkeleton from './ContentSkeleton.vue';
 import Input from './ui/Input.vue';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
@@ -20,6 +21,7 @@ const control = s3Storage ?? bffControl;
 const { t } = useUiI18n();
 const summary = ref<S3StorageConfigurationSummary | null>(null);
 const busy = ref<'load' | 'save' | 'test' | 'clear' | null>(null);
+const initialized = ref(false);
 const error = ref<unknown>(null);
 const confirmClear = ref(false);
 const model = reactive<S3StorageConfiguration>({
@@ -51,7 +53,13 @@ const canSave = computed(
     model.secretAccessKey !== ''
 );
 
-onMounted(load);
+onMounted(async () => {
+  try {
+    await load();
+  } finally {
+    initialized.value = true;
+  }
+});
 
 async function load(): Promise<void> {
   if (!control?.s3StorageConfiguration) return;
@@ -162,7 +170,7 @@ async function clearConfiguration(): Promise<void> {
           {{ t(mode === 'extension' ? 'settings.s3.extensionDescription' : 'settings.s3.description') }}
         </p>
       </div>
-      <span class="rounded-full bg-muted px-3 py-1 text-xs">
+      <span v-if="summary" class="rounded-full bg-muted px-3 py-1 text-xs">
         {{ summary?.configured ? t('settings.s3.configured') : t('settings.s3.notConfigured') }}
       </span>
     </div>
@@ -170,6 +178,7 @@ async function clearConfiguration(): Promise<void> {
     <p v-if="!supported" class="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
       {{ t('settings.s3.unsupported') }}
     </p>
+    <ContentSkeleton v-else-if="!initialized && !summary" class="mt-4" />
     <div v-else class="mt-4 grid gap-4 sm:grid-cols-2">
       <label class="text-sm font-medium sm:col-span-2">
         {{ t('settings.s3.endpoint') }}

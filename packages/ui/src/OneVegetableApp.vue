@@ -60,6 +60,7 @@ import {
 } from './lib/gateway-configuration-events';
 
 import Button from './components/ui/Button.vue';
+import { defineAsyncContent } from './lib/async-content';
 import GalleryTransferTaskCenter from './components/GalleryTransferTaskCenter.vue';
 import { GalleryTransferService, provideGalleryTransfers } from './lib/gallery-transfer-service';
 import AccountMenu from './components/AccountMenu.vue';
@@ -312,21 +313,21 @@ function selectAcquisitionProtocol(protocol: 'top' | 'iop'): void {
 const authenticationRequired = ref<BffAuthenticationRequiredEvent | null>(null);
 let unsubscribeAuthenticationEvents: (() => void) | null = null;
 const views: Record<PageId, Component> = {
-  dashboard: defineAsyncComponent(() => import('./views/DashboardView.vue')),
-  products: defineAsyncComponent(() => import('./views/ProductsView.vue')),
-  templates: defineAsyncComponent(() => import('./views/TemplatesView.vue')),
-  inventory: defineAsyncComponent(() => import('./views/InventoryView.vue')),
-  tasks: defineAsyncComponent(() => import('./views/TasksView.vue')),
-  photos: defineAsyncComponent(() => import('./views/GalleryView.vue')),
-  rfqs: defineAsyncComponent(() => import('./views/RfqsView.vue')),
-  orders: defineAsyncComponent(() => import('./views/OrdersView.vue')),
-  logistics: defineAsyncComponent(() => import('./views/LogisticsView.vue')),
-  insights: defineAsyncComponent(() => import('./views/InsightsView.vue')),
-  capabilities: defineAsyncComponent(() => import('./views/CapabilitiesView.vue')),
-  admin: defineAsyncComponent(() => import('./views/AdminView.vue')),
-  logs: defineAsyncComponent(() => import('./views/LogsView.vue')),
-  releases: defineAsyncComponent(() => import('./views/ReleaseNotesView.vue')),
-  settings: defineAsyncComponent(() => import('./views/SettingsView.vue'))
+  dashboard: defineAsyncContent(() => import('./views/DashboardView.vue'), 'page'),
+  products: defineAsyncContent(() => import('./views/ProductsView.vue'), 'page'),
+  templates: defineAsyncContent(() => import('./views/TemplatesView.vue'), 'page'),
+  inventory: defineAsyncContent(() => import('./views/InventoryView.vue'), 'page'),
+  tasks: defineAsyncContent(() => import('./views/TasksView.vue'), 'page'),
+  photos: defineAsyncContent(() => import('./views/GalleryView.vue'), 'page'),
+  rfqs: defineAsyncContent(() => import('./views/RfqsView.vue'), 'page'),
+  orders: defineAsyncContent(() => import('./views/OrdersView.vue'), 'page'),
+  logistics: defineAsyncContent(() => import('./views/LogisticsView.vue'), 'page'),
+  insights: defineAsyncContent(() => import('./views/InsightsView.vue'), 'page'),
+  capabilities: defineAsyncContent(() => import('./views/CapabilitiesView.vue'), 'page'),
+  admin: defineAsyncContent(() => import('./views/AdminView.vue'), 'page'),
+  logs: defineAsyncContent(() => import('./views/LogsView.vue'), 'page'),
+  releases: defineAsyncContent(() => import('./views/ReleaseNotesView.vue'), 'page'),
+  settings: defineAsyncContent(() => import('./views/SettingsView.vue'), 'page')
 };
 const AlibabaCredentialAcquisitionDialog = defineAsyncComponent(
   () => import('./components/AlibabaCredentialAcquisitionDialog.vue')

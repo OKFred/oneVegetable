@@ -601,6 +601,8 @@ onBeforeUnmount(() => {
     </ListToolbar>
     <QueryState
       :loading="orders.isPending.value"
+      :refreshing="orders.isFetching.value && !orders.isPending.value"
+      :has-content="orders.data.value !== undefined"
       :error="orders.error.value"
       retryable
       @retry="orders.refetch()"

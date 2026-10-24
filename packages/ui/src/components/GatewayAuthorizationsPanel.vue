@@ -14,6 +14,7 @@ import CredentialConfigurationDialog from './CredentialConfigurationDialog.vue';
 import AlibabaAuthorizationProtocolDialog from './AlibabaAuthorizationProtocolDialog.vue';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import Button from './ui/Button.vue';
+import ContentSkeleton from './ContentSkeleton.vue';
 
 const props = defineProps<{ dialogConfiguration?: boolean }>();
 const { control } = useServices();
@@ -104,6 +105,7 @@ defineExpose({ reload });
 
 <template>
   <div class="space-y-4">
+    <ContentSkeleton v-if="!ready && !summary" layout="authorization" :title="t('dualTitle')" />
     <AlibabaAuthorizationsPanel
       v-if="summary"
       :summary="summary"

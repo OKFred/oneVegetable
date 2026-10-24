@@ -218,7 +218,14 @@ const columns = computed<DataColumn<Product>[]>(() => [
       <ProductListFilterDialog v-model="filters" />
     </template>
   </ListToolbar>
-  <QueryState :loading="query.isPending.value" :error="query.error.value" retryable @retry="query.refetch()">
+  <QueryState
+    :loading="query.isPending.value"
+    :refreshing="query.isFetching.value && !query.isPending.value"
+    :has-content="query.data.value !== undefined"
+    :error="query.error.value"
+    retryable
+    @retry="query.refetch()"
+  >
     <DataTable
       :columns="columns"
       :data="rows"

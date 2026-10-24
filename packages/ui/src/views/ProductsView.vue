@@ -2786,6 +2786,8 @@ onBeforeUnmount(() => {
         <ErrorNotice v-if="batchDisplay.error.value" class="mb-3" :error="batchDisplay.error.value" compact />
         <QueryState
           :loading="products.isPending.value"
+          :refreshing="products.isFetching.value && !products.isPending.value"
+          :has-content="products.data.value !== undefined"
           :error="products.error.value"
           retryable
           @retry="products.refetch()"

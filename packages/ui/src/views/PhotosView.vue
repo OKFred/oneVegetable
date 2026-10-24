@@ -707,7 +707,9 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
       </p>
       <QueryState
         v-else
-        :loading="photos.isFetching.value || photoMutations.isPending.value"
+        :loading="!photos.data.value && (photos.isFetching.value || photoMutations.isPending.value)"
+        :has-content="!!photos.data.value"
+        :refreshing="!!photos.data.value && photos.isFetching.value"
         :error="photos.error.value"
         retryable
         @retry="canLoadPhotos && photos.refetch()"

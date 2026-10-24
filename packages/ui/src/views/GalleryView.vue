@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
+import { defineAsyncContent } from '../lib/async-content';
 import { useVideoI18n } from '../i18n/video';
 import { parseAppHash } from '../lib/hash-router';
 const vt = useVideoI18n();
-const Videos = defineAsyncComponent(() => import('./VideosView.vue'));
-const Photos = defineAsyncComponent(() => import('./PhotosView.vue'));
+const Videos = defineAsyncContent(() => import('./VideosView.vue'), 'page');
+const Photos = defineAsyncContent(() => import('./PhotosView.vue'), 'page');
 const isVideo = ref(parseAppHash(globalThis.location.hash)?.segments[0] === 'videos');
 const update = () => {
   isVideo.value = parseAppHash(globalThis.location.hash)?.segments[0] === 'videos';

@@ -220,6 +220,39 @@ afterEach(async () => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('shows authorization skeletons while local settings are pending, without showing setup as ready', async () => {
+    let resolve!: (settings: GatewaySettings) => void;
+    const pending = new Promise<GatewaySettings>((done) => {
+      resolve = done;
+    });
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { loadSettings: () => pending });
+    await flushPromises();
+    expect(wrapper.find('[data-skeleton-layout="authorization"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="open-authorization-guide"]').exists()).toBe(false);
+    resolve({ appKey: '', appSecret: '', accessToken: '', endpoint: ALIBABA_GATEWAY, signMethod: 'hmac' });
+    await flushPromises();
+    expect(wrapper.find('[data-skeleton-layout="authorization"]').exists()).toBe(false);
+  });
+
+  it('ends a failed initial settings load and offers an explicit read-only retry', async () => {
+    const loadSettings = vi.fn().mockRejectedValueOnce(new Error('settings-read-failed')).mockResolvedValue({
+      appKey: '',
+      appSecret: '',
+      accessToken: '',
+      endpoint: ALIBABA_GATEWAY,
+      signMethod: 'hmac'
+    });
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', { loadSettings });
+    await flushPromises();
+    expect(wrapper.find('[data-skeleton-layout="authorization"]').exists()).toBe(false);
+    const retry = wrapper.findAll('button').find((button) => button.text() === '重新加载');
+    expect(retry).toBeDefined();
+    if (!retry) throw new Error('Missing retry action');
+    await retry.trigger('click');
+    await flushPromises();
+    expect(loadSettings).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('[data-skeleton-layout="authorization"]').exists()).toBe(false);
+  });
   it('keeps the independent service notice once at the bottom, outside credential dialogs', async () => {
     const wrapper = mountView('extension', 'unlocked');
     await flushPromises();
@@ -619,6 +652,8 @@ describe('SettingsView diagnostics', () => {
     expect(wrapper.find('#settings-maintenance').exists()).toBe(false);
     expect(wrapper.find('button[aria-controls="settings-storage"]').exists()).toBe(false);
     await wrapper.get('input[aria-label="App Key"]').setValue('unsaved-key');
+    expect(wrapper.find('#settings-preferences').exists()).toBe(false);
+    await wrapper.get('button[aria-controls="settings-preferences"]').trigger('click');
     const language = wrapper.get('select[aria-label="平台请求语言"]').element as HTMLSelectElement;
     const originalLanguage = language.value;
     await wrapper.get('button[aria-controls="settings-preferences"]').trigger('click');
@@ -968,6 +1003,7 @@ describe('SettingsView diagnostics', () => {
   it('persists the preferred Alibaba request language outside the credential vault', async () => {
     const wrapper = mountView('extension', 'locked');
     await flushPromises();
+    await wrapper.get('button[aria-controls="settings-preferences"]').trigger('click');
 
     const language = wrapper.get('select[aria-label="平台请求语言"]');
     expect((language.element as HTMLSelectElement).value).toBe('en_US');

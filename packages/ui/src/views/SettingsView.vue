@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { defineAsyncContent } from '../lib/async-content';
+import ContentSkeleton from '../components/ContentSkeleton.vue';
 import {
   Database,
   Download,
@@ -95,16 +97,21 @@ const dualSettings = computed(
     typeof settings.loadAuthorization === 'function'
 );
 const activeSection = ref('credentials');
+const visitedSections = ref(new Set(['credentials']));
+function activateSection(section: string): void {
+  visitedSections.value.add(section);
+  activeSection.value = section;
+}
 const sections = computed(() => [
   { id: 'credentials', icon: KeyRound },
   ...((mode === 'bff' && control) || s3Storage ? [{ id: 'storage', icon: Database }] : []),
   { id: 'preferences', icon: Globe2 }
 ]);
-const S3StorageSettingsPanel = defineAsyncComponent(() => import('../components/S3StorageSettingsPanel.vue'));
+const S3StorageSettingsPanel = defineAsyncContent(() => import('../components/S3StorageSettingsPanel.vue'));
 const GatewayAuthorizationsPanel =
   typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
     ? null
-    : defineAsyncComponent(() => import('../components/GatewayAuthorizationsPanel.vue'));
+    : defineAsyncContent(() => import('../components/GatewayAuthorizationsPanel.vue'), 'authorization');
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const signMethods: SignMethod[] = ['hmac', 'md5', 'hmac-sha256'];
 const model = ref<GatewaySettings>({
@@ -162,6 +169,13 @@ function openAuthorizationGuide(): void {
 }
 const protocolImportFile = ref<File>();
 const settingsLoaded = ref(false);
+const initializingSettings = ref(true);
+const settingsLoadError = ref<unknown>(null);
+const authorizationLoading = computed(
+  () =>
+    mode === 'extension' &&
+    (initializingSettings.value || (authorizationBusy.value && !authorizationSummary.value))
+);
 const credentialEditing = useUnsavedEditing(() => model.value, { enabled: () => settingsLoaded.value });
 const passphraseEditing = useUnsavedEditing(
   () => ({
@@ -189,7 +203,7 @@ onMounted(async () => {
     globalThis.addEventListener(CREDENTIAL_VAULT_CHANGED_EVENT, scheduleVaultReload);
     globalThis.document.addEventListener('visibilitychange', handleVisibilityChange);
   }
-  settingsInitialization = initializeView();
+  settingsInitialization = loadSettingsView();
   await settingsInitialization;
 });
 let vaultReloadTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
@@ -216,6 +230,7 @@ function scheduleVaultReload(): void {
 
 async function reloadExternalVault(): Promise<void> {
   if (!viewAlive || !vault) return;
+  if (settingsLoadError.value) return;
   if (!settingsLoaded.value || vaultReloading) {
     scheduleVaultReload();
     return;
@@ -276,6 +291,18 @@ function vaultOperationPending(): boolean {
 function handleProtectionPrepared(status: CredentialVaultStatus): void {
   applyVaultStatus(status);
   scheduleVaultReload();
+}
+
+async function loadSettingsView(): Promise<void> {
+  initializingSettings.value = true;
+  settingsLoadError.value = null;
+  try {
+    await initializeView();
+  } catch (cause) {
+    settingsLoadError.value = cause;
+  } finally {
+    initializingSettings.value = false;
+  }
 }
 
 async function initializeView(): Promise<void> {
@@ -983,13 +1010,22 @@ function confirmLanguagePreference(): void {
         :aria-controls="`settings-${section.id}`"
         class="flex min-w-0 items-center gap-2 rounded-lg px-3 py-3 text-left text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         :class="activeSection === section.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground'"
-        @click="activeSection = section.id"
+        @click="activateSection(section.id)"
       >
         <component :is="section.icon" class="size-4 shrink-0" />
         {{ t(`settings.sections.${section.id}`) }}
       </button>
     </nav>
     <div class="min-w-0 space-y-4">
+      <div v-if="settingsLoadError" class="space-y-3">
+        <ErrorNotice :error="settingsLoadError" />
+        <Button
+          variant="outline"
+          :disabled="initializingSettings"
+          @click="settingsInitialization = loadSettingsView()"
+          >{{ t('common.actions.retry') }}</Button
+        >
+      </div>
       <p
         v-if="feedback"
         class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
@@ -1002,9 +1038,15 @@ function confirmLanguagePreference(): void {
         class="min-w-0 space-y-4"
         :aria-label="t('settings.sections.credentials')"
       >
+        <ContentSkeleton
+          v-if="authorizationLoading"
+          layout="authorization"
+          :title="credentialText('dualTitle')"
+        />
         <Card
           v-if="
             mode === 'extension' &&
+            !authorizationLoading &&
             alibabaCredentialAcquisition &&
             !(authorizationSummaryReadable && dualSettings && authorizationSummary)
           "
@@ -1627,7 +1669,7 @@ function confirmLanguagePreference(): void {
         </Card>
       </section>
       <section
-        v-if="(mode === 'bff' && control) || s3Storage"
+        v-if="((mode === 'bff' && control) || s3Storage) && visitedSections.has('storage')"
         id="settings-storage"
         v-show="activeSection === 'storage'"
         class="min-w-0"
@@ -1636,6 +1678,7 @@ function confirmLanguagePreference(): void {
         <S3StorageSettingsPanel />
       </section>
       <section
+        v-if="visitedSections.has('preferences')"
         id="settings-preferences"
         v-show="activeSection === 'preferences'"
         class="min-w-0 space-y-4"

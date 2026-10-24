@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { defineAsyncContent } from '../lib/async-content';
 import { startRegistration } from '@simplewebauthn/browser';
 import { Copy, KeyRound, PauseCircle, PlayCircle, RefreshCw, Shield } from '@lucide/vue';
 import { toast } from 'vue-sonner';
@@ -23,7 +24,10 @@ type Confirmation =
 
 const { control } = useServices();
 const { t } = useUiI18n();
-const GatewayAuthorizationsPanel = defineAsyncComponent(() => import('./GatewayAuthorizationsPanel.vue'));
+const GatewayAuthorizationsPanel = defineAsyncContent(
+  () => import('./GatewayAuthorizationsPanel.vue'),
+  'authorization'
+);
 const mutationControl = ref<ControlRealMutationStatus | null>(null);
 const passkeys = ref<ControlPasskeyCredential[]>([]);
 const confirmation = ref<Confirmation | null>(null);

@@ -77,6 +77,7 @@ const summary = useQuery({
     </DashboardMetricCard>
   </div>
   <QueryState
+    layout="panel"
     :loading="summary.isPending.value"
     :error="summary.error.value"
     retryable

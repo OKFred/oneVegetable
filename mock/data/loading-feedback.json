@@ -1,0 +1,16 @@
+{
+  "storage": {
+    "configured": true,
+    "endpoint": "https://storage.example.com",
+    "region": "auto",
+    "bucket": "gallery",
+    "accessKeyIdSuffix": "-key",
+    "hasSessionToken": false,
+    "pathStyle": true,
+    "rootPrefix": "test-gallery",
+    "revision": 1,
+    "updateTimeUtc": 1,
+    "updaterId": "fixture-admin",
+    "remark": null
+  }
+}

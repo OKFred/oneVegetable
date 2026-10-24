@@ -16,6 +16,7 @@ import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import fixture from '../../../mock/data/node-gateway-credentials.json';
 import dashboardFixture from '../../../mock/data/dashboard-authorization.json';
+import loadingFixture from '../../../mock/data/loading-feedback.json';
 import AlibabaAuthorizationsPanel from '../src/components/AlibabaAuthorizationsPanel.vue';
 import AlibabaAuthorizationProtocolDialog from '../src/components/AlibabaAuthorizationProtocolDialog.vue';
 import GatewayAuthorizationsPanel from '../src/components/GatewayAuthorizationsPanel.vue';
@@ -33,6 +34,61 @@ import { CREDENTIAL_VAULT_CHANGED_EVENT } from '../src/lib/credential-vault-even
 
 vi.mock('vue-sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 const wrappers: VueWrapper[] = [];
+it.each([false, true])('shows loading instead of empty authorizations (extension=%s)', async (extension) => {
+  let resolve!: (summary: AlibabaAuthorizationsSummary) => void;
+  const pending = new Promise<AlibabaAuthorizationsSummary>((done) => {
+    resolve = done;
+  });
+  const view = await harness(SettingsView, { extension, readSummary: () => pending });
+  expect(view.wrapper.find('[data-skeleton-layout="authorization"]').exists()).toBe(true);
+  expect(view.wrapper.find('[data-testid="alibaba-authorizations-panel"]').exists()).toBe(false);
+  expect(view.wrapper.find('[data-testid="gateway-credential-panel"]').exists()).toBe(false);
+  resolve(dualSummary());
+  await vi.waitFor(() => {
+    expect(view.wrapper.find('[data-testid="alibaba-authorizations-panel"]').exists()).toBe(true);
+  });
+  expect(view.wrapper.find('[data-skeleton-layout="authorization"]').exists()).toBe(false);
+  expect(extension ? view.settingsSummary : view.read).toHaveBeenCalledTimes(1);
+});
+
+it('keeps authorization metadata visible while refreshing', async () => {
+  const view = await harness(GatewayAuthorizationsPanel, { props: { dialogConfiguration: true } });
+  let resolve!: (summary: AlibabaAuthorizationsSummary) => void;
+  view.read.mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      })
+  );
+  const panel = view.wrapper.findComponent(GatewayAuthorizationsPanel);
+  const pending = (panel.vm as { reload: () => Promise<void> }).reload();
+  await flushPromises();
+  expect(view.wrapper.find('[data-testid="alibaba-authorizations-panel"]').exists()).toBe(true);
+  expect(view.wrapper.find('[data-skeleton-layout="authorization"]').exists()).toBe(false);
+  resolve(dualSummary());
+  await pending;
+  await flushPromises();
+  expect(view.read).toHaveBeenCalledTimes(2);
+});
+
+it('defers hidden storage requests and preserves edits after first opening the section', async () => {
+  const view = await harness(SettingsView);
+  expect(view.readStorage).not.toHaveBeenCalled();
+  expect(view.wrapper.find('#settings-storage').exists()).toBe(false);
+  await view.wrapper.get('[aria-controls="settings-storage"]').trigger('click');
+  await vi.dynamicImportSettled();
+  await flushPromises();
+  expect(view.readStorage).toHaveBeenCalledTimes(1);
+  const endpoint = view.wrapper.get('#settings-storage input');
+  await endpoint.setValue('https://changed.example.com');
+  await view.wrapper.get('[aria-controls="settings-credentials"]').trigger('click');
+  await view.wrapper.get('[aria-controls="settings-storage"]').trigger('click');
+  expect(view.wrapper.get('#settings-storage input').element).toBe(endpoint.element);
+  expect((endpoint.element as HTMLInputElement).value).toBe('https://changed.example.com');
+  expect(view.readStorage).toHaveBeenCalledTimes(1);
+  expect(view.save).not.toHaveBeenCalled();
+});
+
 it('disables configuration with general busy state unless metadata-only loading explicitly overrides it', async () => {
   const wrapper = mount(AlibabaAuthorizationsPanel as Component, {
     props: {
@@ -204,6 +260,7 @@ async function harness(
     empty?: boolean;
     defaultSwitch?: boolean;
     runtime?: 'node' | 'cloudflare';
+    readSummary?: () => Promise<AlibabaAuthorizationsSummary>;
   } = {}
 ) {
   let current = options.summary ?? dualSummary();
@@ -212,7 +269,10 @@ async function harness(
     ...(dashboardFixture.session as ControlSession),
     principal: { ...(dashboardFixture.session as ControlSession).principal, role: options.role ?? 'admin' }
   });
-  const read = vi.spyOn(client, 'gatewayAuthorizations').mockImplementation(() => Promise.resolve(current));
+  const read = vi
+    .spyOn(client, 'gatewayAuthorizations')
+    .mockImplementation(() => options.readSummary?.() ?? Promise.resolve(current));
+  const readStorage = vi.spyOn(client, 's3StorageConfiguration').mockResolvedValue(loadingFixture.storage);
   const status = vi.spyOn(client, 'gatewayCredentialStatus').mockImplementation((protocol = 'top') =>
     Promise.resolve(
       current[protocol] ?? {
@@ -270,7 +330,7 @@ async function harness(
   }
   const load = vi.fn(() => Promise.resolve(settingsFor('top')));
   const loadAuthorization = vi.fn((protocol: 'top' | 'iop') => Promise.resolve(settingsFor(protocol)));
-  const settingsSummary = vi.fn(() => Promise.resolve(current));
+  const settingsSummary = vi.fn(() => options.readSummary?.() ?? Promise.resolve(current));
   const setDefaultAuthorization = vi.fn((protocol: 'top' | 'iop', _configurationId: string) => {
     current = { ...current, defaultProtocol: protocol };
     return Promise.resolve(current);
@@ -400,6 +460,7 @@ async function harness(
     client,
     readSession,
     read,
+    readStorage,
     status,
     confirm,
     save,

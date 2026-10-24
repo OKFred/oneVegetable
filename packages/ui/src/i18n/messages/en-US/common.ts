@@ -1,4 +1,9 @@
 export const common = {
+  loadingFeedback: {
+    slow: 'Taking longer than usual. Still waiting for a response…',
+    refreshing: 'Updating. Current content is still available.',
+    componentFailed: 'This page module could not load. Check your connection and refresh the page.'
+  },
   todoSync: {
     retry: 'Retry saving',
     clearNotice:

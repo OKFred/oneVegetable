@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, onMounted, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
+import { defineAsyncContent } from '../lib/async-content';
 import { Copy, RefreshCw, ShieldCheck, UserPlus } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
@@ -25,7 +26,7 @@ import { useUnsavedEditing } from '../lib/unsaved-editing';
 const SelfHostedAdminPanel =
   typeof __ONE_VEGETABLE_EXTENSION__ !== 'undefined' && __ONE_VEGETABLE_EXTENSION__
     ? null
-    : defineAsyncComponent(() => import('../components/SelfHostedAdminPanel.vue'));
+    : defineAsyncContent(() => import('../components/SelfHostedAdminPanel.vue'));
 
 const { control, mode } = useServices();
 const { t } = useUiI18n();
