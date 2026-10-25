@@ -1,8 +1,8 @@
 /** Isolated authenticated BFF acceptance. No production config, Token refresh or provider writes. */
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { resolve, sep } from 'node:path';
+import { mkdir, open, readFile } from 'node:fs/promises';
+import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BffGatewayClient } from '../packages/core/src/index';
 import { parseAlibabaOpenApiCredentialBundle } from '../packages/core/src/alibaba-credential-bundle';
@@ -87,6 +87,10 @@ export async function readModeBundles(options: ReturnType<typeof parseModeOption
   assert.equal(iop.protocol, 'iop');
   await assertIgnoredFile(root, resolve(root, options.output));
   assert(resolve(root, options.output).startsWith(resolve(root, 'artifacts') + sep));
+  // Claim a fresh receipt before any provider request. Never overwrite a credential or old evidence.
+  await mkdir(dirname(resolve(root, options.output)), { recursive: true });
+  const receipt = await open(resolve(root, options.output), 'wx', 0o600);
+  await receipt.close();
   return { top, iop };
 }
 export async function runBffMode(
