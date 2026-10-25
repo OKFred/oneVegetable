@@ -22,6 +22,7 @@ import { createApiApp } from '../src/app';
 import { AuthService } from '../src/auth/service';
 import { AdminService } from '../src/auth/admin-service';
 import { SqlAuthRepository } from '../src/auth/repository';
+import { isProductReferenceMethod } from '../../../packages/core/src/product-reference-methods';
 import { applyNodeMigrations, openNodeDatabase, type NodeDatabaseHandle } from '../src/db/node-database';
 
 const credentials = {
@@ -40,15 +41,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function transports(response: unknown) {
+function transports(response: unknown, protocol: 'top' | 'iop' = 'top') {
+  const activeCredentials =
+    protocol === 'iop'
+      ? {
+          ...credentials,
+          protocol: 'iop' as const,
+          endpoint: 'https://openapi-api.alibaba.com/rest',
+          signMethod: 'hmac-sha256' as const
+        }
+      : credentials;
   const send = vi.fn<NetworkTransport['send']>(() => Promise.resolve(Response.json(response)));
-  const bff = new AlibabaReadGatewayClient(credentials, { transport: { send } });
+  const bff = new AlibabaReadGatewayClient(activeCredentials, { transport: { send } });
   const extension = new AlibabaClient(
-    credentials,
+    activeCredentials,
     new NetworkManager({
       transport: { send },
       policies: {
-        alibaba: { allowedOrigins: [new URL(credentials.endpoint).origin] },
+        alibaba: { allowedOrigins: [new URL(activeCredentials.endpoint).origin] },
         bff: { allowedOrigins: [] },
         'external-photo': { allowedOrigins: [] }
       }
@@ -127,7 +137,7 @@ describe('BFF / extension generic security parity', () => {
     }
   });
 
-  it('preserves every enabled query example through the same single-root response boundary', async () => {
+  it('preserves every enabled query example through its protocol-specific response boundary', async () => {
     let checked = 0;
     for (const capability of listCapabilities()) {
       const definition = getCapabilityDefinition(capability.method);
@@ -135,9 +145,13 @@ describe('BFF / extension generic security parity', () => {
       const payload = { method: capability.method, parameters: definition.requestExample };
       if (!resolveExtensionOperationAvailability('callCapability', payload).allowed) continue;
       const requestId = createRequestId();
-      const { bff, extension, send } = transports({
-        [`${capability.method.replaceAll('.', '_')}_response`]: definition.responseExample
-      });
+      const native = isProductReferenceMethod(capability.method);
+      const { bff, extension, send } = transports(
+        native
+          ? definition.responseExample
+          : { [`${capability.method.replaceAll('.', '_')}_response`]: definition.responseExample },
+        native ? 'iop' : 'top'
+      );
       const result = await bff.request('callCapability', payload, { requestId });
       expect(await executeExtensionCapabilityCall(extension, payload, requestId), capability.method).toEqual(
         result
@@ -147,6 +161,12 @@ describe('BFF / extension generic security parity', () => {
       expect(result.data, capability.method).toEqual(redactCapabilityResponse(definition.responseExample));
       expect(result.contractValid, capability.method).toBe(result.contractIssues.length === 0);
       expect(send, capability.method).toHaveBeenCalledTimes(2);
+      for (const [url, init] of send.mock.calls) {
+        const requestUrl = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+        expect(requestUrl.startsWith('https://openapi-api.alibaba.com/'), capability.method).toBe(native);
+        expect((init.body as URLSearchParams).has('access_token'), capability.method).toBe(native);
+        if (native) expect((init.body as URLSearchParams).has('session'), capability.method).toBe(false);
+      }
       checked += 1;
     }
     expect(checked).toBeGreaterThan(0);
