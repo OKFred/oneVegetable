@@ -34,15 +34,18 @@ describe('tree reads drain their own context after rejection', () => {
       expect(pending).toHaveLength(4);
     });
     const failure = new Error('Read failed');
-    const first = pending[0];
-    if (!first) throw new Error('Missing first request');
-    first.reject(failure);
+    const first = pending[0],
+      second = pending[1];
+    if (!first || !second) throw new Error('Missing sibling requests');
+    // First observed failure wins, not the first rejected array index.
+    second.reject(failure);
     await new Promise<void>((done) => setTimeout(done, 0));
     expect(settled).toBe(false);
     expect(call).toHaveBeenCalledTimes(5);
     const method = call.mock.calls[0]?.[0];
     if (!method) throw new Error('Missing root request');
-    for (const item of pending.slice(1))
+    first.reject(new Error('Later sibling rejection'));
+    for (const item of pending.slice(2))
       item.resolve(response(method, kind === 'categories' ? fixture.categoryChild : fixture.groupChild));
     expect(await outcome).toBe(failure);
     expect(call).toHaveBeenCalledTimes(5);

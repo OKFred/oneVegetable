@@ -578,9 +578,9 @@ async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let nextIndex = 0;
-  let stopped = false;
+  const failure: { first?: { error: unknown } } = {};
   const worker = async (): Promise<void> => {
-    while (!stopped && nextIndex < items.length) {
+    while (!failure.first && nextIndex < items.length) {
       const index = nextIndex;
       nextIndex += 1;
       const item = items[index];
@@ -588,7 +588,7 @@ async function mapWithConcurrency<T, R>(
         try {
           results[index] = await mapper(item, index);
         } catch (error) {
-          stopped = true;
+          failure.first ??= { error };
           throw error;
         }
       }
@@ -596,9 +596,8 @@ async function mapWithConcurrency<T, R>(
   };
   const workerCount = Math.min(Math.max(1, concurrency), items.length);
   // A failed tree read must not resolve while sibling requests are still using its context.
-  const settled = await Promise.allSettled(Array.from({ length: workerCount }, () => worker()));
-  const failed = settled.find((result) => result.status === 'rejected');
-  if (failed?.status === 'rejected') throw failed.reason;
+  await Promise.allSettled(Array.from({ length: workerCount }, () => worker()));
+  if (failure.first) throw failure.first.error;
   return results;
 }
 
