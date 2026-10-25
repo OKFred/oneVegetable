@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { S3ObjectStorageClient, type S3StorageConfiguration } from '../src/s3-storage';
 import type { NetworkTransport } from '../src/network';
 import errors from '../../../mock/data/video/s3-errors.json';
+import listings from '../../../mock/data/s3-list-prefix.json';
 
 const configuration: S3StorageConfiguration = {
   endpoint: 'https://account.r2.cloudflarestorage.com',
@@ -15,7 +16,54 @@ const configuration: S3StorageConfiguration = {
   rootPrefix: 'imports/gallery'
 };
 
+function requestUrl(input: RequestInfo | URL | undefined): URL {
+  if (input === undefined) throw new Error('Missing captured S3 request');
+  return new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+}
+
 describe('S3ObjectStorageClient', () => {
+  it.each(['imports/gallery', 'imports/gallery/'])(
+    'preserves the directory boundary when listing configured root %s',
+    async (rootPrefix) => {
+      const send = vi
+        .fn<NetworkTransport['send']>()
+        .mockImplementation(() => Promise.resolve(new Response(listings.empty)));
+      const client = new S3ObjectStorageClient({ ...configuration, rootPrefix }, { send });
+      await client.listObjects({ maximum: 1 });
+      await client.listObjects({ prefix: '', maximum: 1 });
+      for (const [url] of send.mock.calls)
+        expect(requestUrl(url).searchParams.get('prefix')).toBe('imports/gallery/');
+      expect(send).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it('does not invent a directory prefix for an explicitly unrestricted root', async () => {
+    const send = vi.fn<NetworkTransport['send']>().mockResolvedValue(new Response(listings.empty));
+    await new S3ObjectStorageClient({ ...configuration, rootPrefix: '' }, { send }).listObjects({
+      maximum: 1
+    });
+    expect(requestUrl(send.mock.calls[0]?.[0]).searchParams.has('prefix')).toBe(false);
+  });
+
+  it('rejects sibling-directory results rather than hiding a scope violation', async () => {
+    const send = vi.fn<NetworkTransport['send']>().mockResolvedValue(new Response(listings.sibling));
+    await expect(
+      new S3ObjectStorageClient(configuration, { send }).listObjects({ maximum: 1 })
+    ).rejects.toThrow();
+    expect(send).toHaveBeenCalledOnce();
+  });
+
+  it('does not retry a denied root listing with an empty or broader prefix', async () => {
+    const send = vi
+      .fn<NetworkTransport['send']>()
+      .mockResolvedValue(new Response(errors.denied, { status: 403 }));
+    await expect(new S3ObjectStorageClient(configuration, { send }).listObjects({})).rejects.toMatchObject({
+      gatewayError: { code: 'S3_REQUEST_FAILED', subCode: 'HTTP_403:AccessDenied', retryable: false }
+    });
+    expect(send).toHaveBeenCalledOnce();
+    expect(requestUrl(send.mock.calls[0]?.[0]).searchParams.get('prefix')).toBe('imports/gallery/');
+  });
+
   it.each([
     [403, errors.denied, 'AccessDenied'],
     [411, errors.lengthRequired, 'MissingContentLength'],

@@ -68,3 +68,10 @@ account. A failed operation is never resent through the other protocol.
 Creation verification now uses one exact product-ID list query in both BFF and
 MV3, not a whole-store pagination scan. A missing or unrelated row stays pending;
 it does not trigger another publish request.
+
+S3 listings of a configured root preserve its directory boundary: a normalized
+root such as imports/gallery is sent as prefix=imports/gallery/. Nonempty
+relative filters keep their existing prefix-search semantics. Permission denials
+never trigger a retry with an empty or broader prefix; out-of-root results are
+rejected rather than silently filtered. Correct request construction alone is
+not proof that a provider's restricted-key IAM supports the request.

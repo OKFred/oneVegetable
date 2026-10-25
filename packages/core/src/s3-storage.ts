@@ -148,13 +148,14 @@ export class S3ObjectStorageClient {
     const url = this.#bucketUrl();
     url.searchParams.set('list-type', '2');
     url.searchParams.set('max-keys', String(Math.max(1, Math.min(1000, input.maximum ?? 100))));
-    const prefix = joinS3Key(this.#configuration.rootPrefix, input.prefix ?? '');
+    const rootPrefix = this.#configuration.rootPrefix;
+    // A configured root is a directory, not a string prefix for sibling keys.
+    const prefix = input.prefix ? joinS3Key(rootPrefix, input.prefix) : rootPrefix ? rootPrefix + '/' : '';
     if (prefix) url.searchParams.set('prefix', prefix);
     if (input.continuationToken) url.searchParams.set('continuation-token', input.continuationToken);
     const response = await this.#signedRequest(url, 'GET', undefined, undefined, input.requestId, 'text');
     if (!response.ok || typeof response.data !== 'string') throw s3HttpError(response);
     const page = parseListObjectsV2(response.data);
-    const rootPrefix = this.#configuration.rootPrefix;
     return {
       ...page,
       items: page.items.map((item) => ({

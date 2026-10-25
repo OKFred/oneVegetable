@@ -1,0 +1,4 @@
+{
+  "empty": "<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>",
+  "sibling": "<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>imports/gallery-other/private.jpg</Key><Size>12</Size></Contents></ListBucketResult>"
+}
