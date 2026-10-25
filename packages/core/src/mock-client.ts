@@ -5,6 +5,7 @@ import {
   validateCapabilityResponse
 } from './capability-registry';
 import { listCapabilitiesWithAccountVerification } from './account-verification';
+import productReferenceFixtures from '../../../mock/data/product-reference/products.json';
 import {
   INSIGHTS_MOCK_DATA,
   VIDEO_MOCK_DATA,
@@ -396,7 +397,13 @@ export class MockGatewayClient implements GatewayClient {
         );
       }
       const definition = requireCapabilityDefinition(payload.method);
-      const data = structuredClone(definition.responseExample);
+      const reference =
+        payload.method === '/alibaba/icbu/product/get/v2' &&
+        typeof payload.parameters.product_id === 'string' &&
+        Object.hasOwn(productReferenceFixtures, payload.parameters.product_id)
+          ? productReferenceFixtures[payload.parameters.product_id as keyof typeof productReferenceFixtures]
+          : undefined;
+      const data = structuredClone(reference ?? definition.responseExample);
       const contractIssues = await validateCapabilityResponse(payload.method, data);
       return {
         method: payload.method,

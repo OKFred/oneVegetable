@@ -1,0 +1,46 @@
+{
+  "10000001": {
+    "code": "0",
+    "success": true,
+    "product_info": {
+      "basic_info": {
+        "product_id": 10000001,
+        "title": "Portable solar power station 1000W",
+        "status": "online",
+        "audit_status": "approved"
+      },
+      "category_info": {
+        "category_id": 100009999
+      }
+    }
+  },
+  "10000002": {
+    "code": "0",
+    "success": true,
+    "product_info": {
+      "basic_info": {
+        "product_id": 10000002,
+        "title": "Custom recycled cotton canvas tote bag",
+        "status": "draft"
+      },
+      "category_info": {
+        "category_id": 100001589
+      }
+    }
+  },
+  "10000003": {
+    "code": "0",
+    "success": true,
+    "product_info": {
+      "basic_info": {
+        "product_id": 10000003,
+        "title": "Commercial stainless steel food dehydrator",
+        "status": "auditing",
+        "audit_status": "pending"
+      },
+      "category_info": {
+        "category_id": 100009998
+      }
+    }
+  }
+}

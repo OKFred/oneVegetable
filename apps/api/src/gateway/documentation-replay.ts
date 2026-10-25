@@ -1,4 +1,9 @@
 import { getCapabilityDefinition } from '@one-vegetable/core';
+import { IOP_REFERENCE_METHODS } from '@one-vegetable/core/product-reference';
+import { IOP_BUSINESS_ENDPOINT, IOP_API_ORIGIN } from '@one-vegetable/core/alibaba-iop';
+import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
+import type { OperationId, RequestOf, ResponseOf } from '@one-vegetable/core';
+import type { GatewayRequestContext } from './alibaba-read-gateway';
 
 import { AlibabaReadGatewayClient } from './alibaba-read-gateway';
 
@@ -89,11 +94,82 @@ export class DocumentationReplayTransport implements NetworkTransport {
 
 export function createDocumentationReplayGateway(
   options: DocumentationReplayOptions = {}
-): AlibabaReadGatewayClient {
-  return new AlibabaReadGatewayClient(REPLAY_CREDENTIALS, {
+): NativeReferenceReplayGateway {
+  return new NativeReferenceReplayGateway(REPLAY_CREDENTIALS, {
     transport: new DocumentationReplayTransport(options),
     ...(options.wait ? { wait: options.wait } : {})
   });
+}
+
+const nativeReferenceMethods = new Set<string>(Object.values(IOP_REFERENCE_METHODS));
+
+/** This transport only returns checked-in synthetic examples. It never calls fetch. */
+class NativeReferenceReplayTransport implements NetworkTransport {
+  send(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const method = url.pathname.replace(/^\/rest/u, '');
+    if (
+      url.origin !== IOP_API_ORIGIN ||
+      !nativeReferenceMethods.has(method) ||
+      url.search ||
+      init.method !== 'POST' ||
+      !(init.body instanceof URLSearchParams)
+    )
+      throw new Error('Native IOP replay request is outside its fixed read-only allowlist.');
+    if (init.body.has('method') || init.body.has('session'))
+      throw new Error('Native IOP replay must not use TOP transport fields.');
+    const example = getCapabilityDefinition(method)?.responseExample;
+    if (example === undefined) throw new Error('Native IOP replay example missing.');
+    assertSanitized(example);
+    return Promise.resolve(Response.json(structuredClone(example)));
+  }
+}
+
+class NativeReferenceReplayGateway extends AlibabaReadGatewayClient {
+  private readonly native = new AlibabaReadGatewayClient(
+    {
+      ...REPLAY_CREDENTIALS,
+      protocol: 'iop',
+      endpoint: IOP_BUSINESS_ENDPOINT
+    },
+    { transport: new NativeReferenceReplayTransport(), maxAttempts: 1 }
+  );
+
+  private usesNative(operation: OperationId, payload: unknown): boolean {
+    return (
+      (operation === 'callCapability' || operation === 'getCapabilityDefinition') &&
+      typeof payload === 'object' &&
+      payload !== null &&
+      'method' in payload &&
+      typeof payload.method === 'string' &&
+      nativeReferenceMethods.has(payload.method)
+    );
+  }
+  override async operationProtocol(
+    operation: OperationId,
+    payload: unknown,
+    context?: GalleryRequestOptions
+  ): Promise<'top' | 'iop'> {
+    return this.usesNative(operation, payload)
+      ? 'iop'
+      : await super.operationProtocol(operation, payload, context);
+  }
+  async operationGatewayContextId(operation: OperationId, payload: unknown): Promise<string> {
+    return await (this.usesNative(operation, payload) ? this.native : this).galleryGatewayContextId();
+  }
+  override async request<K extends OperationId>(
+    operation: K,
+    request: RequestOf<K>,
+    context?: GatewayRequestContext
+  ): Promise<ResponseOf<K>> {
+    if (this.usesNative(operation, request)) return await this.native.request(operation, request, context);
+    const result = await super.request(operation, request, context);
+    if (operation === 'listCapabilities')
+      return (result as ResponseOf<'listCapabilities'>).map((entry) =>
+        nativeReferenceMethods.has(entry.method) ? { ...entry, realCallEnabled: true } : entry
+      );
+    return result;
+  }
 }
 
 export function documentationReplayStatus(): AlibabaCredentialStatus {

@@ -104,7 +104,14 @@ function browse(nextPath: ProductReferenceCategory[] = []): void {
   });
 }
 function isKnownLeaf(categoryId: string): boolean {
-  return Boolean(categoryId) && (categoryId === props.categoryId || knownLeafIds.value.includes(categoryId));
+  // The public prediction contract explicitly defines category_id as a leaf ID.
+  // A current signed prediction is sufficient for a read; don't scan the whole tree.
+  return (
+    Boolean(categoryId) &&
+    (categoryId === props.categoryId ||
+      categoryId === suggestion.value?.categoryId ||
+      knownLeafIds.value.includes(categoryId))
+  );
 }
 function inspect(categoryId: string): void {
   if (!isKnownLeaf(categoryId)) return;

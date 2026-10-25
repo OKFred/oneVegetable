@@ -240,14 +240,23 @@ describe('product reference UI', () => {
     });
     expect(request).toHaveBeenCalledTimes(2);
   });
-  it('does not infer leaf status from a category prediction', async () => {
+  it('uses the documented prediction leaf ID for an explicit attribute read, not a tree scan', async () => {
     const { wrapper, request } = setup(ProductCategoryReference, categoryProps);
     await wrapper.get('input[aria-label="Product title (required)"]').setValue('Glass cup');
     await button(wrapper, 'Recommend category').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('Home / Drinkware / Drinking Glasses');
-    expect(wrapper.findAll('button').some((item) => item.text() === 'Attribute reference')).toBe(false);
+    expect(wrapper.findAll('button').some((item) => item.text() === 'Attribute reference')).toBe(true);
     expect(request).toHaveBeenCalledTimes(1);
+    await button(wrapper, 'Attribute reference').trigger('click');
+    await flushPromises();
+    expect(request.mock.calls[1]?.[1]).toEqual({
+      method: IOP_REFERENCE_METHODS.getAttributes,
+      parameters: { category_id: '220001' }
+    });
+    await wrapper.get('input[aria-label="Product title (required)"]').setValue('Changed title');
+    expect(wrapper.findAll('button').some((item) => item.text() === 'Attribute reference')).toBe(false);
+    expect(request).toHaveBeenCalledTimes(2);
   });
   it('localizes only exact documented online states and preserves other native enums', () => {
     for (const status of ['online', 'offline'] as const) {
