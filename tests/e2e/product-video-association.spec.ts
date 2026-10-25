@@ -20,7 +20,12 @@ test('video library selects a product without the editor and requires a separate
   await section.getByTestId('associate-video').click();
   const confirmation = page.getByRole('dialog', { name: '立即关联视频', exact: true });
   await expect(confirmation).toContainText('不保存或发布编辑器');
+  // Portal text can exist before the nested focus scope has activated.
+  // Wait for its user-visible open state before exercising pointer cancellation.
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation.getByRole('button', { name: '关闭立即关联视频', exact: true })).toBeFocused();
   await confirmation.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(confirmation).toHaveCount(0);
   await expect(dialog).toBeVisible();
   await expect(section.getByTestId('video-association-receipt')).toHaveCount(0);
   await section.getByRole('combobox', { name: '视频用途' }).selectOption('detail');
