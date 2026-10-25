@@ -5,7 +5,7 @@ import {
   validateCapabilityResponse
 } from './capability-registry';
 import { listCapabilitiesWithAccountVerification } from './account-verification';
-import productReferenceFixtures from '../../../mock/data/product-reference/products.json';
+import productReferenceFixtures from '../../../mock/data/product-reference/products.json' with { type: 'json' };
 import {
   INSIGHTS_MOCK_DATA,
   VIDEO_MOCK_DATA,
