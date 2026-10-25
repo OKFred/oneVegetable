@@ -3,6 +3,89 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.18.0",
+      "releasedAt": "2026-10-25",
+      "title": {
+        "zh-CN": "素材带入新增商品",
+        "en-US": "Selected assets to a new product"
+      },
+      "summary": {
+        "zh-CN": "从选中的素材图片开始新增商品，保留编辑模式切换与身份隔离，改进商品精确回读、平台审核提示和 S3 目录范围保护。",
+        "en-US": "Start a new product from selected asset images, preserving editor-mode switching and identity isolation. Improve exact product readback, platform-review feedback and S3 directory scope protection."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.18.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.17.2...v2.18.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "从图库开始新增商品",
+            "en-US": "Start a new product from gallery images"
+          },
+          "description": {
+            "zh-CN": "按当前页选中顺序带入图片，以首张作为初始主图。选择类目后加载全新 Schema，再进入快捷、引导或高级编辑；选择和打开编辑器不会上传或发布商品。",
+            "en-US": "Carry images in current-page selection order, using the first as the initial cover. Choose a category and load a fresh Schema before quick, guided or advanced editing. Selection and opening the editor never upload or publish a product."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "无损图片种子与身份隔离",
+            "en-US": "Lossless image seeding and identity fences"
+          },
+          "description": {
+            "zh-CN": "复用图片 URL、文件标识及元数据，切换编辑模式保留图片；不支持、只读、已占用或超容量时整批拒绝，不截断或覆盖。账号或凭据变化使旧交接失效，不静默换授权；交接仅在内存中一次使用，刷新不恢复。",
+            "en-US": "Reuse image URLs, file IDs and metadata across editor modes. Unsupported, read-only, occupied or over-capacity fields reject the whole seed without truncation or overwriting. Account or credential changes invalidate the handoff without switching authorization. The one-use handoff stays in memory and is not restored after reload."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "按精确商品 ID 核对新增结果",
+            "en-US": "Verify creation by exact product ID"
+          },
+          "description": {
+            "zh-CN": "Node BFF 与 MV3 使用返回的商品 ID 精确查询，不再分页扫描整店。未找到目标或读到无关商品时保持待核对，不再次发品。",
+            "en-US": "Node BFF and MV3 query the returned product ID directly instead of paging through the store. Missing or unrelated rows remain pending verification and never trigger another publish request."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "保留 IOP 审核中的状态",
+            "en-US": "Preserve the IOP auditing state"
+          },
+          "description": {
+            "zh-CN": "IOP 回读返回审核相关子错误时保持 auditing，区分平台受理、审核通过和字段回读；不误判为最终失败，也不自动重发写请求。",
+            "en-US": "Keep auditing when IOP readback returns review-related sub-errors. Platform acceptance, review approval and field readback remain distinct; these responses are not final failures and do not automatically resend writes."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "保留 S3 根前缀目录边界",
+            "en-US": "Preserve S3 root directory boundaries"
+          },
+          "description": {
+            "zh-CN": "配置根目录的列表前缀保留末尾斜杠，非空相对筛选仍按原前缀语义处理。拒绝越界结果，权限拒绝后不使用空前缀或更大范围重试。",
+            "en-US": "Keep a trailing slash when listing a configured root directory, retaining existing prefix semantics for nonempty relative filters. Reject out-of-root results; permission denials never retry with an empty or broader prefix."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "保留协议能力与安全边界",
+            "en-US": "Preserve protocol capabilities and safety boundaries"
+          },
+          "description": {
+            "zh-CN": "IOP 图片分组范围限制继续明确提示，不扫描全库、不把范围异常伪装为空分组。不新增权限或写能力；任务继续在发送前留存回执，结果不明不自动重发。",
+            "en-US": "Keep IOP photo-group scope limits explicit, without scanning the library or disguising scope mismatches as empty groups. No new permissions or write capabilities. Tasks still persist receipts before dispatch and never automatically resend unknown writes."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.17.2",
       "releasedAt": "2026-10-24",
       "title": {
