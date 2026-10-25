@@ -704,18 +704,13 @@ export class ProductMutationLifecycleService {
     requestId: string,
     options?: ProductOperationOptions
   ): Promise<Product | null> {
-    for (let page = 1; page <= 100; page += 1) {
-      const operationOptions: [ProductOperationOptions?] = options ? [options] : [];
-      const result = await this.#gateway.list(
-        { page, pageSize: 30, language },
-        requestId,
-        ...operationOptions
-      );
-      const product = result.items.find((candidate) => candidate.id === productId);
-      if (product) return product;
-      if (page * result.pageSize >= result.total) return null;
-    }
-    return null;
+    const operationOptions: [ProductOperationOptions?] = options ? [options] : [];
+    const result = await this.#gateway.list(
+      { productId, page: 1, pageSize: 1, language },
+      requestId,
+      ...operationOptions
+    );
+    return result.items.find((candidate) => candidate.id === productId) ?? null;
   }
 
   async #readDisplayProducts(

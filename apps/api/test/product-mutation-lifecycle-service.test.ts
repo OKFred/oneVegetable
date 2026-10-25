@@ -224,43 +224,77 @@ describe('product mutation lifecycle service', () => {
     expect(gateway.get).toHaveBeenCalledWith('1601928079991', true, 'en_US', expect.any(String), 201712702);
   });
 
-  it('keeps accepted publishing pending and prevents a duplicate platform mutation', async () => {
-    const { service, gateway } = createService();
-    gateway.publish.mockResolvedValueOnce({
-      productId: '1601928079992',
-      traceId: 'publish-trace',
-      success: true
-    });
-    gateway.list.mockResolvedValueOnce({ items: [], page: 1, pageSize: 30, total: 0 });
+  it.each(['empty', 'unrelated'] as const)(
+    'uses one exact publish readback and keeps acceptance pending for a large %s page',
+    async (readback) => {
+      const { service, gateway } = createService();
+      const productContext = { identity: await opaqueGalleryId(ACTOR.actorId), gateway: 'b'.repeat(64) };
+      gateway.publish.mockResolvedValueOnce({
+        productId: '1601928079992',
+        traceId: 'publish-trace',
+        success: true
+      });
+      const unrelated = productPage('online', '1601928079000');
+      gateway.list.mockResolvedValue({
+        ...unrelated,
+        items: readback === 'empty' ? [] : unrelated.items,
+        pageSize: 1,
+        total: 100_000
+      });
 
-    const result = await service.submitCreation({
-      requestId: '146dd1cb-55ca-4655-a5c3-7616f38734e2',
-      actor: ACTOR,
-      operation: 'publishProduct',
-      request: CREATION_REQUEST
-    });
-    expect(result.job).toMatchObject({ status: 'verifying', productId: '1601928079992' });
-
-    await expect(
-      service.submitCreation({
-        requestId: '9f6461ae-fcd3-4568-8e30-d43e6d34280a',
+      const result = await service.submitCreation({
+        requestId: '146dd1cb-55ca-4655-a5c3-7616f38734e2',
         actor: ACTOR,
         operation: 'publishProduct',
-        request: CREATION_REQUEST
-      })
-    ).rejects.toBeInstanceOf(ProductMutationAlreadyInProgressError);
-    expect(gateway.publish).toHaveBeenCalledOnce();
+        request: CREATION_REQUEST,
+        options: { productContext }
+      });
+      expect(result).toMatchObject({
+        success: true,
+        job: { status: 'verifying', productId: '1601928079992', productContext }
+      });
+      expect(result.job.reasonCode).toBe('PRODUCT_PUBLISH_READBACK_PENDING');
+      expect(gateway.list.mock.calls).toEqual([
+        [
+          { productId: '1601928079992', page: 1, pageSize: 1, language: 'en_US' },
+          '146dd1cb-55ca-4655-a5c3-7616f38734e2',
+          { productContext }
+        ]
+      ]);
 
-    gateway.list.mockResolvedValueOnce(productPage('auditing', '1601928079992'));
-    await expect(
-      service.refresh({
-        requestId: '33d4573c-e6de-429d-ae57-e3101f48fe85',
-        actor: ACTOR,
-        id: result.job.id,
-        expectedRevision: result.job.revision
-      })
-    ).resolves.toMatchObject({ status: 'verified', reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED' });
-  });
+      await expect(
+        service.submitCreation({
+          requestId: '9f6461ae-fcd3-4568-8e30-d43e6d34280a',
+          actor: ACTOR,
+          operation: 'publishProduct',
+          request: CREATION_REQUEST
+        })
+      ).rejects.toBeInstanceOf(ProductMutationAlreadyInProgressError);
+      expect(gateway.publish).toHaveBeenCalledOnce();
+
+      gateway.list.mockResolvedValueOnce(productPage('auditing', '1601928079992'));
+      await expect(
+        service.refresh({
+          requestId: '33d4573c-e6de-429d-ae57-e3101f48fe85',
+          actor: ACTOR,
+          id: result.job.id,
+          expectedRevision: result.job.revision
+        })
+      ).resolves.toMatchObject({
+        status: 'verified',
+        reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED',
+        productContext
+      });
+      expect(gateway.list).toHaveBeenCalledTimes(2);
+      expect(gateway.list).toHaveBeenNthCalledWith(
+        2,
+        { productId: '1601928079992', page: 1, pageSize: 1, language: 'en_US' },
+        '33d4573c-e6de-429d-ae57-e3101f48fe85',
+        { productContext }
+      );
+      expect(gateway.publish).toHaveBeenCalledOnce();
+    }
+  );
 
   it('marks an uncertain creation response for recovery and never retries it', async () => {
     const { service, gateway } = createService();
@@ -282,6 +316,24 @@ describe('product mutation lifecycle service', () => {
       status: 'recovery-required',
       reasonCode: 'NETWORK_TIMEOUT'
     });
+    const uncertain = required(jobs.items[0]);
+    await expect(
+      service.submitCreation({
+        requestId: crypto.randomUUID(),
+        actor: ACTOR,
+        operation: 'publishProduct',
+        request: CREATION_REQUEST
+      })
+    ).rejects.toBeInstanceOf(ProductMutationAlreadyInProgressError);
+    await expect(
+      service.refresh({
+        requestId: crypto.randomUUID(),
+        actor: ACTOR,
+        id: uncertain.id,
+        expectedRevision: uncertain.revision
+      })
+    ).resolves.toMatchObject({ status: 'recovery-required' });
+    expect(gateway.list).not.toHaveBeenCalled();
     expect(gateway.publish).toHaveBeenCalledOnce();
   });
 

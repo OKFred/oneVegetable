@@ -997,13 +997,8 @@ async function findProductById(
   productId: string,
   language: AlibabaLanguage
 ): Promise<Product | null> {
-  for (let page = 1; page <= 100; page += 1) {
-    const result = await gateway.list({ page, pageSize: 100, language });
-    const product = result.items.find((candidate) => candidate.id === productId);
-    if (product) return product;
-    if (page * result.pageSize >= result.total) return null;
-  }
-  return null;
+  const result = await gateway.list({ productId, page: 1, pageSize: 1, language });
+  return result.items.find((candidate) => candidate.id === productId) ?? null;
 }
 
 function isCreationOperation(

@@ -195,32 +195,54 @@ describe('extension product display mutation lifecycle', () => {
     expect(gateway.draftCalls).toHaveLength(1);
   });
 
-  it('resumes published-product readback after a worker restart', async () => {
-    const storage = new MemoryStorage();
-    const gateway = new FakeCreationGateway();
-    gateway.publishVisible = false;
-    const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 30_000);
+  it.each(['empty', 'unrelated'] as const)(
+    'uses one exact published-product readback after a large %s page and worker restart',
+    async (readback) => {
+      const storage = new MemoryStorage();
+      const gateway = new FakeCreationGateway();
+      gateway.publishVisible = readback === 'unrelated';
+      gateway.listedProductId = '1600000000999';
+      gateway.listTotal = 100_000;
+      const productContext = { identity: 'a'.repeat(64), gateway: 'b'.repeat(64) };
+      const request = { ...creationRequest(), language: 'zh_CN' as const };
+      const lifecycle = new ExtensionProductDisplayMutationLifecycle(storage, () => 30_000);
 
-    const result = await lifecycle.submitCreation(
-      gateway,
-      crypto.randomUUID(),
-      'publishProduct',
-      creationRequest()
-    );
-    expect(result.job.status).toBe('verifying');
+      const result = await lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', request, {
+        productContext
+      });
+      expect(result).toMatchObject({
+        success: true,
+        job: { status: 'verifying', productId: gateway.productId, productContext }
+      });
+      expect(result.job.reasonCode).toBe('PRODUCT_PUBLISH_READBACK_PENDING');
+      const query = { productId: gateway.productId, page: 1, pageSize: 1, language: 'zh_CN' };
+      expect(gateway.listCalls).toEqual([query]);
+      await expect(
+        lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', request, {
+          productContext
+        })
+      ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
+      expect(gateway.listCalls).toEqual([query]);
+      expect(gateway.publishCalls).toHaveLength(1);
 
-    gateway.publishVisible = true;
-    const restarted = new ExtensionProductDisplayMutationLifecycle(storage, () => 30_001);
-    const persisted = (await restarted.list()).items[0];
-    if (!persisted) throw new Error('missing persisted creation job');
-    const verified = await restarted.refresh(gateway, persisted.id, persisted.revision);
-    expect(verified).toMatchObject({
-      operation: 'publishProduct',
-      productId: gateway.productId,
-      status: 'verified',
-      reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED'
-    });
-  });
+      gateway.publishVisible = true;
+      gateway.listedProductId = gateway.productId;
+      const restarted = new ExtensionProductDisplayMutationLifecycle(storage, () => 30_001);
+      const persisted = (await restarted.list()).items[0];
+      if (!persisted) throw new Error('missing persisted creation job');
+      expect(persisted).toMatchObject({ productContext, status: 'verifying', language: 'zh_CN' });
+      const verified = await restarted.refresh(gateway, persisted.id, persisted.revision);
+      expect(verified).toMatchObject({
+        operation: 'publishProduct',
+        productId: gateway.productId,
+        status: 'verified',
+        reasonCode: 'PRODUCT_PUBLISH_READBACK_MATCHED',
+        productContext
+      });
+      expect(gateway.listCalls).toEqual([query, query]);
+      expect(gateway.publishCalls).toHaveLength(1);
+    }
+  );
 
   it.each([true, false])(
     'blocks duplicate creation after an uncertain result (retryable=%s)',
@@ -245,6 +267,14 @@ describe('extension product display mutation lifecycle', () => {
       await expect(
         lifecycle.submitCreation(gateway, crypto.randomUUID(), 'publishProduct', creationRequest())
       ).rejects.toMatchObject({ gatewayError: { code: 'PRODUCT_MUTATION_ALREADY_IN_PROGRESS' } });
+      expect(gateway.publishCalls).toHaveLength(1);
+      const uncertain = (await lifecycle.list()).items[0];
+      if (!uncertain) throw new Error('missing uncertain creation job');
+      await expect(lifecycle.refresh(gateway, uncertain.id, uncertain.revision)).resolves.toMatchObject({
+        status: 'recovery-required',
+        reasonCode: 'NETWORK_TIMEOUT'
+      });
+      expect(gateway.listCalls).toEqual([]);
       expect(gateway.publishCalls).toHaveLength(1);
     }
   );
@@ -449,18 +479,22 @@ class FakeGateway implements ExtensionProductDisplayGateway {
 
 class FakeCreationGateway implements ExtensionProductCreationGateway {
   readonly productId = '1600000000002';
+  readonly listCalls: ProductListQuery[] = [];
   readonly draftCalls: RequestOf<'saveProductDraft'>[] = [];
   readonly publishCalls: RequestOf<'publishProduct'>[] = [];
   readonly readCategoryIds: (number | undefined)[] = [];
+  listedProductId = this.productId;
+  listTotal: number | null = null;
   publishVisible = true;
   draftVisible = true;
   mutationError: GatewayException | null = null;
 
   list(request: ProductListQuery): Promise<ProductPage> {
+    this.listCalls.push(structuredClone(request));
     const items = this.publishVisible
       ? [
           {
-            id: this.productId,
+            id: this.listedProductId,
             encryptedId: 'encrypted-created-product',
             detailUrl: null,
             subject: 'Created smoke product',
@@ -477,7 +511,7 @@ class FakeCreationGateway implements ExtensionProductCreationGateway {
       items,
       page: request.page ?? 1,
       pageSize: request.pageSize ?? 100,
-      total: items.length
+      total: this.listTotal ?? items.length
     });
   }
 
