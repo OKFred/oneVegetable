@@ -1,8 +1,30 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-10-24。当前发布版本为 **2.17.2**；商店上传、提交审核和实际上架是三个独立状态，不能根据本地版本或 GitHub Release 推断。本轮准备新版本包与中英文材料，不查询或改变商店状态，不再次部署 Worker，不覆盖或复用旧版本包。固定源码、双语说明和最终附件见 [v2.17.2 Release](https://github.com/OKFred/oneVegetable/releases/tag/v2.17.2)。
+检查日期：2026-10-25。当前准备 **2.18.0 发布候选**；上一正式版本为 [v2.17.2](https://github.com/OKFred/oneVegetable/releases/tag/v2.17.2)。候选已构建、打包并冻结文件指纹，尚未创建 Tag / GitHub Release、合并主线或部署，也不查询或改变商店状态。商店上传、提交审核和实际上架仍是三个独立状态；不能根据版本号或候选说明推断已发布，不覆盖或复用旧版本包。
 
-## 2.17.2 提交要点
+## 2.18.0 候选提交要点
+
+- 中文摘要：选中图库图片后进入新增商品，加载全新类目 Schema，无损带入图片并保留模式切换和身份栅栏；精确商品 ID 回读、IOP auditing 状态与 S3 根前缀目录边界同步修复。
+- English summary: Start a new product from selected gallery images with a fresh category Schema, lossless image seeding, editor-mode switching and identity fences. Fix exact product-ID readback, IOP auditing state and S3 root-directory prefix boundaries.
+- 未新增依赖或 Manifest 权限，不扩大写入门禁或自动重试。IOP 图片分组范围异常继续严格拦截，不扫描全库、不伪造空分组，也不宣称与 TOP 完全等价。
+- 版本说明中的日期、来源及未来 Release / compare 链接是候选元数据，不表示对应 Tag、Release、ZIP 或商店条目已经创建。
+
+### 候选验收与证据
+
+- Node BFF：新建一条 TOP 平台草稿并回读；新建一条 IOP 正式商品，标题修改与恢复、上下架均已回读，最终在线。该证据不等于独立 MV3 写入验收。
+- 正式 MV3：冻结的 2.18.0 候选已完成真实图库到新编辑器交接，以及仅标题修改、回读、恢复、再次回读。最终在线、原标题及图片字段指纹不变；两次确认都仅包含标题字段，没有重发。插件独立发品和上下架不冒用 Node BFF 的验收结果。
+- S3：受限密钥的范围内列表、PUT、GET / SHA-256 和越界列表 HTTP 403 已有记录；不扩大 IAM、凭据默认值或应用重试范围。宿主存储升级不作为扩展已发布的证据。
+- 脱敏功能记录见 [素材带入新增商品](assets-to-product-workflow.md)。真实商品 ID、私人地址、凭据及原始响应只留在既有忽略证据目录，不进入商店文案或公开仓库。
+
+### 质量门禁与后续发布边界
+
+- Windows 格式、Lint、i18n、契约、类型、3,554 条单测和 24 条 Worker 用例通过。E2E：Web/MV3 130 条、授权 47 条、Node 凭据 17 条、Worker/BFF 回放 2 条通过；2.17.2 升级检查 24 项通过。
+- Web/API/MV3 构建、包体和商店合规检查通过；实际验收、冻结构建与 ZIP 逐文件匹配。10 条非空本地敏感值规则扫描未发现匹配；不将真实验收记录、密钥或原始响应打包。现有双语引导、配置和能力截图继续适用，未据此宣称新增功能已有商店截图。
+- 包体预算保持 ZIP 不超过 **2,000,000 字节**、解包不超过 **5,470,000 字节**。本次候选 ZIP 为 **1,317,306 字节**、解包 **4,492,622 字节**，包含 225 个文件；逐文件 SHA-256 与冻结的实际验收构建一致。Manifest 权限与 2.17.2 一致。
+- ZIP SHA-256：d60b5377648779de1ebe0caa3c8ac0623f9f677a4ca296689816e567ba1a7f71。
+- 当前提交的 CI 是独立门禁，不根据本地通过推断 CI 通过。后续合并、Tag / Release、商店上传与审核提交、部署分别取得明确授权，本轮未执行这些动作。
+
+## 2.17.2 提交要点（历史记录）
 
 - 更新摘要：修复双授权选路及启动初始化中断橱窗确认，统一 Web 与插件配置入口，增加加载反馈并保留已有内容。
 - 英文摘要：Fix dual-authorization routing and startup context interrupting showcase confirmations, align Web and extension setup, and preserve existing content with loading feedback.

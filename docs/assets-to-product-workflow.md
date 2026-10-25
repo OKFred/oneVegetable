@@ -84,8 +84,15 @@ not proof that a provider's restricted-key IAM supports the request.
   readback; the final state is online with the original title and unchanged
   post-publication image-field fingerprint. No retry or duplicate creation was used.
 - MV3: real gallery selection and fresh-editor handoff were checked separately.
-  The controlled provider-write lifecycle above was executed through Node BFF;
-  this is not evidence of an independent MV3 write lifecycle.
+  The frozen 2.18.0 candidate then updated only the new test product's title via
+  IOP, verified the marked title, restored the original title and verified it
+  again. Both updates had a persisted plugin receipt before dispatch; each
+  confirmation listed exactly one changed field. Final independent readback was
+  online with the original title and unchanged image-field fingerprint.
+  The plugin also displayed verified readback for the restore. No image,
+  inventory or display write was made during this separate MV3 cycle.
+  The draft/publish/display lifecycle above remains Node BFF evidence; it is
+  not presented as independent MV3 creation or display acceptance.
 - The platform returned a different image URL/file ID and a size variant.
   Side-by-side visual review matched the selected image. Literal URL, file-ID
   and binary equality are not claimed for that platform-generated variant.
@@ -100,3 +107,22 @@ not proof that a provider's restricted-key IAM supports the request.
 These results do not remove the IOP photobank scope-mismatch guard or imply
 that an unsupported protocol gained a capability. They do not constitute a
 mainline merge, website deployment or Store release.
+
+## 2.18.0 candidate checks
+
+- Windows: formatting, ESLint, i18n, contract/protocol generation and types passed.
+  Unit tests: 3,554 across 357 files; Worker replay: 24 across nine files.
+- Final E2E results: 130 Web/MV3, 47 authorization, 17 Node credentials and
+  two Worker/BFF replay cases passed. Web/MV3 and Node credential suites were
+  rerun serially after resource pressure in an earlier concurrent run.
+  The nested video confirmation test now
+  waits for its focus scope before pointer cancellation and checks that only
+  the child dialog closes. Earlier failed runs remain in the ignored logs.
+- The 2.17.2-to-2.18.0 upgrade passed 24 checks. Web/API/MV3 builds and bundle
+  gates passed; the Worker build was a dry run, not deployment.
+- Candidate ZIP: 1,317,306 bytes; unpacked: 4,492,622 bytes across 225 files.
+  Every ZIP member matches the frozen real-MV3 build. Manifest access is
+  unchanged from 2.17.2; the private-value scan used nonempty local rules.
+- ZIP SHA-256: d60b5377648779de1ebe0caa3c8ac0623f9f677a4ca296689816e567ba1a7f71.
+  The candidate and private audit reports are under ignored artifacts/.
+  Current-head CI and formal release approval are separate gates.
