@@ -24,6 +24,7 @@ import iopBusinessFixture from '../../mock/data/alibaba-auth/iop-business-respon
 import videoAssociationFixture from '../../mock/data/video/association-core.json' with { type: 'json' };
 import type { AlibabaAuthorizationsSummary } from '../../packages/core/src/gateway-credential-management';
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
+import { isProductReferenceMethod } from '../../packages/core/src/product-reference-methods';
 import {
   getCapabilityDefinition,
   listCapabilities,
@@ -436,7 +437,14 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
     const requestIssues = await validateCapabilityRequest(candidate.method, definition.requestExample);
     const before = calls.length;
     const response = await invoke(candidate.method, definition.requestExample);
-    if (requestIssues.length) {
+    if (isProductReferenceMethod(candidate.method)) {
+      // This profile currently contains TOP only. A native IOP read must not be signed by TOP.
+      expect(response, candidate.method).toMatchObject({
+        ok: false,
+        error: { code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED' }
+      });
+      expect(calls).toHaveLength(before);
+    } else if (requestIssues.length) {
       expect(response, candidate.method).toMatchObject({
         ok: false,
         error: { code: 'REQUEST_CONTRACT_INVALID' }
@@ -459,6 +467,68 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
   expect(
     new Set(calls.map((method) => candidates.find((item) => item.method === method)?.domain)).size
   ).toBeGreaterThanOrEqual(6);
+  const iopBundle = { ...credentialFixture.oauthBundle, protocol: 'iop' };
+  // Only the consent lookup is simulated; the built worker, vault, signing and transport stay real.
+  // All network routes remain synthetic and unmatched traffic is denied by beforeEach.
+  await page.evaluate(() => {
+    const permissions = (
+      globalThis as unknown as {
+        chrome: {
+          permissions: {
+            contains(query: { origins?: string[]; permissions?: string[] }): Promise<boolean>;
+            request(query: { origins?: string[]; permissions?: string[] }): Promise<boolean>;
+          };
+        };
+      }
+    ).chrome.permissions;
+    const nativeContains = permissions.contains.bind(permissions);
+    const iopOnly = (query: { origins?: string[]; permissions?: string[] }) =>
+      query.origins?.length === 1 &&
+      query.origins[0] === 'https://openapi-api.alibaba.com/*' &&
+      !query.permissions?.length;
+    permissions.contains = (query) => (iopOnly(query) ? Promise.resolve(true) : nativeContains(query));
+    permissions.request = (query) => Promise.resolve(iopOnly(query));
+  });
+  await context.route('https://openapi-api.alibaba.com/rest/alibaba/icbu/**', async (route) => {
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Request-ID'
+    };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    const method = new URL(route.request().url()).pathname.replace(/^\/rest/u, '');
+    const definition = getCapabilityDefinition(method);
+    const form = new URLSearchParams(route.request().postData() ?? '');
+    if (
+      !isProductReferenceMethod(method) ||
+      !definition ||
+      route.request().method() !== 'POST' ||
+      form.has('method') ||
+      form.has('session') ||
+      form.get('access_token') !== iopBundle.oauth.accessToken ||
+      form.get('app_key') !== iopBundle.application.appKey
+    )
+      return route.abort();
+    calls.push(method);
+    await route.fulfill({
+      headers,
+      json: {
+        ...(definition.responseExample as Record<string, unknown>),
+        request_id: capabilityWorkerFixture.traceId
+      }
+    });
+  });
+  await importExtensionAuthorization(page, iopBundle, 'e2e-vault-password');
+  for (const candidate of candidates.filter((entry) => isProductReferenceMethod(entry.method))) {
+    const definition = getCapabilityDefinition(candidate.method);
+    if (!definition) throw new Error(candidate.method);
+    const before = calls.length;
+    expect(await invoke(candidate.method, definition.requestExample), candidate.method).toMatchObject({
+      ok: true,
+      data: { data: definition.responseExample, contractValid: true, contractIssues: [] }
+    });
+    expect(calls.slice(before)).toEqual([candidate.method]);
+  }
   const before = calls.length;
   expect(
     await invoke('alibaba.icbu.category.id.mapping', capabilityWorkerFixture.invalidMappingRequest)
