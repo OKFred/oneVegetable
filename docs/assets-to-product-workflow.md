@@ -75,3 +75,28 @@ relative filters keep their existing prefix-search semantics. Permission denials
 never trigger a retry with an empty or broader prefix; out-of-root results are
 rejected rather than silently filtered. Correct request construction alone is
 not proof that a provider's restricted-key IAM supports the request.
+
+## Remote acceptance: 2026-10-25
+
+- TOP: one new platform draft was created and read with schema.render.draft.
+- IOP: one new unbranded test product was published, title-edited, restored,
+  taken offline and put online. Each write has a durable receipt and verified
+  readback; the final state is online with the original title and unchanged
+  post-publication image-field fingerprint. No retry or duplicate creation was used.
+- MV3: real gallery selection and fresh-editor handoff were checked separately.
+  The controlled provider-write lifecycle above was executed through Node BFF;
+  this is not evidence of an independent MV3 write lifecycle.
+- The platform returned a different image URL/file ID and a size variant.
+  Side-by-side visual review matched the selected image. Literal URL, file-ID
+  and binary equality are not claimed for that platform-generated variant.
+- S3: a prefix-restricted key passed inside-prefix listing, one small PUT,
+  GET/SHA-256 readback and final listing after a backed-up RustFS upgrade from
+  alpha.94 to pinned 1.0.3. Outside-prefix listing remained denied with HTTP 403.
+  A pre-upgrade test object also retained its original SHA-256. IAM conditions,
+  keys, bucket policy and application credential defaults were not broadened.
+- Private receipts and recovery details remain under the ignored
+  artifacts/assets-to-product-2.18 directory, not in public fixtures.
+
+These results do not remove the IOP photobank scope-mismatch guard or imply
+that an unsupported protocol gained a capability. They do not constitute a
+mainline merge, website deployment or Store release.
