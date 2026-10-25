@@ -72,3 +72,4 @@ export { INSIGHTS_CAPABILITY_DEFINITIONS } from './generated/insights-capabiliti
 export { PHOTO_CAPABILITY_DEFINITIONS } from './generated/photo-capabilities';
 export { PLATFORM_CAPABILITY_DEFINITIONS } from './generated/platform-capabilities';
 export { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from './generated/product-description-templates';
+export * from './product-photo-seed';

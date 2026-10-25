@@ -1,0 +1,130 @@
+{
+  "fixedSlotsDirectXml": "<itemSchema xmlns:mock=\"urn:mock:product-photo-seed\" data-version=\"mock\">\n  <mock:unknown mock:keep=\"yes\"><![CDATA[keep <unknown> & data]]></mock:unknown>\n  <field id=\"productTitle\" name=\"Mock title\" type=\"input\"><value>Mock title &amp; details</value></field>\n  <field id=\"scImages\" name=\"Mock fixed images\" type=\"complex\" mock:keep=\"yes\"><rules><rule name=\"maxInputNumRule\" value=\"6\"/></rules><complex-value mock:instance=\"keep\"><field id=\"scImages_0\" name=\"Mock image 0\" type=\"input\" mock:slot=\"0\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-0\"/></field><field id=\"scImages_1\" name=\"Mock image 1\" type=\"input\" mock:slot=\"1\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-1\"/></field><field id=\"scImages_2\" name=\"Mock image 2\" type=\"input\" mock:slot=\"2\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-2\"/></field><field id=\"scImages_3\" name=\"Mock image 3\" type=\"input\" mock:slot=\"3\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-3\"/></field><field id=\"scImages_4\" name=\"Mock image 4\" type=\"input\" mock:slot=\"4\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-4\"/></field><field id=\"scImages_5\" name=\"Mock image 5\" type=\"input\" mock:slot=\"5\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-5\"/></field></complex-value><fields><field id=\"scImages_0\" name=\"Mock image 0\" type=\"input\" mock:slot=\"0\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-0\"/></field><field id=\"scImages_1\" name=\"Mock image 1\" type=\"input\" mock:slot=\"1\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-1\"/></field><field id=\"scImages_2\" name=\"Mock image 2\" type=\"input\" mock:slot=\"2\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-2\"/></field><field id=\"scImages_3\" name=\"Mock image 3\" type=\"input\" mock:slot=\"3\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-3\"/></field><field id=\"scImages_4\" name=\"Mock image 4\" type=\"input\" mock:slot=\"4\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-4\"/></field><field id=\"scImages_5\" name=\"Mock image 5\" type=\"input\" mock:slot=\"5\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-5\"/></field></fields></field>\n  <field id=\"variants\" name=\"Mock SKU\" type=\"multiComplex\">\n    <fields><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value/></field></fields>\n    <complex-values><complex-value><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value fileId=\"mock-existing-sku\">https://sc04.alicdn.com/kf/mock-existing-sku.jpg</value></field></complex-value></complex-values>\n  </field>\n  <field id=\"superText\" name=\"Mock description\" type=\"input\"><rules><rule name=\"valueTypeRule\" value=\"html\"/></rules><value><![CDATA[<p>Mock details</p><img src=\"https://sc04.alicdn.com/kf/mock-existing-description.jpg\">]]></value></field>\n  <field id=\"market\" name=\"Mock market\" type=\"singleCheck\"><options><option displayName=\"Mock wholesale\" value=\"mock-wholesale\"/></options><value>mock-wholesale</value></field>\n  <field id=\"notice\" name=\"Mock notice\" type=\"label\"><rules><rule name=\"mockUnknownRule\" value=\"keep\"/></rules><value>Mock read-only notice</value></field>\n</itemSchema>",
+  "fixedSlotsWrappedXml": "<itemSchema xmlns:mock=\"urn:mock:product-photo-seed\" data-version=\"mock\">\n  <mock:unknown mock:keep=\"yes\"><![CDATA[keep <unknown> & data]]></mock:unknown>\n  <field id=\"productTitle\" name=\"Mock title\" type=\"input\"><value>Mock title &amp; details</value></field>\n  <field id=\"scImages\" name=\"Mock fixed images\" type=\"complex\" mock:keep=\"yes\"><rules><rule name=\"maxInputNumRule\" value=\"6\"/></rules><complex-values><complex-value mock:instance=\"keep\"><field id=\"scImages_0\" name=\"Mock image 0\" type=\"input\" mock:slot=\"0\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-0\"/></field><field id=\"scImages_1\" name=\"Mock image 1\" type=\"input\" mock:slot=\"1\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-1\"/></field><field id=\"scImages_2\" name=\"Mock image 2\" type=\"input\" mock:slot=\"2\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-2\"/></field><field id=\"scImages_3\" name=\"Mock image 3\" type=\"input\" mock:slot=\"3\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-3\"/></field><field id=\"scImages_4\" name=\"Mock image 4\" type=\"input\" mock:slot=\"4\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-4\"/></field><field id=\"scImages_5\" name=\"Mock image 5\" type=\"input\" mock:slot=\"5\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-5\"/></field></complex-value></complex-values><fields><field id=\"scImages_0\" name=\"Mock image 0\" type=\"input\" mock:slot=\"0\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-0\"/></field><field id=\"scImages_1\" name=\"Mock image 1\" type=\"input\" mock:slot=\"1\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-1\"/></field><field id=\"scImages_2\" name=\"Mock image 2\" type=\"input\" mock:slot=\"2\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-2\"/></field><field id=\"scImages_3\" name=\"Mock image 3\" type=\"input\" mock:slot=\"3\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-3\"/></field><field id=\"scImages_4\" name=\"Mock image 4\" type=\"input\" mock:slot=\"4\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-4\"/></field><field id=\"scImages_5\" name=\"Mock image 5\" type=\"input\" mock:slot=\"5\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-5\"/></field></fields></field>\n  <field id=\"variants\" name=\"Mock SKU\" type=\"multiComplex\">\n    <fields><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value/></field></fields>\n    <complex-values><complex-value><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value fileId=\"mock-existing-sku\">https://sc04.alicdn.com/kf/mock-existing-sku.jpg</value></field></complex-value></complex-values>\n  </field>\n  <field id=\"superText\" name=\"Mock description\" type=\"input\"><rules><rule name=\"valueTypeRule\" value=\"html\"/></rules><value><![CDATA[<p>Mock details</p><img src=\"https://sc04.alicdn.com/kf/mock-existing-description.jpg\">]]></value></field>\n  <field id=\"market\" name=\"Mock market\" type=\"singleCheck\"><options><option displayName=\"Mock wholesale\" value=\"mock-wholesale\"/></options><value>mock-wholesale</value></field>\n  <field id=\"notice\" name=\"Mock notice\" type=\"label\"><rules><rule name=\"mockUnknownRule\" value=\"keep\"/></rules><value>Mock read-only notice</value></field>\n</itemSchema>",
+  "fixedSlotsXml": "<itemSchema xmlns:mock=\"urn:mock:product-photo-seed\" data-version=\"mock\">\n  <mock:unknown mock:keep=\"yes\"><![CDATA[keep <unknown> & data]]></mock:unknown>\n  <field id=\"productTitle\" name=\"Mock title\" type=\"input\"><value>Mock title &amp; details</value></field>\n  <field id=\"scImages\" name=\"Mock fixed images\" type=\"complex\" mock:keep=\"yes\"><rules><rule name=\"maxInputNumRule\" value=\"6\"/></rules><fields><field id=\"scImages_0\" name=\"Mock image 0\" type=\"input\" mock:slot=\"0\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-0\"/></field><field id=\"scImages_1\" name=\"Mock image 1\" type=\"input\" mock:slot=\"1\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-1\"/></field><field id=\"scImages_2\" name=\"Mock image 2\" type=\"input\" mock:slot=\"2\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-2\"/></field><field id=\"scImages_3\" name=\"Mock image 3\" type=\"input\" mock:slot=\"3\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-3\"/></field><field id=\"scImages_4\" name=\"Mock image 4\" type=\"input\" mock:slot=\"4\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-4\"/></field><field id=\"scImages_5\" name=\"Mock image 5\" type=\"input\" mock:slot=\"5\"><rules><rule name=\"readOnlyRule\" value=\"false\"/><rule name=\"maxInputNumRule\" value=\"1\"/></rules><value img=\"true\"/><mock:unknown mock:keep=\"slot-5\"/></field></fields></field>\n  <field id=\"variants\" name=\"Mock SKU\" type=\"multiComplex\">\n    <fields><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value/></field></fields>\n    <complex-values><complex-value><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value fileId=\"mock-existing-sku\">https://sc04.alicdn.com/kf/mock-existing-sku.jpg</value></field></complex-value></complex-values>\n  </field>\n  <field id=\"superText\" name=\"Mock description\" type=\"input\"><rules><rule name=\"valueTypeRule\" value=\"html\"/></rules><value><![CDATA[<p>Mock details</p><img src=\"https://sc04.alicdn.com/kf/mock-existing-description.jpg\">]]></value></field>\n  <field id=\"market\" name=\"Mock market\" type=\"singleCheck\"><options><option displayName=\"Mock wholesale\" value=\"mock-wholesale\"/></options><value>mock-wholesale</value></field>\n  <field id=\"notice\" name=\"Mock notice\" type=\"label\"><rules><rule name=\"mockUnknownRule\" value=\"keep\"/></rules><value>Mock read-only notice</value></field>\n</itemSchema>",
+  "photos": [
+    {
+      "id": "Mock-Photo-A",
+      "name": "Mock cover.JPG",
+      "url": "https://sc04.alicdn.com/kf/Mock-Cover.JPG?Token=CaseSensitive",
+      "previewUrl": "https://sc04.alicdn.com/kf/Mock-Cover.JPG_100x100.jpg",
+      "groupId": "mock-group",
+      "width": 1200,
+      "height": 900,
+      "fileSize": 1024,
+      "referenceCount": 3,
+      "modifiedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "900719925474099312345",
+      "name": "Mock detail.png",
+      "url": "https://sc04.alicdn.com/kf/mock-detail.png",
+      "groupId": "-1",
+      "width": null,
+      "height": null,
+      "fileSize": 0,
+      "referenceCount": 0,
+      "modifiedAt": "2026-01-02T00:00:00.000Z"
+    }
+  ],
+  "schemaXml": "<itemSchema xmlns:mock=\"urn:mock:product-photo-seed\" data-version=\"mock\">\n  <mock:unknown mock:keep=\"yes\"><![CDATA[keep <unknown> & data]]></mock:unknown>\n  <field id=\"productTitle\" name=\"Mock title\" type=\"input\"><value>Mock title &amp; details</value></field>\n  <field id=\"scImages\" name=\"Mock main images\" type=\"multiInput\" mock:keep=\"yes\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"maxInputNumRule\" value=\"6\"/></rules><values/></field>\n  <field id=\"variants\" name=\"Mock SKU\" type=\"multiComplex\">\n    <fields><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value/></field></fields>\n    <complex-values><complex-value><field id=\"skuImage\" name=\"Mock SKU image\" type=\"input\"><value fileId=\"mock-existing-sku\">https://sc04.alicdn.com/kf/mock-existing-sku.jpg</value></field></complex-value></complex-values>\n  </field>\n  <field id=\"superText\" name=\"Mock description\" type=\"input\"><rules><rule name=\"valueTypeRule\" value=\"html\"/></rules><value><![CDATA[<p>Mock details</p><img src=\"https://sc04.alicdn.com/kf/mock-existing-description.jpg\">]]></value></field>\n  <field id=\"market\" name=\"Mock market\" type=\"singleCheck\"><options><option displayName=\"Mock wholesale\" value=\"mock-wholesale\"/></options><value>mock-wholesale</value></field>\n  <field id=\"notice\" name=\"Mock notice\" type=\"label\"><rules><rule name=\"mockUnknownRule\" value=\"keep\"/></rules><value>Mock read-only notice</value></field>\n</itemSchema>",
+  "scalarXml": "<itemSchema><field id=\"mainImages\" name=\"Mock main image\" type=\"input\"><value/></field><field id=\"title\" name=\"Mock title\" type=\"input\"><value>Mock scalar title</value></field></itemSchema>",
+  "unsafeUrls": [
+    "http://sc04.alicdn.com/kf/mock.jpg",
+    "//sc04.alicdn.com/kf/mock.jpg",
+    "data:image/png;base64,bW9jaw==",
+    "javascript:alert(1)",
+    "file:///mock.jpg",
+    "https://example.com/mock.jpg",
+    "https://alicdn.com.example.com/mock.jpg",
+    "https://evilalicdn.com/mock.jpg",
+    "https://sc04.alicdn.com@evil.example/mock.jpg",
+    "https://user:password@sc04.alicdn.com/mock.jpg",
+    "https://@sc04.alicdn.com/mock.jpg",
+    "https://sc04.alicdn.com:8443/mock.jpg",
+    "https://127.0.0.1/mock.jpg",
+    "https://sc04.alicdn.com\\@evil.example/mock.jpg",
+    " https://sc04.alicdn.com/mock.jpg",
+    "https://sc04.alicdn.com/mock.jpg\n",
+    "https://sc04.ali\ncdn.com/mock.jpg",
+    "not-a-url"
+  ],
+  "invalidIds": ["", " ", " mock-id", "mock-id ", "mock id", "mock\nid", "mock\u0000id"],
+  "invalidLimits": ["", " ", "0", "-1", "1.5", "NaN", "Infinity", "1e2", "0x6", "9007199254740992"],
+  "unknownRootIds": [
+    "skuImage",
+    "skuImages",
+    "image",
+    "mainImage",
+    "productImages",
+    "scImagesExtra",
+    "extraMainImages"
+  ],
+  "existingValues": [
+    {
+      "text": "existing image",
+      "attributes": {},
+      "metadata": {}
+    },
+    {
+      "text": "",
+      "attributes": {
+        "fileId": "mock-existing"
+      },
+      "metadata": {}
+    },
+    {
+      "text": "",
+      "attributes": {
+        "inputValue": "mock-existing"
+      },
+      "metadata": {}
+    },
+    {
+      "text": "",
+      "attributes": {
+        "img": "https://sc04.alicdn.com/kf/mock-existing.jpg"
+      },
+      "metadata": {}
+    },
+    {
+      "text": "",
+      "attributes": {},
+      "metadata": {
+        "fileName": "mock-existing.jpg"
+      }
+    }
+  ],
+  "malformedPhotos": [
+    {
+      "id": null
+    },
+    {
+      "id": 123
+    },
+    {
+      "url": null
+    },
+    {
+      "url": 123
+    },
+    {
+      "width": -1
+    },
+    {
+      "height": 0
+    },
+    {
+      "fileSize": -1
+    },
+    {
+      "referenceCount": 1.5
+    },
+    {
+      "modifiedAt": null
+    },
+    {
+      "name": null
+    }
+  ]
+}
