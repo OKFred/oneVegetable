@@ -367,7 +367,10 @@ export class ProductMutationLifecycleService {
     } catch (error: unknown) {
       const details = errorDetails(error);
       if (details.code === 'PRODUCT_CONTEXT_CHANGED') throw error;
-      const underAudit = details.code === 'PUB_BIZCHECK_PRODUCT_IN_AUDITING';
+      const marker = 'PUB_BIZCHECK_PRODUCT_IN_AUDITING';
+      const underAudit =
+        error instanceof GatewayException &&
+        (error.gatewayError.code.includes(marker) || error.gatewayError.subCode?.includes(marker) === true);
       const status = statusAfterRefreshError(current.status, underAudit || details.retryable);
       const updated = await this.#repository.transition({
         id: current.id,

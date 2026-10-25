@@ -356,7 +356,11 @@ describe('product mutation lifecycle service', () => {
     expect(gateway.update).toHaveBeenCalledOnce();
   });
 
-  it('keeps an accepted update auditing while Alibaba review blocks render', async () => {
+  it.each([
+    ['PUB_BIZCHECK_PRODUCT_IN_AUDITING', undefined],
+    ['isp.system-service-error:PUB_BIZCHECK_PRODUCT_IN_AUDITING', undefined],
+    ['ALIBABA_IOP_API_REJECTED', 'isp.system-service-error:PUB_BIZCHECK_PRODUCT_IN_AUDITING']
+  ] as const)('keeps an accepted update auditing while %s review blocks render', async (code, subCode) => {
     const { service, gateway, audit } = createService();
     const submitted = await service.submitUpdate({
       requestId: '358f0f24-aab5-4822-91df-a20602bcf5e5',
@@ -365,7 +369,8 @@ describe('product mutation lifecycle service', () => {
     });
     gateway.render.mockRejectedValueOnce(
       new GatewayException({
-        code: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING',
+        code,
+        ...(subCode ? { subCode } : {}),
         message: 'Your product is currently under review.',
         retryable: false
       })
@@ -378,9 +383,10 @@ describe('product mutation lifecycle service', () => {
     });
     expect(refreshed).toMatchObject({
       status: 'auditing',
-      reasonCode: 'PUB_BIZCHECK_PRODUCT_IN_AUDITING'
+      reasonCode: code
     });
     expect(refreshed.lastCheckedTimeUtc).not.toBeNull();
+    expect(gateway.update).toHaveBeenCalledOnce();
     expect(audit).toHaveBeenLastCalledWith(
       expect.objectContaining({ requestId: 'ee17b803-7bb2-494d-963d-0c87c3050acf' })
     );
