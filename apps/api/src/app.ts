@@ -643,6 +643,12 @@ export function createApiApp(options: ApiAppOptions): Hono {
           message: error.message,
           retryable: false
         });
+      if (error instanceof GatewayException)
+        return failure(context, parsed.requestId, 409, {
+          code: error.gatewayError.code,
+          message: error.gatewayError.code,
+          retryable: false
+        });
       return failure(context, parsed.requestId, 503, {
         code: 'GALLERY_CONTEXT_UNAVAILABLE',
         message: 'GALLERY_CONTEXT_UNAVAILABLE',

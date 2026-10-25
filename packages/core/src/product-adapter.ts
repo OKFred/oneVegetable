@@ -328,7 +328,7 @@ export class ProductAdapter {
     if (childIds.length === 0 && targetParentId === -1) {
       return records.filter((record) => readNumber(record, ['group_id', 'id']) !== -1).map(normalizeGroup);
     }
-    const children = await Promise.all(childIds.map((groupId) => this.loadGroupRecords(groupId)));
+    const children = await mapWithConcurrency(childIds, 4, (groupId) => this.loadGroupRecords(groupId));
     return children.flatMap((items) => items.slice(0, 1).map(normalizeGroup));
   }
 
@@ -578,16 +578,27 @@ async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let nextIndex = 0;
+  let stopped = false;
   const worker = async (): Promise<void> => {
-    while (nextIndex < items.length) {
+    while (!stopped && nextIndex < items.length) {
       const index = nextIndex;
       nextIndex += 1;
       const item = items[index];
-      if (item !== undefined) results[index] = await mapper(item, index);
+      if (item !== undefined) {
+        try {
+          results[index] = await mapper(item, index);
+        } catch (error) {
+          stopped = true;
+          throw error;
+        }
+      }
     }
   };
   const workerCount = Math.min(Math.max(1, concurrency), items.length);
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  // A failed tree read must not resolve while sibling requests are still using its context.
+  const settled = await Promise.allSettled(Array.from({ length: workerCount }, () => worker()));
+  const failed = settled.find((result) => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
   return results;
 }
 

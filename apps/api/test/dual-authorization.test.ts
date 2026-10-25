@@ -81,6 +81,57 @@ function present<T>(value: T | null | undefined): T {
 }
 
 describe('independent TOP and IOP credentials', () => {
+  it('preserves the missing IOP authorization reason through the authenticated context endpoint', async () => {
+    const { dual, db } = await harness();
+    await (await dual.service('iop')).clear(1);
+    const auth = new AuthService({
+      repository: new SqlAuthRepository(db.executor),
+      bootstrapToken: 'bootstrap-token'
+    });
+    const session = await auth.bootstrap({
+      requestId: crypto.randomUUID(),
+      bootstrapToken: 'bootstrap-token',
+      username: 'admin',
+      password: 'correct-password'
+    });
+    const send = vi.fn<NetworkTransport['send']>();
+    const gateway = new CredentialBackedAlibabaGatewayClient(dual, { transport: { send }, maxAttempts: 1 });
+    const app = createApiApp({
+      runtime: 'node',
+      database: 'sqlite',
+      environment: 'test',
+      gatewayMode: 'real',
+      gateway,
+      authService: auth
+    });
+    const client = new BffGatewayClient({
+      baseUrl: 'http://localhost',
+      transport: {
+        send: async (input, init) =>
+          app.request(input instanceof Request ? input.url : String(input), {
+            ...init,
+            headers: {
+              ...Object.fromEntries(new Headers(init.headers)),
+              Cookie: 'ov_session=' + session.sessionToken
+            }
+          })
+      }
+    });
+    for (const method of Object.values(IOP_REFERENCE_METHODS))
+      await expect(
+        client.galleryTransferContext('callCapability', {
+          method,
+          parameters: {}
+        })
+      ).rejects.toMatchObject({
+        gatewayError: {
+          code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+          message: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+          retryable: false
+        }
+      });
+    expect(send).not.toHaveBeenCalled();
+  });
   it.each(['top', 'iop'] as const)(
     'routes all native reference reads and catalogue metadata with default %s',
     async (preferred) => {

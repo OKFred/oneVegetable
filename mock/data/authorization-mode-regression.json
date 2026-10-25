@@ -1,0 +1,22 @@
+{
+  "accepted": { "code": "0", "data": { "items": [] } },
+  "categoryRoot": {
+    "category": { "category_id": 0, "name": "Root", "child_ids": { "number": [1, 2, 3, 4, 5, 6] } }
+  },
+  "categoryChild": { "category": { "category_id": 2, "name": "Child", "leaf_category": true } },
+  "groupRoot": {
+    "product_group": {
+      "group_id": -1,
+      "group_name": "Root",
+      "children_id_list": { "number": [1, 2, 3, 4, 5, 6] }
+    }
+  },
+  "groupChild": { "product_group": { "group_id": 2, "group_name": "Child" } },
+  "errors": {
+    "permission": { "code": "11", "message": "Permission denied", "retryable": false },
+    "expired": { "code": "27", "message": "Invalid session", "retryable": false },
+    "unknown27": { "code": "27", "message": "Unknown rejection", "retryable": false },
+    "scope": { "code": "ALIBABA_IOP_PHOTO_SCOPE_MISMATCH", "message": "Scope mismatch", "retryable": false },
+    "unsupported": { "code": "ALIBABA_IOP_METHOD_UNSUPPORTED", "message": "Unsupported", "retryable": false }
+  }
+}
