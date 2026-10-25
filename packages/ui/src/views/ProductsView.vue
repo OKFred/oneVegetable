@@ -215,7 +215,8 @@ const photoSeedError = ref('');
 const applyingPhotoSeed = ref(false);
 const queueingCurrentProduct = ref(false);
 const photoSeedBlocked = computed(() => Boolean(photoSeed.value && !photoSeedApplied.value));
-const accountContext = useGalleryTransfers()?.currentContext;
+const accountService = useGalleryTransfers();
+const accountContext = accountService?.currentContext;
 const accountBoundary = computed(() =>
   JSON.stringify([mode, accountContext?.value?.identity, accountContext?.value?.gateway])
 );
@@ -410,7 +411,9 @@ const products = useQuery({
           }
         : {})
     }),
-  enabled: computed(() => !taskHistoryReadOnly.value)
+  // Do not render a transient unscoped table before startup resolves the account.
+  // A failed context check still finishes initialization and exposes normal errors.
+  enabled: computed(() => !taskHistoryReadOnly.value && (accountService?.initialized.value ?? true))
 });
 const categories = useQuery({
   queryKey: ['product-categories', 'tree-v2'],

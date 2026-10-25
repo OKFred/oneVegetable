@@ -729,6 +729,14 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
   const page = await context.newPage();
   await page.addInitScript(
     ({ data, account }) => {
+      const startup = window as unknown as {
+        releaseColumnTestContext: () => void;
+        columnTestProductReads: number;
+      };
+      const contextReady = new Promise<void>((resolve) => {
+        startup.releaseColumnTestContext = resolve;
+      });
+      startup.columnTestProductReads = 0;
       const runtime = (
         globalThis as unknown as {
           chrome: { runtime: { sendMessage: (message: unknown) => Promise<unknown> } };
@@ -738,12 +746,13 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
       runtime.sendMessage = (message) => {
         if (message && typeof message === 'object' && 'kind' in message && 'requestId' in message) {
           if (message.kind === 'gallery-transfer-context')
-            return Promise.resolve({ requestId: message.requestId, ok: true, data: account });
+            return contextReady.then(() => ({ requestId: message.requestId, ok: true, data: account }));
           if (
             message.kind === 'gateway-request' &&
             'operation' in message &&
             typeof message.operation === 'string'
           ) {
+            if (message.operation === 'listProducts') startup.columnTestProductReads += 1;
             const result: unknown = (data as Record<string, unknown>)[message.operation];
             return Promise.resolve(
               result
@@ -766,12 +775,27 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
   await expect(guide).toBeVisible();
   await guide.getByRole('checkbox').check();
   await guide.getByRole('button', { name: '稍后，仅浏览' }).click();
+  await expect(page.getByRole('heading', { name: '商品管理', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '显示列', exact: true })).toHaveCount(0);
+  const releaseContext = () =>
+    page.evaluate(() => {
+      const startup = window as unknown as {
+        releaseColumnTestContext: () => void;
+        columnTestProductReads: number;
+      };
+      const reads = startup.columnTestProductReads;
+      startup.releaseColumnTestContext();
+      return reads;
+    });
+  expect(await releaseContext()).toBe(0);
   await expect(page.getByRole('button', { name: '显示列', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '显示列', exact: true }).click();
   await page.getByRole('checkbox', { name: '关键词', exact: true }).check();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('columnheader', { name: '关键词', exact: true })).toBeVisible();
   await page.reload();
+  await expect(page.getByRole('heading', { name: '商品管理', exact: true })).toBeVisible();
+  expect(await releaseContext()).toBe(0);
   await expect(page.getByRole('columnheader', { name: '关键词', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '加载本页扩展信息', exact: true })).toHaveCount(0);
   const table = page.locator('table').first();

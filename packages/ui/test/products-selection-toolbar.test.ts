@@ -12,6 +12,7 @@ import { provideServices } from '../src/lib/services';
 import ProductsView from '../src/views/ProductsView.vue';
 import ColumnSettings from '../src/components/ColumnSettings.vue';
 import ProductVisibleRegion from '../src/components/ProductVisibleRegion.vue';
+import { GalleryTransferService, provideGalleryTransfers } from '../src/lib/gallery-transfer-service';
 
 vi.mock('vue-sonner', () => ({
   toast: {
@@ -21,6 +22,27 @@ vi.mock('vue-sonner', () => ({
 }));
 
 describe('ProductsView selection toolbar', () => {
+  it('waits for the initial account before mounting the interactive table', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const transfers = new GalleryTransferService({
+      gateway,
+      settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
+      mode: 'mock'
+    });
+    const wrapper = mountView(gateway, transfers);
+    await flushPromises();
+    expect(request.mock.calls.filter(([operation]) => operation === 'listProducts')).toHaveLength(0);
+    expect(wrapper.findComponent(ColumnSettings).exists()).toBe(false);
+    transfers.currentContext.value = await gateway.galleryTransferContext();
+    transfers.initialized.value = true;
+    await waitForProducts(wrapper);
+    expect(request.mock.calls.filter(([operation]) => operation === 'listProducts')).toHaveLength(1);
+    expect(wrapper.findComponent(ColumnSettings).exists()).toBe(true);
+    wrapper.unmount();
+    transfers.dispose();
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -319,9 +341,10 @@ describe('ProductsView selection toolbar', () => {
   });
 });
 
-function mountView(gateway = new MockGatewayClient(0)) {
+function mountView(gateway = new MockGatewayClient(0), transfers?: GalleryTransferService) {
   const Host = defineComponent({
     setup() {
+      if (transfers) provideGalleryTransfers(transfers);
       provideServices({
         gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },

@@ -105,6 +105,40 @@ function setup() {
   return { service, gateway, input, put, get, objects, bytes, currentContext };
 }
 describe('persistent gallery plan and adapters', () => {
+  it('finishes startup only after the first account context settles', async () => {
+    const s = setup();
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    s.currentContext.mockImplementation(async () => {
+      await ready;
+      return { ...photoFixture.transferContext, storage: 'test-s3' };
+    });
+    const initialization = s.service.initialize();
+    expect(s.service.initialized.value).toBe(false);
+    expect(s.service.currentContext.value).toBeNull();
+    release();
+    await initialization;
+    expect(s.service.initialized.value).toBe(true);
+    expect(s.service.currentContext.value?.identity).toBe(photoFixture.transferContext.identity);
+    s.service.dispose();
+  });
+
+  it('settles startup on context errors or unavailable IndexedDB', async () => {
+    const s = setup();
+    s.currentContext.mockRejectedValue(new Error('GALLERY_CONTEXT_UNAVAILABLE'));
+    await s.service.initialize();
+    expect(s.service.initialized.value).toBe(true);
+    expect(s.service.currentContext.value).toBeNull();
+    s.service.dispose();
+    vi.stubGlobal('indexedDB', undefined);
+    const unsupported = setup();
+    await unsupported.service.initialize();
+    expect(unsupported.service.initialized.value).toBe(true);
+    unsupported.service.dispose();
+  });
+
   it('pins a new multi-step plan to photo listing despite an image-upload default change', async () => {
     const s = setup();
     const top = { ...photoFixture.transferContext, gateway: 'paired-top', storage: 'test-s3' };

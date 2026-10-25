@@ -80,6 +80,7 @@ export class GalleryTransferService {
   readonly selectedId = ref<string | null>(null);
   readonly error = ref('');
   readonly currentContext = ref<GalleryTransferContext | null>(null);
+  readonly initialized = ref(false);
   readonly repository = new IndexedDbGalleryTaskRepository();
   readonly driver: LazyGalleryTransferDriver;
   readonly runner: GalleryTransferRunner;
@@ -110,18 +111,20 @@ export class GalleryTransferService {
     );
   }
   async initialize(): Promise<void> {
-    if (typeof indexedDB === 'undefined') return;
-    if (typeof BroadcastChannel !== 'undefined') {
-      this.channel = new BroadcastChannel(GALLERY_TASK_LOCK);
-      this.channel.onmessage = () => {
-        void this.reload();
-      };
-    }
     try {
+      if (typeof indexedDB === 'undefined') return;
+      if (typeof BroadcastChannel !== 'undefined') {
+        this.channel = new BroadcastChannel(GALLERY_TASK_LOCK);
+        this.channel.onmessage = () => {
+          void this.reload();
+        };
+      }
       await this.runner.recover();
       await this.reload();
     } catch (e) {
       this.error.value = safeCode(e);
+    } finally {
+      this.initialized.value = true;
     }
   }
   async reload(): Promise<void> {
