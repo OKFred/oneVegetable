@@ -1,4 +1,22 @@
 export const photos = {
+  productSeed: {
+    action: '用于新增商品',
+    title: '带入商品的图片 · {count} 张',
+    hint: '选择类目并加载表单后带入，第一张用作主图。不会重新上传图片或自动发布。',
+    applied: '已带入 {count} 张图片，可在商品表单中继续调整并使用详情模板。',
+    main: '主图',
+    remove: '移除此图片',
+    retry: '重新带入',
+    cancel: '不使用这些图片',
+    expired: '本次选图已失效，请返回素材页重新选择。',
+    context: '账号或授权配置已变化，请返回素材页重新选择图片。',
+    failure: '无法带入图片，请检查图片及类目后重试。',
+    'invalid-photo': '所选图片缺少有效的图片 ID 或安全的线上地址，请重新选择。',
+    'unsupported-field': '此类目的主图字段暂不支持无损带入，请在商品表单中手工选择图片。',
+    'field-not-empty': '表单已有图片，未覆盖原内容。请在商品表单中手工调整。',
+    'capacity-exceeded': '所选图片超过此类目容量（最多 {capacity} 张）。请移除多余图片后重新带入。',
+    prepare: '正在准备选中的图片'
+  },
   previewInfo: { title: '素材信息', original: '在新标签页打开原始素材' },
   filters: {
     search: '本页名称 / 图片ID',

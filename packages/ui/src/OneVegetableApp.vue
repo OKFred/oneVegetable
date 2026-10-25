@@ -94,6 +94,7 @@ import {
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
 import { provideListIdentityScope } from './lib/list-identity-scope';
+import { ProductPhotoHandoffService, provideProductPhotoHandoff } from './lib/product-photo-handoff';
 import { openAlibabaAuthorizationTool } from './lib/alibaba-authorization-tool';
 import { useGatewayCredentialsI18n } from './i18n/gateway-credentials';
 
@@ -174,6 +175,7 @@ function handleCredentialConfigurationChange(): void {
   void queryClient.cancelQueries();
   queryClient.clear();
   credentialEpoch.value += 1;
+  photoHandoffs.clear();
   void galleryTransfers.pauseForConfigurationChange().catch(() => undefined);
 }
 provideServices({
@@ -244,6 +246,17 @@ const baseItems: NavigationItem[] = [
 ];
 const { locale, t } = useUiI18n();
 const session = ref<ControlSession | null>(null);
+const photoHandoffs = new ProductPhotoHandoffService(scopedGateway, props.mode, () =>
+  JSON.stringify([props.mode, session.value?.principal.actorId ?? null, credentialEpoch.value])
+);
+provideProductPhotoHandoff(photoHandoffs);
+watch(
+  () => session.value?.principal.actorId ?? null,
+  () => {
+    photoHandoffs.clear();
+  },
+  { flush: 'sync' }
+);
 provideListIdentityScope(
   computed(() =>
     JSON.stringify([

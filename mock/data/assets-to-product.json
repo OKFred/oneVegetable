@@ -1,0 +1,47 @@
+{
+  "sourceContext": {
+    "identity": "mock-gallery-user",
+    "gateway": "mock-source-top",
+    "storage": "mock-source-storage-a"
+  },
+  "productContext": {
+    "identity": "mock-gallery-user",
+    "gateway": "mock-product-iop",
+    "storage": "mock-product-storage-a"
+  },
+  "replacementIdentity": "mock-replacement-account",
+  "freshSchema": {
+    "categoryId": 100009999,
+    "language": "en_US",
+    "market": "wholesale",
+    "xml": "<itemSchema version=\"2\"><field id=\"productTitle\" name=\"Product name\" type=\"input\"><rules><rule name=\"requiredRule\" value=\"true\"/></rules><value>Latest category fixture title</value></field><field id=\"scImages\" name=\"Main images\" type=\"multiInput\"><rules><rule name=\"requiredRule\" value=\"true\"/><rule name=\"maxInputNumRule\" value=\"2\"/></rules><values/></field></itemSchema>"
+  },
+  "productOperationContext": {
+    "identity": "mock-gallery-user",
+    "gateway": "mock-product-iop"
+  },
+  "replacementGateway": "mock-replacement-source-top",
+  "replacementStorage": "mock-unrelated-s3-revision-b",
+  "secondReplacementStorage": "mock-unrelated-s3-revision-c",
+  "listedSource": {
+    "page": 2,
+    "pageSize": 24,
+    "groupId": "2001",
+    "ungrouped": false
+  },
+  "listedMetadata": {
+    "operation": "listPhotos",
+    "source": {
+      "page": 2,
+      "pageSize": 24,
+      "groupId": "2001",
+      "ungrouped": false
+    },
+    "context": {
+      "identity": "mock-gallery-user",
+      "gateway": "mock-source-top",
+      "storage": "mock-source-storage-a"
+    }
+  },
+  "productOperations": ["getProductSchema", "saveProductDraft", "publishProduct"]
+}

@@ -104,6 +104,7 @@ function findPath(
       variant="outline"
       class="mt-2 h-auto min-h-12 w-full justify-start px-3 py-2 text-left"
       role="combobox"
+      :aria-label="t('products.categoryPicker.choose')"
       aria-haspopup="dialog"
       :aria-expanded="open"
       :disabled="disabled"

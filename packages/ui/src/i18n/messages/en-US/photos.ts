@@ -1,4 +1,25 @@
 export const photos = {
+  productSeed: {
+    action: 'Use for new product',
+    title: 'Images for this product · {count}',
+    hint: 'Choose a category and load its form. The first image becomes the main image. No reupload or automatic publishing.',
+    applied: '{count} images added. Continue editing the product and applying description templates.',
+    main: 'Main image',
+    remove: 'Remove this image',
+    retry: 'Try adding again',
+    cancel: 'Do not use these images',
+    expired: 'This image selection has expired. Return to Assets and select images again.',
+    context: 'The account or authorization configuration changed. Return to Assets and select images again.',
+    failure: 'Images could not be added. Check the images and category, then try again.',
+    'invalid-photo': 'An image is missing a valid image ID or safe online URL. Select it again.',
+    'unsupported-field':
+      'This category cannot safely accept these images. Select images manually in the product form.',
+    'field-not-empty':
+      'The form already contains images. Nothing was overwritten. Adjust them in the product form.',
+    'capacity-exceeded':
+      'This category accepts at most {capacity} images. Remove extra images and try again.',
+    prepare: 'Preparing selected images'
+  },
   previewInfo: { title: 'Asset information', original: 'Open original asset in a new tab' },
   filters: {
     search: 'Name / image ID on this page',

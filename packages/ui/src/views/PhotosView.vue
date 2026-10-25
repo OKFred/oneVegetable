@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import { computed, h, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import { Download, Eye, FileInput, Layers3, ClipboardList, Share2, Search, Upload } from '@lucide/vue';
+import {
+  Download,
+  Eye,
+  FileInput,
+  Layers3,
+  ClipboardList,
+  Share2,
+  Search,
+  Upload,
+  PackagePlus
+} from '@lucide/vue';
 import { toast } from 'vue-sonner';
 
 import type {
   Photo,
   PhotoGroup,
+  ResponseOf,
   PhotoGroupOperationRequest,
   PhotoGroupOperationResult
 } from '@one-vegetable/core';
+import type { GalleryTransferContext } from '@one-vegetable/core/gallery-transfer-task';
 import { SOCIAL_SHARE_MAX_PHOTOS } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
@@ -44,6 +56,8 @@ import { formatDate, formatDateTime } from '../lib/date-time';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import { useListIdentityScope } from '../lib/list-identity-scope';
+import { useProductPhotoHandoff } from '../lib/product-photo-handoff';
+import { appHash } from '../lib/hash-router';
 import type { DataColumn } from '../lib/table';
 
 type PhotoViewMode = 'cards' | 'list';
@@ -62,8 +76,38 @@ const defaultFilters = (): PhotoFilters => ({
   maximumSize: ''
 });
 
-const { gateway } = useServices();
+const { gateway, mode } = useServices();
 const identityScope = useListIdentityScope();
+const photoHandoffs = useProductPhotoHandoff();
+const preparingProduct = ref(false);
+let handoffAlive = true;
+onScopeDispose(() => {
+  handoffAlive = false;
+});
+async function useSelectedPhotosForProduct(): Promise<void> {
+  if (!photoHandoffs || preparingProduct.value || selectedPhotos.value.length === 0) return;
+  const scope = identityScope.value;
+  preparingProduct.value = true;
+  try {
+    const byId = new Map(selectedPhotos.value.map((photo) => [photo.id, photo]));
+    const selection = selectedPhotoIds.value.flatMap((id) => {
+      const photo = byId.get(id);
+      return photo ? [photo] : [];
+    });
+    const listing = photos.data.value;
+    if (!listing?.seedSource) throw new Error('GALLERY_CONTEXT_CHANGED');
+    const id = await photoHandoffs.create(selection, listing.seedSource, listing.seedContext);
+    if (!handoffAlive || scope !== identityScope.value) {
+      photoHandoffs.clear();
+      return;
+    }
+    globalThis.location.hash = appHash('products', 'from-assets', id);
+  } catch {
+    if (handoffAlive) toast.error(t('photos.productSeed.failure'));
+  } finally {
+    preparingProduct.value = false;
+  }
+}
 const queryClient = useQueryClient();
 const groupCacheRevision = ref(0);
 onScopeDispose(
@@ -189,15 +233,33 @@ const uploadDialogReason = computed(() => {
   );
 });
 const selectedGroupName = computed(() => selectedGroupDefinition.value?.name ?? t('photos.allPhotos'));
+type PhotoListing = ResponseOf<'listPhotos'> & {
+  seedContext?: GalleryTransferContext;
+  seedSource?: Readonly<Record<string, unknown>>;
+};
 const photos = useQuery({
   queryKey: ['photos', identityScope, selectedGroup, page, pageSize, computed(() => filters.value.group)],
-  queryFn: () =>
-    gateway.request('listPhotos', {
+  queryFn: async (): Promise<PhotoListing> => {
+    const scope = identityScope.value;
+    const request = {
       page: page.value,
       pageSize: pageSize.value,
       groupId: filters.value.group === 'selected' ? selectedGroup.value : '-1',
       ...(filters.value.group === 'ungrouped' ? { ungrouped: true } : {})
-    }),
+    };
+    const context = photoHandoffs ? await gateway.galleryTransferContext?.('listPhotos', request) : undefined;
+    if (photoHandoffs && ((!context && mode !== 'mock') || scope !== identityScope.value))
+      throw new Error('GALLERY_CONTEXT_CHANGED');
+    const result = context
+      ? await gateway.request('listPhotos', request, { galleryContext: { ...context } })
+      : await gateway.request('listPhotos', request);
+    if (scope !== identityScope.value) throw new Error('GALLERY_CONTEXT_CHANGED');
+    return {
+      ...result,
+      seedSource: request,
+      ...(context ? { seedContext: { ...context } } : {})
+    };
+  },
   enabled: canLoadPhotos
 });
 const refreshing = computed(
@@ -655,6 +717,17 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
           <ListActionButton :icon="Layers3" @click="groupManagerOpen = true">
             {{ t('photos.page.groupManagement') }}
           </ListActionButton>
+          <ListActionButton
+            v-if="photoHandoffs"
+            :icon="PackagePlus"
+            :disabled="selectedPhotos.length === 0 || preparingProduct"
+            :aria-busy="preparingProduct"
+            :aria-label="preparingProduct ? t('photos.productSeed.prepare') : t('photos.productSeed.action')"
+            @click="useSelectedPhotosForProduct"
+            >{{
+              preparingProduct ? t('photos.productSeed.prepare') : t('photos.productSeed.action')
+            }}</ListActionButton
+          >
           <ListActionButton :icon="FileInput" @click="openGalleryTransfer('import')">
             {{ t('photos.page.import') }}
           </ListActionButton>

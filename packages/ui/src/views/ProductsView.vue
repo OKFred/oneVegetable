@@ -27,6 +27,7 @@ import { useShowcaseI18n } from '../i18n/showcase';
 import { useInventoryI18n } from '../i18n/inventory';
 import { useProductInventory } from '../lib/product-inventory';
 import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
+import ProductPhotoSeedPanel from '../components/ProductPhotoSeedPanel.vue';
 import { productReadbackNotice } from '../lib/platform-readback-notice';
 const ProductInventoryDrawer = defineAsyncComponent(() => import('../components/ProductInventoryDrawer.vue'));
 const ProductBatchMaintenance = defineAsyncComponent(
@@ -60,6 +61,8 @@ function openShowcase(action: 'add' | 'remove' | null = null): void {
 
 import {
   analyzeProductDescriptionQuality,
+  applyProductPhotoSeed,
+  ProductPhotoSeedError,
   collectProductSchemaAssetReferences,
   collectProductSchemaOfficialHints,
   createProductTransferArchiveDocument,
@@ -108,6 +111,7 @@ import ListActionButton from '../components/ListActionButton.vue';
 import { fieldColumn, productExtraFields } from '../lib/field-columns';
 import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
+import { useProductPhotoHandoff, type ProductPhotoHandoff } from '../lib/product-photo-handoff';
 import PageDetailActions from '../components/PageDetailActions.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import GroupSidebar from '../components/GroupSidebar.vue';
@@ -203,6 +207,14 @@ const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 
 const { gateway, mode, productMutationJobs } = useServices();
+const photoHandoffs = useProductPhotoHandoff();
+const photoSeed = ref<ProductPhotoHandoff | null>(null);
+const photoSeedWriteContexts = ref<ProductPhotoHandoff['productContexts']>({});
+const photoSeedApplied = ref(false);
+const photoSeedError = ref('');
+const applyingPhotoSeed = ref(false);
+const queueingCurrentProduct = ref(false);
+const photoSeedBlocked = computed(() => Boolean(photoSeed.value && !photoSeedApplied.value));
 const accountContext = useGalleryTransfers()?.currentContext;
 const accountBoundary = computed(() =>
   JSON.stringify([mode, accountContext?.value?.identity, accountContext?.value?.gateway])
@@ -309,6 +321,11 @@ const editorScoreRefreshNeeded = ref(false);
 const staleScoreIds = new Set<string>();
 function resetEditorSession(input: Parameters<typeof resetSessionModel>[0]): void {
   editorEpoch++;
+  photoSeed.value = null;
+  photoSeedWriteContexts.value = {};
+  photoSeedApplied.value = false;
+  photoSeedError.value = '';
+  applyingPhotoSeed.value = false;
   submissionError.value = null;
   submissionErrorOpen.value = false;
   publish.reset();
@@ -651,25 +668,30 @@ const productDisplayProtocol = computed(
   () => productOperations.decision('updateProductDisplay').protocolSupport?.protocol ?? 'top'
 );
 const platformDraftDisabled = computed(() => {
-  return !productOperations.isAllowed('saveProductDraft');
+  return photoSeedBlocked.value || !productOperations.isAllowed('saveProductDraft');
 });
 const productPublishDisabled = computed(() => {
+  if (photoSeedBlocked.value) return true;
   if (editProductId.value && productMutationBlocksSubmit.value) return true;
   const operation = editProductId.value ? 'updateProduct' : 'publishProduct';
   return !productOperations.isAllowed(operation);
 });
 const platformDraftDisabledReason = computed(() =>
-  mutationDisabledReason('saveProductDraft', t('products.view.errors.draftWriteDisabled'))
+  photoSeedBlocked.value
+    ? photoSeedError.value || t('photos.productSeed.hint')
+    : mutationDisabledReason('saveProductDraft', t('products.view.errors.draftWriteDisabled'))
 );
 const productPublishDisabledReason = computed(() =>
-  productMutationBlocksSubmit.value
-    ? productMutationDisabledReason(currentProductMutationJob.value)
-    : mutationDisabledReason(
-        editProductId.value ? 'updateProduct' : 'publishProduct',
-        editProductId.value
-          ? t('products.view.errors.updateDisabled')
-          : t('products.view.errors.publishDisabled')
-      )
+  photoSeedBlocked.value
+    ? photoSeedError.value || t('photos.productSeed.hint')
+    : productMutationBlocksSubmit.value
+      ? productMutationDisabledReason(currentProductMutationJob.value)
+      : mutationDisabledReason(
+          editProductId.value ? 'updateProduct' : 'publishProduct',
+          editProductId.value
+            ? t('products.view.errors.updateDisabled')
+            : t('products.view.errors.publishDisabled')
+        )
 );
 
 const publish = useMutation({
@@ -683,6 +705,16 @@ const publish = useMutation({
     if (context?.epoch === editorEpoch) showSubmissionError(error);
   },
   mutationFn: async (draft: boolean) => {
+    const epoch = editorEpoch;
+    const selection = photoSeed.value;
+    const model = schemaModel.value;
+    if (selection) {
+      if (!photoSeedApplied.value) throw new Error(t('photos.productSeed.failure'));
+      if (!photoHandoffs) throw new Error(t('photos.productSeed.context'));
+      await photoHandoffs.assertCurrent(selection);
+      if (epoch !== editorEpoch || selection !== photoSeed.value || model !== schemaModel.value)
+        throw new Error(t('photos.productSeed.context'));
+    }
     if (!schemaModel.value) throw new Error(t('products.view.errors.schemaFirst'));
     if (editProductId.value) {
       const patch = inspectProductSchemaPatchSerialization(schemaModel.value, locale.value);
@@ -726,7 +758,24 @@ const publish = useMutation({
     if (!validation.valid) throw new Error(validation.errors.join('；'));
     if (!draft && blockingSchemaIssues.value.length > 0)
       throw new Error(t('products.view.errors.publishingMinimum'));
-    return draft ? gateway.request('saveProductDraft', base) : gateway.request('publishProduct', base);
+    const operation = draft ? 'saveProductDraft' : 'publishProduct';
+    const context = photoSeedWriteContexts.value[operation];
+    if (selection && photoHandoffs) {
+      const actual = await photoHandoffs.productContext(selection, operation, base);
+      if (
+        epoch !== editorEpoch ||
+        selection !== photoSeed.value ||
+        model !== schemaModel.value ||
+        actual?.identity !== context?.identity ||
+        actual?.gateway !== context?.gateway
+      )
+        throw new Error(t('photos.productSeed.context'));
+    }
+    return gateway.request(
+      operation,
+      base,
+      context ? { productContext: { identity: context.identity, gateway: context.gateway } } : undefined
+    );
   },
   onSuccess: async (result, draft, context) => {
     // Persist the receipt against the originating queue item even after the editor has changed.
@@ -1223,7 +1272,33 @@ function submitProduct(draft: boolean): void {
   publish.mutate(draft);
 }
 
-function queueCurrentProduct(): void {
+async function queueCurrentProduct(): Promise<void> {
+  if (queueingCurrentProduct.value) return;
+  queueingCurrentProduct.value = true;
+  try {
+    await queueValidatedProduct();
+  } finally {
+    queueingCurrentProduct.value = false;
+  }
+}
+
+async function queueValidatedProduct(): Promise<void> {
+  const epoch = editorEpoch;
+  const model = schemaModel.value;
+  const selection = photoSeed.value;
+  if (photoSeed.value) {
+    if (photoSeedBlocked.value) {
+      toast.error(photoSeedError.value || t('photos.productSeed.failure'));
+      return;
+    }
+    try {
+      await photoHandoffs?.assertCurrent(photoSeed.value);
+    } catch {
+      toast.error(t('photos.productSeed.context'));
+      return;
+    }
+    if (epoch !== editorEpoch || model !== schemaModel.value || selection !== photoSeed.value) return;
+  }
   if (editProductId.value) {
     feedback.value = t('products.view.errors.existingBatch');
     return;
@@ -2141,6 +2216,7 @@ async function selectCategory(categoryIdToSelect: number): Promise<void> {
   const category = findCategory(categoryTree.value, categoryIdToSelect);
   currentCategory.value = category;
   schemaModel.value = null;
+  photoSeedApplied.value = false;
   schemaError.value = '';
   if (category?.leaf) {
     feedback.value = t('products.view.feedback.leafSelected', { name: category.name });
@@ -2269,11 +2345,13 @@ async function changeEditorLanguage(event: Event): Promise<void> {
     return;
   }
   language.value = next;
+  const selection = photoSeed.value;
   resetEditorSession({
     productId: editProductId.value,
     categoryId: categoryId.value,
     mode: editorMode.value
   });
+  photoSeed.value = selection;
 }
 
 function updateProductHash(historyMode: 'push' | 'replace'): void {
@@ -2293,6 +2371,20 @@ function updateProductHash(historyMode: 'push' | 'replace'): void {
 async function syncProductsFromHash(): Promise<boolean> {
   const route = parseAppHash(globalThis.location.hash);
   if (route?.page !== 'products' || route.segments.length === 0) return false;
+  if (route.segments[0] === 'from-assets') {
+    const selection = photoHandoffs?.take(route.segments[1] ?? '') ?? null;
+    resetEditorSession({ categoryId: '', mode: 'quick' });
+    currentCategory.value = null;
+    categorySearch.value = '';
+    categoryLoadError.value = '';
+    schemaError.value = '';
+    workspace.value = 'publisher';
+    photoSeed.value = selection;
+    feedback.value = t('products.view.feedback.chooseCategory');
+    updateProductHash('replace');
+    if (!selection) toast.warning(t('photos.productSeed.expired'));
+    return true;
+  }
   const requestedWorkspace = route.segments[0];
   const nextWorkspace =
     requestedWorkspace &&
@@ -2368,6 +2460,52 @@ function applySchema(xml: string, message: string, establishBaseline = true): vo
   }
 }
 
+async function applySelectedPhotoSeed(): Promise<void> {
+  const selection = photoSeed.value;
+  const model = schemaModel.value;
+  const epoch = editorEpoch;
+  if (!selection || !model || !photoHandoffs || applyingPhotoSeed.value) return;
+  applyingPhotoSeed.value = true;
+  photoSeedError.value = '';
+  try {
+    await photoHandoffs.assertCurrent(selection);
+    if (epoch !== editorEpoch || photoSeed.value !== selection || schemaModel.value !== model) return;
+    const seeded = applyProductPhotoSeed(model, selection.photos);
+    const inspection = inspectProductSchemaSerialization(seeded, locale.value);
+    if (!inspection.safe) throw new ProductPhotoSeedError('unsupported-field');
+    const request = {
+      categoryId: Number(categoryId.value),
+      language: language.value,
+      schemaXml: inspection.xml
+    };
+    const contexts: ProductPhotoHandoff['productContexts'] = {};
+    for (const operation of ['saveProductDraft', 'publishProduct'] as const) {
+      const context = await photoHandoffs.productContext(selection, operation, request);
+      if (context) contexts[operation] = context;
+    }
+    if (epoch !== editorEpoch || photoSeed.value !== selection || schemaModel.value !== model) return;
+    photoSeedWriteContexts.value = contexts;
+    schemaModel.value = seeded;
+    photoSeedApplied.value = true;
+    toast.success(t('photos.productSeed.applied', { count: selection.photos.length }));
+  } catch (error: unknown) {
+    if (epoch !== editorEpoch || photoSeed.value !== selection) return;
+    photoSeedError.value =
+      error instanceof ProductPhotoSeedError
+        ? t('photos.productSeed.' + error.reasonCode, { capacity: error.capacity ?? 0 })
+        : t('photos.productSeed.context');
+  } finally {
+    if (epoch === editorEpoch) applyingPhotoSeed.value = false;
+  }
+}
+
+function removePhotoSeed(id: string): void {
+  if (!photoSeed.value || applyingPhotoSeed.value || photoSeedApplied.value) return;
+  photoSeed.value = { ...photoSeed.value, photos: photoSeed.value.photos.filter((photo) => photo.id !== id) };
+  photoSeedError.value = '';
+  if (photoSeed.value.photos.length === 0) photoSeed.value = null;
+}
+
 async function loadSchema(): Promise<void> {
   if (!(await editing.confirmLeave())) return;
   const epoch = ++editorEpoch;
@@ -2379,14 +2517,29 @@ async function loadSchema(): Promise<void> {
     return;
   }
   try {
+    const schemaRequest = {
+      categoryId: parsedCategoryId,
+      language: language.value,
+      market: market.value
+    };
+    let schemaContext: ProductPhotoHandoff['productContexts']['getProductSchema'];
+    const selection = photoSeed.value;
+    if (selection && photoHandoffs) {
+      await photoHandoffs.assertCurrent(selection);
+      schemaContext = await photoHandoffs.productContext(selection, 'getProductSchema', schemaRequest);
+      if (epoch !== editorEpoch || photoSeed.value !== selection) return;
+    }
     const result = editProductId.value
       ? await renderExistingProductSchema(parsedCategoryId, requestedProductId, epoch)
-      : await gateway.request('getProductSchema', {
-          categoryId: parsedCategoryId,
-          language: language.value,
-          market: market.value
-        });
+      : await gateway.request(
+          'getProductSchema',
+          schemaRequest,
+          schemaContext
+            ? { productContext: { identity: schemaContext.identity, gateway: schemaContext.gateway } }
+            : undefined
+        );
     if (epoch !== editorEpoch || editProductId.value !== requestedProductId) return;
+    if (photoSeed.value) photoSeedApplied.value = false;
     applySchema(
       result.xml,
       t(
@@ -2395,8 +2548,14 @@ async function loadSchema(): Promise<void> {
           : 'products.view.feedback.categorySchema'
       )
     );
+    if (photoSeed.value && !photoSeedApplied.value) await applySelectedPhotoSeed();
   } catch (error: unknown) {
     if (epoch !== editorEpoch || editProductId.value !== requestedProductId) return;
+    if (photoSeed.value && error instanceof Error && error.message === 'GALLERY_CONTEXT_CHANGED') {
+      photoSeedError.value = t('photos.productSeed.context');
+      schemaError.value = '';
+      return;
+    }
     schemaError.value = error instanceof Error ? error.message : t('products.view.errors.schemaFetch');
   }
 }
@@ -2889,6 +3048,20 @@ onBeforeUnmount(() => {
         :category-id="categorySelectionReady ? Number(categoryId) : null"
         @blocked="postingTypeBlocked = $event"
       />
+      <ProductPhotoSeedPanel
+        v-if="photoSeed"
+        :photos="photoSeed.photos"
+        :applied="photoSeedApplied"
+        :error="photoSeedError"
+        :busy="applyingPhotoSeed"
+        :can-apply="Boolean(schemaModel)"
+        @remove="removePhotoSeed"
+        @retry="applySelectedPhotoSeed"
+        @cancel="
+          photoSeed = null;
+          photoSeedError = '';
+        "
+      />
       <ProductCategoryPicker
         :model-value="categoryId"
         v-model:search="categorySearch"
@@ -2898,14 +3071,17 @@ onBeforeUnmount(() => {
         :loading="categories.isPending.value"
         :loading-category-id="categoryLoadingId"
         :error="categoryPickerError"
-        :disabled="Boolean(editProductId)"
+        :disabled="Boolean(editProductId) || applyingPhotoSeed"
         @select="selectCategory"
         @retry="retryCategories"
       />
       <div class="mt-4 flex flex-wrap gap-2">
         <Button
           :disabled="
-            !categorySelectionReady || categoryLoadingId !== null || (!editProductId && postingTypeBlocked)
+            !categorySelectionReady ||
+            categoryLoadingId !== null ||
+            applyingPhotoSeed ||
+            (!editProductId && postingTypeBlocked)
           "
           @click="loadSchema"
         >
@@ -3118,7 +3294,11 @@ onBeforeUnmount(() => {
           {{ t('products.view.page.batchDescription') }}
         </p>
       </div>
-      <Button variant="outline" :disabled="!schemaInspection.safe" @click="queueCurrentProduct">
+      <Button
+        variant="outline"
+        :disabled="!schemaInspection.safe || photoSeedBlocked || queueingCurrentProduct"
+        @click="queueCurrentProduct"
+      >
         <ListPlus class="size-4" />
         {{ editingBatchItemId ? t('products.view.page.updateQueue') : t('products.view.page.addQueue') }}
       </Button>
