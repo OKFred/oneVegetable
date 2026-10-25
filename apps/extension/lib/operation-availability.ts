@@ -42,13 +42,22 @@ export function applyExtensionCapabilityProtocol<T extends { method: string; rea
   capability: T,
   status: AuthorizationStatus
 ): T {
-  const protocol = status.pool
-    ? selectAlibabaOperationProtocol(
-        'callCapability',
-        { method: capability.method, parameters: {} },
-        status.pool
-      )
-    : status.protocol;
+  let protocol: unknown;
+  try {
+    protocol = status.pool
+      ? selectAlibabaOperationProtocol(
+          'callCapability',
+          { method: capability.method, parameters: {} },
+          status.pool
+        )
+      : status.protocol;
+  } catch (error: unknown) {
+    if (error instanceof GatewayException && error.gatewayError.code === 'ALIBABA_IOP_AUTHORIZATION_REQUIRED')
+      return { ...capability, realCallEnabled: false };
+    throw error;
+  }
+  if (capability.method.startsWith('/') && protocol !== 'iop')
+    return { ...capability, realCallEnabled: false };
   const mapped = protocol === 'iop' ? applyIopCapabilityProtocol(capability) : capability;
   return {
     ...mapped,

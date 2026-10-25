@@ -1,4 +1,5 @@
 import { OPERATION_IDS } from './operation-id';
+import { IOP_REFERENCE_METHODS } from './product-reference-methods';
 import type { OperationId } from './types';
 
 export type IopBusinessPath = `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`;
@@ -35,6 +36,11 @@ const write = (path: IopBusinessPath, accountVerified = false): IopMethodDefinit
 
 /** Explicit public paths and separate IOP acceptance. Never infer paths or inherit TOP verification. */
 export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>> = Object.freeze({
+  [IOP_REFERENCE_METHODS.predictCategory]: read(IOP_REFERENCE_METHODS.predictCategory),
+  [IOP_REFERENCE_METHODS.listCategories]: read(IOP_REFERENCE_METHODS.listCategories),
+  [IOP_REFERENCE_METHODS.getAttributes]: read(IOP_REFERENCE_METHODS.getAttributes),
+  [IOP_REFERENCE_METHODS.getProduct]: read(IOP_REFERENCE_METHODS.getProduct),
+  [IOP_REFERENCE_METHODS.listShippingTemplates]: read(IOP_REFERENCE_METHODS.listShippingTemplates),
   'alibaba.icbu.product.list': read('/alibaba/icbu/product/list', true),
   // Live accepted legacy alias; absent from the current menu, not an advertised catalog guarantee.
   'alibaba.icbu.product.group.get': read('/alibaba/icbu/product/group/get', true),

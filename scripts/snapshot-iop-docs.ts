@@ -61,6 +61,14 @@ const selected = catalog.filter(
   (api) =>
     api.categoryId === 1 ||
     api.categoryId === 6 ||
+    (api.categoryId === 11 &&
+      [
+        '/alibaba/icbu/category/predict/v2',
+        '/alibaba/icbu/category/get/v2',
+        '/alibaba/icbu/category/attribute/get/v2',
+        '/alibaba/icbu/product/get/v2',
+        '/alibaba/icbu/product/list/shipping/templates'
+      ].includes(api.path)) ||
     (api.categoryId === 8 && /(?:list|get|query)$/u.test(api.path))
 );
 const documents = [];

@@ -262,7 +262,7 @@ function compileValidators(
         return [name, canonical];
       })
   );
-  const generated = compactStandaloneSchemaConstants(standaloneCode(ajv, validators)).replace(
+  const generated = compactStandaloneSchemaConstants(standaloneCode(ajv, validators)).replaceAll(
     'require("ajv/dist/runtime/ucs2length").default',
     '((value) => [...value].length)'
   );

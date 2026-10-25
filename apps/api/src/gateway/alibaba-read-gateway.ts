@@ -139,15 +139,50 @@ export class CredentialBackedAlibabaGatewayClient implements GatewayClient {
       const credentials = this.provider.resolveForOperation
         ? await this.provider.resolveForOperation(operation, request, context)
         : await this.provider.requireCredentials(context?.requestId);
-      return await new AlibabaReadGatewayClient(credentials, this.options).request(
+      const result = await new AlibabaReadGatewayClient(credentials, this.options).request(
         operation,
         request,
         context
       );
+      // Catalogue metadata must use each native method's route, not the default profile.
+      if (operation === 'listCapabilities') {
+        return await Promise.all(
+          (result as ResponseOf<'listCapabilities'>).map((capability) =>
+            this.applyNativeCapabilityProtocol(capability)
+          )
+        );
+      }
+      if (operation === 'getCapabilityDefinition')
+        return await this.applyNativeCapabilityProtocol(result as ResponseOf<'getCapabilityDefinition'>);
+      return result;
     } catch (error: unknown) {
       if (error instanceof GatewayConfigurationError) {
         throw credentialGatewayError(error);
       }
+      throw error;
+    }
+  }
+
+  private async applyNativeCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(
+    capability: T
+  ): Promise<T> {
+    if (!capability.method.startsWith('/')) return capability;
+    try {
+      const protocol = await this.operationProtocol('callCapability', {
+        method: capability.method,
+        parameters: getCapabilityDefinition(capability.method)?.requestExample ?? {}
+      });
+      return {
+        ...capability,
+        realCallEnabled:
+          protocol === 'iop' && (getCapabilityDefinition(capability.method)?.realCallEnabled ?? false)
+      };
+    } catch (error: unknown) {
+      if (
+        error instanceof GatewayException &&
+        error.gatewayError.code === 'ALIBABA_IOP_AUTHORIZATION_REQUIRED'
+      )
+        return { ...capability, realCallEnabled: false };
       throw error;
     }
   }
@@ -255,7 +290,11 @@ export class AlibabaReadGatewayClient implements GatewayClient {
   }
 
   private applyCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(capability: T): T {
-    return this.#credentials.protocol === 'iop' ? applyIopCapabilityProtocol(capability) : capability;
+    return this.#credentials.protocol === 'iop'
+      ? applyIopCapabilityProtocol(capability)
+      : capability.method.startsWith('/')
+        ? { ...capability, realCallEnabled: false }
+        : capability;
   }
 
   private createClient(

@@ -55,7 +55,8 @@ export function buildProtocolRegistration(
     const capability = capabilities.get(method);
     const definition = sources.definitionFor(method);
     const iop = sources.iopMethods[method];
-    const topSource = definition?.docUrl ?? capability?.docUrl ?? null;
+    const nativeIop = method.startsWith('/');
+    const topSource = nativeIop ? null : (definition?.docUrl ?? capability?.docUrl ?? null);
     const topConfirmed = topDocumentConfirmed(topSource);
     // Exact catalog titles or explicit adapter mappings only; never rewrite dots into paths.
     const candidates = snapshot.catalog.filter((entry) =>
@@ -101,11 +102,12 @@ export function buildProtocolRegistration(
       documentedProtocols,
       top: {
         documentation: topConfirmed ? ('confirmed' as const) : ('unconfirmed' as const),
-        method: capability || definition ? method : null,
+        method: !nativeIop && (capability || definition) ? method : null,
         source: topSource,
-        adapted: definition !== null,
-        accountVerified: (definition?.verification ?? capability?.verification) === 'account-verified',
-        constraints: topConstraints
+        adapted: !nativeIop && definition !== null,
+        accountVerified:
+          !nativeIop && (definition?.verification ?? capability?.verification) === 'account-verified',
+        constraints: nativeIop ? ['native-iop-only'] : topConstraints
       },
       iop: {
         documentation: iopConfirmed ? ('confirmed' as const) : ('unconfirmed' as const),

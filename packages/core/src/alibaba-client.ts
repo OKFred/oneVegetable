@@ -1,4 +1,5 @@
 import { GatewayException, normalizeGatewayError } from './errors';
+import { isProductReferenceMethod } from './product-reference-methods';
 import { NetworkManager, type NetworkResponse } from './network';
 import { createAlibabaRequest, createAlibabaSyncRequest } from './signing';
 import {
@@ -67,12 +68,16 @@ export class AlibabaClient {
   async call(method: string, parameters: Readonly<Record<string, unknown>>): Promise<AlibabaCallResult> {
     this.assertProtocol();
     const iop = this.#credentials.protocol === 'iop';
-    if (!iop && method.startsWith('/'))
+    if (!iop && method.startsWith('/')) {
+      const code = isProductReferenceMethod(method)
+        ? 'ALIBABA_IOP_AUTHORIZATION_REQUIRED'
+        : 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH';
       throw new GatewayException({
-        code: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
-        message: 'ALIBABA_PROTOCOL_ENDPOINT_MISMATCH',
+        code,
+        message: code,
         retryable: false
       });
+    }
     const reason = iop ? iopMethodReason(method, parameters) : null;
     if (reason) throw new GatewayException({ code: reason, message: reason, retryable: false });
     const maxAttempts = iop ? 1 : Math.max(1, Math.min(3, this.#options.maxAttempts ?? 1));

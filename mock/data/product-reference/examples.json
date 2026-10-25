@@ -1,0 +1,177 @@
+{
+  "/alibaba/icbu/category/predict/v2": {
+    "request": {
+      "title": "Unbranded glass cup"
+    },
+    "response": {
+      "code": "0",
+      "result": {
+        "success": true,
+        "data": {
+          "category_id": 220001,
+          "category_name": "Drinking Glasses",
+          "category_path": "Home / Drinkware / Drinking Glasses"
+        }
+      }
+    }
+  },
+  "/alibaba/icbu/category/get/v2": {
+    "request": {},
+    "response": {
+      "code": "0",
+      "success": true,
+      "data": [
+        {
+          "category_id": 220000,
+          "category_name": "Drinkware",
+          "leaf_category": false,
+          "level": 1
+        },
+        {
+          "category_id": 220001,
+          "category_name": "Drinking Glasses",
+          "leaf_category": "true",
+          "level": 2
+        }
+      ]
+    }
+  },
+  "/alibaba/icbu/category/attribute/get/v2": {
+    "request": {
+      "category_id": 220001
+    },
+    "response": {
+      "code": "0",
+      "success": true,
+      "data": {
+        "category_attributes": [
+          {
+            "attribute_id": 301,
+            "attribute_name": "Material",
+            "required": true,
+            "support_custom_value": false,
+            "support_multi_value": false,
+            "attribute_value_list": [
+              {
+                "attribute_value_id": 401,
+                "attribute_value_name": "Glass"
+              }
+            ]
+          }
+        ],
+        "sale_attributes": [
+          {
+            "attribute_id": "302",
+            "attribute_name": "Color",
+            "required": false,
+            "support_custom_value": true,
+            "support_multi_value": true,
+            "attribute_value_list": [
+              {
+                "attribute_value_id": 402,
+                "attribute_value_name": "Clear"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "/alibaba/icbu/product/get/v2": {
+    "request": {
+      "product_id": 880001
+    },
+    "response": {
+      "code": "0",
+      "success": true,
+      "product_info": {
+        "basic_info": {
+          "product_id": 880001,
+          "title": "Unbranded glass cup",
+          "keywords": "glass cup",
+          "description": "<p>A reusable glass cup.</p>",
+          "language": "en_US",
+          "create_timestamp": 1767225600000,
+          "last_modified_timestamp": 1767312000000,
+          "status": "online",
+          "audit_status": "approved",
+          "model_number": "CUP-01"
+        },
+        "category_info": {
+          "category_id": 220001,
+          "category_name": "Home / Drinkware / Drinking Glasses",
+          "attributes": [
+            {
+              "attribute_name": "Material",
+              "attribute_value": "Glass"
+            }
+          ]
+        },
+        "logistics_info": {
+          "shipping_template_id": 550001,
+          "weight": "0.25",
+          "dimension": {
+            "length": "12",
+            "width": "12",
+            "height": "20"
+          },
+          "tiered_lead_time": [
+            {
+              "quantity": 10,
+              "lead_time": 7
+            }
+          ]
+        },
+        "trade_info": {
+          "moq": 10,
+          "unit": "piece",
+          "price": {
+            "price_type": "TIERED",
+            "currency": "USD",
+            "tiered_price": [
+              {
+                "quantity": 10,
+                "price": "1.50"
+              }
+            ]
+          },
+          "inventory": "50",
+          "sku_info": [
+            {
+              "sku_id": 990001,
+              "sku_code": "CUP-CLEAR",
+              "sku_price": {
+                "price": "1.50",
+                "currency": "USD"
+              },
+              "inventory": "50",
+              "sale_attributes": [
+                {
+                  "attribute_name": "Color",
+                  "attribute_value": "Clear"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "/alibaba/icbu/product/list/shipping/templates": {
+    "request": {},
+    "response": {
+      "code": "0",
+      "success": true,
+      "template_info_list": [
+        {
+          "template_id": 550001,
+          "template_name": "Standard shipping"
+        },
+        {
+          "template_id": "550002",
+          "template_name": "Express shipping"
+        }
+      ]
+    }
+  }
+}

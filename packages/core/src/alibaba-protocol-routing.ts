@@ -1,4 +1,5 @@
 import { GatewayException } from './errors';
+import { isProductReferenceMethod } from './product-reference-methods';
 import { iopMethodReason, isAccountVerifiedIopMethod } from './alibaba-iop-business';
 import { getIopOperationSupport, iopOperationMethods } from './alibaba-iop-registry';
 import type { GatewayCredentials, OperationId } from './types';
@@ -19,6 +20,16 @@ export function selectAlibabaOperationProtocol(
   available: AlibabaProtocolAvailability
 ): AlibabaProtocol {
   const input = record(payload);
+  // These native paths have no TOP counterpart, regardless of the configured default.
+  if (operation === 'callCapability' && isProductReferenceMethod(input.method)) {
+    if (!available.iop)
+      throw new GatewayException({
+        code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+        message: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+        retryable: false
+      });
+    return 'iop';
+  }
   if (operation === 'updateProductDisplay' && (input.protocol === 'top' || input.protocol === 'iop')) {
     if (!available[input.protocol])
       throw new GatewayException({

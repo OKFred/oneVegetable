@@ -23,6 +23,7 @@
     "./errors": "./src/errors.ts",
     "./showcase": "./src/product-showcase.ts",
     "./inventory": "./src/product-inventory.ts",
+    "./product-reference": "./src/product-reference.ts",
     "./product-operation-context": "./src/product-operation-context.ts",
     "./product-display-identity": "./src/product-display-identity.ts",
     "./product-update-outcome": "./src/product-update-outcome.ts",

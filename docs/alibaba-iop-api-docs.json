@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-10-20T17:30:48.044Z",
+  "checkedAt": "2026-10-25T21:21:02.957Z",
   "catalog": [
     {
       "categoryId": 4,
@@ -3562,6 +3562,812 @@
               "description": "error code"
             }
           ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Category prediction",
+      "path": "/alibaba/icbu/category/predict/v2",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fpredict%2Fv2&methodType=GET%2FPOST",
+      "updatedAt": "2025-06-11 19:38:37",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Automatically assign accurate product categories by integrating:\n\nText Analysis: Parsing titles and descriptions for keywords and context.\nImage Recognition: Leveraging visual features from product images.",
+      "request": [
+        {
+          "name": "image",
+          "type": "String",
+          "required": false,
+          "description": "images of product"
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false,
+          "description": "detailed description of product"
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "required": true,
+          "description": "title of product"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result of category prediction",
+          "children": [
+            {
+              "name": "data",
+              "type": "Object",
+              "required": true,
+              "description": "result data of category prediction",
+              "children": [
+                {
+                  "name": "category_path",
+                  "type": "String",
+                  "required": false,
+                  "description": "full category path"
+                },
+                {
+                  "name": "category_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "leaf category name"
+                },
+                {
+                  "name": "category_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "leaf category id"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "true If the API call succeeds, it returns true, otherwise return false"
+            },
+            {
+              "name": "message",
+              "type": "String",
+              "required": true,
+              "description": "If the API call fails, the detailed error information returned"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "If the API call fails, the error code returned"
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "B_CATEGORY_PREDICT_FAIL",
+          "description": "Category prediction failed. Please verify input data and try again.",
+          "remedy": "Category prediction failed. Please verify input data and try again."
+        }
+      ]
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Get Category Information",
+      "path": "/alibaba/icbu/category/get/v2",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fget%2Fv2&methodType=GET%2FPOST",
+      "updatedAt": "2025-06-11 17:19:31",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Query Alibaba category information. If the parent_category_id is empty, it means querying the first-level category. If the parent_category_id is passed in, it means querying the sub-categories under the current category.",
+      "request": [
+        {
+          "name": "parent_category_id",
+          "type": "Number",
+          "required": false,
+          "description": "Category id. When this parameter is passed in, it will query the subcategories under the current category."
+        }
+      ],
+      "response": [
+        {
+          "name": "data",
+          "type": "Object[]",
+          "required": true,
+          "description": "Eligible category data",
+          "children": [
+            {
+              "name": "category_id",
+              "type": "Number",
+              "required": false,
+              "description": "Alibaba category id"
+            },
+            {
+              "name": "category_name",
+              "type": "String",
+              "required": false,
+              "description": "Alibaba category name"
+            },
+            {
+              "name": "leaf_category",
+              "type": "String",
+              "required": false,
+              "description": "true: This category is a leaf category, which means that there are no subcategories under this category and it can be directly associated with the product. false: Indicates that there are subcategories under this category, and products cannot be directly mounted under this category"
+            },
+            {
+              "name": "level",
+              "type": "Number",
+              "required": false,
+              "description": "The level of the category. If it is a first-level category, it returns 1; if it is a second-level category, it returns 2; if it is a third-level category, it returns 3; if it is a fourth-level category, it returns 4"
+            }
+          ]
+        },
+        {
+          "name": "success",
+          "type": "Boolean",
+          "required": true,
+          "description": "If the API call succeeds, it returns true, otherwise return false"
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the detailed error information returned"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the error code returned.The optional values are as follows：  BUSINESS_CATEGORY_NOT_EXIST: The category data does not exist. Please check the parentCategoryId parameter passed in. The leaf category ID has no subcategories."
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Get Product Information",
+      "path": "/alibaba/icbu/product/get/v2",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fget%2Fv2&methodType=GET%2FPOST",
+      "updatedAt": "2025-06-11 16:06:08",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "get the product information by product id or sku id",
+      "request": [
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": false,
+          "description": "Product id generated by alibaba.com."
+        },
+        {
+          "name": "sku_id",
+          "type": "Number",
+          "required": false,
+          "description": "SKU id generated by alibaba.com."
+        }
+      ],
+      "response": [
+        {
+          "name": "product_info",
+          "type": "Object",
+          "required": true,
+          "description": "Product information.",
+          "children": [
+            {
+              "name": "basic_info",
+              "type": "Object",
+              "required": false,
+              "description": "Basic product information.",
+              "children": [
+                {
+                  "name": "product_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "Product id generated by alibaba.com."
+                },
+                {
+                  "name": "title",
+                  "type": "String",
+                  "required": false,
+                  "description": "Product Name."
+                },
+                {
+                  "name": "keywords",
+                  "type": "String",
+                  "required": false,
+                  "description": "A set of phrases highly relevant to the product."
+                },
+                {
+                  "name": "description",
+                  "type": "String",
+                  "required": false,
+                  "description": "Product description."
+                },
+                {
+                  "name": "product_images",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "Product images.",
+                  "children": [
+                    {
+                      "name": "image_url",
+                      "type": "String",
+                      "required": false,
+                      "description": "Product image address."
+                    }
+                  ]
+                },
+                {
+                  "name": "language",
+                  "type": "String",
+                  "required": false,
+                  "description": "The language code used when this product information was originally created. Currently only en_US is supported"
+                },
+                {
+                  "name": "create_timestamp",
+                  "type": "Number",
+                  "required": false,
+                  "description": "The timestamp when the product record was first created, using the Unix timestamp"
+                },
+                {
+                  "name": "last_modified_timestamp",
+                  "type": "Number",
+                  "required": false,
+                  "description": "The timestamp of the last modification or update of this product record, using the Unix timestamp"
+                },
+                {
+                  "name": "owner_ali_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "This field indicates the ali id ​​of the person in charge of the product. Each sub-account is isolated from each other, and different sub-accounts cannot see each other's products."
+                },
+                {
+                  "name": "status",
+                  "type": "String",
+                  "required": false,
+                  "description": "The status of the product. Currently there are 3 enumeration values:  online: The product has been approved and successfully released online, and users can see and purchase it (if inventory allows) offline: The product has been manually removed from the shelves and is not visible or available for purchase by users. deleted: The product has been deleted and is no longer visible on the entire platform."
+                },
+                {
+                  "name": "audit_status",
+                  "type": "String",
+                  "required": false,
+                  "description": "All products on alibaba.com are subject to risk control and compliance review. The optional values are:  approved: The product information has passed the review and can be online.  pending: The product information has been submitted and is waiting for review by the administrator or system. It has not yet been released.  rejected: The product information has not passed the review and needs to be modified and resubmitted."
+                },
+                {
+                  "name": "model_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "The unique identifier that specifies your product."
+                }
+              ]
+            },
+            {
+              "name": "category_info",
+              "type": "Object",
+              "required": false,
+              "description": "Product category information.",
+              "children": [
+                {
+                  "name": "category_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "Leaf category id of alibaba."
+                },
+                {
+                  "name": "category_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "The full path of the category to which the product belongs, from the first-level category to the second-level category, all the way to the leaf category, separated by /."
+                },
+                {
+                  "name": "attributes",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "Basic features, such as brand, place of origin, material composition and etc.",
+                  "children": [
+                    {
+                      "name": "attribute_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "Attribute name."
+                    },
+                    {
+                      "name": "attribute_value",
+                      "type": "String",
+                      "required": false,
+                      "description": "Attribute value."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "logistics_info",
+              "type": "Object",
+              "required": false,
+              "description": "The logistics fulfillment information of the product.",
+              "children": [
+                {
+                  "name": "shipping_template_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "The unique logistics shipping template Id associated with the product."
+                },
+                {
+                  "name": "weight",
+                  "type": "String",
+                  "required": false,
+                  "description": "The total weight(in kilogram) of the product. This includes the weight of the product itself and all inner packaging materials (such as fillers, bubble bags). "
+                },
+                {
+                  "name": "desi",
+                  "type": "String",
+                  "required": false,
+                  "description": "Dimensional weight (Turkiye Only)."
+                },
+                {
+                  "name": "dimension",
+                  "type": "Object",
+                  "required": false,
+                  "description": "The external dimensions of the product.",
+                  "children": [
+                    {
+                      "name": "length",
+                      "type": "String",
+                      "required": false,
+                      "description": "Length of package, in centimeter."
+                    },
+                    {
+                      "name": "width",
+                      "type": "String",
+                      "required": false,
+                      "description": "Width of package, in centimeter."
+                    },
+                    {
+                      "name": "height",
+                      "type": "String",
+                      "required": false,
+                      "description": "Height of package, in centimeter."
+                    }
+                  ]
+                },
+                {
+                  "name": "tiered_lead_time",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "This is a list of estimated delivery working days based on the order quantity.",
+                  "children": [
+                    {
+                      "name": "quantity",
+                      "type": "Number",
+                      "required": false,
+                      "description": "Minimum quantity for the current tier."
+                    },
+                    {
+                      "name": "lead_time",
+                      "type": "Number",
+                      "required": false,
+                      "description": "Lead time for the current tier."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "trade_info",
+              "type": "Object",
+              "required": false,
+              "description": "Contains price, inventory and sku info.",
+              "children": [
+                {
+                  "name": "moq",
+                  "type": "Number",
+                  "required": false,
+                  "description": "Minimum order quantity."
+                },
+                {
+                  "name": "unit",
+                  "type": "String",
+                  "required": false,
+                  "description": "Selling units."
+                },
+                {
+                  "name": "price",
+                  "type": "Object",
+                  "required": false,
+                  "description": "We support 3 types: tiered pricing, range pricing, and sku pricing. Here is for tiered pricing and range pricing. ",
+                  "children": [
+                    {
+                      "name": "price_type",
+                      "type": "String",
+                      "required": false,
+                      "description": "The options are as follows: TIERED-tiered pricing; RANGE-range pricing. The tiered pricing refers to how much the unit price is if you order at least one item, and it can be setted multi tiered. The range pricing refers to a range price and such products cannot be directly ordered by the buyer."
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "required": false,
+                      "description": "ISO 4217 code of the product transaction currency."
+                    },
+                    {
+                      "name": "range_price",
+                      "type": "Object",
+                      "required": false,
+                      "description": "Activated when price_type is RANGE.",
+                      "children": [
+                        {
+                          "name": "min_price",
+                          "type": "String",
+                          "required": false,
+                          "description": "The minimum price in the price range."
+                        },
+                        {
+                          "name": "max_price",
+                          "type": "String",
+                          "required": false,
+                          "description": "The maximum price in the price range."
+                        }
+                      ]
+                    },
+                    {
+                      "name": "tiered_price",
+                      "type": "Object[]",
+                      "required": false,
+                      "description": "Activated when product_type is TIERED.",
+                      "children": [
+                        {
+                          "name": "quantity",
+                          "type": "Number",
+                          "required": false,
+                          "description": "Minimum Quantity for the current tier."
+                        },
+                        {
+                          "name": "price",
+                          "type": "String",
+                          "required": false,
+                          "description": "Price for the current tier."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "inventory",
+                  "type": "String",
+                  "required": false,
+                  "description": "The inventory of product(SPU) level."
+                },
+                {
+                  "name": "sku_info",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "A sku list of the product. Each sku contains sale-attributes(such as different colors, sizes, versions, etc.), price and inventory.",
+                  "children": [
+                    {
+                      "name": "sku_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "SKU id generated by alibaba.com."
+                    },
+                    {
+                      "name": "sku_code",
+                      "type": "String",
+                      "required": false,
+                      "description": "SKU code for sellers to manage and identify specific product specifications, usually follows certain coding rules, such as barcode, EAN code."
+                    },
+                    {
+                      "name": "sku_price",
+                      "type": "Object",
+                      "required": false,
+                      "description": "It is for sku pricing.",
+                      "children": [
+                        {
+                          "name": "price",
+                          "type": "String",
+                          "required": false,
+                          "description": "SKU price."
+                        },
+                        {
+                          "name": "currency",
+                          "type": "String",
+                          "required": false,
+                          "description": "ISO 4217 code of the product transaction currency."
+                        }
+                      ]
+                    },
+                    {
+                      "name": "inventory",
+                      "type": "String",
+                      "required": false,
+                      "description": "Here is the inventory of sku level."
+                    },
+                    {
+                      "name": "sale_attributes",
+                      "type": "Object[]",
+                      "required": false,
+                      "description": "Attributes that directly impact the product pricing (e.g., size/color variants, material grades).",
+                      "children": [
+                        {
+                          "name": "attribute_name",
+                          "type": "String",
+                          "required": false,
+                          "description": "SKU attribute name."
+                        },
+                        {
+                          "name": "attribute_value",
+                          "type": "String",
+                          "required": false,
+                          "description": "SKU attribute value."
+                        },
+                        {
+                          "name": "image",
+                          "type": "Object",
+                          "required": false,
+                          "description": "When listing a product, some attributes allow to bind an image at the same time. This field is the image associated with the attribute. On the product details page, buyers can see the image to get more information and help with purchasing decisions.",
+                          "children": [
+                            {
+                              "name": "image_url",
+                              "type": "String",
+                              "required": false,
+                              "description": "Image address."
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "success",
+          "type": "Boolean",
+          "required": true,
+          "description": "If the API call succeeds, it returns true, otherwise return false"
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the detailed error information returned"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the error code returned.The optional values are as follows： B_PRODUCT_PARAM_INVALID: input param is invalid,productId or skuId is required. B_PRODUCT_NOT_FOUND: product not found S_PRODUCT_SEARCH_ERROR: system error"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Query Category Attributes",
+      "path": "/alibaba/icbu/category/attribute/get/v2",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fattribute%2Fget%2Fv2&methodType=GET%2FPOST",
+      "updatedAt": "2025-06-11 19:07:54",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Query category attribute information by category ID, including general attributes and sku attributes",
+      "request": [
+        {
+          "name": "category_id",
+          "type": "Number",
+          "required": true,
+          "description": "Alibaba leaf category ID, The category ID can be obtained through this interface: alibaba.icbu.category.get.new"
+        }
+      ],
+      "response": [
+        {
+          "name": "data",
+          "type": "Object",
+          "required": true,
+          "description": "All attributes under this category on Alibaba.com, used for product listing. Sellers use these attributes to describe product characteristics.",
+          "children": [
+            {
+              "name": "category_attributes",
+              "type": "Object[]",
+              "required": false,
+              "description": "In the context of Alibaba.com, Standard Attributes refer to attributes used to describe product characteristics (e.g., \"Material\") but do not directly influence transaction parameters such as pricing, inventory, or order fulfillment. ",
+              "children": [
+                {
+                  "name": "attribute_id",
+                  "type": "Number",
+                  "required": false,
+                  "description": "Attribute ID on Alibaba.com"
+                },
+                {
+                  "name": "attribute_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "Attribute value name on Alibaba.com"
+                },
+                {
+                  "name": "required",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "true: this attribute is mandatory when listing products using this category, and vice versa"
+                },
+                {
+                  "name": "support_custom_value",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "true: you can enter their own value for this attribute when listing products, and vice versa "
+                },
+                {
+                  "name": "support_multi_value",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "true: you can provide more than one value for this attribute when listing products, false: only one attribute value is supported for this  attribute"
+                },
+                {
+                  "name": "attribute_value_list",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "List of predefined values for variant selection.",
+                  "children": [
+                    {
+                      "name": "attribute_value_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "Attribute value ID in alibaba.com"
+                    },
+                    {
+                      "name": "attribute_value_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "Attribute value name on alibaba.com"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sale_attributes",
+              "type": "Object[]",
+              "required": false,
+              "description": "Special attributes affecting SKU generation (e.g., Color, Size)，that directly influence product transaction parameters, such as pricing, inventory, or purchase options.",
+              "children": [
+                {
+                  "name": "attribute_id",
+                  "type": "String",
+                  "required": false,
+                  "description": "Attribute ID on Alibaba.com"
+                },
+                {
+                  "name": "attribute_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "Attribute value name on Alibaba.com"
+                },
+                {
+                  "name": "required",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "true: this attribute is mandatory when listing products using this category, and vice versa"
+                },
+                {
+                  "name": "support_custom_value",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "true: you can enter their own value for this attribute when listing products, and vice versa "
+                },
+                {
+                  "name": "support_multi_value",
+                  "type": "Boolean",
+                  "required": false,
+                  "description": "true: you can provide more than one value for this attribute when listing products, false: only one attribute value is supported for this  attribute"
+                },
+                {
+                  "name": "attribute_value_list",
+                  "type": "Object[]",
+                  "required": false,
+                  "description": "List of predefined values for variant selection.",
+                  "children": [
+                    {
+                      "name": "attribute_value_id",
+                      "type": "Number",
+                      "required": false,
+                      "description": "Attribute value ID on alibaba.com"
+                    },
+                    {
+                      "name": "attribute_value_name",
+                      "type": "String",
+                      "required": false,
+                      "description": "Attribute value name on alibaba.com"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "success",
+          "type": "Boolean",
+          "required": true,
+          "description": "If the API call succeeds, it returns true; if the API call fails, it returns false."
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the detailed error information returned"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the error code returned"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "categoryId": 11,
+      "category": "Product V2",
+      "title": "Query shipping templates",
+      "path": "/alibaba/icbu/product/list/shipping/templates",
+      "httpMethods": "GET/POST",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Flist%2Fshipping%2Ftemplates&methodType=GET%2FPOST",
+      "updatedAt": "2025-06-11 19:55:17",
+      "chargeable": false,
+      "authorizationType": 1,
+      "description": "Query shipping template information.",
+      "request": [],
+      "response": [
+        {
+          "name": "template_info_list",
+          "type": "Object[]",
+          "required": true,
+          "description": "Shipping template detailed information, including shipping template id and name.",
+          "children": [
+            {
+              "name": "template_id",
+              "type": "Number",
+              "required": false,
+              "description": "Shipping template id."
+            },
+            {
+              "name": "template_name",
+              "type": "String",
+              "required": false,
+              "description": "Shipping template name."
+            }
+          ]
+        },
+        {
+          "name": "success",
+          "type": "Boolean",
+          "required": true,
+          "description": "If all product are deleted successfully, return ture, otherwise return false."
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the detailed error information returned"
+        },
+        {
+          "name": "msg_code",
+          "type": "String",
+          "required": true,
+          "description": "If the API call fails, the error code returned"
         }
       ],
       "errors": []

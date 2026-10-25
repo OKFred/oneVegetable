@@ -1,4 +1,5 @@
 import { GatewayException } from './errors';
+import { isProductReferenceMethod, IOP_REFERENCE_METHODS } from './product-reference-methods';
 import { IOP_BUSINESS_ENDPOINT, isRecord, signIopRequest } from './alibaba-iop';
 import { serializeAlibabaParameters } from './signing';
 import { assertAlibabaBusinessParameters } from './transport-security';
@@ -58,7 +59,40 @@ export async function createIopBusinessRequest(
   if (!path) throw failure('ALIBABA_IOP_METHOD_UNSUPPORTED');
   if (!definition.adapted) throw failure(iopMethodReason(method) ?? 'ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
-  if (method === PHOTO_UPLOAD) {
+  if (isProductReferenceMethod(method)) {
+    const allowed =
+      method === IOP_REFERENCE_METHODS.predictCategory
+        ? ['title', 'description', 'image']
+        : method === IOP_REFERENCE_METHODS.listCategories
+          ? ['parent_category_id']
+          : method === IOP_REFERENCE_METHODS.getAttributes
+            ? ['category_id']
+            : method === IOP_REFERENCE_METHODS.getProduct
+              ? ['product_id', 'sku_id']
+              : [];
+    if (Object.keys(input).some((key) => !allowed.includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = Object.fromEntries(
+      Object.entries(input).map(([key, value]) => {
+        if (key.endsWith('_id')) {
+          if (
+            (typeof value !== 'string' && typeof value !== 'number') ||
+            !/^[1-9][0-9]*$/u.test(String(value)) ||
+            (typeof value === 'number' && !Number.isSafeInteger(value))
+          )
+            throw failure('REQUEST_CONTRACT_INVALID');
+          return [key, String(value)];
+        }
+        return [key, requiredText(value)];
+      })
+    );
+    if (
+      (method === IOP_REFERENCE_METHODS.predictCategory && !input.title) ||
+      (method === IOP_REFERENCE_METHODS.getAttributes && !input.category_id) ||
+      (method === IOP_REFERENCE_METHODS.getProduct && !input.product_id && !input.sku_id)
+    )
+      throw failure('REQUEST_CONTRACT_INVALID');
+  } else if (method === PHOTO_UPLOAD) {
     if (Object.keys(input).some((key) => !['file_name', 'group_id'].includes(key)))
       throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
     business = {
@@ -247,6 +281,21 @@ export function normalizeIopBusinessResponse(
   if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string')) throw failure();
   if (value.code !== '0' && value.code !== 0)
     throw providerFailure(value.code, value.message, value.request_id, credentials);
+  if (isProductReferenceMethod(method)) {
+    const data = method === IOP_REFERENCE_METHODS.predictCategory ? value.result : value;
+    if (!isRecord(data)) throw failure();
+    if (data.success === false)
+      throw providerFailure(
+        data.msg_code ?? 'BUSINESS_REJECTED',
+        data.message,
+        value.request_id,
+        credentials,
+        'ALIBABA_IOP_BUSINESS_REJECTED'
+      );
+    if (data.success !== true) throw failure();
+    // Preserve native semantics rather than manufacturing a TOP response root.
+    return value;
+  }
   if (method === '/alibaba/order/get') {
     const data = value.value;
     if (!isRecord(data) || typeof data.trade_id !== 'string' || data.trade_id !== request?.e_trade_id)

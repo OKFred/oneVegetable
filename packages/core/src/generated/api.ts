@@ -7666,6 +7666,346 @@ export interface components {
             /** @description Alibaba 网关返回的请求追踪 ID */
             request_id?: string;
         };
+        /** /alibaba/icbu/category/predict/v2 request */
+        AlibabaProductIopReference0Request: {
+            image?: string;
+            /** @description detailed description of product */
+            description?: string;
+            title: string;
+        };
+        /** /alibaba/icbu/category/predict/v2 response */
+        AlibabaProductIopReference0Response: {
+            /** @description result of category prediction */
+            result: {
+                /** @description result data of category prediction */
+                data: {
+                    /** @description full category path */
+                    category_path?: string;
+                    /** @description leaf category name */
+                    category_name?: string;
+                    /** @description leaf category id */
+                    category_id?: number | string;
+                } & {
+                    [key: string]: unknown;
+                };
+                /** @description true If the API call succeeds, it returns true, otherwise return false */
+                success: boolean;
+                /** @description If the API call fails, the detailed error information returned */
+                message?: string;
+                /** @description If the API call fails, the error code returned */
+                msg_code?: string;
+            } & {
+                [key: string]: unknown;
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        /** /alibaba/icbu/category/get/v2 request */
+        AlibabaProductIopReference1Request: {
+            /** @description Category id. When this parameter is passed in, it will query the subcategories under the current category. */
+            parent_category_id?: number | string;
+        };
+        /** /alibaba/icbu/category/get/v2 response */
+        AlibabaProductIopReference1Response: {
+            /** @description Eligible category data */
+            data: ({
+                /** @description Alibaba category id */
+                category_id?: number | string;
+                /** @description Alibaba category name */
+                category_name?: string;
+                /** @description true: This category is a leaf category, which means that there are no subcategories under this category and it can be directly associated with the product. false: Indicates that there are subcategories under this category, and products cannot be directly mounted under this category */
+                leaf_category?: boolean | ("true" | "false");
+                /** @description The level of the category. If it is a first-level category, it returns 1; if it is a second-level category, it returns 2; if it is a third-level category, it returns 3; if it is a fourth-level category, it returns 4 */
+                level?: number;
+            } & {
+                [key: string]: unknown;
+            })[];
+            /** @description If the API call succeeds, it returns true, otherwise return false */
+            success: boolean;
+            /** @description If the API call fails, the detailed error information returned */
+            message?: string;
+            /** @description If the API call fails, the error code returned.The optional values are as follows：  BUSINESS_CATEGORY_NOT_EXIST: The category data does not exist. Please check the parentCategoryId parameter passed in. The leaf category ID has no subcategories. */
+            msg_code?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** /alibaba/icbu/category/attribute/get/v2 request */
+        AlibabaProductIopReference2Request: {
+            /** @description Alibaba leaf category ID, The category ID can be obtained through this interface: alibaba.icbu.category.get.new */
+            category_id: number | string;
+        };
+        /** /alibaba/icbu/category/attribute/get/v2 response */
+        AlibabaProductIopReference2Response: {
+            /** @description All attributes under this category on Alibaba.com, used for product listing. Sellers use these attributes to describe product characteristics. */
+            data: {
+                /** @description In the context of Alibaba.com, Standard Attributes refer to attributes used to describe product characteristics (e.g., "Material") but do not directly influence transaction parameters such as pricing, inventory, or order fulfillment. */
+                category_attributes?: ({
+                    /** @description Attribute ID on Alibaba.com */
+                    attribute_id?: number | string;
+                    /** @description Attribute value name on Alibaba.com */
+                    attribute_name?: string;
+                    /** @description true: this attribute is mandatory when listing products using this category, and vice versa */
+                    required?: boolean;
+                    /** @description true: you can enter their own value for this attribute when listing products, and vice versa */
+                    support_custom_value?: boolean;
+                    /** @description true: you can provide more than one value for this attribute when listing products, false: only one attribute value is supported for this  attribute */
+                    support_multi_value?: boolean;
+                    /** @description List of predefined values for variant selection. */
+                    attribute_value_list?: ({
+                        /** @description Attribute value ID in alibaba.com */
+                        attribute_value_id?: number | string;
+                        /** @description Attribute value name on alibaba.com */
+                        attribute_value_name?: string;
+                    } & {
+                        [key: string]: unknown;
+                    })[];
+                } & {
+                    [key: string]: unknown;
+                })[];
+                /** @description Special attributes affecting SKU generation (e.g., Color, Size)，that directly influence product transaction parameters, such as pricing, inventory, or purchase options. */
+                sale_attributes?: ({
+                    /** @description Attribute ID on Alibaba.com */
+                    attribute_id?: number | string;
+                    /** @description Attribute value name on Alibaba.com */
+                    attribute_name?: string;
+                    /** @description true: this attribute is mandatory when listing products using this category, and vice versa */
+                    required?: boolean;
+                    /** @description true: you can enter their own value for this attribute when listing products, and vice versa */
+                    support_custom_value?: boolean;
+                    /** @description true: you can provide more than one value for this attribute when listing products, false: only one attribute value is supported for this  attribute */
+                    support_multi_value?: boolean;
+                    /** @description List of predefined values for variant selection. */
+                    attribute_value_list?: ({
+                        /** @description Attribute value ID on alibaba.com */
+                        attribute_value_id?: number | string;
+                        /** @description Attribute value name on alibaba.com */
+                        attribute_value_name?: string;
+                    } & {
+                        [key: string]: unknown;
+                    })[];
+                } & {
+                    [key: string]: unknown;
+                })[];
+            } & {
+                [key: string]: unknown;
+            };
+            /** @description If the API call succeeds, it returns true; if the API call fails, it returns false. */
+            success: boolean;
+            /** @description If the API call fails, the detailed error information returned */
+            message?: string;
+            /** @description If the API call fails, the error code returned */
+            msg_code?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** /alibaba/icbu/product/get/v2 request */
+        AlibabaProductIopReference3Request: {
+            /** @description Product id generated by alibaba.com. */
+            product_id?: number | string;
+            /** @description SKU id generated by alibaba.com. */
+            sku_id?: number | string;
+        } | {
+            /** @description Product id generated by alibaba.com. */
+            product_id: number | string;
+        } | {
+            /** @description SKU id generated by alibaba.com. */
+            sku_id: number | string;
+        };
+        /** /alibaba/icbu/product/get/v2 response */
+        AlibabaProductIopReference3Response: {
+            /** @description Product information. */
+            product_info: {
+                /** @description Basic product information. */
+                basic_info?: {
+                    /** @description Product id generated by alibaba.com. */
+                    product_id?: number | string;
+                    /** @description Product Name. */
+                    title?: string;
+                    /** @description A set of phrases highly relevant to the product. */
+                    keywords?: string;
+                    /** @description Product description. */
+                    description?: string;
+                    /** @description Product images. */
+                    product_images?: ({
+                        /** @description Product image address. */
+                        image_url?: string;
+                    } & {
+                        [key: string]: unknown;
+                    })[];
+                    /** @description The language code used when this product information was originally created. Currently only en_US is supported */
+                    language?: string;
+                    /** @description The timestamp when the product record was first created, using the Unix timestamp */
+                    create_timestamp?: number;
+                    /** @description The timestamp of the last modification or update of this product record, using the Unix timestamp */
+                    last_modified_timestamp?: number;
+                    /** @description This field indicates the ali id ​​of the person in charge of the product. Each sub-account is isolated from each other, and different sub-accounts cannot see each other's products. */
+                    owner_ali_id?: number | string;
+                    /** @description The status of the product. Currently there are 3 enumeration values:  online: The product has been approved and successfully released online, and users can see and purchase it (if inventory allows) offline: The product has been manually removed from the shelves and is not visible or available for purchase by users. deleted: The product has been deleted and is no longer visible on the entire platform. */
+                    status?: string;
+                    /** @description All products on alibaba.com are subject to risk control and compliance review. The optional values are:  approved: The product information has passed the review and can be online.  pending: The product information has been submitted and is waiting for review by the administrator or system. It has not yet been released.  rejected: The product information has not passed the review and needs to be modified and resubmitted. */
+                    audit_status?: string;
+                    /** @description The unique identifier that specifies your product. */
+                    model_number?: string;
+                } & {
+                    [key: string]: unknown;
+                };
+                /** @description Product category information. */
+                category_info?: {
+                    /** @description Leaf category id of alibaba. */
+                    category_id?: number | string;
+                    /** @description The full path of the category to which the product belongs, from the first-level category to the second-level category, all the way to the leaf category, separated by /. */
+                    category_name?: string;
+                    /** @description Basic features, such as brand, place of origin, material composition and etc. */
+                    attributes?: ({
+                        /** @description Attribute name. */
+                        attribute_name?: string;
+                        /** @description Attribute value. */
+                        attribute_value?: string;
+                    } & {
+                        [key: string]: unknown;
+                    })[];
+                } & {
+                    [key: string]: unknown;
+                };
+                /** @description The logistics fulfillment information of the product. */
+                logistics_info?: {
+                    /** @description The unique logistics shipping template Id associated with the product. */
+                    shipping_template_id?: number | string;
+                    /** @description The total weight(in kilogram) of the product. This includes the weight of the product itself and all inner packaging materials (such as fillers, bubble bags). */
+                    weight?: string;
+                    /** @description Dimensional weight (Turkiye Only). */
+                    desi?: string;
+                    /** @description The external dimensions of the product. */
+                    dimension?: {
+                        /** @description Length of package, in centimeter. */
+                        length?: string;
+                        /** @description Width of package, in centimeter. */
+                        width?: string;
+                        /** @description Height of package, in centimeter. */
+                        height?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                    /** @description This is a list of estimated delivery working days based on the order quantity. */
+                    tiered_lead_time?: ({
+                        /** @description Minimum quantity for the current tier. */
+                        quantity?: number;
+                        /** @description Lead time for the current tier. */
+                        lead_time?: number;
+                    } & {
+                        [key: string]: unknown;
+                    })[];
+                } & {
+                    [key: string]: unknown;
+                };
+                /** @description Contains price, inventory and sku info. */
+                trade_info?: {
+                    /** @description Minimum order quantity. */
+                    moq?: number;
+                    /** @description Selling units. */
+                    unit?: string;
+                    /** @description We support 3 types: tiered pricing, range pricing, and sku pricing. Here is for tiered pricing and range pricing. */
+                    price?: {
+                        /** @description The options are as follows: TIERED-tiered pricing; RANGE-range pricing. The tiered pricing refers to how much the unit price is if you order at least one item, and it can be setted multi tiered. The range pricing refers to a range price and such products cannot be directly ordered by the buyer. */
+                        price_type?: string;
+                        /** @description ISO 4217 code of the product transaction currency. */
+                        currency?: string;
+                        /** @description Activated when price_type is RANGE. */
+                        range_price?: {
+                            /** @description The minimum price in the price range. */
+                            min_price?: string;
+                            /** @description The maximum price in the price range. */
+                            max_price?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        /** @description Activated when product_type is TIERED. */
+                        tiered_price?: ({
+                            /** @description Minimum Quantity for the current tier. */
+                            quantity?: number;
+                            /** @description Price for the current tier. */
+                            price?: string | number;
+                        } & {
+                            [key: string]: unknown;
+                        })[];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                    /** @description The inventory of product(SPU) level. */
+                    inventory?: string;
+                    /** @description A sku list of the product. Each sku contains sale-attributes(such as different colors, sizes, versions, etc.), price and inventory. */
+                    sku_info?: ({
+                        /** @description SKU id generated by alibaba.com. */
+                        sku_id?: number | string;
+                        /** @description SKU code for sellers to manage and identify specific product specifications, usually follows certain coding rules, such as barcode, EAN code. */
+                        sku_code?: string;
+                        /** @description It is for sku pricing. */
+                        sku_price?: {
+                            /** @description SKU price. */
+                            price?: string;
+                            /** @description ISO 4217 code of the product transaction currency. */
+                            currency?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                        /** @description Here is the inventory of sku level. */
+                        inventory?: string;
+                        /** @description Attributes that directly impact the product pricing (e.g., size/color variants, material grades). */
+                        sale_attributes?: ({
+                            /** @description SKU attribute name. */
+                            attribute_name?: string;
+                            /** @description SKU attribute value. */
+                            attribute_value?: string;
+                            /** @description When listing a product, some attributes allow to bind an image at the same time. This field is the image associated with the attribute. On the product details page, buyers can see the image to get more information and help with purchasing decisions. */
+                            image?: {
+                                /** @description Image address. */
+                                image_url?: string;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        } & {
+                            [key: string]: unknown;
+                        })[];
+                    } & {
+                        [key: string]: unknown;
+                    })[];
+                } & {
+                    [key: string]: unknown;
+                };
+            } & {
+                [key: string]: unknown;
+            };
+            /** @description If the API call succeeds, it returns true, otherwise return false */
+            success: boolean;
+            /** @description If the API call fails, the detailed error information returned */
+            message?: string;
+            /** @description If the API call fails, the error code returned.The optional values are as follows： B_PRODUCT_PARAM_INVALID: input param is invalid,productId or skuId is required. B_PRODUCT_NOT_FOUND: product not found S_PRODUCT_SEARCH_ERROR: system error */
+            msg_code?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** /alibaba/icbu/product/list/shipping/templates request */
+        AlibabaProductIopReference4Request: Record<string, never>;
+        /** /alibaba/icbu/product/list/shipping/templates response */
+        AlibabaProductIopReference4Response: {
+            /** @description Shipping template detailed information, including shipping template id and name. */
+            template_info_list: ({
+                /** @description Shipping template id. */
+                template_id?: number | string;
+                /** @description Shipping template name. */
+                template_name?: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+            /** @description If all product are deleted successfully, return ture, otherwise return false. */
+            success: boolean;
+            /** @description If the API call fails, the detailed error information returned */
+            message?: string;
+            /** @description If the API call fails, the error code returned */
+            msg_code?: string;
+        } & {
+            [key: string]: unknown;
+        };
         /** alibaba.icbu.annex.upload request */
         AlibabaRfqAlibabaIcbuAnnexUploadRequest: {
             /** @description 文件名 */
@@ -9625,7 +9965,7 @@ export interface components {
         CapabilityResponseEnvelope: {
             method: string;
             traceId: string;
-            data: components["schemas"]["AlibabaProductAlibabaScbpShowcaseSortResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseUpdateproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseAddproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseDeleteproductResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuTextTransResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseListResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseStatusResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"] | components["schemas"]["AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse"] | components["schemas"]["AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementMysupplierListResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankUploadResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoQueryResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuRiskSendResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaBuynowOrderCreateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingOrderPayResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingProductGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingStoreSaveResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingTokenCreateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuDistributionProductGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuDistributionProductQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuIndustryTopicListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductIdEncryptResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductInventoryUpdateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductLogisticsCountryGetcoststatusResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneExternalproductinfoWriteResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneExternalshopinfoWriteResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneIcbuproductrightsQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneIcbushopinfoQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuSupplierfosterIsvtaskNotifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTextRecognizeResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTextRecognizeTransResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTopicProductsResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTradeAssuranceAccountGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuVideoUploadResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuliveProductPushResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuliveProductlistPagegetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOnetouchLogisticsExpressLogisticsSolutionSemiListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderFreightCalculateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderLogisticsTrackingGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderPayResultQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerCouponAuthVerifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorOrderDetailResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorOrderListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorServiceProcessResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorServiceVendorprocessResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorTradePurchaseResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorWriteClientResponse"] | components["schemas"]["AlibabaFreeApiAlibabaShippingFreightCalculateResponse"];
+            data: components["schemas"]["AlibabaProductAlibabaScbpShowcaseSortResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseUpdateproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseAddproductResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseDeleteproductResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductCountryGetcountrylistResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuTextTransResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttributeGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryAttrvalueGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryGetNewResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryIdMappingResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryLevelAttrGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategoryPostcatGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuCategorySchemaLevelGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuOpenProductPostResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductBatchUpdateDisplayResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductGroupGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductIdDecryptResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductListResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaAddDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaRenderDraftResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSchemaUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductScoreGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductUpdateFieldResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductTypeAvailableGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseListResponse"] | components["schemas"]["AlibabaProductAlibabaScbpShowcaseStatusResponse"] | components["schemas"]["AlibabaProductIopReference0Response"] | components["schemas"]["AlibabaProductIopReference1Response"] | components["schemas"]["AlibabaProductIopReference2Response"] | components["schemas"]["AlibabaProductIopReference3Response"] | components["schemas"]["AlibabaProductIopReference4Response"] | components["schemas"]["AlibabaRfqAlibabaIcbuAnnexUploadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuQuotationPostResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqMyequityResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqReadResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqRecommendResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqSearchResponse"] | components["schemas"]["AlibabaRfqAlibabaIcbuRfqdetailGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderListResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderFundGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerOrderLogisticsGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderCreateResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeOrderModifyResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeFulfillmentChannelGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeServiceChargeGetResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAssuranceCreditCardResponse"] | components["schemas"]["AlibabaTradeAlibabaOrderTradeTtGetResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressGetResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuEcologyWriteResponse"] | components["schemas"]["AlibabaTradeAlibabaIntentionOrderSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAddressSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeDecodeResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerTradeQueryDrafttypeResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftCustomerSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuXiaomanVaListResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftSaleOrderDetailSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftAccountBillSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuSnsoftShipmentFinalaccountSyncResponse"] | components["schemas"]["AlibabaTradeAlibabaIcbuCheckOverseasAdmittanceResponse"] | components["schemas"]["AlibabaTradeAlibabaSellerAuthExtendResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressSchemaQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressFormSaveResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressListQueryResponse"] | components["schemas"]["AlibabaTradeAlibabaTradeAddressDeleteResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelReasonListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressChargeCalculateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsRuleValidateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderCancelResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsProductListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressLogisticsOrderCreateResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressCityListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressProvinceListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressDivisionListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressAddressStreetListResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderDetailGetResponse"] | components["schemas"]["AlibabaLogisticsAlibabaOnetouchLogisticsExpressOrderListQueryResponse"] | components["schemas"]["AlibabaLogisticsAlibabaWholesaleShippinglineTemplateListResponse"] | components["schemas"]["AlibabaInsightsAlibabaIcbuDiagnosticSupplierRankGetpercentResponse"] | components["schemas"]["AlibabaInsightsAlibabaMydataSelfQueryCgsokkResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementMysupplierListResponse"] | components["schemas"]["AlibabaInsightsAlibabaProcurementSupplierItemsGetResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankGroupOperateResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuPhotobankUploadResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoQueryResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductListResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductMainResponse"] | components["schemas"]["AlibabaPhotoAlibabaIcbuVideoRelationProductDetailResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuFileUrlpostingUploadResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuRiskSendResponse"] | components["schemas"]["AlibabaPlatformAlibabaIcbuTaskStatusNotifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaBuynowOrderCreateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingOrderPayResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingProductGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingStoreSaveResponse"] | components["schemas"]["AlibabaFreeApiAlibabaDropshippingTokenCreateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuDistributionProductGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuDistributionProductQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuIndustryTopicListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductIdEncryptResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductInventoryUpdateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuProductLogisticsCountryGetcoststatusResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneExternalproductinfoWriteResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneExternalshopinfoWriteResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneIcbuproductrightsQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuShopcloneIcbushopinfoQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuSupplierfosterIsvtaskNotifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTextRecognizeResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTextRecognizeTransResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTopicProductsResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuTradeAssuranceAccountGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuVideoUploadResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuliveProductPushResponse"] | components["schemas"]["AlibabaFreeApiAlibabaIcbuliveProductlistPagegetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOnetouchLogisticsExpressLogisticsSolutionSemiListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderFreightCalculateResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderLogisticsTrackingGetResponse"] | components["schemas"]["AlibabaFreeApiAlibabaOrderPayResultQueryResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerCouponAuthVerifyResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorOrderDetailResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorOrderListResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorServiceProcessResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorServiceVendorprocessResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorTradePurchaseResponse"] | components["schemas"]["AlibabaFreeApiAlibabaSellerVendorWriteClientResponse"] | components["schemas"]["AlibabaFreeApiAlibabaShippingFreightCalculateResponse"];
             contractValid: boolean;
             contractIssues: components["schemas"]["CapabilityContractIssue"][];
         };

@@ -156,7 +156,31 @@ function articleCapabilities(): ApiCapability[] {
 }
 
 export function listCapabilities(): ApiCapability[] {
-  return [...API_CAPABILITIES, ...articleCapabilities()];
+  const nativeIop = listCapabilityDefinitions().filter((definition) => definition.method.startsWith('/'));
+  return [
+    ...API_CAPABILITIES,
+    ...articleCapabilities(),
+    ...nativeIop.map((definition) => ({
+      method: definition.method,
+      domain: 'product' as const,
+      chargeLabel: 'Free',
+      auth: 'required' as const,
+      jushitaOnly: false,
+      restricted: false,
+      restrictionReason: null,
+      enabled: true,
+      docUrl: definition.docUrl,
+      checkedAt: definition.checkedAt,
+      updatedAt: definition.updatedAt ?? null,
+      source: definition.source,
+      lifecycle: definition.lifecycle,
+      risk: definition.risk,
+      verification: definition.verification,
+      realCallEnabled: definition.realCallEnabled,
+      requestSchema: definition.requestSchema,
+      responseSchema: definition.responseSchema
+    }))
+  ];
 }
 
 export function findCapability(method: string): ApiCapability | undefined {

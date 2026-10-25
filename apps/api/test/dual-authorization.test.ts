@@ -3,6 +3,8 @@ import fixture from '../../../mock/data/node-gateway-credentials.json';
 import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.json';
 import showcaseFixture from '../../../mock/data/showcase-management.json';
 import skuFixture from '../../../mock/data/product-sku-inventory.json';
+import referenceFixture from '../../../mock/data/product-reference/examples.json';
+import { ProductReferenceClient, IOP_REFERENCE_METHODS } from '@one-vegetable/core/product-reference';
 import { BffGatewayClient } from '@one-vegetable/core';
 import { galleryGatewayId, opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
 import { validateAlibabaAuthorizationsSummary } from '@one-vegetable/core/gateway-credential-validators';
@@ -79,6 +81,55 @@ function present<T>(value: T | null | undefined): T {
 }
 
 describe('independent TOP and IOP credentials', () => {
+  it.each(['top', 'iop'] as const)(
+    'routes all native reference reads and catalogue metadata with default %s',
+    async (preferred) => {
+      const { dual } = await harness(undefined, preferred);
+      const seen: string[] = [];
+      const send = vi.fn<NetworkTransport['send']>((input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        expect(url.origin).toBe('https://openapi-api.alibaba.com');
+        const path = url.pathname.replace(/^\/rest/u, '');
+        const example = referenceFixture[path as keyof typeof referenceFixture];
+        expect(example).toBeDefined();
+        const parameters =
+          init.body instanceof URLSearchParams
+            ? init.body
+            : new URLSearchParams(typeof init.body === 'string' ? init.body : '');
+        expect(parameters.has('session')).toBe(false);
+        expect(parameters.has('method')).toBe(false);
+        expect(parameters.get('sign_method')).toBe('sha256');
+        seen.push(path);
+        return Promise.resolve(Response.json(example.response));
+      });
+      const gateway = new CredentialBackedAlibabaGatewayClient(dual, {
+        transport: { send },
+        maxAttempts: 1
+      });
+      const client = new ProductReferenceClient(gateway);
+      expect((await client.getProduct('880001')).productId).toBe('880001');
+      expect((await client.listCategories()).length).toBe(2);
+      expect((await client.predictCategory({ title: 'Glass cup' })).categoryId).toBe('220001');
+      expect((await client.getAttributes('220001')).attributes.length).toBe(1);
+      expect((await client.listShippingTemplates()).length).toBe(2);
+      expect(new Set(seen)).toEqual(new Set(Object.values(IOP_REFERENCE_METHODS)));
+      expect(send).toHaveBeenCalledTimes(5);
+      const catalogue = await gateway.request('listCapabilities', undefined);
+      for (const method of Object.values(IOP_REFERENCE_METHODS)) {
+        expect(catalogue.find((entry) => entry.method === method)?.realCallEnabled).toBe(true);
+        expect((await gateway.request('getCapabilityDefinition', { method })).realCallEnabled).toBe(true);
+      }
+      expect((await dual.authorizations()).defaultProtocol).toBe(preferred);
+      await (await dual.service('iop')).clear(1);
+      await expect(client.getProduct('880001')).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED' }
+      });
+      const remaining = await gateway.request('listCapabilities', undefined);
+      for (const method of Object.values(IOP_REFERENCE_METHODS))
+        expect(remaining.find((entry) => entry.method === method)?.realCallEnabled).toBe(false);
+      expect(send).toHaveBeenCalledTimes(5);
+    }
+  );
   it.each(['top', 'iop'] as const)(
     'dispatches BFF showcase and SKU reads to TOP after acquiring their contexts with default %s',
     async (preferred) => {

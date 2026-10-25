@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { sharedJsonSource } from './lib/shared-json-codegen';
+import { buildIopReferenceContracts } from './lib/iop-reference-contract';
 import { resolve } from 'node:path';
 
 import { format } from 'prettier';
@@ -246,6 +247,16 @@ for (const definition of snapshot.definitions) {
         : `https://developer.alibaba.com/docs/doc.htm?articleId=${definition.articleId ?? ''}&docType=1`)
   };
 }
+const iopReference = buildIopReferenceContracts(
+  JSON.parse(await readFile(resolve(root, 'docs/alibaba-iop-api-docs.json'), 'utf8')) as Parameters<
+    typeof buildIopReferenceContracts
+  >[0],
+  JSON.parse(
+    await readFile(resolve(root, 'mock/data/product-reference/examples.json'), 'utf8')
+  ) as Parameters<typeof buildIopReferenceContracts>[1]
+);
+Object.assign(document.components.schemas, iopReference.schemas);
+Object.assign(capabilityMap, iopReference.definitions);
 document['x-product-capabilities'] = capabilityMap;
 
 const apiCapability = document.components.schemas.ApiCapability;

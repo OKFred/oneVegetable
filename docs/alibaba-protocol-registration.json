@@ -1,12 +1,122 @@
 {
   "schemaVersion": 1,
-  "catalogCheckedAt": "2026-10-20T17:30:48.044Z",
+  "catalogCheckedAt": "2026-10-25T21:21:02.957Z",
   "scope": "Offline documentation and implementation evidence only; not application permission, business qualification, runtime routing or write authorization.",
   "verificationSources": {
     "top": "Existing TOP capability definition/catalog verification labels; not reverified by this generator.",
     "iop": "Explicit IOP_METHODS accountVerified flags only; never inherited from TOP."
   },
   "entries": [
+    {
+      "method": "/alibaba/icbu/category/attribute/get/v2",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/category/attribute/get/v2",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fattribute%2Fget%2Fv2&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "/alibaba/icbu/category/get/v2",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/category/get/v2",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fget%2Fv2&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "/alibaba/icbu/category/predict/v2",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/category/predict/v2",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fpredict%2Fv2&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "/alibaba/icbu/product/get/v2",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/product/get/v2",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fget%2Fv2&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "/alibaba/icbu/product/list/shipping/templates",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/product/list/shipping/templates",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Flist%2Fshipping%2Ftemplates&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
     {
       "method": "/alibaba/order/get",
       "documentedProtocols": "iop",
@@ -16,7 +126,7 @@
         "source": null,
         "adapted": false,
         "accountVerified": false,
-        "constraints": []
+        "constraints": ["native-iop-only"]
       },
       "iop": {
         "documentation": "confirmed",

@@ -14736,6 +14736,637 @@
         },
         "title": "alibaba.scbp.showcase.updateproduct response"
       },
+      "AlibabaProductIopReference0Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "image": { "type": "string", "pattern": "^https://" },
+          "description": { "type": "string", "description": "detailed description of product" },
+          "title": { "type": "string", "minLength": 1 }
+        },
+        "required": ["title"],
+        "title": "/alibaba/icbu/category/predict/v2 request"
+      },
+      "AlibabaProductIopReference0Response": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "category_path": { "type": "string", "description": "full category path" },
+                  "category_name": { "type": "string", "description": "leaf category name" },
+                  "category_id": {
+                    "anyOf": [
+                      { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                      { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                    ],
+                    "description": "leaf category id"
+                  }
+                },
+                "description": "result data of category prediction"
+              },
+              "success": {
+                "type": "boolean",
+                "description": "true If the API call succeeds, it returns true, otherwise return false"
+              },
+              "message": {
+                "type": "string",
+                "description": "If the API call fails, the detailed error information returned"
+              },
+              "msg_code": {
+                "type": "string",
+                "description": "If the API call fails, the error code returned"
+              }
+            },
+            "description": "result of category prediction",
+            "required": ["success", "data"]
+          }
+        },
+        "required": ["result"],
+        "title": "/alibaba/icbu/category/predict/v2 response"
+      },
+      "AlibabaProductIopReference1Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "parent_category_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "Category id. When this parameter is passed in, it will query the subcategories under the current category."
+          }
+        },
+        "required": [],
+        "title": "/alibaba/icbu/category/get/v2 request"
+      },
+      "AlibabaProductIopReference1Response": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "category_id": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                  ],
+                  "description": "Alibaba category id"
+                },
+                "category_name": { "type": "string", "description": "Alibaba category name" },
+                "leaf_category": {
+                  "anyOf": [{ "type": "boolean" }, { "enum": ["true", "false"] }],
+                  "description": "true: This category is a leaf category, which means that there are no subcategories under this category and it can be directly associated with the product. false: Indicates that there are subcategories under this category, and products cannot be directly mounted under this category"
+                },
+                "level": {
+                  "type": "number",
+                  "description": "The level of the category. If it is a first-level category, it returns 1; if it is a second-level category, it returns 2; if it is a third-level category, it returns 3; if it is a fourth-level category, it returns 4"
+                }
+              }
+            },
+            "description": "Eligible category data"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "If the API call succeeds, it returns true, otherwise return false"
+          },
+          "message": {
+            "type": "string",
+            "description": "If the API call fails, the detailed error information returned"
+          },
+          "msg_code": {
+            "type": "string",
+            "description": "If the API call fails, the error code returned.The optional values are as follows：  BUSINESS_CATEGORY_NOT_EXIST: The category data does not exist. Please check the parentCategoryId parameter passed in. The leaf category ID has no subcategories."
+          }
+        },
+        "required": ["success", "data"],
+        "title": "/alibaba/icbu/category/get/v2 response"
+      },
+      "AlibabaProductIopReference2Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "category_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "Alibaba leaf category ID, The category ID can be obtained through this interface: alibaba.icbu.category.get.new"
+          }
+        },
+        "required": ["category_id"],
+        "title": "/alibaba/icbu/category/attribute/get/v2 request"
+      },
+      "AlibabaProductIopReference2Response": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "category_attributes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "attribute_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                      ],
+                      "description": "Attribute ID on Alibaba.com"
+                    },
+                    "attribute_name": {
+                      "type": "string",
+                      "description": "Attribute value name on Alibaba.com"
+                    },
+                    "required": {
+                      "type": "boolean",
+                      "description": "true: this attribute is mandatory when listing products using this category, and vice versa"
+                    },
+                    "support_custom_value": {
+                      "type": "boolean",
+                      "description": "true: you can enter their own value for this attribute when listing products, and vice versa "
+                    },
+                    "support_multi_value": {
+                      "type": "boolean",
+                      "description": "true: you can provide more than one value for this attribute when listing products, false: only one attribute value is supported for this  attribute"
+                    },
+                    "attribute_value_list": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "attribute_value_id": {
+                            "anyOf": [
+                              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                            ],
+                            "description": "Attribute value ID in alibaba.com"
+                          },
+                          "attribute_value_name": {
+                            "type": "string",
+                            "description": "Attribute value name on alibaba.com"
+                          }
+                        }
+                      },
+                      "description": "List of predefined values for variant selection."
+                    }
+                  }
+                },
+                "description": "In the context of Alibaba.com, Standard Attributes refer to attributes used to describe product characteristics (e.g., \"Material\") but do not directly influence transaction parameters such as pricing, inventory, or order fulfillment. "
+              },
+              "sale_attributes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "attribute_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                      ],
+                      "description": "Attribute ID on Alibaba.com"
+                    },
+                    "attribute_name": {
+                      "type": "string",
+                      "description": "Attribute value name on Alibaba.com"
+                    },
+                    "required": {
+                      "type": "boolean",
+                      "description": "true: this attribute is mandatory when listing products using this category, and vice versa"
+                    },
+                    "support_custom_value": {
+                      "type": "boolean",
+                      "description": "true: you can enter their own value for this attribute when listing products, and vice versa "
+                    },
+                    "support_multi_value": {
+                      "type": "boolean",
+                      "description": "true: you can provide more than one value for this attribute when listing products, false: only one attribute value is supported for this  attribute"
+                    },
+                    "attribute_value_list": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "attribute_value_id": {
+                            "anyOf": [
+                              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                            ],
+                            "description": "Attribute value ID on alibaba.com"
+                          },
+                          "attribute_value_name": {
+                            "type": "string",
+                            "description": "Attribute value name on alibaba.com"
+                          }
+                        }
+                      },
+                      "description": "List of predefined values for variant selection."
+                    }
+                  }
+                },
+                "description": "Special attributes affecting SKU generation (e.g., Color, Size)，that directly influence product transaction parameters, such as pricing, inventory, or purchase options."
+              }
+            },
+            "description": "All attributes under this category on Alibaba.com, used for product listing. Sellers use these attributes to describe product characteristics."
+          },
+          "success": {
+            "type": "boolean",
+            "description": "If the API call succeeds, it returns true; if the API call fails, it returns false."
+          },
+          "message": {
+            "type": "string",
+            "description": "If the API call fails, the detailed error information returned"
+          },
+          "msg_code": { "type": "string", "description": "If the API call fails, the error code returned" }
+        },
+        "required": ["success", "data"],
+        "title": "/alibaba/icbu/category/attribute/get/v2 response"
+      },
+      "AlibabaProductIopReference3Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "Product id generated by alibaba.com."
+          },
+          "sku_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "SKU id generated by alibaba.com."
+          }
+        },
+        "required": [],
+        "anyOf": [
+          {
+            "required": ["product_id"],
+            "properties": {
+              "product_id": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                ],
+                "description": "Product id generated by alibaba.com."
+              }
+            }
+          },
+          {
+            "required": ["sku_id"],
+            "properties": {
+              "sku_id": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                ],
+                "description": "SKU id generated by alibaba.com."
+              }
+            }
+          }
+        ],
+        "title": "/alibaba/icbu/product/get/v2 request"
+      },
+      "AlibabaProductIopReference3Response": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "product_info": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "basic_info": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "product_id": {
+                    "anyOf": [
+                      { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                      { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                    ],
+                    "description": "Product id generated by alibaba.com."
+                  },
+                  "title": { "type": "string", "description": "Product Name." },
+                  "keywords": {
+                    "type": "string",
+                    "description": "A set of phrases highly relevant to the product."
+                  },
+                  "description": { "type": "string", "description": "Product description." },
+                  "product_images": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "image_url": { "type": "string", "description": "Product image address." }
+                      }
+                    },
+                    "description": "Product images."
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "The language code used when this product information was originally created. Currently only en_US is supported"
+                  },
+                  "create_timestamp": {
+                    "type": "number",
+                    "description": "The timestamp when the product record was first created, using the Unix timestamp"
+                  },
+                  "last_modified_timestamp": {
+                    "type": "number",
+                    "description": "The timestamp of the last modification or update of this product record, using the Unix timestamp"
+                  },
+                  "owner_ali_id": {
+                    "anyOf": [
+                      { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                      { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                    ],
+                    "description": "This field indicates the ali id ​​of the person in charge of the product. Each sub-account is isolated from each other, and different sub-accounts cannot see each other's products."
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "The status of the product. Currently there are 3 enumeration values:  online: The product has been approved and successfully released online, and users can see and purchase it (if inventory allows) offline: The product has been manually removed from the shelves and is not visible or available for purchase by users. deleted: The product has been deleted and is no longer visible on the entire platform."
+                  },
+                  "audit_status": {
+                    "type": "string",
+                    "description": "All products on alibaba.com are subject to risk control and compliance review. The optional values are:  approved: The product information has passed the review and can be online.  pending: The product information has been submitted and is waiting for review by the administrator or system. It has not yet been released.  rejected: The product information has not passed the review and needs to be modified and resubmitted."
+                  },
+                  "model_number": {
+                    "type": "string",
+                    "description": "The unique identifier that specifies your product."
+                  }
+                },
+                "description": "Basic product information."
+              },
+              "category_info": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "category_id": {
+                    "anyOf": [
+                      { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                      { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                    ],
+                    "description": "Leaf category id of alibaba."
+                  },
+                  "category_name": {
+                    "type": "string",
+                    "description": "The full path of the category to which the product belongs, from the first-level category to the second-level category, all the way to the leaf category, separated by /."
+                  },
+                  "attributes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "attribute_name": { "type": "string", "description": "Attribute name." },
+                        "attribute_value": { "type": "string", "description": "Attribute value." }
+                      }
+                    },
+                    "description": "Basic features, such as brand, place of origin, material composition and etc."
+                  }
+                },
+                "description": "Product category information."
+              },
+              "logistics_info": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "shipping_template_id": {
+                    "anyOf": [
+                      { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                      { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                    ],
+                    "description": "The unique logistics shipping template Id associated with the product."
+                  },
+                  "weight": {
+                    "type": "string",
+                    "description": "The total weight(in kilogram) of the product. This includes the weight of the product itself and all inner packaging materials (such as fillers, bubble bags). "
+                  },
+                  "desi": { "type": "string", "description": "Dimensional weight (Turkiye Only)." },
+                  "dimension": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "length": { "type": "string", "description": "Length of package, in centimeter." },
+                      "width": { "type": "string", "description": "Width of package, in centimeter." },
+                      "height": { "type": "string", "description": "Height of package, in centimeter." }
+                    },
+                    "description": "The external dimensions of the product."
+                  },
+                  "tiered_lead_time": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "quantity": {
+                          "type": "number",
+                          "description": "Minimum quantity for the current tier."
+                        },
+                        "lead_time": { "type": "number", "description": "Lead time for the current tier." }
+                      }
+                    },
+                    "description": "This is a list of estimated delivery working days based on the order quantity."
+                  }
+                },
+                "description": "The logistics fulfillment information of the product."
+              },
+              "trade_info": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "moq": { "type": "number", "description": "Minimum order quantity." },
+                  "unit": { "type": "string", "description": "Selling units." },
+                  "price": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "price_type": {
+                        "type": "string",
+                        "description": "The options are as follows: TIERED-tiered pricing; RANGE-range pricing. The tiered pricing refers to how much the unit price is if you order at least one item, and it can be setted multi tiered. The range pricing refers to a range price and such products cannot be directly ordered by the buyer."
+                      },
+                      "currency": {
+                        "type": "string",
+                        "description": "ISO 4217 code of the product transaction currency."
+                      },
+                      "range_price": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "min_price": {
+                            "type": "string",
+                            "description": "The minimum price in the price range."
+                          },
+                          "max_price": {
+                            "type": "string",
+                            "description": "The maximum price in the price range."
+                          }
+                        },
+                        "description": "Activated when price_type is RANGE."
+                      },
+                      "tiered_price": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true,
+                          "properties": {
+                            "quantity": {
+                              "type": "number",
+                              "description": "Minimum Quantity for the current tier."
+                            },
+                            "price": {
+                              "type": ["string", "number"],
+                              "description": "Price for the current tier."
+                            }
+                          }
+                        },
+                        "description": "Activated when product_type is TIERED."
+                      }
+                    },
+                    "description": "We support 3 types: tiered pricing, range pricing, and sku pricing. Here is for tiered pricing and range pricing. "
+                  },
+                  "inventory": { "type": "string", "description": "The inventory of product(SPU) level." },
+                  "sku_info": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "sku_id": {
+                          "anyOf": [
+                            { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                            { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                          ],
+                          "description": "SKU id generated by alibaba.com."
+                        },
+                        "sku_code": {
+                          "type": "string",
+                          "description": "SKU code for sellers to manage and identify specific product specifications, usually follows certain coding rules, such as barcode, EAN code."
+                        },
+                        "sku_price": {
+                          "type": "object",
+                          "additionalProperties": true,
+                          "properties": {
+                            "price": { "type": "string", "description": "SKU price." },
+                            "currency": {
+                              "type": "string",
+                              "description": "ISO 4217 code of the product transaction currency."
+                            }
+                          },
+                          "description": "It is for sku pricing."
+                        },
+                        "inventory": {
+                          "type": "string",
+                          "description": "Here is the inventory of sku level."
+                        },
+                        "sale_attributes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "attribute_name": { "type": "string", "description": "SKU attribute name." },
+                              "attribute_value": { "type": "string", "description": "SKU attribute value." },
+                              "image": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                  "image_url": { "type": "string", "description": "Image address." }
+                                },
+                                "description": "When listing a product, some attributes allow to bind an image at the same time. This field is the image associated with the attribute. On the product details page, buyers can see the image to get more information and help with purchasing decisions."
+                              }
+                            }
+                          },
+                          "description": "Attributes that directly impact the product pricing (e.g., size/color variants, material grades)."
+                        }
+                      }
+                    },
+                    "description": "A sku list of the product. Each sku contains sale-attributes(such as different colors, sizes, versions, etc.), price and inventory."
+                  }
+                },
+                "description": "Contains price, inventory and sku info."
+              }
+            },
+            "description": "Product information."
+          },
+          "success": {
+            "type": "boolean",
+            "description": "If the API call succeeds, it returns true, otherwise return false"
+          },
+          "message": {
+            "type": "string",
+            "description": "If the API call fails, the detailed error information returned"
+          },
+          "msg_code": {
+            "type": "string",
+            "description": "If the API call fails, the error code returned.The optional values are as follows： B_PRODUCT_PARAM_INVALID: input param is invalid,productId or skuId is required. B_PRODUCT_NOT_FOUND: product not found S_PRODUCT_SEARCH_ERROR: system error"
+          }
+        },
+        "required": ["success", "product_info"],
+        "title": "/alibaba/icbu/product/get/v2 response"
+      },
+      "AlibabaProductIopReference4Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "title": "/alibaba/icbu/product/list/shipping/templates request"
+      },
+      "AlibabaProductIopReference4Response": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "template_info_list": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "template_id": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                  ],
+                  "description": "Shipping template id."
+                },
+                "template_name": { "type": "string", "description": "Shipping template name." }
+              }
+            },
+            "description": "Shipping template detailed information, including shipping template id and name."
+          },
+          "success": {
+            "type": "boolean",
+            "description": "If all product are deleted successfully, return ture, otherwise return false."
+          },
+          "message": {
+            "type": "string",
+            "description": "If the API call fails, the detailed error information returned"
+          },
+          "msg_code": { "type": "string", "description": "If the API call fails, the error code returned" }
+        },
+        "required": ["success", "template_info_list"],
+        "title": "/alibaba/icbu/product/list/shipping/templates response"
+      },
       "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -17304,6 +17935,11 @@
               { "$ref": "#/components/schemas/AlibabaProductAlibabaIcbuProductSkuInventoryGetResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseListResponse" },
               { "$ref": "#/components/schemas/AlibabaProductAlibabaScbpShowcaseStatusResponse" },
+              { "$ref": "#/components/schemas/AlibabaProductIopReference0Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopReference1Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopReference2Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopReference3Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopReference4Response" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuAnnexUploadResponse" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuQuotationPostResponse" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqMyequityResponse" },
@@ -22393,6 +23029,187 @@
       "requestExample": {},
       "responseExample": { "total_count": 50, "current_count": 40 },
       "docUrl": "https://open.taobao.com/api.htm?docId=40936&docType=2"
+    },
+    "/alibaba/icbu/category/predict/v2": {
+      "requestSchema": "AlibabaProductIopReference0Request",
+      "responseSchema": "AlibabaProductIopReference0Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-10-25",
+      "updatedAt": "2025-06-11",
+      "title": "Category prediction",
+      "description": "Automatically assign accurate product categories by integrating:\n\nText Analysis: Parsing titles and descriptions for keywords and context.\nImage Recognition: Leveraging visual features from product images.",
+      "errorCodes": [],
+      "requestExample": { "title": "Unbranded glass cup" },
+      "responseExample": {
+        "code": "0",
+        "result": {
+          "success": true,
+          "data": {
+            "category_id": 220001,
+            "category_name": "Drinking Glasses",
+            "category_path": "Home / Drinkware / Drinking Glasses"
+          }
+        }
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fpredict%2Fv2&methodType=GET%2FPOST"
+    },
+    "/alibaba/icbu/category/get/v2": {
+      "requestSchema": "AlibabaProductIopReference1Request",
+      "responseSchema": "AlibabaProductIopReference1Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-10-25",
+      "updatedAt": "2025-06-11",
+      "title": "Get Category Information",
+      "description": "Query Alibaba category information. If the parent_category_id is empty, it means querying the first-level category. If the parent_category_id is passed in, it means querying the sub-categories under the current category.",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": {
+        "code": "0",
+        "success": true,
+        "data": [
+          { "category_id": 220000, "category_name": "Drinkware", "leaf_category": false, "level": 1 },
+          { "category_id": 220001, "category_name": "Drinking Glasses", "leaf_category": "true", "level": 2 }
+        ]
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fget%2Fv2&methodType=GET%2FPOST"
+    },
+    "/alibaba/icbu/category/attribute/get/v2": {
+      "requestSchema": "AlibabaProductIopReference2Request",
+      "responseSchema": "AlibabaProductIopReference2Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-10-25",
+      "updatedAt": "2025-06-11",
+      "title": "Query Category Attributes",
+      "description": "Query category attribute information by category ID, including general attributes and sku attributes",
+      "errorCodes": [],
+      "requestExample": { "category_id": 220001 },
+      "responseExample": {
+        "code": "0",
+        "success": true,
+        "data": {
+          "category_attributes": [
+            {
+              "attribute_id": 301,
+              "attribute_name": "Material",
+              "required": true,
+              "support_custom_value": false,
+              "support_multi_value": false,
+              "attribute_value_list": [{ "attribute_value_id": 401, "attribute_value_name": "Glass" }]
+            }
+          ],
+          "sale_attributes": [
+            {
+              "attribute_id": "302",
+              "attribute_name": "Color",
+              "required": false,
+              "support_custom_value": true,
+              "support_multi_value": true,
+              "attribute_value_list": [{ "attribute_value_id": 402, "attribute_value_name": "Clear" }]
+            }
+          ]
+        }
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fattribute%2Fget%2Fv2&methodType=GET%2FPOST"
+    },
+    "/alibaba/icbu/product/get/v2": {
+      "requestSchema": "AlibabaProductIopReference3Request",
+      "responseSchema": "AlibabaProductIopReference3Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-10-25",
+      "updatedAt": "2025-06-11",
+      "title": "Get Product Information",
+      "description": "get the product information by product id or sku id",
+      "errorCodes": [],
+      "requestExample": { "product_id": 880001 },
+      "responseExample": {
+        "code": "0",
+        "success": true,
+        "product_info": {
+          "basic_info": {
+            "product_id": 880001,
+            "title": "Unbranded glass cup",
+            "keywords": "glass cup",
+            "description": "<p>A reusable glass cup.</p>",
+            "language": "en_US",
+            "create_timestamp": 1767225600000,
+            "last_modified_timestamp": 1767312000000,
+            "status": "online",
+            "audit_status": "approved",
+            "model_number": "CUP-01"
+          },
+          "category_info": {
+            "category_id": 220001,
+            "category_name": "Home / Drinkware / Drinking Glasses",
+            "attributes": [{ "attribute_name": "Material", "attribute_value": "Glass" }]
+          },
+          "logistics_info": {
+            "shipping_template_id": 550001,
+            "weight": "0.25",
+            "dimension": { "length": "12", "width": "12", "height": "20" },
+            "tiered_lead_time": [{ "quantity": 10, "lead_time": 7 }]
+          },
+          "trade_info": {
+            "moq": 10,
+            "unit": "piece",
+            "price": {
+              "price_type": "TIERED",
+              "currency": "USD",
+              "tiered_price": [{ "quantity": 10, "price": "1.50" }]
+            },
+            "inventory": "50",
+            "sku_info": [
+              {
+                "sku_id": 990001,
+                "sku_code": "CUP-CLEAR",
+                "sku_price": { "price": "1.50", "currency": "USD" },
+                "inventory": "50",
+                "sale_attributes": [{ "attribute_name": "Color", "attribute_value": "Clear" }]
+              }
+            ]
+          }
+        }
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fget%2Fv2&methodType=GET%2FPOST"
+    },
+    "/alibaba/icbu/product/list/shipping/templates": {
+      "requestSchema": "AlibabaProductIopReference4Request",
+      "responseSchema": "AlibabaProductIopReference4Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-10-25",
+      "updatedAt": "2025-06-11",
+      "title": "Query shipping templates",
+      "description": "Query shipping template information.",
+      "errorCodes": [],
+      "requestExample": {},
+      "responseExample": {
+        "code": "0",
+        "success": true,
+        "template_info_list": [
+          { "template_id": 550001, "template_name": "Standard shipping" },
+          { "template_id": "550002", "template_name": "Express shipping" }
+        ]
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Flist%2Fshipping%2Ftemplates&methodType=GET%2FPOST"
     }
   },
   "x-product-request-schemas": {
