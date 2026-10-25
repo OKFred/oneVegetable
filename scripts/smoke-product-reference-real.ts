@@ -583,7 +583,7 @@ export async function runGatewayAcceptance(
         !active ||
         operation !== 'callCapability' ||
         !record(request) ||
-        request.method !== REFERENCE_METHODS[active.operation] ||
+        Reflect.get(request, 'method') !== REFERENCE_METHODS[active.operation] ||
         ++active.calls !== 1
       )
         throw new Error('READ_ONLY_NETWORK_DENIED');

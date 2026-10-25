@@ -12,6 +12,10 @@ import {
 import { DualAlibabaAuthorization } from '../src/gateway/dual-authorization';
 import { galleryGatewayId } from '@one-vegetable/core/gallery-transfer-context';
 import { CredentialBackedAlibabaGatewayClient } from '../src/gateway/alibaba-read-gateway';
+import { createApiApp } from '../src/app';
+import { AuthService } from '../src/auth/service';
+import { SqlAuthRepository } from '../src/auth/repository';
+import { IOP_REFERENCE_METHODS } from '@one-vegetable/core/product-reference';
 
 beforeAll(async () => {
   await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
@@ -72,4 +76,40 @@ it('isolates protocol rows, confirmation and clear across request-local D1 provi
   await expect(
     nextRequest.resolveForOperation('renderProductSchema', {}, { productContext: context })
   ).rejects.toMatchObject({ code: 'PRODUCT_CONTEXT_CHANGED' });
+  const bootstrapToken = crypto.randomUUID();
+  const auth = new AuthService({ repository: new SqlAuthRepository(db.executor), bootstrapToken });
+  const session = await auth.bootstrap({
+    requestId: crypto.randomUUID(),
+    bootstrapToken,
+    username: 'context-regression-admin',
+    password: 'fixture-password'
+  });
+  const app = createApiApp({
+    runtime: 'cloudflare',
+    database: 'd1',
+    environment: 'test',
+    gatewayMode: 'real',
+    gateway,
+    authService: auth
+  });
+  const requestId = crypto.randomUUID();
+  const response = await app.request('/api/v1/gallery-transfers/context/get', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: 'ov_session=' + session.sessionToken },
+    body: JSON.stringify({
+      requestId,
+      operation: 'callCapability',
+      payload: { method: IOP_REFERENCE_METHODS.getProduct, parameters: { product_id: '880001' } }
+    })
+  });
+  expect(response.status).toBe(409);
+  expect(await response.json()).toEqual({
+    requestId,
+    ok: false,
+    error: {
+      code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+      message: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+      retryable: false
+    }
+  });
 });

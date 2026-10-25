@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "../smoke-authorization-modes-real.ts",
+    "../smoke-authorization-modes-extension-real.ts",
+    "../lib/authorization-mode-regression.ts",
+    "../lib/authorization-mode-wire.ts",
+    "../authorization-mode-regression.test.ts"
+  ]
+}
