@@ -36,11 +36,12 @@ const write = (path: IopBusinessPath, accountVerified = false): IopMethodDefinit
 
 /** Explicit public paths and separate IOP acceptance. Never infer paths or inherit TOP verification. */
 export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>> = Object.freeze({
-  [IOP_REFERENCE_METHODS.predictCategory]: read(IOP_REFERENCE_METHODS.predictCategory),
-  [IOP_REFERENCE_METHODS.listCategories]: read(IOP_REFERENCE_METHODS.listCategories),
-  [IOP_REFERENCE_METHODS.getAttributes]: read(IOP_REFERENCE_METHODS.getAttributes),
-  [IOP_REFERENCE_METHODS.getProduct]: read(IOP_REFERENCE_METHODS.getProduct),
-  [IOP_REFERENCE_METHODS.listShippingTemplates]: read(IOP_REFERENCE_METHODS.listShippingTemplates),
+  // Remote Node BFF and formal MV3 read acceptance, 2026-10-26; not an application-permission guarantee.
+  [IOP_REFERENCE_METHODS.predictCategory]: read(IOP_REFERENCE_METHODS.predictCategory, true),
+  [IOP_REFERENCE_METHODS.listCategories]: read(IOP_REFERENCE_METHODS.listCategories, true),
+  [IOP_REFERENCE_METHODS.getAttributes]: read(IOP_REFERENCE_METHODS.getAttributes, true),
+  [IOP_REFERENCE_METHODS.getProduct]: read(IOP_REFERENCE_METHODS.getProduct, true),
+  [IOP_REFERENCE_METHODS.listShippingTemplates]: read(IOP_REFERENCE_METHODS.listShippingTemplates, true),
   'alibaba.icbu.product.list': read('/alibaba/icbu/product/list', true),
   // Live accepted legacy alias; absent from the current menu, not an advertised catalog guarantee.
   'alibaba.icbu.product.group.get': read('/alibaba/icbu/product/group/get', true),

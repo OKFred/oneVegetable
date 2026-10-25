@@ -7,35 +7,35 @@
       "path": "/alibaba/icbu/category/predict/v2",
       "risk": "read",
       "adapted": true,
-      "accountVerified": false,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "/alibaba/icbu/category/get/v2": {
       "path": "/alibaba/icbu/category/get/v2",
       "risk": "read",
       "adapted": true,
-      "accountVerified": false,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "/alibaba/icbu/category/attribute/get/v2": {
       "path": "/alibaba/icbu/category/attribute/get/v2",
       "risk": "read",
       "adapted": true,
-      "accountVerified": false,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "/alibaba/icbu/product/get/v2": {
       "path": "/alibaba/icbu/product/get/v2",
       "risk": "read",
       "adapted": true,
-      "accountVerified": false,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "/alibaba/icbu/product/list/shipping/templates": {
       "path": "/alibaba/icbu/product/list/shipping/templates",
       "risk": "read",
       "adapted": true,
-      "accountVerified": false,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "alibaba.icbu.product.list": {

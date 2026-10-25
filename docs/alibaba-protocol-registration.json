@@ -23,7 +23,7 @@
         "path": "/alibaba/icbu/category/attribute/get/v2",
         "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fattribute%2Fget%2Fv2&methodType=GET%2FPOST",
         "adapted": true,
-        "accountVerified": false,
+        "accountVerified": true,
         "authorizationRequired": true,
         "constraints": [],
         "notes": []
@@ -45,7 +45,7 @@
         "path": "/alibaba/icbu/category/get/v2",
         "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fget%2Fv2&methodType=GET%2FPOST",
         "adapted": true,
-        "accountVerified": false,
+        "accountVerified": true,
         "authorizationRequired": true,
         "constraints": [],
         "notes": []
@@ -67,7 +67,7 @@
         "path": "/alibaba/icbu/category/predict/v2",
         "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fcategory%2Fpredict%2Fv2&methodType=GET%2FPOST",
         "adapted": true,
-        "accountVerified": false,
+        "accountVerified": true,
         "authorizationRequired": true,
         "constraints": [],
         "notes": []
@@ -89,7 +89,7 @@
         "path": "/alibaba/icbu/product/get/v2",
         "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fget%2Fv2&methodType=GET%2FPOST",
         "adapted": true,
-        "accountVerified": false,
+        "accountVerified": true,
         "authorizationRequired": true,
         "constraints": [],
         "notes": []
@@ -111,7 +111,7 @@
         "path": "/alibaba/icbu/product/list/shipping/templates",
         "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Flist%2Fshipping%2Ftemplates&methodType=GET%2FPOST",
         "adapted": true,
-        "accountVerified": false,
+        "accountVerified": true,
         "authorizationRequired": true,
         "constraints": [],
         "notes": []

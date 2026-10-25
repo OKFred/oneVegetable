@@ -28,7 +28,7 @@ HTML is untrusted. Applying a suggested category needs the existing unsaved guar
 Remote Node and formal MV3 acceptance compare the same product against the
 official page. Raw account data and credentials stay ignored. All protocol modes,
 permission/expiry failures, cache identity and late responses require regression.
-Final acceptance will be appended only after actual implementation passes.
+Runtime acceptance and official-page comparisons are recorded below.
 
 ## Explicit response differences
 
@@ -38,3 +38,27 @@ only these two scalar representations at that field, preserving the received val
 as display text. No numeric price calculation or fabricated currency is introduced.
 Successful native responses also omit optional message/msg_code; positive success
 and the method-specific payload are still required. Initial failed receipts remain.
+
+## Remote read acceptance, 2026-10-26
+
+- Authenticated Node BFF: five of five methods accepted with contract validation.
+- Formal MV3 build in an isolated encrypted profile: five of five accepted;
+  five provider requests, zero blocked requests, zero mutations and no TOP fallback.
+  The source build digest stayed unchanged. This tests the shipped runtime, not
+  native host-permission consent or the credential-import UI.
+- Exact product ID and category-to-attribute ID checks passed on both runtimes.
+  Category prediction returned a different leaf from the existing product:
+  this is a suggestion disagreement, not evidence that either category is correct.
+  It remains explicit, manual and subject to the existing unsaved-edit guard.
+- Official Alibaba edit/list pages showed the matching category path, Glass
+  material, MOQ 1, Piece unit, USD 1 quantity tier, Active status and an unselected
+  shipping template. Missing API inventory remains unknown, not zero.
+- Shipping-template API returned 101 entries. Its full list was not compared
+  entry by entry with the official page; no store-wide scan was performed.
+- Earlier prediction calls returned explicit ServiceTimeout / RPC timeout.
+  Those failed receipts are retained. A separately confirmed descriptive title
+  succeeded; no automatic retry or hidden title replacement was added.
+
+Redacted receipts stay under ignored artifacts/product-reference-validation/.
+No account credentials, raw responses, authorization refresh or provider writes
+are part of this feature. Automated suites use checked-in synthetic samples only.
