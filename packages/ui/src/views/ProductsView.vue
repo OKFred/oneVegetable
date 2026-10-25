@@ -26,10 +26,25 @@ import { useProductShowcase, type ShowcaseTarget } from '../lib/product-showcase
 import { useShowcaseI18n } from '../i18n/showcase';
 import { useInventoryI18n } from '../i18n/inventory';
 import { useProductInventory } from '../lib/product-inventory';
+import { useProductReferenceI18n } from '../i18n/product-reference';
+import ProductReferenceTools from '../components/ProductReferenceTools.vue';
+import { useListIdentityScope } from '../lib/list-identity-scope';
+import type { ProductCategorySuggestion } from '@one-vegetable/core/product-reference';
 import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
 import ProductPhotoSeedPanel from '../components/ProductPhotoSeedPanel.vue';
 import { productReadbackNotice } from '../lib/platform-readback-notice';
 const ProductInventoryDrawer = defineAsyncComponent(() => import('../components/ProductInventoryDrawer.vue'));
+const ProductReferenceDrawer = defineAsyncComponent(() => import('../components/ProductReferenceDrawer.vue'));
+const referenceProductId = ref('');
+const pr = useProductReferenceI18n();
+const referenceScope = useListIdentityScope();
+watch(
+  referenceScope,
+  () => {
+    referenceProductId.value = '';
+  },
+  { flush: 'sync' }
+);
 const ProductBatchMaintenance = defineAsyncComponent(
   () => import('../components/ProductBatchMaintenance.vue')
 );
@@ -74,6 +89,7 @@ import {
   inspectProductSchemaSerialization,
   MAX_PRODUCT_TRANSFER_ITEMS,
   parseProductSchemaXml,
+  productSchemaFieldText,
   PRODUCT_EDITOR_STEP_IDS,
   productMutationJobHasResolvedProductId,
   productMutationJobIsBlocking,
@@ -302,6 +318,12 @@ const {
   updateRootField,
   reset: resetSessionModel
 } = useProductEditorSession({ language: preferredLanguage.value });
+const referenceTitle = computed(() => {
+  const field = schemaModel.value?.fields.find((item) =>
+    ['producttitle', 'subject', 'title'].includes(item.id.toLowerCase())
+  );
+  return field ? productSchemaFieldText(field) : '';
+});
 const editing = useUnsavedEditing(
   () => ({
     xml: schemaPreview.value,
@@ -2063,7 +2085,19 @@ const columns = computed<DataColumn<Product>[]>(() => [
     id: 'actions',
     header: t('products.view.columns.actions'),
     cell: ({ row }) =>
+      // DataTable presents this column inside its existing RowActionsMenu.
       h('div', { class: 'flex items-center gap-2 whitespace-nowrap' }, [
+        h(
+          Button,
+          {
+            size: 'sm',
+            variant: 'outline',
+            onClick: () => {
+              referenceProductId.value = row.original.id;
+            }
+          },
+          () => pr('view')
+        ),
         h(
           Button,
           {
@@ -2209,34 +2243,61 @@ async function loadCategoryBranch(categoryIdToLoad: number): Promise<ProductCate
   }
 }
 
-async function selectCategory(categoryIdToSelect: number): Promise<void> {
-  if (!(await editing.confirmLeave())) return;
+async function selectCategory(
+  categoryIdToSelect: number,
+  referenceCategory?: ProductCategory
+): Promise<boolean> {
+  const selectionEpoch = editorEpoch;
+  const selectionScope = referenceScope.value;
+  if (
+    !(await editing.confirmLeave()) ||
+    selectionEpoch !== editorEpoch ||
+    selectionScope !== referenceScope.value ||
+    !viewAlive
+  )
+    return false;
   categoryId.value = String(categoryIdToSelect);
   editorEpoch++;
   submissionError.value = null;
   submissionErrorOpen.value = false;
   publish.reset();
-  const category = findCategory(categoryTree.value, categoryIdToSelect);
+  const category = referenceCategory ?? findCategory(categoryTree.value, categoryIdToSelect);
   currentCategory.value = category;
   schemaModel.value = null;
   photoSeedApplied.value = false;
   schemaError.value = '';
   if (category?.leaf) {
     feedback.value = t('products.view.feedback.leafSelected', { name: category.name });
-    return;
+    return true;
   }
   if (category && category.children.length > 0) {
     feedback.value = t('products.view.feedback.chooseUnder', { name: category.name });
-    return;
+    return true;
   }
   const loaded = await loadCategoryBranch(categoryIdToSelect);
-  if (!loaded) return;
+  if (!loaded) return false;
   feedback.value = loaded.leaf
     ? t('products.view.feedback.leafSelected', { name: loaded.name })
     : t('products.view.feedback.childrenLoaded', {
         name: loaded.name,
         count: loaded.children.length
       });
+  return true;
+}
+
+async function applyReferenceCategory(suggestion: ProductCategorySuggestion): Promise<boolean> {
+  if (editProductId.value || applyingPhotoSeed.value || postingTypeBlocked.value) return false;
+  const id = Number(suggestion.categoryId);
+  if (!Number.isSafeInteger(id) || id <= 0) return false;
+  const accepted = await selectCategory(id, {
+    id,
+    name: suggestion.categoryPath ?? suggestion.categoryName ?? suggestion.categoryId,
+    leaf: true,
+    children: []
+  });
+  if (!accepted || categoryId.value !== suggestion.categoryId) return false;
+  await loadSchema();
+  return Boolean(schemaModel.value) && categoryId.value === suggestion.categoryId;
 }
 
 async function ensureCurrentCategory(categoryIdToLoad: number): Promise<void> {
@@ -3078,6 +3139,18 @@ onBeforeUnmount(() => {
         @select="selectCategory"
         @retry="retryCategories"
       />
+      <ProductReferenceTools
+        class="mt-3"
+        kind="category"
+        :title="referenceTitle"
+        :description="productDescriptionHtml"
+        :image-url="photoSeed?.photos[0]?.url || ''"
+        :category-id="
+          currentCategory?.leaf === true && String(currentCategory.id) === categoryId ? categoryId : ''
+        "
+        :disabled="Boolean(editProductId) || applyingPhotoSeed || postingTypeBlocked"
+        :apply-category="applyReferenceCategory"
+      />
       <div class="mt-4 flex flex-wrap gap-2">
         <Button
           :disabled="
@@ -3442,6 +3515,11 @@ onBeforeUnmount(() => {
     :controller="showcase"
     :selection="showcaseSelection"
     :action="showcaseAction"
+  />
+  <ProductReferenceDrawer
+    v-if="referenceProductId && !taskHistoryReadOnly"
+    :product-id="referenceProductId"
+    @close="referenceProductId = ''"
   />
   <ProductInventoryDrawer
     v-if="inventory.selected.value && !taskHistoryReadOnly"

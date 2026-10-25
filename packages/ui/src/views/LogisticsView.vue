@@ -8,6 +8,7 @@ import { toast } from 'vue-sonner';
 import type { LogisticsOrderSummary, LogisticsQuoteRequest } from '@one-vegetable/core';
 
 import ActionTooltip from '../components/ActionTooltip.vue';
+import ProductReferenceTools from '../components/ProductReferenceTools.vue';
 import DataTable from '../components/DataTable.vue';
 import ListActionButton from '../components/ListActionButton.vue';
 import ListFilterDialog from '../components/ListFilterDialog.vue';
@@ -403,6 +404,7 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
 
 <template>
   <PageHeader :title="t('logistics.title')" :description="t('logistics.description')" />
+  <ProductReferenceTools kind="shipping" class="mb-4" />
 
   <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('logistics.workspaceLabel')">
     <Button

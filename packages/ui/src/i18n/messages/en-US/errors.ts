@@ -3,6 +3,8 @@ const authorizationChanged =
 
 export const errors = {
   codes: {
+    ALIBABA_IOP_AUTHORIZATION_REQUIRED:
+      'This reference requires IOP authorization. Configure IOP in Settings; your existing TOP authorization and default protocol remain unchanged.',
     TOP_APPLICATION_REQUIRED:
       'No usable legacy TOP application was found. This console is for IOP: use the IOP authorization tool, or import or enter existing TOP credentials in Settings.',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:

@@ -20,6 +20,7 @@ import ProductVisibleRegion from './ProductVisibleRegion.vue';
 import PlatformDraftHandoff from './PlatformDraftHandoff.vue';
 import ProductSchemaFieldComponent from './ProductSchemaField.vue';
 import ProductEditorLoading from './ProductEditorLoading.vue';
+import ProductReferenceTools from './ProductReferenceTools.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
@@ -314,6 +315,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
     </div>
 
     <PlatformDraftHandoff v-if="platformDraftId" :product-id="platformDraftId" />
+    <ProductReferenceTools v-if="mode !== 'guided' || step === 'trade'" kind="shipping" class="mt-4" />
 
     <ProductQuickEditor
       v-if="mode === 'quick' && !editing"

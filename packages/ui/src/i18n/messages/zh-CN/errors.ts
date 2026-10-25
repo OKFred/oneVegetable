@@ -2,6 +2,8 @@ const authorizationChanged = '授权已变化，请重新读取两份配置并�
 
 export const errors = {
   codes: {
+    ALIBABA_IOP_AUTHORIZATION_REQUIRED:
+      '此参考功能需要 IOP 授权。请在设置中配置 IOP；已有 TOP 授权和默认协议不会改变。',
     TOP_APPLICATION_REQUIRED:
       '未发现可用的旧版 TOP 应用。此应用中心是新版 IOP，请使用 IOP 授权工具；已有 TOP 凭据可在设置中导入或手动填写。',
     ALIBABA_AUTHORIZATION_BINDING_REQUIRED:
