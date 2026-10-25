@@ -4,8 +4,8 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
-      version: '2.18.0',
-      releasedAt: '2026-10-25',
+      version: '2.18.1',
+      releasedAt: '2026-10-26',
       title: {
         'zh-CN': '素材带入新增商品',
         'en-US': 'Selected assets to a new product'
@@ -17,9 +17,22 @@ export const RELEASE_NOTES_DOCUMENT = {
           'Start a new product from selected asset images, preserving editor-mode switching and identity isolation. Improve exact product readback, platform-review feedback and S3 directory scope protection.'
       },
       source: 'release',
-      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.18.0',
-      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.17.2...v2.18.0',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.18.1',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.17.2...v2.18.1',
       changes: [
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '稳定首次进入商品列表',
+            'en-US': 'Stabilize the first product-list load'
+          },
+          description: {
+            'zh-CN':
+              '等待首次账号上下文检查结束后再查询商品，避免列菜单在初始化期间被表格重挂载关闭。检查失败仍展示正常错误，不跳过账号隔离或自动重试。',
+            'en-US':
+              'Wait for the initial account-context check before querying products, preventing startup table remounts from closing the column menu. Failed checks still expose normal errors without bypassing identity isolation or automatically retrying.'
+          }
+        },
         {
           type: 'feature',
           title: {
