@@ -3,6 +3,45 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.19.1",
+      "releasedAt": "2026-10-27",
+      "title": {
+        "zh-CN": "修复 IOP 新增商品类型查询",
+        "en-US": "Fix IOP product posting-type queries"
+      },
+      "summary": {
+        "zh-CN": "修正 IOP 发布类型查询的参数与响应适配，恢复新增页的类型选择，保留 TOP、历史授权及双授权兼容。",
+        "en-US": "Correct IOP posting-type parameters and response mapping, restoring type selection for new products while retaining TOP, legacy and dual-authorization compatibility."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.19.1",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.19.0...v2.19.1",
+      "changes": [
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "正确读取类目发布类型",
+            "en-US": "Read category posting types correctly"
+          },
+          "description": {
+            "zh-CN": "IOP 按公开接口展开 cat_id、language，并将两项发布类型响应映射为共享字段，修复缺少 cat_id 的拒绝。明确的不支持仍保留，缺失字段不猜测为支持。",
+            "en-US": "Flatten cat_id and language for the public IOP endpoint and map both posting-type flags to shared fields, fixing missing-cat_id rejections. Explicitly unsupported types remain unsupported, and missing flags never imply support."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "保留既有授权与操作边界",
+            "en-US": "Preserve authorization and operation boundaries"
+          },
+          "description": {
+            "zh-CN": "TOP 请求和历史未标记授权保持兼容；双授权沿用实际能力选路，不修改默认协议或凭据，不在失败后换协议重试。未增加扩展权限、依赖或真实写能力。",
+            "en-US": "TOP requests and unmarked legacy bundles remain compatible. Dual authorization keeps capability-based routing without changing default protocols or credentials, and failures never retry through another protocol. No new extension permissions, dependencies or write capabilities."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.19.0",
       "releasedAt": "2026-10-26",
       "title": {

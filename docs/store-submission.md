@@ -1,8 +1,18 @@
 # Chrome Web Store 提交清单
 
-检查日期：2026-10-25。当前准备 **2.18.0 发布候选**；上一正式版本为 [v2.17.2](https://github.com/OKFred/oneVegetable/releases/tag/v2.17.2)。候选已构建、打包并冻结文件指纹，尚未创建 Tag / GitHub Release、合并主线或部署，也不查询或改变商店状态。商店上传、提交审核和实际上架仍是三个独立状态；不能根据版本号或候选说明推断已发布，不覆盖或复用旧版本包。
+检查日期：2026-10-27。当前准备 **2.19.1 补丁版本**；上一正式版本为 [v2.19.0](https://github.com/OKFred/oneVegetable/releases/tag/v2.19.0)。按门禁通过后合并主线、创建 Tag / GitHub Release 的流程推进，具体完成状态以 Actions 和对应 Release 为准。网站部署及商店上传、提交审核、实际上架仍为独立动作，本次不执行；不覆盖旧版本包。
 
-## 2.18.0 候选提交要点
+## 2.19.1 提交要点
+
+- 中文更新摘要：修复 IOP 新增商品发布类型查询的参数和响应适配，解决缺少 cat_id 的报错。保留 TOP、历史授权及双授权兼容，不改变已有凭据、默认协议或写入能力。
+- English update summary: Fix IOP posting-type parameters and response mapping for new products, resolving missing-cat_id errors. Retain TOP, legacy and dual-authorization compatibility without changing credentials, defaults or write capabilities.
+- 这是只读兼容修复，不新增依赖、扩展权限或平台写能力；隐私政策、权限理由和现有截图继续适用，不需要重新提供测试账号。
+- 远程 IOP 真实只读查询和正式 MV3 新增页已验收：类目发布类型正常、官方 Schema 正常加载。此前创建并回读成功的测试草稿保持不变，没有为补丁重复发品。
+- TOP 单授权、IOP 单授权、双授权两种默认协议及历史授权均有协议/页面回归。图片分组范围、视频及供应商的既有平台限制仍保留，不宣称由本补丁解决。
+- 使用同版本 GitHub Release 中的 ZIP 和 SHA-256；上传后核对 Manifest 为 2.19.1。包体预算保持 ZIP 2,000,000 字节、解包 5,470,000 字节，不放宽其他门禁。
+- 具体适配及验收记录见 [IOP 商品发布类型兼容](iop-product-posting-type-compatibility.md)。以下保留旧版本材料，不作为本版本已发布或已部署的证据。
+
+## 2.18.0 候选提交要点（历史记录）
 
 - 中文摘要：选中图库图片后进入新增商品，加载全新类目 Schema，无损带入图片并保留模式切换和身份栅栏；精确商品 ID 回读、IOP auditing 状态与 S3 根前缀目录边界同步修复。
 - English summary: Start a new product from selected gallery images with a fresh category Schema, lossless image seeding, editor-mode switching and identity fences. Fix exact product-ID readback, IOP auditing state and S3 root-directory prefix boundaries.

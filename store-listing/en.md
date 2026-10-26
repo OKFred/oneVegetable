@@ -4,7 +4,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
-Version 2.19.0 adds on-demand IOP product references, category predictions, attributes and shipping templates. It fixes score and failure states and checks image-import readback before uploading. Existing credentials, default authorization and scope guards remain unchanged, with no new permissions or failure-triggered cross-protocol retries.
+Version 2.19.1 fixes IOP posting-type query parameters and response mapping for new products, resolving missing-cat_id errors. TOP, legacy and dual authorization remain compatible. Existing credentials, default protocols and write capabilities stay unchanged, with no new permissions or failure-triggered cross-protocol retries.
 
 Known limitations: the checked authorizations still encounter IOP photo-group scope errors, video business rejections and TOP supplier upstream errors. Restrictions stay explicit and real failures never fall back to simulated results.
 
