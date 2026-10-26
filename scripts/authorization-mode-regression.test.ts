@@ -73,6 +73,7 @@ describe('authorization-mode regression safety', () => {
     expect(next).toHaveBeenCalledTimes(1);
     expect(guard.snapshot().events).toHaveLength(1);
     expect(guard.snapshot().blocked).toBe(2);
+    expect(guard.snapshot().denied[0]?.reason).toBe('duplicate');
   });
   it('does not expose provider credentials in receipts', async () => {
     const guard = new ReadWireGuard();
@@ -93,5 +94,23 @@ describe('authorization-mode regression safety', () => {
     const receipt = JSON.stringify(guard.snapshot());
     for (const secret of ['fixture-key', 'fixture-token', 'fixture-signature'])
       expect(receipt).not.toContain(secret);
+  });
+  it('keeps the per-operation bound and redacts unrecognized denied method names', async () => {
+    const guard = new ReadWireGuard();
+    const next = vi.fn(() => Promise.resolve(Response.json(fixture.accepted)));
+    guard.arm('read-id', readRule('listProducts', {}), 'top');
+    const request = (method: string, page: string) =>
+      new Request('https://eco.taobao.com/router/rest', {
+        method: 'POST',
+        headers: { 'X-Request-ID': 'read-id' },
+        body: new URLSearchParams({ method, current_page: page, session: 'fixture-token' })
+      });
+    await guard.send(request('alibaba.icbu.product.list', '1'), next);
+    await expect(guard.send(request('alibaba.icbu.product.list', '2'), next)).rejects.toThrow();
+    await expect(guard.send(request('fixture-secret-method', '3'), next)).rejects.toThrow();
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(guard.snapshot().denied.map(({ reason }) => reason)).toEqual(['request-limit', 'envelope']);
+    expect(JSON.stringify(guard.snapshot())).not.toContain('fixture-token');
+    expect(JSON.stringify(guard.snapshot())).not.toContain('fixture-secret-method');
   });
 });

@@ -38,7 +38,7 @@ export class ReadWireGuard implements MatrixGuard {
         this.blocked++;
         this.denied.push({
           protocol,
-          method: /^[a-z0-9_./-]{1,150}$/iu.test(method) ? method : 'redacted',
+          method: current?.rule[protocol].includes(method) ? method : 'redacted',
           reason
         });
         throw new Error('READ_ONLY_NETWORK_DENIED');
@@ -55,7 +55,6 @@ export class ReadWireGuard implements MatrixGuard {
         url.username ||
         url.password ||
         request.headers.get('X-Request-ID') !== current.id ||
-        current.sent >= current.rule.limit ||
         this.events.length >= 180 ||
         form.has('refresh_token') ||
         form.has('code')
@@ -81,6 +80,7 @@ export class ReadWireGuard implements MatrixGuard {
         .update(JSON.stringify([method, parameters]))
         .digest('hex');
       if (current.used.has(fingerprint)) return deny('duplicate');
+      if (current.sent >= current.rule.limit) return deny('request-limit');
       current.used.add(fingerprint);
       await delay(Math.max(0, 350 - (Date.now() - this.lastStarted)));
       if (current !== this.active) return deny();

@@ -182,6 +182,7 @@ export interface Observation {
   code?: string;
   subCode?: string;
   diagnosticHint?: string;
+  wireDenials?: { protocol: Protocol; method: string; reason: string }[];
   requests: number;
 }
 export interface ReadWireEvent {

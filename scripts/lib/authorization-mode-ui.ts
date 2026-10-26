@@ -22,6 +22,7 @@ export async function exerciseModeMenus(
   const pending = new Map<string, { guard: ReadWireGuard; record: Observation; supported: boolean }>();
   const errors: string[] = [];
   const pages: { route: string; heading: boolean; completed: boolean }[] = [];
+  const mediaChecks: { feature: string; guidance: boolean; expected: boolean }[] = [];
   page.on('pageerror', (error) => errors.push(error.name));
   await page.exposeBinding('__modeBeforeRead', (_source, input: unknown) => {
     if (!isRow(input) || typeof input.requestId !== 'string' || typeof input.operation !== 'string')
@@ -65,6 +66,7 @@ export async function exerciseModeMenus(
     if (snapshot.blocked) {
       record.status = 'failed';
       record.code = 'READ_GUARD_DENIED';
+      record.wireDenials = snapshot.denied;
     }
     current.guard.disarm();
     guards.delete(input.requestId);
@@ -151,6 +153,45 @@ export async function exerciseModeMenus(
       const unknown = /^(数量未知|Count unknown)$/u.test(count.trim());
       if ((read.status === 'passed') === unknown) throw new Error('SUPPLIER_COUNT_NOT_CORRELATED_WITH_READ');
     }
+    if (route === 'photos' && pending.size === 0) {
+      // Inspect the real preflight only. No file, confirmation or mutation is submitted.
+      await page.getByRole('button', { name: /^(导入|Import)$/u, exact: true }).click();
+      const dialog = page.getByRole('dialog').filter({ has: page.getByTestId('gallery-transfer-prepare') });
+      await dialog.waitFor({ state: 'visible' });
+      const checkingStarted = Date.now();
+      while (await dialog.getByRole('status').count()) {
+        if (Date.now() - checkingStarted > 15_000) throw new Error('UI_MEDIA_PREFLIGHT_TIMEOUT');
+        await delay(100);
+      }
+      const guidance = await dialog.getByTestId('media-error-guidance').isVisible();
+      const expected = mode === 'iop-only';
+      if (guidance !== expected) throw new Error('UI_MEDIA_IMPORT_GUIDANCE_MISMATCH');
+      if (expected) {
+        if (!(await dialog.getByRole('alert').innerText()).includes('GALLERY_READBACK_UNVERIFIED'))
+          throw new Error('UI_MEDIA_IMPORT_REASON_INVALID');
+        if (!(await dialog.getByTestId('gallery-transfer-prepare').isDisabled()))
+          throw new Error('UI_MEDIA_IMPORT_NOT_BLOCKED');
+        if ((await dialog.getByTestId('media-authorization-settings').getAttribute('href')) !== '#/settings')
+          throw new Error('UI_MEDIA_SETTINGS_ENTRY_INVALID');
+      } else if (await dialog.getByRole('alert').count()) {
+        throw new Error('UI_MEDIA_IMPORT_PREFLIGHT_UNAVAILABLE');
+      }
+      mediaChecks.push({ feature: 'photo-import', guidance, expected });
+      await dialog.getByRole('button', { name: /^(取消|Cancel)$/u, exact: true }).click();
+    }
+    if (route === 'photos/videos' && pending.size === 0) {
+      const read = results.findLast((item) => item.operation === 'listVideos');
+      const expected =
+        !!read &&
+        [
+          'ALIBABA_IOP_BUSINESS_REJECTED',
+          'ALIBABA_IOP_METHOD_UNSUPPORTED',
+          'ALIBABA_IOP_PARAMETER_UNSUPPORTED'
+        ].includes(read.code ?? '');
+      const guidance = await page.getByTestId('media-error-guidance').isVisible();
+      if (guidance !== expected) throw new Error('UI_MEDIA_VIDEO_GUIDANCE_MISMATCH');
+      mediaChecks.push({ feature: 'video-query', guidance, expected });
+    }
     pages.push({
       route,
       heading: await page.locator('h1, h2').first().isVisible(),
@@ -167,5 +208,5 @@ export async function exerciseModeMenus(
     );
     if (pending.size) break;
   }
-  return { pages, scriptErrors: errors, id: randomUUID() };
+  return { pages, mediaChecks, scriptErrors: errors, id: randomUUID() };
 }
