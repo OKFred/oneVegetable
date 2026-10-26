@@ -5,6 +5,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fixture from '../../../mock/data/gallery-extension-transfer.json';
 import taskFixture from '../../../mock/data/gallery-transfer-task.json';
 import transferFixture from '../../../mock/data/gallery-s3-mapping.json';
+import photoFixture from '../../../mock/data/photos.json';
+import availabilityFixture from '../../../mock/data/media-protocol-availability.json';
 import GalleryZipTransferDialog from '../src/components/GalleryTransferDialog.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -13,9 +15,17 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   preview: vi.fn(),
   createTask: vi.fn(),
-  run: vi.fn()
+  run: vi.fn(),
+  context: vi.fn(),
+  availability: vi.fn()
 }));
-vi.mock('../src/lib/services', () => ({ useServices: () => ({ gateway: { request: mocks.request } }) }));
+vi.mock('../src/lib/services', () => ({
+  useServices: () => ({
+    mode: 'mock',
+    gateway: { request: mocks.request, galleryTransferContext: mocks.context },
+    operationAvailability: { get: mocks.availability }
+  })
+}));
 vi.mock('../src/lib/gallery-transfer-archive', async (original) => ({
   ...(await original<object>()),
   readGalleryTransferArchive: mocks.read,
@@ -43,6 +53,8 @@ beforeEach(() => {
   mocks.run.mockResolvedValue(undefined);
   mocks.read.mockResolvedValue(archive());
   mocks.request.mockResolvedValue(transferFixture.uploaded);
+  mocks.context.mockResolvedValue(photoFixture.transferContext);
+  mocks.availability.mockResolvedValue(availabilityFixture.top);
   mocks.create.mockResolvedValue(new Uint8Array([1, 2]));
 });
 function setup() {
@@ -64,6 +76,9 @@ describe('durable ZIP transfer entry point', () => {
   it('prevalidates a file and creates a task only after the execution confirmation', async () => {
     const wrapper = setup();
     await select(wrapper);
+    expect(mocks.availability).toHaveBeenCalledWith(['listPhotos'], {
+      galleryContext: photoFixture.transferContext
+    });
     expect(mocks.createTask).not.toHaveBeenCalled();
     await wrapper
       .findAll('button')
