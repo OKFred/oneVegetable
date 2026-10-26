@@ -160,6 +160,7 @@ export class GalleryTransferService {
   }
   async preview(input: GalleryTaskPlanInput): Promise<Task> {
     const { galleryGroupPaths, allGalleryPhotos } = await import('./gallery-transfer-driver');
+    const { assertGalleryImportReadback } = await import('./gallery-import-readback');
     if (!('locks' in navigator)) throw new GalleryTaskError('GALLERY_TASK_LOCK_UNAVAILABLE');
     const context = await this.driver.context();
     if (input.storage === 's3' && !context.storage) throw new GalleryTaskError('GALLERY_CONTEXT_UNAVAILABLE');
@@ -216,10 +217,6 @@ export class GalleryTransferService {
         })
       );
     } else {
-      const groups =
-        input.storage === 's3' && input.importMapping === 'rules'
-          ? await galleryGroupPaths(gateway, options)
-          : new Map<string, PhotoGroup>();
       const plannedGroups = new Map<string, Item>();
       let sources: {
         path: string;
@@ -256,6 +253,12 @@ export class GalleryTransferService {
             type: d.contentType,
             groupPath: d.targetGroupPath ?? ''
           }));
+      // Fail before reading/scanning groups or planning any remote mutation.
+      if (sources.length) await assertGalleryImportReadback(this.services, context);
+      const groups =
+        sources.length && input.storage === 's3' && input.importMapping === 'rules'
+          ? await galleryGroupPaths(gateway, options)
+          : new Map<string, PhotoGroup>();
       const existingNames = new Map<string, Set<string>>();
       for (const source of sources) {
         let groupId: string | null = input.groupId;

@@ -6,7 +6,32 @@ import {
   type GalleryTransferItemV1
 } from '@one-vegetable/core/gallery-transfer-task';
 import { galleryAssetSha256 } from './gallery-transfer-archive';
+import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 import type { AppServices } from './services';
+
+/** Import writes require reliable scoped readback on the task's actual route. */
+export async function assertGalleryImportReadback(
+  services: Pick<AppServices, 'mode' | 'operationAvailability'>,
+  context: GalleryTransferContext
+): Promise<void> {
+  if (!services.operationAvailability) {
+    if (services.mode === 'mock') return;
+    throw new GalleryTaskError('OPERATION_AVAILABILITY_UNAVAILABLE');
+  }
+  const { items } = await services.operationAvailability
+    .get(['listPhotos'], { galleryContext: context })
+    .catch((reason: unknown) => {
+      const code = safeCode(reason);
+      throw new GalleryTaskError(
+        code === 'GALLERY_TRANSFER_FAILED' ? 'OPERATION_AVAILABILITY_UNAVAILABLE' : code
+      );
+    });
+  const decision = items.find((item) => item.operation === 'listPhotos');
+  if (!decision?.allowed)
+    throw new GalleryTaskError(decision?.reasonCode ?? 'OPERATION_AVAILABILITY_UNAVAILABLE');
+  if (decision.protocolSupport?.constraints.includes('photo-group-scope-unverified'))
+    throw new GalleryTaskError('GALLERY_READBACK_UNVERIFIED');
+}
 
 /** Availability is a preflight, not permission to change the task's bound context. */
 export async function galleryCanQueryAllPhotos(
@@ -33,6 +58,7 @@ export function galleryReadbackFailure(code: string): boolean {
     'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH',
     'ALIBABA_IOP_PHOTO_GROUP_REQUIRED',
     'ALIBABA_IOP_RESPONSE_INVALID',
+    'GALLERY_READBACK_UNVERIFIED',
     'OPERATION_AVAILABILITY_UNAVAILABLE'
   ].includes(code);
 }

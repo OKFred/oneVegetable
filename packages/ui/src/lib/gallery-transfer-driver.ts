@@ -26,6 +26,7 @@ import {
   type GalleryTransferArchive
 } from './gallery-transfer-archive';
 import {
+  assertGalleryImportReadback,
   galleryCanQueryAllPhotos,
   galleryImportReadback,
   galleryReadbackFailure
@@ -141,7 +142,13 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
       throw new GalleryTaskError('GALLERY_TASK_GROUP_UNCONFIRMED');
     return parent.fileId;
   }
+  private async assertImportWrite(task: Task): Promise<void> {
+    if (task.direction !== 'import') return;
+    await this.context(task);
+    await assertGalleryImportReadback(this.services, task.context);
+  }
   async prepare(task: Task, item: Item): Promise<Item> {
+    await this.assertImportWrite(task);
     const options = transferOptions(task);
     if (item.kind === 'group') {
       item.targetGroupId = this.resolvedGroup(task, item);
@@ -235,6 +242,13 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
     return decodeBase64(response.contentBase64);
   }
   async execute(task: Task, item: Item): Promise<Item> {
+    try {
+      // Do not reuse preview/prepare availability after an async configuration change.
+      await this.assertImportWrite(task);
+    } catch (reason: unknown) {
+      // This guard sent nothing. Keep an exact, retryable denial rather than an unknown receipt.
+      return { ...item, status: 'failed', errorCode: safeCode(reason) };
+    }
     const options = transferOptions(task, item);
     if (item.kind === 'group') {
       const result = await this.services.gateway.request(
