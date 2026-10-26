@@ -3,6 +3,66 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.19.0",
+      "releasedAt": "2026-10-26",
+      "title": {
+        "zh-CN": "商品只读辅助与双授权兼容",
+        "en-US": "Product read-only assistance and authorization compatibility"
+      },
+      "summary": {
+        "zh-CN": "新增 IOP 商品参考、类目及运费模板辅助查询，修复产品分与失败状态，提前检查携图导入依赖。",
+        "en-US": "Add IOP product, category and shipping-template reference queries, fix score and failure states, and check image-import dependencies before writes."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.19.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.18.1...v2.19.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "IOP 商品与类目辅助", "en-US": "IOP product and category assistance" },
+          "description": {
+            "zh-CN": "按需读取商品参考、类目预测、类目树、属性及运费模板；预测只作为建议，用户确认后才应用类目。五项能力需要 IOP 及应用权限，不替换 Schema 编辑器、不自动修改商品；仅有 TOP 时提示补充 IOP。",
+            "en-US": "Load product references, category predictions, categories, attributes and shipping templates on demand. Predictions remain suggestions and require confirmation to apply. These five capabilities require IOP and application permissions; they neither replace Schema editing nor automatically modify products. TOP-only configurations receive an IOP setup prompt."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "已知平台限制", "en-US": "Known platform limitations" },
+          "description": {
+            "zh-CN": "已核对的授权仍存在 IOP 图片跨分组、IOP 视频业务拒绝及 TOP 供应商上游错误。相关保护和限制提示继续保留，不代表接口已修复，也不推断所有账号均不可用。",
+            "en-US": "The checked authorizations still encounter mixed-group IOP photo results, IOP video business rejections and TOP supplier upstream errors. Guards and restrictions remain; these observations neither establish a platform fix nor prove that every account is affected."
+          }
+        },
+        {
+          "type": "fix",
+          "title": { "zh-CN": "准确查询与失败状态", "en-US": "Accurate queries and failure states" },
+          "description": {
+            "zh-CN": "修正 TOP/IOP 产品分标识，保留首个分组查询错误及平台业务拒绝；查询失败显示数量未知，不再冒充空列表或零条记录。",
+            "en-US": "Correct TOP/IOP product-score identifiers and preserve the first group-query error and platform business rejections. Failed queries show an unknown count, not an empty list or a false zero."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "上传前检查携图导入回读",
+            "en-US": "Check image-import readback before upload"
+          },
+          "description": {
+            "zh-CN": "图片 ZIP/S3 与模板携图导入提前检查绑定授权的回读能力，未能确认分组范围时阻止新增上传；纯模板 JSON、导出及独立上传不被此检查误拦截。未知结果不自动重发。",
+            "en-US": "Image ZIP/S3 and template image imports check readback using their bound authorization before writes. Unverified group scope blocks new uploads without blocking plain template JSON, exports or standalone uploads. Unknown writes are never automatically resent."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "清晰的素材限制与下一步", "en-US": "Clear media limitations and next steps" },
+          "description": {
+            "zh-CN": "图片和视频错误提供 TOP 配置及官网入口；IOP 视频选择器仅在本页筛选标题，不再发送不支持的标题参数。保留默认授权，不在请求失败后切换协议重试。",
+            "en-US": "Photo and video errors offer TOP configuration and official-site links. The IOP video picker filters titles on the current page without sending unsupported title parameters. Default authorization stays unchanged and failed requests never retry through another protocol."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.18.1",
       "releasedAt": "2026-10-26",
       "title": {
