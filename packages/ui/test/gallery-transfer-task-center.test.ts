@@ -54,6 +54,22 @@ function button(label: string): HTMLButtonElement {
   return found;
 }
 describe('gallery task center', () => {
+  it('explains blocked readback receipts without retrying or replacing the context', async () => {
+    const s = setup();
+    const task = s.service.tasks.value[0];
+    if (!task) throw new Error('fixture');
+    task.errorCode = 'GALLERY_READBACK_UNVERIFIED';
+    s.service.error.value = 'OPERATION_AVAILABILITY_UNAVAILABLE';
+    await nextTick();
+    expect(document.body.textContent).toContain('尚不能可靠核对图片分组');
+    expect(document.body.textContent).toContain('请检查登录与授权后重新打开');
+    expect(document.body.querySelector('a[href="#/settings"]')).not.toBeNull();
+    expect(s.run).not.toHaveBeenCalled();
+    uiI18n.global.locale.value = 'en-US';
+    await nextTick();
+    expect(document.body.textContent).toContain('cannot reliably verify image groups');
+    expect(document.body.textContent).not.toContain('errors.codes.');
+  });
   it('makes changed configuration read-only and offers settings and a new preview', async () => {
     const s = setup();
     s.service.currentContext.value = { ...s.task.context, storage: 'different-configuration' };

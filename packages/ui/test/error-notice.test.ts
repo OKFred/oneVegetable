@@ -11,13 +11,19 @@ import ErrorNotice from '../src/components/ErrorNotice.vue';
 import { uiI18n } from '../src/i18n';
 import s3Errors from '../../../mock/data/gallery-s3-errors.json';
 import { provideServices } from '../src/lib/services';
+import type { AppServices } from '../src/lib/services';
+import type { MediaErrorFeature } from '../src/lib/media-error-guidance';
 
 const requestId = '3d7c8523-93cc-48b7-a615-a23d2976c516';
 const clipboardWrite = vi.fn(() => Promise.resolve());
 const anchorClick = vi.fn();
 let exportedBlob: Blob | null = null;
 
-function mountErrorNotice(error: unknown, mode: 'mock' | 'extension' | 'bff') {
+function mountErrorNotice(
+  error: unknown,
+  mode: 'mock' | 'extension' | 'bff',
+  options: { mediaFeature?: MediaErrorFeature; runtime?: AppServices['runtime'] } = {}
+) {
   const Host = defineComponent({
     setup() {
       provideServices({
@@ -33,9 +39,11 @@ function mountErrorNotice(error: unknown, mode: 'mock' | 'extension' | 'bff') {
             }),
           save: () => Promise.resolve()
         },
-        mode
+        mode,
+        ...(options.runtime ? { runtime: options.runtime } : {})
       });
-      return () => h(ErrorNotice, { error });
+      return () =>
+        h(ErrorNotice, { error, ...(options.mediaFeature ? { mediaFeature: options.mediaFeature } : {}) });
     }
   });
   return mount(Host);
@@ -69,6 +77,71 @@ afterEach(() => {
 });
 
 describe('ErrorNotice', () => {
+  it.each(['extension', 'bff'] as const)(
+    'offers explicit media next actions in %s without requests',
+    async (mode) => {
+      const requests = vi.spyOn(MockGatewayClient.prototype, 'request');
+      const wrapper = mountErrorNotice(
+        new GatewayException({
+          code: 'ALIBABA_IOP_BUSINESS_REJECTED',
+          message: 'illegal param error',
+          retryable: false
+        }),
+        mode,
+        { mediaFeature: 'videos' }
+      );
+      expect(wrapper.get('[data-testid="media-authorization-settings"]').attributes('href')).toBe(
+        '#/settings'
+      );
+      expect(wrapper.get('[data-testid="media-official-page"]').attributes()).toMatchObject({
+        href: 'https://us-productposting.alibaba.com/product/videobank/home.htm',
+        target: '_blank',
+        rel: 'noopener noreferrer'
+      });
+      expect(wrapper.text()).toContain('不能据此认定缺少权限');
+      expect(wrapper.get('details').text()).toContain('illegal param error');
+      uiI18n.global.locale.value = 'en-US';
+      await flushPromises();
+      expect(wrapper.get('[data-testid="media-error-guidance"]').text()).toContain('No automatic retry');
+      expect(wrapper.text()).not.toContain('common.error.');
+      expect(requests).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+  it('points Cloudflare media configuration to the existing admin page', () => {
+    const wrapper = mountErrorNotice(
+      new GatewayException({
+        code: 'GALLERY_READBACK_UNVERIFIED',
+        message: 'GALLERY_READBACK_UNVERIFIED',
+        retryable: false
+      }),
+      'bff',
+      {
+        runtime: {
+          backendMeta: {
+            runtime: 'cloudflare',
+            database: 'd1',
+            environment: 'self-hosted',
+            gatewayMode: 'real',
+            apiPrefix: '/api/v1',
+            version: 'test'
+          },
+          metaStatus: 'ready'
+        }
+      }
+    );
+    expect(wrapper.get('[data-testid="media-authorization-settings"]').attributes('href')).toBe('#/admin');
+    expect(wrapper.text()).toContain('已停止后续上传和建目录');
+    wrapper.unmount();
+  });
+  it('does not suggest TOP for an unrelated IOP mutation rejection', () => {
+    const wrapper = mountErrorNotice(
+      new GatewayException({ code: 'ALIBABA_IOP_BUSINESS_REJECTED', message: 'rejected', retryable: false }),
+      'extension'
+    );
+    expect(wrapper.find('[data-testid="media-error-guidance"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
   it.each([
     'ALIBABA_PROTOCOL_INVALID',
     'ALIBABA_IOP_METHOD_UNSUPPORTED',

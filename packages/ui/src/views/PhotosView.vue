@@ -784,6 +784,7 @@ const photoColumns = computed<DataColumn<Photo>[]>(() => [
         :has-content="!!photos.data.value"
         :refreshing="!!photos.data.value && photos.isFetching.value"
         :error="photos.error.value"
+        media-feature="photos"
         retryable
         @retry="canLoadPhotos && photos.refetch()"
       >

@@ -8,6 +8,7 @@ import photoFixture from '../../../mock/data/photos.json';
 import GalleryTransferDialog from '../src/components/GalleryTransferDialog.vue';
 import taskFixture from '../../../mock/data/gallery-transfer-task.json';
 import errorFixture from '../../../mock/data/gallery-s3-errors.json';
+import availabilityFixture from '../../../mock/data/media-protocol-availability.json';
 import { uiI18n } from '../src/i18n';
 
 const mocks = vi.hoisted(() => ({
@@ -17,11 +18,15 @@ const mocks = vi.hoisted(() => ({
   put: vi.fn(),
   preview: vi.fn(),
   createTask: vi.fn(),
-  run: vi.fn()
+  run: vi.fn(),
+  context: vi.fn(),
+  availability: vi.fn()
 }));
 vi.mock('../src/lib/services', () => ({
   useServices: () => ({
-    gateway: { request: mocks.request },
+    mode: 'mock',
+    gateway: { request: mocks.request, galleryTransferContext: mocks.context },
+    operationAvailability: { get: mocks.availability },
     s3Storage: { listS3Objects: mocks.list, getS3Object: mocks.get, putS3Object: mocks.put }
   })
 }));
@@ -51,6 +56,8 @@ beforeEach(() => {
   mocks.list.mockResolvedValue(fixture.page);
   mocks.get.mockResolvedValue({ bytes: new Uint8Array([1, 2, 3, 4]), contentType: 'image/png' });
   mocks.request.mockImplementation(defaultResponse);
+  mocks.context.mockResolvedValue(photoFixture.transferContext);
+  mocks.availability.mockResolvedValue(availabilityFixture.top);
 });
 afterEach(() => {
   uiI18n.global.locale.value = 'zh-CN';
@@ -84,6 +91,38 @@ function deferredPage() {
 }
 
 describe('S3 gallery mapping', () => {
+  it.each(['zip', 's3'] as const)(
+    'explains IOP %s import limits before preview or upload',
+    async (storage) => {
+      mocks.availability.mockResolvedValue(availabilityFixture.iop);
+      const wrapper = setup();
+      if (storage === 's3') await scan(wrapper);
+      await flushPromises();
+      expect(wrapper.text()).toContain('已停止后续上传和建目录');
+      expect(wrapper.get('[data-testid="media-authorization-settings"]').attributes('href')).toBe(
+        '#/settings'
+      );
+      expect(mocks.availability).toHaveBeenCalledWith(['listPhotos'], {
+        galleryContext: photoFixture.transferContext
+      });
+      expect(mocks.preview).not.toHaveBeenCalled();
+      expect(mocks.createTask).not.toHaveBeenCalled();
+      expect(mocks.run).not.toHaveBeenCalled();
+      expect(mocks.request).not.toHaveBeenCalled();
+      expect(wrapper.get('[data-testid="gallery-transfer-prepare"]').attributes('disabled')).toBeDefined();
+      wrapper.unmount();
+    }
+  );
+  it('does not apply import readback restrictions to an export', async () => {
+    mocks.availability.mockResolvedValue(availabilityFixture.iop);
+    const wrapper = setup();
+    await flushPromises();
+    await wrapper.setProps({ mode: 'export', photos: photoFixture.responses.listPhotos.items.slice(0, 1) });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="media-error-guidance"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="gallery-transfer-prepare"]').attributes('disabled')).toBeUndefined();
+    wrapper.unmount();
+  });
   it.each(['backendMissing', 'extensionMissing'] as const)(
     'guides %s to settings and preserves requestId without exposing translation keys',
     async (kind) => {

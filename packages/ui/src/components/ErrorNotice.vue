@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { AlertCircle, Check, Clipboard, Download, Settings } from '@lucide/vue';
+import { AlertCircle, ArrowUpRight, Check, Clipboard, Download, Settings } from '@lucide/vue';
 
 import { sanitizeDiagnosticMessage } from '@one-vegetable/core/diagnostics';
 import { describeUserVisibleError, splitUserVisibleErrorMessages } from '@one-vegetable/core/errors';
@@ -11,6 +11,7 @@ import type { DiagnosticsSnapshot } from '@one-vegetable/core';
 import Button from './ui/Button.vue';
 import { hasUiTranslation, useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
+import { mediaErrorGuidance, type MediaErrorFeature } from '../lib/media-error-guidance';
 
 const { t } = useUiI18n();
 
@@ -19,16 +20,22 @@ const props = withDefaults(
     error: unknown;
     fallback?: string;
     compact?: boolean;
+    mediaFeature?: MediaErrorFeature | undefined;
   }>(),
   {
     fallback: '',
-    compact: false
+    compact: false,
+    mediaFeature: undefined
   }
 );
 
 const { gateway, mode, runtime } = useServices();
 const details = computed(() =>
   describeUserVisibleError(props.error, props.fallback || t('common.error.fallback'))
+);
+const mediaGuidance = computed(() => mediaErrorGuidance(details.value.code, props.mediaFeature));
+const credentialSettingsHref = computed(() =>
+  mode === 'bff' && runtime?.backendMeta?.runtime === 'cloudflare' ? '#/admin' : '#/settings'
 );
 // Alibaba authorization is independent from both workbench sign-in and vault unlocking.
 const alibabaAuthorizationRequired = computed(() =>
@@ -224,6 +231,32 @@ function downloadJson(value: unknown, fileName: string): void {
           </Button>
         </div>
         <div class="mt-2 flex flex-wrap items-center gap-2">
+          <template v-if="mediaGuidance">
+            <p class="w-full text-xs leading-5" data-testid="media-error-guidance">
+              {{ t(mediaGuidance.message) }}
+            </p>
+            <a
+              v-if="mediaGuidance.configureTop"
+              :href="credentialSettingsHref"
+              class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+              data-testid="media-authorization-settings"
+            >
+              <Settings class="size-3.5" aria-hidden="true" />{{
+                t('common.error.mediaGuidance.configureTop')
+              }}
+            </a>
+            <a
+              :href="mediaGuidance.officialUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+              data-testid="media-official-page"
+            >
+              <ArrowUpRight class="size-3.5" aria-hidden="true" />{{
+                t('common.error.mediaGuidance.official')
+              }}
+            </a>
+          </template>
           <template v-if="alibabaAuthorizationRequired">
             <p class="w-full text-xs leading-5">
               {{
@@ -235,9 +268,7 @@ function downloadJson(value: unknown, fileName: string): void {
               }}
             </p>
             <a
-              :href="
-                mode === 'bff' && runtime?.backendMeta?.runtime === 'cloudflare' ? '#/admin' : '#/settings'
-              "
+              :href="credentialSettingsHref"
               class="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
               data-testid="alibaba-reconnect"
             >

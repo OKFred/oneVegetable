@@ -119,6 +119,7 @@ export const common = {
     server: '平台查询条件',
     page: '仅筛选本页',
     pageHint: '以下条件只筛选已加载的当前页，不代表全店结果。',
+    pageNoMatch: '本页没有匹配的记录，可调整筛选或翻页查看。',
     invalidRange: '结束时间不能早于开始时间。'
   },
   imagePreview: {
@@ -189,6 +190,19 @@ export const common = {
     copyRequestId: '复制 requestId',
     configureCredentials: '前往设置凭证',
     reconnectAlibaba: '重新连接 Alibaba',
+    mediaGuidance: {
+      configureTop: '检查 TOP 授权',
+      official: '前往国际站',
+      photoScope:
+        '为避免选错图片，已停止使用这页结果。请检查 TOP 授权后重新查询，或到国际站处理；不会自动切换授权。',
+      chooseGroup: '请先选择具体图片分组再查询；当前 IOP 不支持全库或未分组查询。',
+      importReadback:
+        '此导入需要按目标分组核对上传结果，当前 IOP 尚不能可靠核对。已停止后续上传和建目录；请补充 TOP 授权后重新预览，或到国际站处理。',
+      videoRejected:
+        '平台拒绝了 IOP 视频查询，不代表视频不存在，也不能据此认定缺少权限。请检查 TOP 授权后重新查询，或到官网查看；不会自动重试。',
+      unsupported:
+        '当前功能或参数尚不能通过 IOP 执行。请检查 TOP 授权或到国际站处理；已有任务不会自动更换授权。'
+    },
     alibabaAuthorizationRequired: 'Alibaba API 授权已失效，请重新授权。',
     reconnectExtensionGuide:
       '网页登录不等于 API 授权。在设置中获取开放平台凭证，完成授权后保存即可；不要重新提交之前的写操作。',

@@ -121,6 +121,7 @@ export const common = {
     server: 'Platform filters',
     page: 'This page only',
     pageHint: 'These filters apply only to the loaded page, not your entire catalog.',
+    pageNoMatch: 'No matching records on this page. Change the filters or check another page.',
     invalidRange: 'The end must not be earlier than the start.'
   },
   imagePreview: {
@@ -191,6 +192,20 @@ export const common = {
     copyRequestId: 'Copy requestId',
     configureCredentials: 'Configure credentials',
     reconnectAlibaba: 'Reconnect Alibaba',
+    mediaGuidance: {
+      configureTop: 'Check TOP authorization',
+      official: 'Open Alibaba',
+      photoScope:
+        'These results were rejected to prevent selecting images from the wrong group. Check TOP authorization and query again, or use Alibaba. Authorization will not switch automatically.',
+      chooseGroup:
+        'Choose a specific image group before querying. IOP does not support querying all images or ungrouped images.',
+      importReadback:
+        'This import must verify uploaded images in the target group, which IOP cannot yet verify reliably. Further uploads and group creation have stopped. Add TOP authorization and preview again, or use Alibaba.',
+      videoRejected:
+        'Alibaba rejected the IOP video query. This does not mean there are no videos or prove that permission is missing. Check TOP authorization and query again, or use Alibaba. No automatic retry is performed.',
+      unsupported:
+        'This feature or parameter cannot currently run through IOP. Check TOP authorization or use Alibaba. Existing tasks will not switch authorization automatically.'
+    },
     alibabaAuthorizationRequired: 'Alibaba API authorization is invalid. Authorize again.',
     reconnectExtensionGuide:
       'Website sign-in is not API authorization. Get Open Platform credentials in Settings, authorize, then save. Do not resubmit previous writes.',

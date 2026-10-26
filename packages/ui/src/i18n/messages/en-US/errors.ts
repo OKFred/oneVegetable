@@ -30,6 +30,10 @@ export const errors = {
       'IOP does not support this filter. Request blocked; never silently ignored.',
     ALIBABA_IOP_MUTATION_UNVERIFIED:
       'This IOP write method has not passed account verification and remains disabled.',
+    OPERATION_AVAILABILITY_UNAVAILABLE:
+      'Could not verify whether this feature is available. The operation has stopped. Check sign-in and authorization, then reopen it.',
+    GALLERY_CONTEXT_UNAVAILABLE:
+      'The current account and asset configuration could not be verified. The operation has stopped. Check authorization and storage settings, then preview again.',
     GALLERY_READBACK_UNVERIFIED:
       'This authorization cannot reliably verify image groups. The import has stopped.',
     ALIBABA_IOP_BUSINESS_REJECTED:

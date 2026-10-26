@@ -6,6 +6,7 @@ import fixture from '../../../mock/data/template-library.json';
 import configuration from '../../../mock/data/template-library-s3.json';
 import materialFixture from '../../../mock/data/template-material-ui/package.json';
 import photoFixture from '../../../mock/data/photos.json';
+import availabilityFixture from '../../../mock/data/media-protocol-availability.json';
 import { MemoryProductDescriptionTemplateClient } from '../../core/src/product-description-template-client';
 import { parseTemplateBundle, templateError } from '../../core/src/template-library';
 import type { S3StorageControl } from '../../core/src/s3-storage';
@@ -228,6 +229,26 @@ async function setup(
 }
 
 describe('template package confirmation and safe writes', () => {
+  it('blocks unverified IOP image readback early without blocking a plain JSON import', async () => {
+    const get = vi.fn().mockResolvedValue(availabilityFixture.iop);
+    const s = await setup('import', { services: { operationAvailability: { get } } });
+    const request = vi.spyOn(s.gateway, 'request');
+    await s.chooseBytes();
+    expect(s.button('Import').attributes('disabled')).toBeDefined();
+    expect(s.body.get('[data-testid="media-error-guidance"]').text()).toContain('Further uploads');
+    expect(s.body.get('[data-testid="media-authorization-settings"]').attributes('href')).toBe('#/settings');
+    expect(get).toHaveBeenCalledWith(['uploadPhoto', 'listPhotos'], {
+      galleryContext: photoFixture.transferContext
+    });
+    expect(mocks.prepareImport).not.toHaveBeenCalled();
+    expect(mocks.executeImport).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
+    const checks = get.mock.calls.length;
+    await s.choose();
+    expect(s.body.find('[data-testid="media-error-guidance"]').exists()).toBe(false);
+    expect(s.button('Import').attributes('disabled')).toBeUndefined();
+    expect(get).toHaveBeenCalledTimes(checks);
+  });
   it('uses the selected context from the first preflight even when an unbound lookup advertises TOP support', async () => {
     const get = vi.fn().mockImplementation((_operations, options) =>
       Promise.resolve({

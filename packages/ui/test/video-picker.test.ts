@@ -5,6 +5,8 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
 import { VIDEO_MOCK_DATA } from '../../core/src/generated/mock-data';
 import type { VideoPage } from '@one-vegetable/core/video';
+import type { AppServices } from '../src/lib/services';
+import availabilityFixture from '../../../mock/data/media-protocol-availability.json';
 import VideoPicker from '../src/components/VideoPicker.vue';
 import VideoDrawer from '../src/components/VideoDrawer.vue';
 import TablePagination from '../src/components/TablePagination.vue';
@@ -22,14 +24,19 @@ afterEach(() => {
   for (const wrapper of wrappers.splice(0)) wrapper.unmount();
   vi.restoreAllMocks();
 });
-async function setup() {
+async function setup(operationAvailability?: AppServices['operationAvailability']) {
   const gateway = new MockGatewayClient(0);
   const identity = await pageDetailIdentity(gateway, 'mock');
   const request = vi.spyOn(gateway, 'request');
   const Host = defineComponent({
     props: { identity: { type: String, required: true } },
     setup(props) {
-      provideServices({ gateway, mode: 'mock', settings: { load: vi.fn(), save: vi.fn() } });
+      provideServices({
+        gateway,
+        mode: 'mock',
+        settings: { load: vi.fn(), save: vi.fn() },
+        ...(operationAvailability ? { operationAvailability } : {})
+      });
       return () => h(VideoPicker, { identity: props.identity, language: 'en_US' });
     }
   });
@@ -47,6 +54,27 @@ async function setup() {
   return { wrapper, gateway, request };
 }
 describe('reusable video picker', () => {
+  it('filters IOP titles on the loaded page without sending an unsupported title', async () => {
+    const get = vi.fn().mockResolvedValue(availabilityFixture.iop);
+    const { wrapper, request } = await setup({ get });
+    await wrapper.get('input[aria-label="视频标题"]').setValue('not-on-this-page');
+    await wrapper.get('form').trigger('submit');
+    await settle(wrapper);
+    expect(request).toHaveBeenLastCalledWith('listVideos', { page: 1, pageSize: 20 }, expect.any(Object));
+    expect(wrapper.text()).toContain('只筛选已加载的当前页');
+    expect(wrapper.text()).toContain('本页没有匹配的记录');
+    expect(wrapper.findAll('[data-testid="choose-video"]')).toHaveLength(0);
+    expect(wrapper.getComponent(TablePagination).props('total')).toBe(
+      VIDEO_MOCK_DATA.responses.listVideos.total
+    );
+    expect(get).toHaveBeenCalledWith(['listVideos']);
+  });
+  it('does not dispatch a denied video read', async () => {
+    const { wrapper, request } = await setup({ get: vi.fn().mockResolvedValue(availabilityFixture.denied) });
+    expect(request).not.toHaveBeenCalled();
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-testid="choose-video"]')).toHaveLength(0);
+  });
   it('queries only videos, searches titles/IDs and paginates server-side', async () => {
     const { wrapper, request } = await setup();
     await settle(wrapper);

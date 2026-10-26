@@ -125,6 +125,7 @@ const permissionPending = ref(false);
 const permissionReason = ref<'permissionUnavailable' | 'permissionDenied' | null>(null);
 const uploadAllowed = ref(false);
 const uploadReason = ref('OPERATION_AVAILABILITY_UNAVAILABLE');
+const readbackCode = ref<string | null>(null);
 const plan = shallowRef<TemplateBackupPlan | null>(null);
 const objects = ref<S3ObjectSummary[]>([]);
 const busy = ref(false);
@@ -158,6 +159,11 @@ const count = computed(() =>
 );
 const actionLabel = computed(() => t(`products.transfer.${props.mode}`));
 const requiresUpload = computed(() => props.mode === 'import' && images.value > 0);
+const readbackError = computed(() =>
+  requiresUpload.value && readbackCode.value
+    ? new GatewayException({ code: readbackCode.value, message: readbackCode.value, retryable: false })
+    : null
+);
 const imagePlan = computed(() => {
   const task = materialImport.value?.task;
   if (!task) return { uploads: images.value, reused: 0, verifyOnly: false };
@@ -189,6 +195,10 @@ const disabledReason = computed(() => {
     if (!operationAvailability) return mt('availabilityUnavailable');
     if (permissionPending.value) return mt('permissionPending');
     if (permissionReason.value) return mt(permissionReason.value);
+    if (readbackCode.value)
+      return readbackCode.value === 'GALLERY_READBACK_UNVERIFIED'
+        ? t('errors.codes.GALLERY_READBACK_UNVERIFIED')
+        : mt('uploadDenied', { code: readbackCode.value });
     if (!uploadAllowed.value) return mt('uploadDenied', { code: uploadReason.value });
     if (!validGroup.value) return mt('chooseGroup');
   }
@@ -292,6 +302,7 @@ function selectGroup(group: PhotoGroup): void {
 async function checkUploadPermission(): Promise<void> {
   permissionPending.value = true;
   uploadAllowed.value = false;
+  readbackCode.value = null;
   permissionReason.value = null;
   try {
     assertCurrent();
@@ -316,7 +327,16 @@ async function checkUploadPermission(): Promise<void> {
     });
     assertCurrent();
     const decision = result.items.find((item) => item.operation === 'uploadPhoto');
-    uploadAllowed.value = decision?.allowed === true;
+    const readback = result.items.find((item) => item.operation === 'listPhotos');
+    readbackCode.value =
+      decision?.allowed !== true
+        ? null
+        : !readback?.allowed
+          ? (readback?.reasonCode ?? 'OPERATION_AVAILABILITY_UNAVAILABLE')
+          : readback.protocolSupport?.constraints.includes('photo-group-scope-unverified')
+            ? 'GALLERY_READBACK_UNVERIFIED'
+            : null;
+    uploadAllowed.value = decision?.allowed === true && !readbackCode.value;
     uploadReason.value = decision?.reasonCode ?? 'OPERATION_AVAILABILITY_UNAVAILABLE';
     scopedPhotosOnly.value =
       result.items
@@ -803,11 +823,14 @@ async function execute(): Promise<void> {
         </details>
       </template>
       <p v-else-if="mode === 'export'">{{ t('common.data.selected', { count }) }}</p>
-      <p v-if="disabledReason" role="status" class="text-sm text-muted-foreground">{{ disabledReason }}</p>
+      <p v-if="disabledReason && !readbackError" role="status" class="text-sm text-muted-foreground">
+        {{ disabledReason }}
+      </p>
       <p v-if="progress" role="status" class="text-sm">
         {{ mt(progress.phase, { current: progress.current, total: progress.total }) }}
       </p>
-      <ErrorNotice v-if="error" :error="error" compact />
+      <ErrorNotice v-if="readbackError" :error="readbackError" media-feature="photos" compact />
+      <ErrorNotice v-else-if="error" :error="error" media-feature="photos" compact />
       <p v-if="writeStarted && mode === 'export' && error" class="text-sm text-muted-foreground">
         {{ t('products.templates.transfer.unknown') }}<br />
         {{ mt('savedPath', { prefix, key: backupKey }) }}

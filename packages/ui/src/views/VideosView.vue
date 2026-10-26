@@ -397,7 +397,7 @@ onUnmounted(() => {
     <p v-if="titlePageFilterOnly" class="mb-2 text-xs text-muted-foreground">
       {{ t('common.filters.pageHint') }}
     </p>
-    <ErrorNotice v-if="error" :error="error" />
+    <ErrorNotice v-if="error" :error="error" media-feature="videos" />
     <p v-if="busy" role="status">{{ vt('loading') }}</p>
     <ModalDialog v-model:open="diagnosticsOpen" :title="vt('issues')"
       ><ul class="space-y-2 break-all font-mono text-xs">

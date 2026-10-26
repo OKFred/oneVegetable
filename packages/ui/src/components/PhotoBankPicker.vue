@@ -265,6 +265,7 @@ function showPreview(collection: readonly Photo[], photo: Photo): void {
               <QueryState
                 :loading="photos.isFetching.value || photoAccess.isPending.value"
                 :error="photos.error.value"
+                media-feature="photos"
               >
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   <div

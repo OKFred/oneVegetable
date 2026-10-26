@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { safeVideoId, type Video, type VideoPage } from '@one-vegetable/core/video';
 import { useServices } from '../lib/services';
 import { requestVideo, VideoReadScope } from '../lib/video-library';
 import { useVideoI18n } from '../i18n/video';
+import { useUiI18n } from '../i18n';
+import { GatewayException } from '@one-vegetable/core/errors';
 import VideoDrawer from './VideoDrawer.vue';
 import ActionTooltip from './ActionTooltip.vue';
 import ErrorNotice from './ErrorNotice.vue';
@@ -13,18 +15,28 @@ import Button from './ui/Button.vue';
 
 const props = defineProps<{ identity: string; language: 'zh_CN' | 'en_US'; disabled?: boolean }>();
 const emit = defineEmits<{ select: [video: Video] }>();
-const { gateway, mode } = useServices();
+const { gateway, mode, operationAvailability } = useServices();
 const vt = useVideoI18n();
+const { t } = useUiI18n();
 const title = ref(''),
   id = ref(''),
   page = ref(1),
   pageSize = ref<20 | 50>(20);
 const submitted = shallowRef({ title: '', id: '' });
+const titlePageFilterOnly = ref(false);
 const result = shallowRef<VideoPage | null>(null),
   preview = shallowRef<Video | null>(null);
 const error = shallowRef<unknown>(null),
   busy = ref(false);
 const scope = new VideoReadScope();
+const rows = computed(() =>
+  (result.value?.items ?? []).filter(
+    (video) =>
+      !titlePageFilterOnly.value ||
+      !submitted.value.title ||
+      (video.title ?? '').toLocaleLowerCase().includes(submitted.value.title.toLocaleLowerCase())
+  )
+);
 async function load(refresh = false) {
   scope.stop();
   const current = scope.capture();
@@ -34,6 +46,15 @@ async function load(refresh = false) {
   busy.value = true;
   try {
     if (!props.identity) return;
+    const availability = await operationAvailability?.get(['listVideos']);
+    if (!current()) return;
+    const decision = availability?.items.find((item) => item.operation === 'listVideos');
+    if (decision && !decision.allowed) {
+      const code = decision.reasonCode ?? 'OPERATION_AVAILABILITY_UNAVAILABLE';
+      throw new GatewayException({ code, message: code, retryable: false });
+    }
+    titlePageFilterOnly.value =
+      decision?.protocolSupport?.constraints.includes('video-title-page-filter-only') === true;
     const data = await requestVideo(
       gateway,
       mode,
@@ -42,7 +63,7 @@ async function load(refresh = false) {
       {
         page: page.value,
         pageSize: pageSize.value,
-        ...(submitted.value.title ? { title: submitted.value.title } : {}),
+        ...(submitted.value.title && !titlePageFilterOnly.value ? { title: submitted.value.title } : {}),
         ...(submitted.value.id ? { id: submitted.value.id } : {})
       },
       props.identity,
@@ -97,12 +118,15 @@ onBeforeUnmount(() => {
       <Button type="submit" variant="outline" :disabled="busy">{{ vt('search') }}</Button>
       <Button variant="outline" :disabled="busy" @click="load(true)">{{ vt('refresh') }}</Button>
     </form>
-    <ErrorNotice v-if="error" :error="error" compact />
+    <p v-if="titlePageFilterOnly" class="text-xs text-muted-foreground">{{ t('common.filters.pageHint') }}</p>
+    <ErrorNotice v-if="error" :error="error" media-feature="videos" compact />
     <p v-if="busy" role="status">{{ vt('loading') }}</p>
-    <p v-else-if="result?.items.length === 0">{{ vt('empty') }}</p>
+    <p v-else-if="result && rows.length === 0">
+      {{ titlePageFilterOnly && submitted.title ? t('common.filters.pageNoMatch') : vt('empty') }}
+    </p>
     <ul class="max-h-80 space-y-2 overflow-auto">
       <li
-        v-for="(video, index) in result?.items ?? []"
+        v-for="(video, index) in rows"
         :key="video.encryptedId ?? index"
         class="flex items-center gap-3 rounded border p-3"
       >

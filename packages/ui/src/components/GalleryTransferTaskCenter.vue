@@ -50,7 +50,7 @@ async function safely(action: () => Promise<void>): Promise<void> {
   try {
     await action();
   } catch (e) {
-    toast.error(t('photos.tasks.error', { code: safeCode(e) }));
+    toast.error(errorMessage(safeCode(e)));
   } finally {
     busy.value = false;
     await transfers?.reload();
@@ -139,7 +139,7 @@ async function pause(): Promise<void> {
         </div>
       </template>
       <p v-if="transfers.error.value" role="alert" class="mb-3 text-sm text-destructive">
-        {{ t('photos.tasks.error', { code: transfers.error.value }) }}
+        {{ errorMessage(transfers.error.value) }}
       </p>
       <div class="space-y-2">
         <Button
@@ -166,7 +166,7 @@ async function pause(): Promise<void> {
         />
         <p class="break-all text-xs">{{ task.batchPrefix }}</p>
         <p v-if="task.errorCode" role="alert" class="text-sm text-destructive">
-          {{ t('photos.tasks.error', { code: task.errorCode }) }}
+          {{ errorMessage(task.errorCode) }}
         </p>
         <div
           v-if="contextChanged || task.errorCode || transfers.error.value"

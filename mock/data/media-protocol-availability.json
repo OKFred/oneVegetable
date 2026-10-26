@@ -1,0 +1,46 @@
+{
+  "top": {
+    "items": [
+      { "operation": "listPhotos", "allowed": true, "reasonCode": "READ_ALLOWED" },
+      { "operation": "listVideos", "allowed": true, "reasonCode": "READ_ALLOWED" },
+      { "operation": "uploadPhoto", "allowed": true, "reasonCode": "ADMIN_MUTATION_ALLOWED" }
+    ]
+  },
+  "iop": {
+    "items": [
+      {
+        "operation": "listPhotos",
+        "allowed": true,
+        "reasonCode": "READ_ALLOWED",
+        "protocolSupport": {
+          "protocol": "iop",
+          "state": "partial",
+          "methods": ["alibaba.icbu.photobank.list"],
+          "constraints": ["photo-group-required", "photo-group-scope-unverified"],
+          "verification": "documented",
+          "fallbackProtocol": "top"
+        }
+      },
+      {
+        "operation": "listVideos",
+        "allowed": true,
+        "reasonCode": "READ_ALLOWED",
+        "protocolSupport": {
+          "protocol": "iop",
+          "state": "partial",
+          "methods": ["alibaba.icbu.video.query"],
+          "constraints": ["video-title-page-filter-only"],
+          "verification": "documented",
+          "fallbackProtocol": "top"
+        }
+      },
+      { "operation": "uploadPhoto", "allowed": true, "reasonCode": "ADMIN_MUTATION_ALLOWED" }
+    ]
+  },
+  "denied": {
+    "items": [
+      { "operation": "listPhotos", "allowed": false, "reasonCode": "PERMISSION_DENIED" },
+      { "operation": "listVideos", "allowed": false, "reasonCode": "PERMISSION_DENIED" }
+    ]
+  }
+}

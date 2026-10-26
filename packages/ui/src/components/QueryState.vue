@@ -3,6 +3,7 @@ import { useUiI18n } from '../i18n';
 import ContentSkeleton from './ContentSkeleton.vue';
 import ErrorNotice from './ErrorNotice.vue';
 import Button from './ui/Button.vue';
+import type { MediaErrorFeature } from '../lib/media-error-guidance';
 
 withDefaults(
   defineProps<{
@@ -13,6 +14,7 @@ withDefaults(
     error?: Error | null;
     retryable?: boolean;
     retryLabel?: string;
+    mediaFeature?: MediaErrorFeature | undefined;
   }>(),
   {
     loading: false,
@@ -21,7 +23,8 @@ withDefaults(
     layout: 'table',
     error: null,
     retryable: false,
-    retryLabel: ''
+    retryLabel: '',
+    mediaFeature: undefined
   }
 );
 
@@ -37,7 +40,7 @@ const { t } = useUiI18n();
       <span class="sr-only">{{ t('common.loadingFeedback.refreshing') }}</span>
     </div>
     <div v-if="error" class="flex min-h-40 flex-col items-center justify-center gap-3 p-4">
-      <ErrorNotice :error="error" class="w-full max-w-2xl" />
+      <ErrorNotice :error="error" :media-feature="mediaFeature" class="w-full max-w-2xl" />
       <Button v-if="retryable" variant="outline" size="sm" @click="$emit('retry')">{{
         retryLabel || t('common.actions.retry')
       }}</Button>

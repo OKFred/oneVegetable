@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner';
 import { GalleryTaskError, type GalleryTransferTaskV1 } from '@one-vegetable/core/gallery-transfer-task';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
 import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
+import { GatewayException } from '@one-vegetable/core/errors';
 
 import {
   GALLERY_TRANSFER_MAX_ARCHIVE_BYTES,
@@ -21,6 +22,8 @@ import ModalDialog from './ui/ModalDialog.vue';
 import { useUiI18n } from '../i18n';
 import { readGalleryTransferArchive, type GalleryTransferArchive } from '../lib/gallery-transfer-archive';
 import { useServices } from '../lib/services';
+import { useListIdentityScope } from '../lib/list-identity-scope';
+import { assertGalleryImportReadback } from '../lib/gallery-import-readback';
 import { loadGalleryImportRuleSet } from '../lib/gallery-import-rules-storage';
 import type { S3ObjectPage } from '@one-vegetable/core/s3-storage';
 
@@ -46,8 +49,47 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:open': [open: boolean];
 }>();
-const { control: bffControl, s3Storage } = useServices();
+const services = useServices();
+const { control: bffControl, s3Storage } = services;
 const control = s3Storage ?? bffControl;
+const identity = useListIdentityScope();
+const importChecking = ref(false);
+const importReadbackError = shallowRef<unknown>(null);
+watch(
+  [() => props.open, () => props.mode, identity],
+  ([open, direction], _previous, onCleanup) => {
+    importChecking.value = false;
+    importReadbackError.value = null;
+    if (!open || direction !== 'import') return;
+    let active = true;
+    const current = (): boolean => active;
+    onCleanup(() => {
+      active = false;
+    });
+    importChecking.value = true;
+    void (async () => {
+      try {
+        const context = await services.gateway.galleryTransferContext?.('listPhotos', {});
+        if (!current()) return;
+        if (!context) {
+          if (services.mode === 'mock') return;
+          throw new GalleryTaskError('GALLERY_CONTEXT_UNAVAILABLE');
+        }
+        await assertGalleryImportReadback(services, context);
+      } catch (cause) {
+        if (current()) {
+          const code = cause instanceof GalleryTaskError ? cause.code : null;
+          importReadbackError.value = code
+            ? new GatewayException({ code, message: code, retryable: false })
+            : cause;
+        }
+      } finally {
+        if (current()) importChecking.value = false;
+      }
+    })();
+  },
+  { immediate: true }
+);
 const transfers = useGalleryTransfers();
 const archiveBytes = ref<Uint8Array | null>(null);
 const preparedTask = ref<GalleryTransferTaskV1 | null>(null);
@@ -58,7 +100,7 @@ const selectedFileSize = ref(0);
 const selectedArchive = ref<GalleryTransferArchive | null>(null);
 const error = shallowRef<unknown>(null);
 const displayError = computed(() =>
-  error.value instanceof GalleryTaskError
+  error.value instanceof GalleryTaskError && error.value.code !== 'GALLERY_READBACK_UNVERIFIED'
     ? new Error(t('photos.tasks.error', { code: safeCode(error.value) }))
     : error.value
 );
@@ -96,6 +138,7 @@ const canExecute = computed(() => {
   if (props.mode === 'export')
     return props.photos.length > 0 && (storage.value === 'zip' || s3Supported.value);
   if (!props.uploadAllowed) return false;
+  if (importChecking.value || importReadbackError.value) return false;
   return storage.value === 'zip' ? selectedArchive.value !== null : s3ImportCount.value > 0;
 });
 const title = computed(() =>
@@ -445,14 +488,18 @@ function formatBytes(bytes: number): string {
       <p v-if="validating" class="flex items-center gap-2 text-sm text-muted-foreground">
         <LoaderCircle class="size-4 animate-spin" />{{ t('photos.transfer.validating') }}
       </p>
-      <ErrorNotice v-if="error" :error="displayError" compact />
+      <p v-if="importChecking" role="status" class="text-sm text-muted-foreground">
+        {{ t('admin.operationPending') }}
+      </p>
+      <ErrorNotice v-if="importReadbackError" :error="importReadbackError" media-feature="photos" compact />
+      <ErrorNotice v-else-if="error" :error="displayError" media-feature="photos" compact />
     </div>
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button variant="outline" :disabled="busy" @click="requestOpen(false)">{{
           t('common.actions.cancel')
         }}</Button>
-        <Button :disabled="busy || !canExecute" @click="prepareTask">
+        <Button data-testid="gallery-transfer-prepare" :disabled="busy || !canExecute" @click="prepareTask">
           <LoaderCircle v-if="busy" class="size-4 animate-spin" />
           <Download v-else-if="mode === 'export'" class="size-4" />
           <Upload v-else class="size-4" />
