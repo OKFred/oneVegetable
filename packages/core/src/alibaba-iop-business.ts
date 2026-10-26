@@ -18,6 +18,7 @@ const PHOTO_UPLOAD = 'alibaba.icbu.photobank.upload';
 const PHOTO_GROUP = 'alibaba.icbu.photobank.group.operate';
 const VIDEO_QUERY = 'alibaba.icbu.video.query';
 const PRODUCT_GROUP_ADD = 'alibaba.icbu.product.group.add';
+const PRODUCT_TYPES = 'alibaba.icbu.product.type.available.get';
 
 export function iopOperationReason(operation: OperationId, method?: unknown): string | null {
   return iopRegisteredOperationReason(operation, method);
@@ -92,6 +93,12 @@ export async function createIopBusinessRequest(
       (method === IOP_REFERENCE_METHODS.getProduct && !input.product_id && !input.sku_id)
     )
       throw failure('REQUEST_CONTRACT_INVALID');
+  } else if (method === PRODUCT_TYPES) {
+    const request = input.type_request;
+    if (!isRecord(request) || Object.keys(input).length !== 1) throw failure('REQUEST_CONTRACT_INVALID');
+    if (Object.keys(request).some((key) => !['cat_id', 'language'].includes(key)))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = { cat_id: positiveInteger(request.cat_id), language: requiredText(request.language) };
   } else if (method === PHOTO_UPLOAD) {
     if (Object.keys(input).some((key) => !['file_name', 'group_id'].includes(key)))
       throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
@@ -596,8 +603,34 @@ export function normalizeIopBusinessResponse(
     if (typeof result.final_score !== 'string' && typeof result.final_score !== 'number') throw failure();
     if (!String(result.final_score).trim() || !Number.isFinite(Number(result.final_score))) throw failure();
     normalized = { result };
-  } else if (method === 'alibaba.icbu.product.type.available.get') {
-    if (result.success !== true || !isRecord(result.data)) throw failure();
+  } else if (method === PRODUCT_TYPES) {
+    if (result.msg_code !== undefined && result.msg_code !== '')
+      throw providerFailure(
+        result.msg_code,
+        result.message_info,
+        result.trace_id ?? value.request_id,
+        credentials
+      );
+    if (
+      result.success !== true ||
+      !isRecord(result.data) ||
+      typeof result.data.supportPostWholeSale !== 'boolean' ||
+      typeof result.data.supportPostSourcing !== 'boolean' ||
+      (result.message_info !== undefined && typeof result.message_info !== 'string') ||
+      (result.trace_id !== undefined && typeof result.trace_id !== 'string')
+    )
+      throw failure();
+    normalized = {
+      biz_success: true,
+      data: {
+        support_post_whole_sale: result.data.supportPostWholeSale,
+        support_post_sourcing: result.data.supportPostSourcing
+      },
+      ...(result.message_info === undefined ? {} : { message: result.message_info }),
+      ...(result.trace_id === undefined ? {} : { trace_id: result.trace_id }),
+      ...(result.msg_code === undefined ? {} : { msg_code: result.msg_code }),
+      ...(typeof value.request_id === 'string' ? { request_id: value.request_id } : {})
+    };
   }
   return { [`${method.replaceAll('.', '_')}_response`]: normalized };
 }

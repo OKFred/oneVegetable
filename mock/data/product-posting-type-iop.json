@@ -1,0 +1,27 @@
+{
+  "method": "alibaba.icbu.product.type.available.get",
+  "path": "/icbu/product/other/available/get",
+  "request": {
+    "type_request": { "cat_id": 201712702, "language": "en_us" }
+  },
+  "observedResponse": {
+    "code": "0",
+    "request_id": "posting-type-observed-request",
+    "result": {
+      "success": true,
+      "trace_id": "posting-type-observed-trace",
+      "data": { "supportPostWholeSale": true, "supportPostSourcing": true }
+    }
+  },
+  "response": {
+    "code": "0",
+    "request_id": "posting-type-request",
+    "result": {
+      "success": true,
+      "msg_code": "",
+      "message_info": "",
+      "trace_id": "posting-type-trace",
+      "data": { "supportPostWholeSale": true, "supportPostSourcing": true }
+    }
+  }
+}
