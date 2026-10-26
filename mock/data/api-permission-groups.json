@@ -1,0 +1,53 @@
+{
+  "supplier": {
+    "method": "alibaba.procurement.mysupplier.list",
+    "docId": 40747,
+    "applyScopes": [
+      {
+        "name": "国际站企业集成基础权限包",
+        "url": "//open.taobao.com/docs/api_list.htm?scopeId=15249",
+        "descprition": ""
+      }
+    ]
+  },
+  "cases": [
+    {
+      "description": "trims and deduplicates names in first-seen order",
+      "applyScopes": [
+        { "name": " 国际站企业集成基础权限包 " },
+        { "name": "国际站企业集成基础权限包" },
+        { "name": " Synthetic second package\t" },
+        { "name": "Synthetic second package" },
+        { "name": "synthetic second package" }
+      ],
+      "expected": ["国际站企业集成基础权限包", "Synthetic second package", "synthetic second package"]
+    },
+    {
+      "description": "ignores malformed nodes, blank names and URL-only metadata",
+      "applyScopes": [
+        null,
+        false,
+        15249,
+        "国际站企业集成基础权限包",
+        "//open.taobao.com/docs/api_list.htm?scopeId=15249",
+        [],
+        [{ "name": "Not a scope object" }],
+        {},
+        { "name": null },
+        { "name": 15249 },
+        { "name": [] },
+        { "name": {} },
+        { "name": "" },
+        { "name": " \t\n " },
+        { "url": "//open.taobao.com/docs/api_list.htm?scopeId=15249" },
+        { "description": "Synthetic qualification, not a permission group" }
+      ],
+      "expected": []
+    },
+    {
+      "description": "keeps empty metadata unknown",
+      "applyScopes": [],
+      "expected": []
+    }
+  ]
+}

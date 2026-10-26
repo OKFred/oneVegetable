@@ -54,6 +54,20 @@ IOP 视频未得到合法结果，两个关联检查不计为通过，因此该�
 
 后续远程门禁：367 个测试文件、3659 项单测通过；全工作区类型检查、26 项 Worker 隔离回放、OpenAPI 生成漂移、i18n、格式和改动文件 Lint 通过；Web/正式 MV3 构建及 API dry-run 通过。插件解包 4,580,360 字节，预算及商店合规检查通过，未扩大权限或包体限制。
 
+## 后续排障前置核对
+
+供应商资格元数据只涉及 TOP 官方目录；IOP 没有已确认的替代方法，本地文档采集和能力展示不依赖任何 Alibaba 授权。此次仅补齐 applyScopes 中的权限组名称，经既有 CapabilityDefinition.permissionGroups 展示，不新增平台方法、请求、写权限或离线资格判定。文档前置条件不等于当前账号已经获授，历史目录 active 回退也不等于服务真实可用。
+
+2026-10-26 [官方文档元数据](https://developer.alibaba.com/handler/document/getDocument.json?docType=2&docId=40747&isEn=false)将 supplier.list 关联到国际站企业集成基础权限包（15249）；已有授权包的 permissions 为空，只代表未采集到资格，不能据此确认缺权限。
+
+- 视频新增两次 SDK Query/Form 拆分对照（分别保留及省略 simplify），仍均被业务层以 10000002 拒绝。第一次诊断因工作台只接受 20/50 分页而在本地阻止，出网数为 0，没有算作平台证据；随后用公开原生请求验证文档示例的 1/10 分页。
+- 对[官方文档所链接的 Java SDK](https://icbu-open-platform-public.oss-us-east-1.aliyuncs.com/sdk/1.0.4-1690374097817bk5i.jar)只做 ZIP/字节码静态检查，没有运行下载代码或其日志实现：默认 execute 选择 GOP，时间戳以毫秒传递，默认 partner_id 为 iop-sdk-java-20181207。按这些默认公共参数再做一次视频只读对照，仍返回 10000002。不因 SDK 支持其他协议枚举就猜测改用 /rest/2.0。
+- 供应商按官方 CURL 示例加入 partner_id=apidoc、去掉 simplify，并分别使用文档支持的 hmac-sha256 和 md5 做两次只读对照，均返回 15 / isp.top-remote-connection-error。MD5 仅为隔离诊断，不修改生产默认签名，不作为自动重试策略。
+- 另做一次 current_page=0 的数字边界对照，仍返回 10000002；它不是文档示例的有效业务验收，不据此把生产分页改成从 0 开始。
+- 本组共 6 次真实只读请求（4 视频、2 供应商），0 写入、0 Token 操作、0 配置替换；失败均保持失败。脱敏回执为 video-sdk-split-_.json、supplier-request-comparison-_.json，保存在 artifacts/authorization-mode-regression/。
+- 提交 65805ce 的完整 CI 已通过；远程 Windows 补充 133 项 Web/MV3、47 项授权、2 项 BFF 回放及 17 项 Node 凭据 E2E 均通过。功能失败与代码/交互门禁结果分别记录，不以 CI 通过代替业务验收。
+- 权限组展示补充的 40 项定向测试和工作区类型检查通过；覆盖文档权限组提取、生成契约与 Web/插件能力详情展示，打开详情不会自动调用平台接口。
+
 ## 重跑
 
 输入、输出均必须位于远程忽略目录。以下占位符换成实际值：

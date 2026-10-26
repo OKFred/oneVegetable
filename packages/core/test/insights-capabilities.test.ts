@@ -15,7 +15,7 @@ interface InsightsSnapshot {
   dataCount: number;
   buyerCount: number;
   catalogCount: number;
-  definitions: { method: string; restricted: boolean }[];
+  definitions: { method: string; restricted: boolean; permissionGroups: string[] }[];
 }
 
 async function readSnapshot(): Promise<InsightsSnapshot> {
@@ -47,6 +47,33 @@ describe('typed data and supplier insights capability domain', () => {
     }
   });
 
+  it('forwards every official permission package to registry and OpenAPI metadata', async () => {
+    const snapshot = await readSnapshot();
+    const contract = JSON.parse(
+      await readFile(resolve(import.meta.dirname, '../../../openapi/one-vegetable.json'), 'utf8')
+    ) as { 'x-insights-capabilities': Record<string, { permissionGroups: string[] }> };
+
+    for (const { method, permissionGroups } of snapshot.definitions) {
+      expect(Array.isArray(permissionGroups), method).toBe(true);
+      expect(getCapabilityDefinition(method)?.permissionGroups, method).toEqual(permissionGroups);
+      expect(contract['x-insights-capabilities'][method]?.permissionGroups, method).toEqual(permissionGroups);
+    }
+  });
+
+  it('exposes the exact official supplier package without changing read availability', async () => {
+    const method = 'alibaba.procurement.mysupplier.list';
+    const snapshot = await readSnapshot();
+    expect(snapshot.definitions.find((definition) => definition.method === method)?.permissionGroups).toEqual(
+      ['国际站企业集成基础权限包']
+    );
+    expect(getCapabilityDefinition(method)).toMatchObject({
+      permissionGroups: ['国际站企业集成基础权限包'],
+      risk: 'read',
+      restricted: false,
+      realCallEnabled: true
+    });
+  });
+
   it('keeps CGS partner data restricted without disabling ordinary reads', () => {
     expect(getCapabilityDefinition('alibaba.mydata.self.query.cgsokk')).toMatchObject({
       restricted: true,
@@ -58,6 +85,10 @@ describe('typed data and supplier insights capability domain', () => {
       realCallEnabled: true
     });
     expect(getCapabilityDefinition('alibaba.procurement.mysupplier.list')).toMatchObject({
+      restricted: false,
+      realCallEnabled: true
+    });
+    expect(getCapabilityDefinition('alibaba.procurement.supplier.items.get')).toMatchObject({
       restricted: false,
       realCallEnabled: true
     });

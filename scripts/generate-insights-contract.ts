@@ -34,6 +34,7 @@ interface InsightsDefinition {
   featureArea: 'performance' | 'partnerData' | 'suppliers' | 'supplierProducts';
   restricted: boolean;
   restrictionReason: string | null;
+  permissionGroups?: string[];
   checkedAt: string;
   updatedAt: string | null;
   requestParams: ParamNode[];
@@ -204,6 +205,7 @@ for (const definition of snapshot.definitions) {
     realCallEnabled: !definition.restricted && definition.risk === 'read',
     restricted: definition.restricted,
     restrictionReason: definition.restrictionReason,
+    permissionGroups: definition.permissionGroups ?? [],
     checkedAt: definition.checkedAt,
     updatedAt: definition.updatedAt,
     title: definition.title,

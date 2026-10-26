@@ -17,6 +17,7 @@
       "restricted": false,
       "restrictionReason": null,
       "labels": ["￥开放平台免费API", "必须用户授权"],
+      "permissionGroups": ["ICBU-搜索"],
       "checkedAt": "2026-08-13",
       "updatedAt": "2026-06-30",
       "requestParams": [],
@@ -78,6 +79,7 @@
       "restricted": true,
       "restrictionReason": "仅面向 CGS 小满签约客户，且业务参数要求独立 app_secret；默认关闭并禁止在页面填写密钥",
       "labels": ["￥开放平台免费API", "不需用户授权"],
+      "permissionGroups": [],
       "checkedAt": "2026-08-13",
       "updatedAt": "2021-11-23",
       "requestParams": [
@@ -194,6 +196,7 @@
       "restricted": false,
       "restrictionReason": null,
       "labels": ["￥开放平台免费API", "必须用户授权"],
+      "permissionGroups": ["国际站企业集成基础权限包"],
       "checkedAt": "2026-08-13",
       "updatedAt": "2018-10-31",
       "requestParams": [
@@ -307,6 +310,7 @@
       "restricted": false,
       "restrictionReason": null,
       "labels": ["￥开放平台免费API", "必须用户授权"],
+      "permissionGroups": ["国际站企业集成基础权限包"],
       "checkedAt": "2026-08-13",
       "updatedAt": "2018-10-31",
       "requestParams": [

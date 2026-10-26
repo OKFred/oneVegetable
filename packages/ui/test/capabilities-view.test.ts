@@ -69,6 +69,27 @@ function bodyText(): string {
 }
 
 describe('CapabilitiesView platform safeguards', () => {
+  it.each(['mock', 'extension'] as const)(
+    'shows official supplier prerequisites in %s without invoking the platform',
+    async (mode) => {
+      const requests = vi.spyOn(MockGatewayClient.prototype, 'request');
+      const wrapper = mountView(mode);
+      try {
+        await flushPromises();
+        const method = 'alibaba.procurement.mysupplier.list';
+        await filterMethod(wrapper, method);
+        await methodButton(wrapper, method).trigger('click');
+        await vi.waitFor(() => {
+          expect(bodyText()).toContain('国际站企业集成基础权限包');
+        });
+        expect(requests.mock.calls.some(([operation]) => operation === 'callCapability')).toBe(false);
+        expect(document.body.querySelector('[data-testid="capability-result"]')).toBeNull();
+      } finally {
+        wrapper.unmount();
+        requests.mockRestore();
+      }
+    }
+  );
   it.each([
     ['alibaba.icbu.product.list', false],
     ['alibaba.icbu.product.get', true],

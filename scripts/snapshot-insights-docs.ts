@@ -1,6 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+import { extractApiPermissionGroups } from './lib/api-permission-groups';
+
 interface AuditEntry {
   method: string;
   domain: string;
@@ -145,6 +147,7 @@ for (const method of methods) {
     restricted: override?.restricted ?? auditEntry.restricted,
     restrictionReason: override?.restrictionReason ?? auditEntry.restrictionReason,
     labels: labelsOf(document),
+    permissionGroups: extractApiPermissionGroups(document.applyScopes),
     checkedAt: audit.checkedAt,
     updatedAt:
       typeof document.gmtModified === 'number'

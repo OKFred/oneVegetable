@@ -27,6 +27,9 @@ export const INSIGHTS_CAPABILITY_DEFINITIONS = {
     "realCallEnabled": true,
     "restricted": false,
     "restrictionReason": null,
+    "permissionGroups": [
+      "ICBU-搜索"
+    ],
     "checkedAt": "2026-08-13",
     "updatedAt": "2026-06-30",
     "title": "获取供应商全站排名(百分比)",
@@ -56,6 +59,7 @@ export const INSIGHTS_CAPABILITY_DEFINITIONS = {
     "realCallEnabled": false,
     "restricted": true,
     "restrictionReason": "仅面向 CGS 小满签约客户，且业务参数要求独立 app_secret；默认关闭并禁止在页面填写密钥",
+    "permissionGroups": [],
     "checkedAt": "2026-08-13",
     "updatedAt": "2021-11-23",
     "title": "CGS小满签约客户数据查询",
@@ -92,6 +96,9 @@ export const INSIGHTS_CAPABILITY_DEFINITIONS = {
     "realCallEnabled": true,
     "restricted": false,
     "restrictionReason": null,
+    "permissionGroups": [
+      "国际站企业集成基础权限包"
+    ],
     "checkedAt": "2026-08-13",
     "updatedAt": "2018-10-31",
     "title": "获取曾经下过信保订单的供应商列表",
@@ -129,6 +136,9 @@ export const INSIGHTS_CAPABILITY_DEFINITIONS = {
     "realCallEnabled": true,
     "restricted": false,
     "restrictionReason": null,
+    "permissionGroups": [
+      "国际站企业集成基础权限包"
+    ],
     "checkedAt": "2026-08-13",
     "updatedAt": "2018-10-31",
     "title": "买家通过供应商id，获取曾经下过订单的商品",
