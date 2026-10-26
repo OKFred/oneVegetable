@@ -124,8 +124,21 @@ export async function exerciseModeMenus(
     'settings'
   ]) {
     // A document navigation installs the observer before app startup, not after client construction.
-    await page.goto(base + '?regression=' + encodeURIComponent(route) + '#/' + route);
-    await page.waitForSelector('h1, h2', { timeout: 30_000 });
+    console.log(JSON.stringify({ mode, page: route, phase: 'opening' }));
+    try {
+      await page.goto(base + '?regression=' + encodeURIComponent(route) + '#/' + route, {
+        waitUntil: 'domcontentloaded'
+      });
+      await page.waitForSelector('h1, h2', { timeout: 30_000 });
+    } catch (error) {
+      throw new Error(
+        'UI_MENU_OPEN_FAILED:' +
+          route.replaceAll('/', '_') +
+          ':' +
+          (error instanceof Error ? error.name : 'unknown'),
+        { cause: error }
+      );
+    }
     if (route === 'insights')
       await page.getByRole('button', { name: /^(采购供应商|Purchasing suppliers)$/u }).click();
     await delay(1200);

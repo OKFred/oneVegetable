@@ -248,6 +248,8 @@ await main().catch((error: unknown) => {
     JSON.stringify({
       failure: 'MV3_AUTHORIZATION_MODE_REGRESSION_FAILED',
       kind: error instanceof Error ? error.name : 'unknown',
+      detail:
+        error instanceof Error && /^UI_MENU_[A-Z0-9_:]+$/iu.test(error.message) ? error.message : undefined,
       location:
         error instanceof Error
           ? error.stack
