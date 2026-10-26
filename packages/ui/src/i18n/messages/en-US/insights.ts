@@ -17,7 +17,7 @@ export const insights = {
   description:
     'Combines site-wide supplier rankings with historical Trade Assurance purchasing relationships. Raw responses are normalized only in adapters, and long IDs are never converted to JavaScript numbers.',
   disclaimer:
-    'Results are shown exactly according to official fields. Ranking percentages are not interpreted as an official business diagnosis or supplier quality signal. Supplier purchasing APIs require an authorized buyer identity; without permission, only the local contract demo is available.',
+    'Results are shown exactly according to official fields. Ranking percentages are not interpreted as an official business diagnosis or supplier quality signal. Supplier purchasing APIs require an authorized buyer identity. Permission failures show the platform response without switching to mock data.',
   workspaceLabel: 'Insights workspace',
   latestRank: 'Latest site-wide ranking percentage',
   rankExplanation:
@@ -26,6 +26,7 @@ export const insights = {
   noRank: 'No ranking data.',
   historicalSuppliers: 'Historical Trade Assurance suppliers',
   supplierCount: '{count}',
+  supplierCountUnknown: 'Count unknown',
   encryptedOnly: 'The API returns only encrypted supplier IDs, so company names are not fabricated.',
   dateFilter: 'Historical order date filter',
   startDate: 'Start date',

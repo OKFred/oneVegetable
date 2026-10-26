@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/video/iop.json';
+import rejections from '../../../mock/data/video/iop-rejections.json';
 import { AlibabaClient } from '../src/alibaba-client';
 import { createIopBusinessRequest, normalizeIopBusinessResponse } from '../src/alibaba-iop-business';
 import { IOP_BUSINESS_ENDPOINT } from '../src/alibaba-iop';
 import { adaptIopVideoPage, VideoAdapter } from '../src/video';
 import { validateVideoPage } from '../src/generated/validators-video';
-import { NetworkManager } from '../src/network';
+import { NetworkManager, type NetworkTransport } from '../src/network';
 
 const method = 'alibaba.icbu.video.query';
 const credentials = {
@@ -19,6 +20,27 @@ const credentials = {
 const request = { page: 1, pageSize: 20 as const };
 
 describe('IOP video reads keep native ID and response semantics', () => {
+  it.each([
+    [rejections.outer, 'ALIBABA_IOP_API_REJECTED', 'fixture-outer-video'],
+    [rejections.business, 'ALIBABA_IOP_BUSINESS_REJECTED', 'fixture-business-video']
+  ] as const)(
+    'distinguishes outer and business rejection without losing provider traces',
+    async (response, code, traceId) => {
+      const send = vi.fn<NetworkTransport['send']>().mockResolvedValue(Response.json(response));
+      const client = new AlibabaClient(
+        credentials,
+        new NetworkManager({
+          transport: { send },
+          policies: { alibaba: { allowedOrigins: ['https://openapi-api.alibaba.com'] } }
+        }),
+        { maxAttempts: 3 }
+      );
+      await expect(client.call(method, { current_page: 1, page_size: 20 })).rejects.toMatchObject({
+        gatewayError: { code, subCode: '10000002', traceId, retryable: false }
+      });
+      expect(send).toHaveBeenCalledTimes(1);
+    }
+  );
   it('uses the public numeric ID parameter and rejects unsupported title filters', async () => {
     const input = { current_page: 1, page_size: 20, id: 900002 };
     const result = await createIopBusinessRequest(credentials, method, input);

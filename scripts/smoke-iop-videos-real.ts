@@ -70,6 +70,9 @@ const report = {
   requests: 0,
   errorCode: null as string | null,
   subCode: null as string | null,
+  providerTraceId: null as string | null,
+  requestMethod: 'POST',
+  requestContentType: 'application/x-www-form-urlencoded',
   providerMessage: null as string | null,
   responseIssues: [] as string[],
   playbackTested: false
@@ -77,6 +80,7 @@ const report = {
 try {
   const page = await adapter.list({ page: 1, pageSize: 20 });
   report.count = page.items.length;
+  report.providerTraceId = page.traceId || null;
   report.responseIssues = page.issues;
   report.status = page.items.length ? 'passed' : 'no-data';
   const id = page.items[0]?.id;
@@ -92,7 +96,8 @@ try {
   report.status = 'failed';
   report.errorCode = error.code;
   report.subCode = error.subCode ?? null;
-  if (error.code === 'ALIBABA_IOP_API_REJECTED') {
+  report.providerTraceId = error.traceId ?? null;
+  if (['ALIBABA_IOP_API_REJECTED', 'ALIBABA_IOP_BUSINESS_REJECTED'].includes(error.code)) {
     let message = error.message;
     for (const secret of [credentials.appKey, credentials.appSecret, credentials.accessToken])
       if (secret) message = message.replaceAll(secret, '[redacted]');

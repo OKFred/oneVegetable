@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AlibabaClient } from '../src/alibaba-client';
 import { InsightsAdapter } from '../src/insights-adapter';
+import failures from '../../../mock/data/insights-failures.json';
 
 function response(method: string, body: Record<string, unknown>) {
   return {
@@ -11,6 +12,35 @@ function response(method: string, body: Record<string, unknown>) {
 }
 
 describe('InsightsAdapter', () => {
+  it.each([failures.malformed, failures.missingSuccess, failures.missingTotal, failures.negativeTotal])(
+    'does not interpret incomplete supplier data as a successful empty page',
+    async (body) => {
+      const call = vi.fn<AlibabaClient['call']>((method) => Promise.resolve(response(method, body)));
+      await expect(new InsightsAdapter({ call }).listSuppliers({})).rejects.toMatchObject({
+        gatewayError: { code: 'INSIGHTS_RESPONSE_INVALID' }
+      });
+    }
+  );
+  it('preserves explicit rejection separately from malformed data', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, failures.rejected))
+    );
+    await expect(new InsightsAdapter({ call }).listSuppliers({})).rejects.toMatchObject({
+      gatewayError: { code: 'INSIGHTS_PROVIDER_REJECTED', subCode: 'fixture-business-denied' }
+    });
+  });
+  it('accepts an explicitly confirmed empty supplier result', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) => Promise.resolve(response(method, failures.empty)));
+    await expect(new InsightsAdapter({ call }).listSuppliers({})).resolves.toEqual(failures.emptyPage);
+  });
+  it('requires an explicit total and success when loading historical supplier products', async () => {
+    const call = vi.fn<AlibabaClient['call']>((method) =>
+      Promise.resolve(response(method, failures.missingTotal))
+    );
+    await expect(
+      new InsightsAdapter({ call }).listSupplierProducts({ supplierId: 'supplier-fixture' })
+    ).rejects.toMatchObject({ gatewayError: { code: 'INSIGHTS_RESPONSE_INVALID' } });
+  });
   it('normalizes the supplier rank time series without inventing a trend direction', async () => {
     const call = vi.fn<AlibabaClient['call']>((method) =>
       Promise.resolve(

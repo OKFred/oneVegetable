@@ -1,0 +1,8 @@
+{
+  "outer": { "code": "10000002", "message": "illegal param error", "request_id": "fixture-outer-video" },
+  "business": {
+    "code": "0",
+    "request_id": "fixture-business-video",
+    "result": { "msg_code": "10000002", "msg_info": "illegal param error" }
+  }
+}

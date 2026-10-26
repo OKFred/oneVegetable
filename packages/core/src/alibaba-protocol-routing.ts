@@ -73,6 +73,9 @@ export function selectAlibabaOperationProtocol(
         : []
       : iopOperationMethods(operation);
   const method = methods[0];
+  // The generic TOP contract takes an obfuscated ID, even when its text happens to be numeric.
+  // The workbench operation has a canonical plaintext ID and may still use the verified IOP read.
+  if (operation === 'callCapability' && method === 'alibaba.icbu.product.score.get') return 'top';
   if (operation === 'callCapability' && method === 'alibaba.icbu.photobank.list') {
     const parameters = record(input.parameters);
     if (parameters.location_type !== 'SUB_GROUP' || parameters.group_id === undefined) return 'top';

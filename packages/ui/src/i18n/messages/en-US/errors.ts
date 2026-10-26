@@ -3,6 +3,14 @@ const authorizationChanged =
 
 export const errors = {
   codes: {
+    INSIGHTS_RESPONSE_INVALID:
+      'The platform did not return complete, explicitly successful supplier data. The count is unavailable, not zero.',
+    INSIGHTS_PROVIDER_REJECTED:
+      'The platform rejected the supplier query. Check its response; the request will not be retried through another protocol.',
+    PRODUCT_SCORE_IDENTIFIER_UNAVAILABLE:
+      'The TOP obfuscated identifier is unavailable. Reload the product list before checking its score; the plaintext ID will not be substituted.',
+    PRODUCT_SCORE_RESPONSE_INVALID:
+      'The platform did not return a valid product score. This result is unavailable and will not be shown as zero.',
     ALIBABA_IOP_AUTHORIZATION_REQUIRED:
       'This reference requires IOP authorization. Configure IOP in Settings; your existing TOP authorization and default protocol remain unchanged.',
     TOP_APPLICATION_REQUIRED:

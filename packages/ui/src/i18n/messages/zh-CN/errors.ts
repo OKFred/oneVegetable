@@ -2,6 +2,11 @@ const authorizationChanged = '授权已变化，请重新读取两份配置并�
 
 export const errors = {
   codes: {
+    INSIGHTS_RESPONSE_INVALID: '平台未返回完整、明确成功的供应商数据，结果不可用，不代表数量为零。',
+    INSIGHTS_PROVIDER_REJECTED: '平台未受理供应商查询。请查看平台返回的原因，不会改用另一协议重试。',
+    PRODUCT_SCORE_IDENTIFIER_UNAVAILABLE:
+      '未取得该商品的 TOP 混淆标识。请重新读取商品列表后再查询产品分；不会使用明文 ID 代替。',
+    PRODUCT_SCORE_RESPONSE_INVALID: '平台未返回有效产品分，本次结果不可用，不会按零分显示。',
     ALIBABA_IOP_AUTHORIZATION_REQUIRED:
       '此参考功能需要 IOP 授权。请在设置中配置 IOP；已有 TOP 授权和默认协议不会改变。',
     TOP_APPLICATION_REQUIRED:

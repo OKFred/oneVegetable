@@ -263,8 +263,10 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
             <Building2 class="size-4 text-primary" />
             <h2 class="font-semibold">{{ t('insights.historicalSuppliers') }}</h2>
           </div>
-          <Badge variant="outline">{{
-            t('insights.supplierCount', { count: suppliers.data.value?.total ?? 0 })
+          <Badge data-testid="insights-supplier-count" variant="outline">{{
+            suppliers.isSuccess.value && !suppliers.isFetching.value && suppliers.data.value
+              ? t('insights.supplierCount', { count: suppliers.data.value.total })
+              : t('insights.supplierCountUnknown')
           }}</Badge>
         </div>
         <p class="mt-2 text-xs text-muted-foreground">{{ t('insights.encryptedOnly') }}</p>

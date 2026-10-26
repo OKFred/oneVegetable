@@ -6,6 +6,8 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { GatewayException, type GatewayClient, type ResponseOf } from '@one-vegetable/core';
+import failures from '../../../mock/data/insights-failures.json';
 
 import { provideServices } from '../src/lib/services';
 import InsightsView from '../src/views/InsightsView.vue';
@@ -18,11 +20,11 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function mountView(mode: 'mock' | 'extension' = 'mock') {
+function mountView(mode: 'mock' | 'extension' = 'mock', gateway: GatewayClient = new MockGatewayClient(0)) {
   const Host = defineComponent({
     setup() {
       provideServices({
-        gateway: new MockGatewayClient(0),
+        gateway,
         settings: { load: () => Promise.resolve(settings()), save: () => Promise.resolve() },
         mode
       });
@@ -43,6 +45,29 @@ function button(wrapper: ReturnType<typeof mountView>, text: string) {
 }
 
 describe('InsightsView', () => {
+  it.each(['pending', 'failed', 'empty'] as const)(
+    'distinguishes %s supplier counts from zero',
+    async (state) => {
+      const base = new MockGatewayClient(0);
+      const gateway: GatewayClient = {
+        async request(operation, payload) {
+          if (operation !== 'listInsightsSuppliers') return base.request(operation, payload);
+          if (state === 'failed') throw new GatewayException(failures.upstreamError);
+          if (state === 'pending') return new Promise<ResponseOf<typeof operation>>(() => undefined);
+          return failures.emptyPage;
+        }
+      };
+      const wrapper = mountView('extension', gateway);
+      await button(wrapper, '采购供应商').trigger('click');
+      await vi.waitFor(() => {
+        expect(wrapper.get('[data-testid="insights-supplier-count"]').text()).toBe(
+          state === 'empty' ? '0 个' : '数量未知'
+        );
+      });
+      if (state === 'failed') expect(wrapper.text()).not.toContain('0 个');
+      wrapper.unmount();
+    }
+  );
   it('applies date filters only after confirmation and rejects reversed ranges', async () => {
     const requests = vi.spyOn(MockGatewayClient.prototype, 'request');
     const wrapper = mountView();

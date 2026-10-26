@@ -1396,7 +1396,7 @@ async function executeOperation(
       return products.createGroup(validation.data);
     }
     case 'getProductScore':
-      return products.getScore(requiredString(request, 'productId'));
+      return products.getScoreForProduct(requiredString(request, 'productId'));
     case 'listRfqs':
       return rfqs.list(payload as RequestOf<'listRfqs'>);
     case 'listRecommendedRfqs':

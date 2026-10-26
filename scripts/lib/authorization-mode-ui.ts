@@ -126,9 +126,18 @@ export async function exerciseModeMenus(
     // A document navigation installs the observer before app startup, not after client construction.
     await page.goto(base + '?regression=' + encodeURIComponent(route) + '#/' + route);
     await page.waitForSelector('h1, h2', { timeout: 30_000 });
+    if (route === 'insights')
+      await page.getByRole('button', { name: /^(采购供应商|Purchasing suppliers)$/u }).click();
     await delay(1200);
     const started = Date.now();
     while (pending.size && Date.now() - started < 90_000) await delay(200);
+    if (route === 'insights' && pending.size === 0) {
+      const read = results.findLast((item) => item.operation === 'listInsightsSuppliers');
+      if (!read) throw new Error('SUPPLIER_READ_NOT_OBSERVED');
+      const count = await page.getByTestId('insights-supplier-count').innerText();
+      const unknown = /^(数量未知|Count unknown)$/u.test(count.trim());
+      if ((read.status === 'passed') === unknown) throw new Error('SUPPLIER_COUNT_NOT_CORRELATED_WITH_READ');
+    }
     pages.push({
       route,
       heading: await page.locator('h1, h2').first().isVisible(),

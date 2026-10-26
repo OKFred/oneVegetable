@@ -1,4 +1,5 @@
 import type { AlibabaClient } from './alibaba-client';
+import { GatewayException } from './errors';
 import type {
   InsightsSupplierPage,
   InsightsSupplierProduct,
@@ -36,12 +37,13 @@ export class InsightsAdapter {
       type: 'order'
     });
     const result = findRecordAt(unwrap(call.data, call.method), 'result') ?? {};
-    assertSuccess(result, '供应商列表查询失败');
+    assertSuccess(result);
+    const total = requireTotal(result, 'total_item');
     return {
       supplierIds: readStringArray(result, ['supplier_id_enc_list']),
       page: (readInteger(result, ['curr_page']) ?? page - 1) + 1,
       pageSize: readInteger(result, ['page_size']) ?? pageSize,
-      total: readInteger(result, ['total_item']) ?? 0
+      total
     };
   }
 
@@ -68,13 +70,14 @@ export class InsightsAdapter {
       }
     });
     const result = findRecordAt(unwrap(call.data, call.method), 'result') ?? {};
-    assertSuccess(result, '供应商商品查询失败');
+    assertSuccess(result);
+    const total = requireTotal(result, 'total_order_count');
     const items = findRecords(result, ['product_list']).map(normalizeProduct);
     return {
       items,
       page: (readInteger(result, ['curr_page']) ?? page - 1) + 1,
       pageSize: readInteger(result, ['page_size']) ?? pageSize,
-      total: readInteger(result, ['total_order_count']) ?? items.length
+      total
     };
   }
 }
@@ -116,9 +119,27 @@ function timestampOf(value: string | undefined, field: string): number | undefin
   return timestamp;
 }
 
-function assertSuccess(result: Record<string, unknown>, fallback: string): void {
-  if (readBoolean(result, ['success']) !== false) return;
-  throw new Error(readString(result, ['error_msg', 'error_code']) ?? fallback);
+function assertSuccess(result: Record<string, unknown>): void {
+  const success = readBoolean(result, ['success']);
+  if (success === true) return;
+  const code = success === false ? 'INSIGHTS_PROVIDER_REJECTED' : 'INSIGHTS_RESPONSE_INVALID';
+  const subCode = readString(result, ['error_code']);
+  throw new GatewayException({
+    code,
+    message: success === false ? (readString(result, ['error_msg']) ?? code) : code,
+    ...(subCode ? { subCode } : {}),
+    retryable: false
+  });
+}
+
+function requireTotal(result: Record<string, unknown>, key: string): number {
+  const total = readInteger(result, [key]);
+  if (total !== undefined && Number.isSafeInteger(total) && total >= 0) return total;
+  throw new GatewayException({
+    code: 'INSIGHTS_RESPONSE_INVALID',
+    message: 'INSIGHTS_RESPONSE_INVALID',
+    retryable: false
+  });
 }
 
 function unwrap(value: unknown, method: string): Record<string, unknown> {

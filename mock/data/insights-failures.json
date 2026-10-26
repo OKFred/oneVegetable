@@ -1,0 +1,29 @@
+{
+  "empty": {
+    "result": {
+      "success": true,
+      "curr_page": 0,
+      "page_size": 10,
+      "total_item": 0,
+      "supplier_id_enc_list": []
+    }
+  },
+  "emptyPage": { "supplierIds": [], "page": 1, "pageSize": 10, "total": 0 },
+  "missingSuccess": { "result": { "curr_page": 0, "page_size": 10, "total_item": 0 } },
+  "missingTotal": { "result": { "success": true, "supplier_id_enc_list": [] } },
+  "malformed": {},
+  "negativeTotal": { "result": { "success": true, "total_item": -1 } },
+  "rejected": {
+    "result": {
+      "success": false,
+      "error_code": "fixture-business-denied",
+      "error_msg": "Fixture supplier request rejected"
+    }
+  },
+  "upstreamError": {
+    "code": "15",
+    "subCode": "isp.top-remote-connection-error",
+    "message": "Upstream service unavailable",
+    "retryable": false
+  }
+}

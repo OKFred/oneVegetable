@@ -4,6 +4,7 @@ import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.js
 import showcaseFixture from '../../../mock/data/showcase-management.json';
 import skuFixture from '../../../mock/data/product-sku-inventory.json';
 import referenceFixture from '../../../mock/data/product-reference/examples.json';
+import scoreFixture from '../../../mock/data/product-score-protocols.json';
 import { ProductReferenceClient, IOP_REFERENCE_METHODS } from '@one-vegetable/core/product-reference';
 import { BffGatewayClient } from '@one-vegetable/core';
 import { galleryGatewayId, opaqueGalleryId } from '@one-vegetable/core/gallery-transfer-context';
@@ -81,6 +82,91 @@ function present<T>(value: T | null | undefined): T {
 }
 
 describe('independent TOP and IOP credentials', () => {
+  it.each(['top-only', 'iop-only', 'dual-top', 'dual-iop'] as const)(
+    'keeps score identifiers and operation contexts correlated in %s',
+    async (mode) => {
+      const preferred = mode === 'iop-only' || mode === 'dual-iop' ? 'iop' : 'top';
+      const { dual, db } = await harness(undefined, preferred);
+      if (mode === 'top-only') await (await dual.service('iop')).clear(1);
+      if (mode === 'iop-only') await (await dual.service('top')).clear(1);
+      const seen: string[] = [];
+      const send = vi.fn<NetworkTransport['send']>((input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        const form =
+          init.body instanceof URLSearchParams
+            ? init.body
+            : new URLSearchParams(typeof init.body === 'string' ? init.body : '');
+        if (mode === 'top-only') {
+          const method = form.get('method') ?? '';
+          expect(url.origin).toBe('https://eco.taobao.com');
+          seen.push(method);
+          if (method === 'alibaba.icbu.product.list') {
+            expect(form.get('id')).toBe('410001');
+            return Promise.resolve(
+              Response.json({ alibaba_icbu_product_list_response: scoreFixture.products })
+            );
+          }
+          expect(method).toBe('alibaba.icbu.product.score.get');
+          expect(form.get('product_id')).toBe('opaque-score-fixture');
+          return Promise.resolve(
+            Response.json({ alibaba_icbu_product_score_get_response: scoreFixture.score })
+          );
+        }
+        expect(url.origin).toBe('https://openapi-api.alibaba.com');
+        expect(url.pathname).toBe('/rest/icbu/product/score/get');
+        expect(form.get('product_id')).toBe('410001');
+        expect(form.has('session')).toBe(false);
+        seen.push(url.pathname);
+        return Promise.resolve(Response.json(scoreFixture.iopScore));
+      });
+      const gateway = new CredentialBackedAlibabaGatewayClient(dual, { transport: { send }, maxAttempts: 1 });
+      const auth = new AuthService({
+        repository: new SqlAuthRepository(db.executor),
+        bootstrapToken: 'bootstrap-token'
+      });
+      const session = await auth.bootstrap({
+        requestId: crypto.randomUUID(),
+        bootstrapToken: 'bootstrap-token',
+        username: 'admin',
+        password: 'fixture-password'
+      });
+      const app = createApiApp({
+        runtime: 'node',
+        database: 'sqlite',
+        environment: 'test',
+        gatewayMode: 'real',
+        gateway,
+        authService: auth
+      });
+      const client = new BffGatewayClient({
+        baseUrl: 'http://localhost',
+        transport: {
+          send: async (input, init) =>
+            app.request(input instanceof Request ? input.url : String(input), {
+              ...init,
+              headers: {
+                ...Object.fromEntries(new Headers(init.headers)),
+                Cookie: 'ov_session=' + session.sessionToken
+              }
+            })
+        }
+      });
+      const before = await dual.authorizations();
+      const payload = { productId: '410001' };
+      const context = await client.galleryTransferContext('getProductScore', payload);
+      expect(await client.request('getProductScore', payload, { galleryContext: context })).toEqual({
+        productId: '410001',
+        score: 4.6,
+        issues: []
+      });
+      expect(seen).toEqual(
+        mode === 'top-only'
+          ? ['alibaba.icbu.product.list', 'alibaba.icbu.product.score.get']
+          : ['/rest/icbu/product/score/get']
+      );
+      expect(await dual.authorizations()).toEqual(before);
+    }
+  );
   it('preserves the missing IOP authorization reason through the authenticated context endpoint', async () => {
     const { dual, db } = await harness();
     await (await dual.service('iop')).clear(1);

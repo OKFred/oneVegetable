@@ -154,6 +154,14 @@ export function iopMethodAvailabilityReason(
 ): string | null {
   const definition = typeof method === 'string' ? getIopMethod(method) : undefined;
   if (!definition) return 'ALIBABA_IOP_METHOD_UNSUPPORTED';
+  if (
+    method === 'alibaba.icbu.product.score.get' &&
+    parameters &&
+    ((typeof parameters.product_id !== 'string' && typeof parameters.product_id !== 'number') ||
+      !/^[1-9][0-9]*$/u.test(String(parameters.product_id)) ||
+      !Number.isSafeInteger(Number(parameters.product_id)))
+  )
+    return 'ALIBABA_IOP_PARAMETER_UNSUPPORTED';
   if (definition.verifiedActions && parameters) {
     const request = parameters.photo_group_operation_request;
     if (

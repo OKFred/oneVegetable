@@ -177,6 +177,11 @@ export async function createIopBusinessRequest(
         return { operate: item.operate, inventory_code, inventory: positiveInteger(item.inventory), sku_id };
       })
     };
+  } else if (method === 'alibaba.icbu.product.score.get') {
+    if (Object.keys(input).some((key) => key !== 'product_id'))
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    if (iopMethodReason(method, input)) throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    business = { product_id: positiveInteger(input.product_id) };
   } else if (method === INVENTORY || method === ENCRYPT) {
     if (Object.keys(input).some((key) => key !== 'product_id' && key !== 'language'))
       throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
@@ -429,7 +434,13 @@ export function normalizeIopBusinessResponse(
   if (method === VIDEO_QUERY) {
     const model = root.model;
     if (root.msg_code !== undefined && root.msg_code !== '200' && root.msg_code !== 200)
-      throw providerFailure(root.msg_code, root.msg_info, value.request_id, credentials);
+      throw providerFailure(
+        root.msg_code,
+        root.msg_info,
+        value.request_id,
+        credentials,
+        'ALIBABA_IOP_BUSINESS_REJECTED'
+      );
     if (
       !isRecord(model) ||
       !validTotal(model.current_page) ||

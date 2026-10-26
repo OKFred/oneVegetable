@@ -81,7 +81,11 @@ const RULES: Partial<Record<OperationId, ReadRule>> = {
   listProductCategories: rule(['alibaba.icbu.category.get.new'], ['/rest/icbu/product/category/get'], 65),
   getProductSchema: rule(['alibaba.icbu.product.schema.get'], ['/rest/alibaba/icbu/product/schema/get']),
   renderProductSchema: rule([RENDER], ['/rest/icbu/product/schema/render']),
-  getProductScore: rule(['alibaba.icbu.product.score.get'], ['/rest/icbu/product/score/get']),
+  getProductScore: rule(
+    [PRODUCT_LIST, 'alibaba.icbu.product.score.get'],
+    ['/rest/icbu/product/score/get'],
+    2
+  ),
   getProductInventory: rule(
     ['alibaba.icbu.product.inventory.get', 'alibaba.icbu.product.sku.inventory.get'],
     ['/rest/icbu/product/inventory/get']

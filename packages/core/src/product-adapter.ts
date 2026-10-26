@@ -368,14 +368,36 @@ export class ProductAdapter {
     };
   }
 
+  /** Workbench IDs are plaintext; TOP score.get requires the corresponding obfuscated list ID. */
+  async getScoreForProduct(productId: string): Promise<ProductScore> {
+    if (this.client.protocol === 'iop' || !/^\d+$/u.test(productId)) return this.getScore(productId);
+    const summary = await this.getSummary(productId);
+    if (!summary?.encryptedId?.trim())
+      throw new GatewayException({
+        code: 'PRODUCT_SCORE_IDENTIFIER_UNAVAILABLE',
+        message: 'PRODUCT_SCORE_IDENTIFIER_UNAVAILABLE',
+        retryable: false
+      });
+    const result = await this.getScore(summary.encryptedId);
+    return { ...result, productId };
+  }
+
+  /** Raw API identifier: keep legacy callers that already supply a TOP obfuscated ID working. */
   async getScore(productId: string): Promise<ProductScore> {
     const call = await this.client.call('alibaba.icbu.product.score.get', { product_id: productId });
     const root = unwrap(call.data, call.method);
     const result = asRecord(root.result);
     const issueRecords = findRecords(root, ['issues', 'score_items', 'problem_list']);
+    const score = readNumber(result, ['final_score']) ?? readNumber(root, ['score', 'total_score']);
+    if (score === undefined || score < 0)
+      throw new GatewayException({
+        code: 'PRODUCT_SCORE_RESPONSE_INVALID',
+        message: 'PRODUCT_SCORE_RESPONSE_INVALID',
+        retryable: false
+      });
     return {
       productId,
-      score: readNumber(result, ['final_score']) ?? readNumber(root, ['score', 'total_score']) ?? 0,
+      score,
       issues: issueRecords.map((item) => readString(item, ['message', 'description']) ?? '待优化项')
     };
   }

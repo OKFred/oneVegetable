@@ -17,7 +17,7 @@ export const insights = {
   description:
     '整合供应商全站排名和历史信保采购关系；原始响应只在适配层转换，长 ID 不转为 JavaScript number。',
   disclaimer:
-    '本页结果仅按官方字段展示，不把排名百分比解释成官方经营诊断，也不推断供应商质量。采购供应商接口需要买家授权身份；未获得权限时仅提供本地契约演示。',
+    '本页结果仅按官方字段展示，不把排名百分比解释成官方经营诊断，也不推断供应商质量。采购供应商接口需要买家授权身份；权限不足时显示平台拒绝原因，不切换为模拟数据。',
   workspaceLabel: '洞察工作区',
   latestRank: '最新全站排名百分比',
   rankExplanation:
@@ -26,6 +26,7 @@ export const insights = {
   noRank: '暂无排名数据。',
   historicalSuppliers: '历史信保供应商',
   supplierCount: '{count} 个',
+  supplierCountUnknown: '数量未知',
   encryptedOnly: '官方仅返回加密供应商 ID，不补造公司名称。',
   dateFilter: '历史下单时间筛选',
   startDate: '开始日期',

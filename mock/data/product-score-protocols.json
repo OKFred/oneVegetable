@@ -1,0 +1,24 @@
+{
+  "products": {
+    "products": [
+      { "id": 410001, "product_id": "opaque-score-fixture", "subject": "Unbranded fixture", "display": "Y" }
+    ],
+    "total_item": 1
+  },
+  "missingIdentifier": { "products": [{ "id": 410001, "subject": "Unbranded fixture" }], "total_item": 1 },
+  "wrongProduct": { "products": [{ "id": 410002, "product_id": "other-opaque-fixture" }], "total_item": 1 },
+  "emptyProducts": { "products": [], "total_item": 0 },
+  "score": { "result": { "boutique_tag": 1, "final_score": "4.6" } },
+  "zero": { "result": { "final_score": "0" } },
+  "iopScore": {
+    "code": "0",
+    "result": { "final_score": "4.6", "boutique_tag": 1 },
+    "request_id": "fixture-score-iop"
+  },
+  "invalidScores": [
+    { "result": {} },
+    { "result": { "final_score": "" } },
+    { "result": { "final_score": "not-a-number" } },
+    { "result": { "final_score": "-1" } }
+  ]
+}
