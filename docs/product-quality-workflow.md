@@ -19,12 +19,67 @@ local suggestions. Field navigation is advisory and never edits content.
 ## Implementation and acceptance
 
 - Freeze at most 30 selected current-page products for a read-only assessment.
-- Serial reads, shared five-minute account/protocol/language cache, no automatic
-  retries or protocol fallback. Stop subsequent reads on leave or account change.
+- Serial reads and a shared five-minute account/protocol/language cache. There is
+  no assessment-level automatic rescheduling or protocol fallback; the existing
+  read-only transport retry policy is unchanged. Stop subsequent records on leave
+  or account change.
 - Preserve the assessment in memory while opening the existing editor. Explicit
   rechecks bypass stale caches; scores can lag behind platform review.
 - Retain existing TOP-only, IOP-only, both default-protocol and legacy TOP tests.
 - Real acceptance is read-only. This iteration does not publish, modify inventory,
   change authorizations, merge mainline, deploy Workers or submit the Store.
 
-Implementation and acceptance results will be appended after verification.
+## User flow
+
+1. Select 1–30 products on the current product-list page, then choose **More →
+   Product assessment** (`更多 → 商品体检`). The selection is frozen for this run.
+2. Choose **Start assessment**. Checks run serially and reuse matching cached
+   reads. Stop pauses subsequent checks; it does not cancel an already sent read.
+3. Choose **Review and improve** to open the existing editor. The assessment stays
+   in memory. Platform messages and local suggestions are separate; only unique
+   references to real Schema fields offer field navigation.
+4. Existing save confirmation and mutation jobs are unchanged. After an accepted
+   update, old scores are reference-only. **View save task** opens the exact job.
+5. Use **Recheck score** after platform processing. It bypasses the score cache
+   without submitting any product. Scores can lag behind a confirmed field update.
+6. **Back to assessment** preserves this session's report. Refreshing or leaving
+   the product workspace does not restore a report or resume any write.
+
+## Verified evidence
+
+- Windows `pnpm check`: 373 test files / 3,773 tests passed, OpenAPI and i18n
+  checks passed, Web/API/formal MV3 builds and store compliance passed. The
+  unchanged extension limits remain in force (final MV3: 4,610,591 bytes unpacked).
+- Focused browser tests: Chinese desktop and English/dark 390px viewport both
+  passed the assessment → editor → explicit score recheck → report flow.
+- Isolated real Node BFF: exact product lookup and score reads passed in TOP-only,
+  IOP-only, dual/TOP-default and dual/IOP-default modes (8 checks).
+- Formal MV3 runtime: the same 8 real read checks passed in four isolated profiles.
+  No active credentials were replaced, no tokens renewed and no products modified.
+- In both runtimes, TOP-only scoring used the exact-product lookup then the TOP
+  score method; IOP-only and both dual configurations selected IOP before dispatch.
+  No failures were retried through a different authorization.
+- Private, sanitized receipts are under ignored `artifacts/product-quality-validation/`.
+  The MV3 receipt does not claim native host-permission prompt acceptance.
+
+- Full Web/formal-MV3 regression: 136 tests passed with no retries.
+- Worker isolated replay: 26 tests across 10 files passed; no remote deployment.
+- Existing remote Chrome profile: the new entry opened a frozen one-product
+  assessment, fetched a real 3.9 score, rendered the live Schema, navigated from
+  a local description suggestion to the real detail field, explicitly rechecked
+  the score and returned to the retained report. Original TOP/IOP authorizations
+  remained available and no unlock dialog appeared after reloading.
+- The selected legacy detail was read-only because of unsupported HTML. Field
+  navigation respected that boundary: no automatic conversion, edits or writes.
+- A leftover editor status message on returning to the report was found during
+  manual verification and cleared. Targeted checks and the formal extension
+  rebuild passed after this presentation-only correction, followed by both
+  focused Chinese/English browser flows passing again.
+
+The real checks do not claim a newly executed product-update lifecycle. The
+existing save/job/readback path is reused and covered by regression tests; this
+iteration's real acceptance is deliberately read-only. Score changes are not a
+prerequisite for a successful save and are not automatically polled.
+
+This development branch is not a published release. Store upload, mainline merge
+and Worker deployment remain separate actions.

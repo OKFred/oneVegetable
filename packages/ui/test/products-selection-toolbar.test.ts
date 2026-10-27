@@ -52,6 +52,7 @@ describe('ProductsView selection toolbar', () => {
       expect(wrapper.find('[data-testid="product-quality-workspace"]').exists()).toBe(true);
     });
     expect(wrapper.text()).toContain('4.6');
+    expect(wrapper.text()).not.toContain('已渲染');
     expect(request.mock.calls.some(([op]) => /update|publish|save/i.test(op))).toBe(false);
     wrapper.unmount();
   });

@@ -2410,6 +2410,7 @@ async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
   taskJobId.value = '';
   taskHistoryReadOnly.value = false;
   workspace.value = nextWorkspace;
+  if (nextWorkspace === 'quality') feedback.value = '';
   updateProductHash('push');
 }
 
