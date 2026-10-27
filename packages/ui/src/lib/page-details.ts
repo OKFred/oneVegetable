@@ -18,6 +18,11 @@ const stores = new WeakMap<
   { cache: Map<string, Entry>; pending: Map<string, Promise<Detail>> }
 >();
 
+/** In-flight pre-save reads cannot repopulate the new store after a write. */
+export function invalidatePageDetailCache(gateway: GatewayClient): void {
+  stores.delete(gateway);
+}
+
 export async function pageDetailIdentity(gateway: GatewayClient, mode: string): Promise<string> {
   const context = await gateway.galleryTransferContext?.();
   if (!context && mode !== 'mock') throw new Error('GALLERY_CONTEXT_UNAVAILABLE');

@@ -13,9 +13,9 @@ import associationFixture from '../../mock/data/video/association-core.json' wit
 import type { GalleryTransferContext } from '../../packages/core/src/gallery-transfer-task';
 
 /** Test-only seed: use each runtime's actual current context. Never add test hooks to production. */
-async function seedReceipts(page: Page) {
+async function seedReceipts(page: Page, layout = false) {
   await page.evaluate(
-    async ({ gallery, association }) => {
+    async ({ gallery, association, layout }) => {
       const object = (value: unknown): Record<PropertyKey, unknown> => {
         if (!value || typeof value !== 'object') throw new Error('Missing test host');
         return value as Record<PropertyKey, unknown>;
@@ -63,6 +63,22 @@ async function seedReceipts(page: Page) {
         updateTimeUtc: Date.now(),
         items: gallery.items.map((item) => ({ ...item, status: 'unknown' }))
       };
+      const tasks = layout
+        ? [
+            {
+              ...task,
+              id: 'layout-confirmed',
+              status: 'completed',
+              items: task.items.map((item) => ({ ...item, status: 'confirmed', fileId: 'layout-asset' }))
+            },
+            {
+              ...task,
+              id: 'layout-submitted',
+              items: task.items.map((item) => ({ ...item, status: 'unconfirmed' }))
+            },
+            { ...task, id: 'layout-attention' }
+          ]
+        : [task];
       await new Promise<void>((done, fail) => {
         const request = indexedDB.open('one-vegetable-gallery-transfers-v1', 1);
         request.onupgradeneeded = () => {
@@ -75,7 +91,7 @@ async function seedReceipts(page: Page) {
         request.onsuccess = () => {
           const db = request.result;
           const tx = db.transaction('tasks', 'readwrite');
-          tx.objectStore('tasks').put(task);
+          tasks.forEach((item) => tx.objectStore('tasks').put(item));
           tx.oncomplete = () => {
             db.close();
             done();
@@ -104,7 +120,7 @@ async function seedReceipts(page: Page) {
         })
       );
     },
-    { gallery: galleryFixture, association: associationFixture }
+    { gallery: galleryFixture, association: associationFixture, layout }
   );
 }
 
@@ -155,6 +171,77 @@ test('web task center aggregates existing receipts without replaying work', asyn
   await page.getByRole('link', { name: '任务中心', exact: true }).waitFor();
   await seedReceipts(page);
   await checkCenter(page);
+});
+
+test('web task status labels stay complete on one line across languages and narrow tables', async ({
+  page
+}) => {
+  await page.route(/^https:\/\//u, (route) => route.abort());
+  await page.goto('/#/dashboard');
+  await page.getByRole('link', { name: '\u4efb\u52a1\u4e2d\u5fc3', exact: true }).waitFor();
+  await seedReceipts(page, true);
+  await page.getByRole('link', { name: '\u4efb\u52a1\u4e2d\u5fc3', exact: true }).click();
+  const center = page.getByTestId('unified-task-center');
+  const locales = [
+    [
+      '\u5df2\u786e\u8ba4',
+      '\u5df2\u63d0\u4ea4 / \u5f85\u6838\u5bf9',
+      '\u9700\u5904\u7406 / \u7ed3\u679c\u4e0d\u660e'
+    ],
+    ['Confirmed', 'Submitted / awaiting verification', 'Needs attention / unknown']
+  ];
+  for (const [index, labels] of locales.entries()) {
+    if (index > 0)
+      await page
+        .getByRole('button', { name: /Switch.*English|\u5207\u6362.*\u82f1\u6587|English/ })
+        .first()
+        .click();
+    for (const width of [390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const [rowIndex, id] of ['confirmed', 'submitted', 'attention'].entries()) {
+        const label = labels[rowIndex];
+        if (!label) throw new Error('Missing layout label');
+        const row = center.locator('tbody tr').filter({ hasText: `layout-${id}` });
+        const badge = row.getByText(label, { exact: true });
+        await expect(badge).toBeVisible();
+        const geometry = await badge.evaluate((element) => {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          const text = range.getBoundingClientRect();
+          const box = element.getBoundingClientRect();
+          const cell = element.closest('td')?.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            textHeight: text.height,
+            textWidth: text.width,
+            lineHeight: Number.parseFloat(style.lineHeight),
+            contentWidth:
+              element.clientWidth -
+              Number.parseFloat(style.paddingLeft) -
+              Number.parseFloat(style.paddingRight),
+            fitsCell: !!cell && box.left >= cell.left - 1 && box.right <= cell.right + 1,
+            uncut: element.scrollWidth <= element.clientWidth + 1
+          };
+        });
+        expect(geometry.textHeight, `${label} at ${width}px wraps`).toBeLessThanOrEqual(
+          geometry.lineHeight + 1
+        );
+        expect(geometry.textWidth, `${label} at ${width}px is clipped`).toBeLessThanOrEqual(
+          geometry.contentWidth + 1
+        );
+        expect(geometry.fitsCell, `${label} at ${width}px overlaps another cell`).toBe(true);
+        expect(geometry.uncut).toBe(true);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      if (width === 390) {
+        const scroll = await center.locator('table').evaluate((table) => ({
+          content: table.parentElement?.scrollWidth ?? 0,
+          viewport: table.parentElement?.clientWidth ?? 0
+        }));
+        expect(scroll.content).toBeGreaterThan(scroll.viewport);
+      }
+    }
+  }
 });
 
 test('formal MV3 task center keeps uncertain receipts and reuses the original task dialog', async () => {

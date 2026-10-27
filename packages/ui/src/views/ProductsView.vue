@@ -32,6 +32,11 @@ import { useListIdentityScope } from '../lib/list-identity-scope';
 import type { ProductCategorySuggestion } from '@one-vegetable/core/product-reference';
 import PlatformReadbackNotice from '../components/PlatformReadbackNotice.vue';
 import ProductPhotoSeedPanel from '../components/ProductPhotoSeedPanel.vue';
+import { useProductQuality } from '../composables/use-product-quality';
+const ProductQualityWorkspace = defineAsyncComponent(
+  () => import('../components/ProductQualityWorkspace.vue')
+);
+const ProductQualityReview = defineAsyncComponent(() => import('../components/ProductQualityReview.vue'));
 import { productReadbackNotice } from '../lib/platform-readback-notice';
 const ProductInventoryDrawer = defineAsyncComponent(() => import('../components/ProductInventoryDrawer.vue'));
 const ProductReferenceDrawer = defineAsyncComponent(() => import('../components/ProductReferenceDrawer.vue'));
@@ -125,7 +130,13 @@ import DataTable from '../components/DataTable.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ListActionButton from '../components/ListActionButton.vue';
 import { fieldColumn, productExtraFields } from '../lib/field-columns';
-import { detailErrorState, pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
+import {
+  detailErrorState,
+  pageDetailIdentity,
+  requestPageDetail,
+  usePageDetails,
+  invalidatePageDetailCache
+} from '../lib/page-details';
 import { useGalleryTransfers } from '../lib/gallery-transfer-service';
 import { useProductPhotoHandoff, type ProductPhotoHandoff } from '../lib/product-photo-handoff';
 import PageDetailActions from '../components/PageDetailActions.vue';
@@ -205,7 +216,7 @@ const ProductVideoAssociation = defineAsyncComponent(
   () => import('../components/ProductVideoAssociation.vue')
 );
 
-type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'batch-maintenance' | 'tasks';
+type Workspace = 'list' | 'publisher' | 'batch-publisher' | 'batch-maintenance' | 'tasks' | 'quality';
 type ProductActionConfirmation =
   | { kind: 'product'; draft: boolean; changedNames: string[] }
   | { kind: 'batch-publish'; target: ProductBatchPublishTarget; itemIds: string[] }
@@ -217,7 +228,8 @@ const workspaceIds = new Set<Workspace>([
   'publisher',
   'batch-publisher',
   'batch-maintenance',
-  'tasks'
+  'tasks',
+  'quality'
 ]);
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
@@ -335,6 +347,16 @@ const editing = useUnsavedEditing(
   { enabled: () => workspace.value === 'publisher' && schemaModel.value !== null }
 );
 const editScoreProductId = ref('');
+const productEditor = ref<{ focusReferences(references: string[]): Promise<void> } | null>(null);
+const quality = useProductQuality(
+  gateway,
+  mode,
+  language,
+  computed(() => JSON.stringify([accountBoundary.value, referenceScope.value])),
+  computed(() => workspace.value === 'quality')
+);
+const qualityEditingProductId = ref('');
+let scoreEpoch = 0;
 const schemaError = ref('');
 const feedback = ref('');
 let editorEpoch = 0;
@@ -344,6 +366,8 @@ const editorScoreRefreshNeeded = ref(false);
 const staleScoreIds = new Set<string>();
 function resetEditorSession(input: Parameters<typeof resetSessionModel>[0]): void {
   editorEpoch++;
+  scoreEpoch++;
+  qualityEditingProductId.value = '';
   photoSeed.value = null;
   photoSeedWriteContexts.value = {};
   photoSeedApplied.value = false;
@@ -839,6 +863,9 @@ const publish = useMutation({
     ]);
     if (context.epoch !== editorEpoch) return;
     editorScoreRefreshNeeded.value = true;
+    scoreEpoch++;
+    invalidatePageDetailCache(gateway);
+    quality.invalidate(context.productId);
     if (editScoreProductId.value) staleScoreIds.add(editScoreProductId.value);
     productScore.reset();
     if (editScoreProductId.value)
@@ -965,14 +992,25 @@ const productScore = useMutation({
     productScoreErrors.value = Object.fromEntries(
       Object.entries(productScoreErrors.value).filter(([key]) => key !== productId)
     );
-    return { boundary: detailBoundary.value, epoch: editorEpoch };
+    return { boundary: detailBoundary.value, epoch: editorEpoch, scoreEpoch };
   },
   onSuccess: (result, productId, boundary) => {
-    if (boundary.boundary !== detailBoundary.value || boundary.epoch !== editorEpoch) return;
+    if (
+      boundary.boundary !== detailBoundary.value ||
+      boundary.epoch !== editorEpoch ||
+      boundary.scoreEpoch !== scoreEpoch
+    )
+      return;
     productScores.value = { ...productScores.value, [productId]: result };
+    quality.record(productId, result);
   },
   onError: (error, productId, boundary) => {
-    if (boundary?.boundary !== detailBoundary.value || boundary.epoch !== editorEpoch) return;
+    if (
+      boundary?.boundary !== detailBoundary.value ||
+      boundary.epoch !== editorEpoch ||
+      boundary.scoreEpoch !== scoreEpoch
+    )
+      return;
     productScoreErrors.value = { ...productScoreErrors.value, [productId]: errorMessage(error) };
   }
 });
@@ -1025,21 +1063,19 @@ const pageDetails = usePageDetails(
   detailBoundary,
   (row) => row.id,
   async (row, identity) => {
-    if (!row.encryptedId) throw new Error('PRODUCT_ENCRYPTED_ID_MISSING');
     const result = await requestPageDetail(
       gateway,
       mode,
       language.value,
-      { kind: 'score', id: row.encryptedId },
+      { kind: 'score', id: row.id },
       identity,
-      staleScoreIds.has(row.encryptedId)
+      staleScoreIds.has(row.id)
     );
-    staleScoreIds.delete(row.encryptedId);
+    staleScoreIds.delete(row.id);
     return result;
   },
   (row, data) => {
-    if ('score' in data && row.encryptedId)
-      productScores.value = { ...productScores.value, [row.encryptedId]: data };
+    if ('score' in data) productScores.value = { ...productScores.value, [row.id]: data };
   },
   () => pageDetailIdentity(gateway, mode)
 );
@@ -1074,7 +1110,7 @@ function scheduleVisibleScores(): void {
       (row) =>
         (visibleScoreRegions.value.has(row.id + ':score') ||
           visibleScoreRegions.value.has(row.id + ':issues')) &&
-        row.encryptedId &&
+        row.id &&
         pageDetails.states.value[row.id] !== 'ready' &&
         pageDetails.states.value[row.id] !== 'failed'
     );
@@ -2143,19 +2179,17 @@ const columns = computed<DataColumn<Product>[]>(() => [
 ]);
 
 function scoreForProduct(product: Product): ProductScore | undefined {
-  return product.encryptedId ? productScores.value[product.encryptedId] : undefined;
+  return productScores.value[product.id];
 }
 
 function scoreErrorForProduct(product: Product): string | undefined {
   if (pageDetails.errors.value[product.id])
     return t(`common.columns.${detailErrorState(pageDetails.errors.value[product.id])}`);
-  return product.encryptedId ? productScoreErrors.value[product.encryptedId] : undefined;
+  return productScoreErrors.value[product.id];
 }
 
 async function querySelectedProductScores(): Promise<void> {
-  const targets = selectedProducts.value.filter((product): product is Product & { encryptedId: string } =>
-    Boolean(product.encryptedId)
-  );
+  const targets = selectedProducts.value;
   if (targets.length === 0) {
     feedback.value = t('products.view.errors.scoreMissingId');
     return;
@@ -2338,7 +2372,7 @@ async function selectProductForSchema(product: Product): Promise<void> {
     ...(product.categoryId !== null ? { categoryId: String(product.categoryId) } : {}),
     mode: 'guided'
   });
-  editScoreProductId.value = product.encryptedId ?? '';
+  editScoreProductId.value = product.id;
   schemaError.value = '';
   feedback.value =
     product.categoryId === null
@@ -2376,6 +2410,7 @@ async function setWorkspace(nextWorkspace: Workspace): Promise<void> {
   taskJobId.value = '';
   taskHistoryReadOnly.value = false;
   workspace.value = nextWorkspace;
+  if (nextWorkspace === 'quality') feedback.value = '';
   updateProductHash('push');
 }
 
@@ -2383,6 +2418,40 @@ async function openBatchMaintenance(): Promise<void> {
   if (!selectedProducts.value.length || selectedProducts.value.length > 30) return;
   maintenanceProducts.value = selectedProducts.value.map((product) => ({ ...product }));
   await setWorkspace('batch-maintenance');
+}
+
+async function openProductQuality(): Promise<void> {
+  const selection = selectedProducts.value.map((product) => ({ ...product }));
+  if (selection.length === 0 || selection.length > 30 || quality.reads.busy.value) return;
+  await setWorkspace('quality');
+  if (workspace.value === 'quality') quality.open(selection);
+}
+
+async function editQualityProduct(product: Product): Promise<void> {
+  quality.reads.stop();
+  await selectProductForSchema(product);
+  if (workspace.value !== 'publisher' || editProductId.value !== product.id) return;
+  qualityEditingProductId.value = product.id;
+  const result = quality.results.value[product.id];
+  if (result) {
+    productScores.value = { ...productScores.value, [product.id]: result.score };
+    editorScoreRefreshNeeded.value = result.stale;
+  }
+}
+
+function refreshEditorScore(): void {
+  if (!editScoreProductId.value || productScore.isPending.value) return;
+  editorScoreRefreshNeeded.value = true;
+  productScore.mutate(editScoreProductId.value);
+}
+
+async function openQualityTask(): Promise<void> {
+  const id = currentProductMutationJob.value?.id;
+  if (!id) return;
+  await setWorkspace('tasks');
+  if (workspace.value !== 'tasks') return;
+  taskJobId.value = id;
+  updateProductHash('replace');
 }
 
 function setEditorMode(nextMode: ProductEditorMode): void {
@@ -2669,7 +2738,7 @@ async function loadDraft(): Promise<void> {
     if (epoch !== editorEpoch) return;
     categoryId.value = String(result.categoryId);
     applySchema(result.schemaXml, t('products.view.feedback.draftSchema', { id: result.id }));
-    editScoreProductId.value = result.encryptedId ?? '';
+    editScoreProductId.value = '';
   } catch (error: unknown) {
     if (epoch !== editorEpoch) return;
     schemaError.value = error instanceof Error ? error.message : t('products.view.errors.draftRender');
@@ -2922,6 +2991,16 @@ onBeforeUnmount(() => {
                     :side-offset="6"
                     align="end"
                   >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50"
+                      :disabled="
+                        selectedProducts.length === 0 ||
+                        selectedProducts.length > 30 ||
+                        quality.reads.busy.value
+                      "
+                      @select="openProductQuality"
+                      >{{ t('productQuality.title') }}</DropdownMenuItem
+                    >
                     <DropdownMenuItem
                       class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50"
                       :disabled="selectedProducts.length === 0 || selectedProducts.length > 30"
@@ -3387,7 +3466,30 @@ onBeforeUnmount(() => {
       :language="language"
       :blocked="publish.isPending.value || productMutationBlocksSubmit"
     />
+    <div v-if="qualityEditingProductId && schemaModel" class="mb-4">
+      <Button variant="outline" class="mb-3" @click="setWorkspace('quality')">{{
+        t('productQuality.backReport')
+      }}</Button>
+      <ProductQualityReview
+        :model="schemaModel"
+        :score="
+          productScores[qualityEditingProductId] ?? quality.results.value[qualityEditingProductId]?.score
+        "
+        :stale="
+          (quality.results.value[qualityEditingProductId]?.stale ?? false) ||
+          Boolean(currentProductMutationJob && currentProductMutationJob.status !== 'verified')
+        "
+        :pending="productScore.isPending.value"
+        :error="productScore.error.value"
+        :issues="qualityIssues"
+        :task-id="currentProductMutationJob?.id"
+        @locate="productEditor?.focusReferences($event)"
+        @refresh="refreshEditorScore"
+        @task="openQualityTask"
+      />
+    </div>
     <ProductEditorWizard
+      ref="productEditor"
       v-if="schemaModel"
       :mode="editorMode"
       :step="editorStep"
@@ -3413,7 +3515,7 @@ onBeforeUnmount(() => {
       @update:step="setEditorStep"
       @update-field="updateRootField"
       @image-status="updateImageStatus"
-      @refresh-score="productScore.mutate(editScoreProductId)"
+      @refresh-score="refreshEditorScore"
       @review-visible="checkEditorScore"
       @submit="submitProduct"
     />
@@ -3422,6 +3524,20 @@ onBeforeUnmount(() => {
     }}</Button>
   </template>
 
+  <ProductQualityWorkspace
+    v-else-if="workspace === 'quality'"
+    :products="quality.products.value"
+    :results="quality.results.value"
+    :states="quality.reads.states.value"
+    :errors="quality.reads.errors.value"
+    :busy="quality.reads.busy.value"
+    :done="quality.reads.done.value"
+    :total="quality.reads.total.value"
+    @run="quality.run"
+    @stop="quality.reads.stop"
+    @edit="editQualityProduct"
+    @close="setWorkspace('list')"
+  />
   <ProductBatchMaintenance
     v-else-if="workspace === 'batch-maintenance'"
     ref="maintenanceEditor"

@@ -54,6 +54,11 @@ import { useServices } from '../lib/services';
 import { useAppPreferences } from '../lib/preferences';
 import type { DataColumn } from '../lib/table';
 import { useUnsavedEditing } from '../lib/unsaved-editing';
+import {
+  tradeLogisticsStatusLabel,
+  tradeOrderStatusLabel,
+  tradePaymentStatusLabel
+} from '../lib/trade-status';
 
 type Workspace = 'orders' | 'finance' | 'addresses' | 'assurance';
 type OrderDrawerTab = 'overview' | 'payment';
@@ -245,8 +250,10 @@ function detailValue(row: TradeOrderSummary, field: string): unknown {
     );
   if (field === 'paidAmount')
     return data.fund ? `${data.fund.currency} ${data.fund.paidAmount}` : t('common.columns.missing');
-  if (field === 'paymentStatus') return data.fund?.status ?? t('common.columns.missing');
-  if (field === 'logisticsStatus') return data.logistics?.status ?? t('common.columns.missing');
+  if (field === 'paymentStatus')
+    return data.fund ? tradePaymentStatusLabel(data.fund.status) : t('common.columns.missing');
+  if (field === 'logisticsStatus')
+    return data.logistics ? tradeLogisticsStatusLabel(data.logistics.status) : t('common.columns.missing');
   if (field === 'carrier') return data.logistics?.carrier ?? t('common.columns.missing');
   return data.logistics?.trackingNumber ?? t('common.columns.missing');
 }
@@ -431,7 +438,8 @@ const columns = computed<DataColumn<TradeOrderSummary>[]>(() => [
   {
     accessorKey: 'status',
     header: t('orders.columns.status'),
-    cell: (context) => h(Badge, { variant: 'warning' }, () => context.getValue<string>())
+    cell: (context) =>
+      h(Badge, { variant: 'warning' }, () => tradeOrderStatusLabel(context.getValue<string>()))
   },
   {
     accessorKey: 'modifiedAt',
@@ -856,8 +864,8 @@ onBeforeUnmount(() => {
     <template #toolbar>
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <Badge v-if="selectedOrder" variant="warning">{{
-            publicDetail?.status ?? selectedOrder.status
+          <Badge v-if="selectedOrder" variant="warning" data-testid="order-status-badge">{{
+            tradeOrderStatusLabel(publicDetail?.status ?? selectedOrder.status)
           }}</Badge>
           <Badge v-if="hasPublicDetailSource" variant="outline" data-testid="iop-order-public-source">
             IOP · /alibaba/order/get
@@ -970,7 +978,7 @@ onBeforeUnmount(() => {
               </div>
               <div>
                 <dt class="text-xs text-muted-foreground">{{ t('orders.columns.status') }}</dt>
-                <dd class="mt-1 text-sm">{{ publicDetail.status ?? t('orders.notReturned') }}</dd>
+                <dd class="mt-1 text-sm">{{ tradeOrderStatusLabel(publicDetail.status) }}</dd>
               </div>
               <div>
                 <dt class="text-xs text-muted-foreground">{{ t('orders.drawer.buyer') }}</dt>
@@ -1041,7 +1049,7 @@ onBeforeUnmount(() => {
                 <p class="mt-1 font-semibold">
                   {{ drawerAggregate.fund.currency }} {{ drawerAggregate.fund.paidAmount }}
                 </p>
-                <p class="mt-1 text-sm">{{ drawerAggregate.fund.status }}</p>
+                <p class="mt-1 text-sm">{{ tradePaymentStatusLabel(drawerAggregate.fund.status) }}</p>
               </template>
               <Badge v-else variant="warning" class="mt-2">{{ t('orders.drawer.apiUnavailable') }}</Badge>
             </Card>
@@ -1049,7 +1057,9 @@ onBeforeUnmount(() => {
               <Truck class="mb-2 size-5 text-primary" />
               <p class="text-xs text-muted-foreground">{{ t('orders.drawer.logistics') }}</p>
               <template v-if="drawerAggregate?.logistics">
-                <p class="mt-1 font-semibold">{{ drawerAggregate.logistics.status }}</p>
+                <p class="mt-1 font-semibold">
+                  {{ tradeLogisticsStatusLabel(drawerAggregate.logistics.status) }}
+                </p>
                 <p class="mt-1 text-sm">
                   {{ drawerAggregate.logistics.carrier ?? t('orders.drawer.carrierMissing') }}
                 </p>

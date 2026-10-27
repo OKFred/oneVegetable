@@ -348,7 +348,11 @@ const columns = computed<DataColumn<TaskSummary>[]>(() => [
     id: 'status',
     header: tt('status'),
     cell: ({ row }) =>
-      h(Badge, { variant: statusVariant(row.original) }, () => tt(`states.${row.original.status}`))
+      h('div', { class: 'flex w-max min-w-24' }, [
+        h(Badge, { variant: statusVariant(row.original), class: 'shrink-0 whitespace-nowrap' }, () =>
+          tt(`states.${row.original.status}`)
+        )
+      ])
   },
   { id: 'resource', header: tt('resource'), cell: ({ row }) => row.original.resourceId ?? '—' },
   {
@@ -526,7 +530,9 @@ const columns = computed<DataColumn<TaskSummary>[]>(() => [
     >
       <template v-if="selected">
         <h3 class="break-words font-semibold">{{ selected.title || operation(selected) }}</h3>
-        <Badge class="mt-2" :variant="statusVariant(selected)">{{ tt(`states.${selected.status}`) }}</Badge>
+        <Badge class="mt-2 shrink-0 whitespace-nowrap" :variant="statusVariant(selected)">{{
+          tt(`states.${selected.status}`)
+        }}</Badge>
         <p v-if="selected.accountMatch === 'unknown'" class="my-3 rounded-md border p-3 text-sm">
           <strong>{{ tt('accountUnknown') }}</strong
           ><br />{{ tt('accountUnknownHelp') }}

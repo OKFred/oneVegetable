@@ -243,7 +243,7 @@ describe('OrdersView', () => {
   });
 });
 
-function iopDetailGateway(waitForFailedOrder?: Promise<void>) {
+function iopDetailGateway(waitForFailedOrder?: Promise<void>, publicStatus?: string | null) {
   const gateway = new MockGatewayClient(0);
   const original = gateway.request.bind(gateway);
   const aggregates = Object.values(iopDetailFixture);
@@ -263,7 +263,11 @@ function iopDetailGateway(waitForFailedOrder?: Promise<void>) {
         const aggregate = aggregates.find((candidate) => candidate.order.id === order.id);
         if (!aggregate) return Promise.reject(new Error('Missing fictional aggregate'));
         const pending = order.id === iopDetailFixture.failed.order.id ? waitForFailedOrder : undefined;
-        return Promise.resolve(pending).then(() => structuredClone(aggregate) as unknown as ResponseOf<K>);
+        return Promise.resolve(pending).then(() => {
+          const result = structuredClone(aggregate) as unknown as ResponseOf<'getTradeOrderAggregate'>;
+          if (result.publicDetail && publicStatus !== undefined) result.publicDetail.status = publicStatus;
+          return result;
+        });
       }
       return original(operation, payload);
     }
@@ -310,11 +314,11 @@ describe('OrdersView native IOP public detail', () => {
   });
 
   it.each([
-    ['zh-CN', '买家', '订单金额', '商品名称'],
-    ['en-US', 'Buyer', 'Order amount', 'Product name']
+    ['zh-CN', '买家', '订单金额', '商品名称', '发货中'],
+    ['en-US', 'Buyer', 'Order amount', 'Product name', 'Shipping']
   ] as const)(
     'renders source-labelled readonly detail in %s dark mode without inventing funds',
-    async (locale, buyerLabel, amountLabel, productLabel) => {
+    async (locale, buyerLabel, amountLabel, productLabel, shippingLabel) => {
       localStorage.setItem(
         APP_PREFERENCES_STORAGE_KEY,
         JSON.stringify({ uiLocale: locale, alibabaLanguage: 'en_US', theme: 'dark' })
@@ -330,7 +334,7 @@ describe('OrdersView native IOP public detail', () => {
       expect(card.textContent).toContain(amountLabel);
       expect(card.textContent).toContain(productLabel);
       expect(card.textContent).toContain('Fictional Buyer Alpha');
-      expect(card.textContent).toContain('DELIVERING');
+      expect(card.textContent).toContain(shippingLabel);
       expect(card.textContent).toContain('CAD 124.500');
       expect(card.textContent).toContain('920000000000000001');
       expect(card.textContent).toContain('Fictional reusable sample box');
@@ -748,3 +752,74 @@ function settings() {
     signMethod: 'hmac' as const
   };
 }
+
+describe('OrdersView localized trade status presentation', () => {
+  const wrappers: ReturnType<typeof mountView>[] = [];
+  beforeEach(() => {
+    localStorage.clear();
+    uiI18n.global.locale.value = 'zh-CN';
+    globalThis.history.replaceState(null, '', '#/orders');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Unexpected live request')));
+  });
+  afterEach(() => {
+    for (const wrapper of wrappers.splice(0)) wrapper.unmount();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    uiI18n.global.locale.value = 'zh-CN';
+  });
+
+  it('localizes list, funds and logistics without refetching or changing the request order', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView('mock', gateway);
+    wrappers.push(wrapper);
+    await vi.waitFor(() => {
+      expect(wrapper.get('tbody').text()).toContain('待发货');
+    });
+    expect(wrapper.get('tbody').text()).not.toContain('undeliver');
+    await wrapper.get('tbody tr').trigger('keydown', { key: 'Enter' });
+    await vi.waitFor(() => {
+      expect(detailElement('order-funds').textContent).toContain('已支付');
+      expect(detailElement('order-logistics').textContent).toContain('未发货');
+    });
+    const call = request.mock.calls.find(([operation]) => operation === 'getTradeOrderAggregate');
+    expect(call?.[1]).toMatchObject({ order: { status: 'undeliver' } });
+    const before = request.mock.calls.length;
+    useAppPreferences().uiLocale.value = 'en-US';
+    await vi.waitFor(() => {
+      expect(wrapper.get('tbody').text()).toContain('Awaiting shipment');
+      expect(detailElement('order-funds').textContent).toContain('Paid');
+      expect(detailElement('order-logistics').textContent).toContain('Not shipped');
+    });
+    expect(request.mock.calls).toHaveLength(before);
+  });
+
+  it.each([
+    ['UNPAY', '待付款', 'Awaiting payment'],
+    ['SHIPPED', '未知状态（SHIPPED）', 'Unknown status (SHIPPED)']
+  ])('preserves IOP detail priority for %s and updates its label locally', async (code, chinese, english) => {
+    const gateway = iopDetailGateway(undefined, code);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView('mock', gateway);
+    wrappers.push(wrapper);
+    await openFixtureOrder(wrapper, iopDetailFixture.ready.order.id);
+    await vi.waitFor(() => {
+      expect(detailElement('iop-order-public-detail').textContent).toContain(chinese);
+      const dialog = document.body.querySelector('[role="dialog"]');
+      if (!dialog) throw new Error('Missing order dialog');
+      expect(dialog.querySelector('[data-testid="order-status-badge"]')?.textContent.trim()).toBe(chinese);
+    });
+    const before = request.mock.calls.length;
+    useAppPreferences().uiLocale.value = 'en-US';
+    await vi.waitFor(() => {
+      expect(detailElement('iop-order-public-detail').textContent).toContain(english);
+      const dialog = document.body.querySelector('[role="dialog"]');
+      if (!dialog) throw new Error('Missing order dialog');
+      expect(dialog.querySelector('[data-testid="order-status-badge"]')?.textContent.trim()).toBe(english);
+    });
+    expect(request.mock.calls).toHaveLength(before);
+    const call = request.mock.calls.find(([operation]) => operation === 'getTradeOrderAggregate');
+    expect(call?.[1]).toMatchObject({ order: { status: iopDetailFixture.ready.order.status } });
+  });
+});
