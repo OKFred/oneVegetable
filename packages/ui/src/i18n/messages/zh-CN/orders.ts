@@ -30,6 +30,40 @@ export const orders = {
     actions: '操作'
   },
   view: '查看',
+  statuses: {
+    unknown: '状态未知',
+    unknownCode: '未知状态（{code}）',
+    separator: '、',
+    order: {
+      paying: '买家支付中',
+      relating: '款项关联中',
+      captured: '请款完成',
+      waitConfirmReceipt: '待确认收货',
+      intentionProcessing: '待起草信保订单',
+      waitConfirmModify: '待确认合同修改',
+      tradeUnavailable: '交易不可用',
+      chargeBack: '拒付',
+      frozen: '冻结中'
+    },
+    payment: {
+      unpay: '未支付',
+      paying: '买家支付中',
+      paid: '已支付',
+      captured: '请款完成',
+      relating: '款项关联中',
+      fulfilled: '款项已收齐',
+      failed: '支付失败',
+      canceled: '支付已撤销',
+      closed: '支付单已关闭'
+    },
+    logistics: {
+      undelivered: '未发货',
+      delivering: '发货中',
+      partDelivered: '部分发货',
+      delivered: '已发货',
+      confirmReceipt: '已确认收货'
+    }
+  },
   filters: {
     salesman: '业务员登录账号',
     createDateStart: '创建时间开始',
