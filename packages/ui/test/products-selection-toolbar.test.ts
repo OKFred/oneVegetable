@@ -22,6 +22,39 @@ vi.mock('vue-sonner', () => ({
 }));
 
 describe('ProductsView selection toolbar', () => {
+  it('assesses a frozen current-page selection, opens the existing editor and returns without writes', async () => {
+    const gateway = new MockGatewayClient(0);
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView(gateway);
+    await waitForProducts(wrapper);
+    await wrapper.get('input[aria-label="选择 Portable solar power station 1000W"]').setValue(true);
+    button(wrapper.element as Node, '更多').click();
+    await flushPromises();
+    menuItem('商品体检').click();
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="product-quality-workspace"]').exists()).toBe(true);
+    });
+    expect(request.mock.calls.some(([op]) => op === 'getProductScore')).toBe(false);
+    button(wrapper.element as Node, '开始体检').click();
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('4.6');
+    });
+    expect(request.mock.calls.find(([op]) => op === 'getProductScore')?.[1]).toEqual({
+      productId: '10000001'
+    });
+    button(wrapper.element as Node, '查看问题并完善').click();
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="product-quality-review"]').exists()).toBe(true);
+    });
+    expect(wrapper.text()).toContain('本地完善建议');
+    button(wrapper.element as Node, '返回体检结果').click();
+    await vi.waitFor(() => {
+      expect(wrapper.find('[data-testid="product-quality-workspace"]').exists()).toBe(true);
+    });
+    expect(wrapper.text()).toContain('4.6');
+    expect(request.mock.calls.some(([op]) => /update|publish|save/i.test(op))).toBe(false);
+    wrapper.unmount();
+  });
   it('waits for the initial account before mounting the interactive table', async () => {
     const gateway = new MockGatewayClient(0);
     const request = vi.spyOn(gateway, 'request');
