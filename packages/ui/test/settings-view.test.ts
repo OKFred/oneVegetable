@@ -220,6 +220,57 @@ afterEach(async () => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('keeps imported credentials clean while authorization summaries are still loading', async () => {
+    const editing = new UnsavedEditingService();
+    let finishSummary!: (summary: AlibabaAuthorizationsSummary) => void;
+    const pendingSummary = new Promise<AlibabaAuthorizationsSummary>((resolve) => {
+      finishSummary = resolve;
+    });
+    const authorizations = vi
+      .fn()
+      .mockResolvedValueOnce(safeAuthorizationSummary())
+      .mockReturnValue(pendingSummary);
+    const loadSettings = vi.fn().mockResolvedValue({
+      appKey: '',
+      appSecret: '',
+      accessToken: '',
+      endpoint: ALIBABA_GATEWAY,
+      signMethod: 'hmac'
+    });
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      editing,
+      loadSettings,
+      settings: { authorizations }
+    });
+    await vi.waitFor(() => {
+      expect(authorizations).toHaveBeenCalledOnce();
+    });
+    await flushPromises();
+    loadSettings.mockResolvedValue({
+      appKey: 'saved-fixture-key',
+      appSecret: '',
+      accessToken: '',
+      endpoint: ALIBABA_GATEWAY,
+      signMethod: 'hmac'
+    });
+    const dialog = wrapper.findComponent({ name: 'AlibabaAuthorizationProtocolDialog' }).vm as {
+      $emit(event: 'imported', status: CredentialVaultStatus): void;
+    };
+    dialog.$emit('imported', vaultStatus('unlocked'));
+    await flushPromises();
+    expect(authorizations).toHaveBeenCalledTimes(2);
+    expect(editing.dirty.value).toBe(false);
+    expect(await editing.confirmLeave()).toBe(true);
+    expect(editing.confirmationOpen.value).toBe(false);
+    finishSummary(safeAuthorizationSummary());
+    await flushPromises();
+    expect(editing.dirty.value).toBe(false);
+    await wrapper.get('input[aria-label="App Key"]').setValue('unsaved-later-edit');
+    expect(editing.dirty.value).toBe(true);
+    wrapper.unmount();
+    editing.dispose();
+  });
+
   it('shows authorization skeletons while local settings are pending, without showing setup as ready', async () => {
     let resolve!: (settings: GatewaySettings) => void;
     const pending = new Promise<GatewaySettings>((done) => {
