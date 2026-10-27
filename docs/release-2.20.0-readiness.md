@@ -21,3 +21,9 @@ The installed development candidate is not the formal release receipt. Final CI,
 ## Validation results
 
 Local gate receipts are kept in ignored artifacts/release-2.20.0 and checked before promotion. The immutable tag workflow and published package metadata provide the final release result. No credentials or raw account acceptance records belong in this document.
+
+## Saved authorization import regression
+
+The staging push gate [40490158811](https://github.com/OKFred/oneVegetable/actions/runs/40490158811) exposed a saved-import navigation race. A persisted authorization model remained dirty while asynchronous authorization metadata refreshed, causing the unsaved-edit dialog to block navigation. The clean baseline now follows the persisted model before that refresh.
+
+Regression coverage delays metadata refresh and checks both immediate navigation after saving and protection of subsequent real edits. The original fast-navigation media E2E remains intact. Original failure diagnostics and replacement candidate receipts are retained under ignored release artifacts.

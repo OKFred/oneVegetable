@@ -71,6 +71,18 @@ export const RELEASE_NOTES_DOCUMENT = {
             'en-US':
               'Show localized labels in lists and details using each status domain, translating multiple payment receipts separately. Unknown states retain their original code and are never inferred to be successful.'
           }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '授权导入后保持正确保存状态',
+            'en-US': 'Keep saved authorization imports clean during refresh'
+          },
+          description: {
+            'zh-CN': '已保存的授权导入在刷新列表期间可正常离页，后续真实编辑仍保留未保存保护。',
+            'en-US':
+              'Navigate after a saved authorization import while the authorization list refreshes, retaining unsaved-edit protection for subsequent real edits.'
+          }
         }
       ]
     },
