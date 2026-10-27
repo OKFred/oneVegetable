@@ -4,6 +4,77 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.20.0',
+      releasedAt: '2026-10-27',
+      title: {
+        'zh-CN': '商品体检与状态显示优化',
+        'en-US': 'Product assessment and localized status display'
+      },
+      summary: {
+        'zh-CN':
+          '从商品体检结果定位到对应编辑项，保留回执并支持重新检查；修正 IOP 评分标识，完善任务状态布局及订单、支付、物流状态的中英文显示。',
+        'en-US':
+          'Open the relevant editor from product assessment findings, retain receipts and check again. Correct IOP score identifiers and improve task status layout and localized order, payment and logistics states.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.20.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.19.1...v2.20.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '从体检问题进入编辑',
+            'en-US': 'Open the editor from assessment findings'
+          },
+          description: {
+            'zh-CN':
+              '定位到对应商品和编辑项，返回体检结果时保留回执并可重新检查；不会自动提交商品修改。',
+            'en-US':
+              'Navigate to the matching product and editor field, retain the assessment receipt on return, and check again without automatically submitting product changes.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '修正 IOP 商品评分标识',
+            'en-US': 'Correct IOP product-score identifiers'
+          },
+          description: {
+            'zh-CN':
+              '使用正确的商品标识读取 IOP 评分，沿用既有协议与授权边界，不在请求失败后换协议重试。',
+            'en-US':
+              'Read IOP scores using the correct product identifier while preserving protocol and authorization boundaries. Failed requests do not retry through another protocol.'
+          }
+        },
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '任务状态保持完整单行',
+            'en-US': 'Keep task status labels on one line'
+          },
+          description: {
+            'zh-CN':
+              '任务列表和详情中的状态标签在窄列保留完整文字，支持中英文及小屏浏览，避免“已确认”等标签逐字换行。',
+            'en-US':
+              'Keep task-list and detail status labels complete on narrow columns, including English, Chinese and small screens, instead of wrapping short labels character by character.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '订单、支付与物流状态本地化',
+            'en-US': 'Localize order, payment and logistics states'
+          },
+          description: {
+            'zh-CN':
+              '列表和详情按各自业务含义显示中文或英文，多个支付回执分别翻译；未知状态保留原码并明确提示，不猜测成功。',
+            'en-US':
+              'Show localized labels in lists and details using each status domain, translating multiple payment receipts separately. Unknown states retain their original code and are never inferred to be successful.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.19.1',
       releasedAt: '2026-10-27',
       title: {
