@@ -1,0 +1,15 @@
+{
+  "schemaXml": "<itemSchema><field id=\"productTitle\" name=\"Product title\" type=\"input\"><value>Reusable cup</value></field><field id=\"superText\" name=\"Description\" type=\"input\"><value>Sample description</value></field><field id=\"material\" name=\"Material\" type=\"input\"><value>Glass</value></field></itemSchema>",
+  "score": {
+    "productId": "10000001",
+    "score": 4.6,
+    "issues": ["Improve productTitle", "Review material", "Check image quality"]
+  },
+  "empty": { "productId": "10000001", "score": 0, "issues": [] },
+  "changed": { "productId": "10000001", "score": 4.8, "issues": [] },
+  "unsafe": {
+    "productId": "10000001",
+    "score": 3,
+    "issues": ["<img src=x onerror=alert(1)><script>alert(1)</script><b>Improve productTitle</b>"]
+  }
+}

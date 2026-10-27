@@ -8,6 +8,7 @@ import { orders } from './orders';
 import { logs } from './logs';
 import { photos } from './photos';
 import { products } from './products';
+import { productQuality } from './productQuality';
 import { releases } from './releases';
 import { reviewPrompt } from './review-prompt';
 import { rfqs } from './rfqs';
@@ -22,6 +23,7 @@ export const zhCN = {
   shell,
   auth,
   products,
+  productQuality,
   photos,
   rfqs,
   orders,

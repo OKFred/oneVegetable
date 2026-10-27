@@ -31,6 +31,40 @@ export const orders = {
     actions: 'Actions'
   },
   view: 'View',
+  statuses: {
+    unknown: 'Unknown status',
+    unknownCode: 'Unknown status ({code})',
+    separator: ', ',
+    order: {
+      paying: 'Buyer payment processing',
+      relating: 'Payment matching in progress',
+      captured: 'Funds captured',
+      waitConfirmReceipt: 'Awaiting receipt confirmation',
+      intentionProcessing: 'Awaiting Trade Assurance draft',
+      waitConfirmModify: 'Awaiting contract change confirmation',
+      tradeUnavailable: 'Trade unavailable',
+      chargeBack: 'Chargeback',
+      frozen: 'Frozen'
+    },
+    payment: {
+      unpay: 'Unpaid',
+      paying: 'Buyer payment processing',
+      paid: 'Paid',
+      captured: 'Funds captured',
+      relating: 'Payment matching in progress',
+      fulfilled: 'Payment fully collected',
+      failed: 'Payment failed',
+      canceled: 'Payment canceled',
+      closed: 'Payment record closed'
+    },
+    logistics: {
+      undelivered: 'Not shipped',
+      delivering: 'Shipping',
+      partDelivered: 'Partially shipped',
+      delivered: 'Shipped',
+      confirmReceipt: 'Receipt confirmed'
+    }
+  },
   filters: {
     salesman: 'Salesperson login',
     createDateStart: 'Created from',

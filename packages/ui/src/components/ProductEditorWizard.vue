@@ -268,6 +268,7 @@ function findNestedField(field: ProductSchemaField, reference: string): ProductS
   }
   return null;
 }
+defineExpose({ focusReferences });
 </script>
 
 <template>
