@@ -26,8 +26,9 @@ local suggestions. Field navigation is advisory and never edits content.
 - Preserve the assessment in memory while opening the existing editor. Explicit
   rechecks bypass stale caches; scores can lag behind platform review.
 - Retain existing TOP-only, IOP-only, both default-protocol and legacy TOP tests.
-- Real acceptance is read-only. This iteration does not publish, modify inventory,
-  change authorizations, merge mainline, deploy Workers or submit the Store.
+- Initial acceptance was read-only. A separately approved title-only round trip
+  is recorded below. No inventory, display status or authorizations are changed;
+  Worker deployment and Store submission remain outside this iteration.
 
 ## User flow
 
@@ -76,10 +77,51 @@ local suggestions. Field navigation is advisory and never edits content.
   rebuild passed after this presentation-only correction, followed by both
   focused Chinese/English browser flows passing again.
 
-The real checks do not claim a newly executed product-update lifecycle. The
-existing save/job/readback path is reused and covered by regression tests; this
-iteration's real acceptance is deliberately read-only. Score changes are not a
-prerequisite for a successful save and are not automatically polled.
+The initial real checks above do not claim a newly executed update lifecycle.
+Score changes are not a prerequisite for a successful save and are not
+automatically polled.
 
-This development branch is not a published release. Store upload, mainline merge
+## CI remediation and controlled update follow-up (2026-10-27)
+
+- The Linux failure trace showed an unsaved-changes modal immediately after a
+  successful authorization import, not a slow Alibaba response. Loading saved
+  settings changed the form before its baseline was reset, while authorization
+  summaries were still loading. The saved baseline now resets before awaiting
+  metadata, with no late reset that could discard subsequent real edits.
+- The new regression fails on the old implementation and passes with the fix.
+  The existing formal-MV3 media-guidance test passed three consecutive runs with
+  unchanged timeouts and no retries. The initial Windows fix passed 3,774 unit
+  tests, complete checks/builds, 26 Worker tests, 136 Web/MV3 E2E, 2 BFF replay
+  tests, 47 authorization E2E and 17 Node-configuration E2E.
+- Concurrent release work already contained the quality feature and a more
+  comprehensive import-baseline fix. The duplicate fix was reverted in this
+  branch and the canonical implementation was integrated without overwriting
+  either worktree. Its 60 settings tests passed again on remote Windows.
+- Canonical commit `8a300e3` passed full CI: 374 files / 3,786 unit tests,
+  26 Worker tests, 137 Web/MV3 E2E, 2 BFF replay tests, 47 authorization E2E,
+  17 Node-configuration E2E, all builds and Store checks. Runtime source parity
+  with that tested commit was checked before staging integration.
+- The approved IOP-only Node BFF acceptance saved a minimal baseline and used
+  the normal admin/CSRF/context/persisted-job update path on one existing
+  unbranded test product. The incremental XML contained only the title field.
+- The platform accepted that single update. Both TOP and IOP list reads returned
+  the intended temporary title and `auditing`; the official product page showed
+  **Pending** for the same record. Both protocols refused Schema render with
+  `PUB_BIZCHECK_PRODUCT_IN_AUDITING` and instructed not to resubmit.
+- The first review subsequently cleared. Fresh Schema readback matched the
+  temporary title and the original task became `verified`. A second incremental
+  request containing only the baseline title was accepted for restoration.
+- Restoration review subsequently cleared. Fresh Schema and exact-list reads
+  through both IOP and TOP confirmed the original title and original online
+  status. Both persisted mutation jobs are `verified`; a fresh IOP score query
+  succeeded. Exactly two updates were sent: temporary title, then original title.
+  No third update, blind compensation or protocol fallback was performed.
+- Recovery baseline, SQLite jobs, request IDs and private receipts remain in
+  ignored `artifacts/product-quality-validation/` in the isolated remote worktree.
+  No full Schema XML, credentials or complete provider responses are committed.
+- After CI and confirmed restoration, canonical fix PR #4 was merged into
+  staging as `5337cc3`. Staging content matched the tested `8a300e3` tree.
+  Master remained at `0b58267`; no tag, release, deployment or Store action.
+
+This development branch is not a published release. Store upload, master merge
 and Worker deployment remain separate actions.
