@@ -901,9 +901,6 @@ async function readSensitiveSettings(load: () => Promise<GatewaySettings>): Prom
   const next = await load();
   if (!isViewAlive() || generation !== sensitiveGeneration || !settingsEditable.value) return false;
   model.value = next;
-  // A storage read is already saved. Keep the model and its baseline atomic, before
-  // awaiting summary refreshes, so immediate navigation cannot see a phantom edit.
-  credentialEditing.markClean();
   return true;
 }
 
