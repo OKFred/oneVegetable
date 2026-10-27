@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, type ComponentPublicInstance } from 'vue';
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'vue-sonner';
@@ -28,7 +28,11 @@ import SettingsView from '../src/views/SettingsView.vue';
 import { uiI18n } from '../src/i18n';
 import LocalDiagnosticsPanel from '../src/components/LocalDiagnosticsPanel.vue';
 import { provideServices } from '../src/lib/services';
-import { provideUnsavedEditing, UnsavedEditingService } from '../src/lib/unsaved-editing';
+import {
+  installEditingNavigationGuard,
+  provideUnsavedEditing,
+  UnsavedEditingService
+} from '../src/lib/unsaved-editing';
 import { notifyCredentialVaultChanged } from '../src/lib/credential-vault-events';
 
 vi.mock('vue-sonner', () => ({
@@ -1272,6 +1276,194 @@ function confirmBackup(): void {
   if (!button) throw new Error('Missing explicit authorization-backup confirmation');
   button.click();
 }
+
+describe('SettingsView saved credential import baseline', () => {
+  async function mountSavedImport() {
+    const editing = new UnsavedEditingService();
+    const metadata = Promise.withResolvers<AlibabaAuthorizationsSummary>();
+    let persisted = false;
+    let currentStatus = vaultStatus('unlocked');
+    const loadSettings = vi.fn(() =>
+      Promise.resolve<GatewaySettings>({
+        appKey: persisted ? 'persisted-import-key' : 'initial-key',
+        appSecret: '',
+        accessToken: '',
+        endpoint: ALIBABA_GATEWAY,
+        signMethod: 'hmac'
+      })
+    );
+    const authorizations = vi.fn().mockResolvedValue(safeAuthorizationSummary());
+    const repository = {
+      ...settingsForBackup(vi.fn()),
+      loadAuthorization: loadSettings,
+      authorizations
+    };
+    const wrapper = mountView('extension', 'unlocked', 'manual', 'node', {
+      editing,
+      loadSettings,
+      settings: repository,
+      status: () => Promise.resolve(currentStatus)
+    });
+    await waitForAuthorizationSummary(wrapper);
+    await flushPromises();
+    authorizations.mockReturnValue(metadata.promise);
+    function imported(): void {
+      persisted = true;
+      const dialog = wrapper.getComponent({ name: 'AlibabaAuthorizationProtocolDialog' })
+        .vm as ComponentPublicInstance;
+      dialog.$emit('imported', currentStatus);
+    }
+    async function openEditor(): Promise<DOMWrapper<HTMLElement>> {
+      await wrapper.get('[data-testid="select-authorization-top"]').trigger('click');
+      await flushPromises();
+      const manual = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
+        (button) => button.textContent.trim() === '\u624b\u52a8\u586b\u5199'
+      );
+      if (!manual) throw new Error('Missing manual configuration action');
+      manual.click();
+      await flushPromises();
+      return new DOMWrapper(document.body);
+    }
+    return {
+      wrapper,
+      editing,
+      metadata,
+      authorizations,
+      loadSettings,
+      imported,
+      openEditor,
+      lock() {
+        currentStatus = { ...vaultStatus('locked'), gatewayAvailable: true };
+        notifyCredentialVaultChanged();
+      }
+    };
+  }
+
+  it('allows immediate navigation after a saved import while metadata refresh is pending', async () => {
+    const fixture = await mountSavedImport();
+    const previousHash = window.location.hash;
+    window.history.replaceState(null, '', '#/settings');
+    const stop = installEditingNavigationGuard(fixture.editing);
+    const navigated = vi.fn();
+    window.addEventListener('hashchange', navigated);
+    try {
+      fixture.imported();
+      await flushPromises();
+      expect(fixture.authorizations).toHaveBeenCalledTimes(2);
+      expect(fixture.editing.dirty.value).toBe(false);
+      window.location.hash = '#/photos';
+      await vi.waitFor(() => {
+        expect(navigated).toHaveBeenCalled();
+      });
+      expect(window.location.hash).toBe('#/photos');
+      expect(fixture.editing.confirmationOpen.value).toBe(false);
+    } finally {
+      window.removeEventListener('hashchange', navigated);
+      stop();
+      fixture.metadata.resolve(safeAuthorizationSummary());
+      await flushPromises();
+      fixture.wrapper.unmount();
+      fixture.editing.dispose();
+      window.history.replaceState(null, '', previousHash || '#/dashboard');
+    }
+  });
+
+  it('keeps later real edits dirty when the imported authorization metadata finishes refreshing', async () => {
+    const fixture = await mountSavedImport();
+    const fields = await fixture.openEditor();
+    const previousHash = window.location.hash;
+    window.history.replaceState(null, '', '#/settings');
+    const stop = installEditingNavigationGuard(fixture.editing);
+    try {
+      fixture.imported();
+      await flushPromises();
+      expect(fixture.authorizations).toHaveBeenCalledTimes(2);
+      expect((fields.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+        'persisted-import-key'
+      );
+      expect(fixture.editing.dirty.value).toBe(false);
+      await fields.get('input[aria-label="App Key"]').setValue('later-unsaved-edit');
+      expect(fixture.editing.dirty.value).toBe(true);
+      fixture.metadata.resolve(safeAuthorizationSummary());
+      await flushPromises();
+      expect((fields.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+        'later-unsaved-edit'
+      );
+      expect(fixture.editing.dirty.value).toBe(true);
+      window.location.hash = '#/photos';
+      await vi.waitFor(() => {
+        expect(fixture.editing.confirmationOpen.value).toBe(true);
+      });
+      expect(window.location.hash).toBe('#/settings');
+    } finally {
+      fixture.editing.answer(false);
+      stop();
+      fixture.metadata.resolve(safeAuthorizationSummary());
+      await flushPromises();
+      fixture.wrapper.unmount();
+      fixture.editing.dispose();
+      window.history.replaceState(null, '', previousHash || '#/dashboard');
+    }
+  });
+
+  it('preserves unsaved edits when reading the saved import fails', async () => {
+    const fixture = await mountSavedImport();
+    const fields = await fixture.openEditor();
+    await fields.get('input[aria-label="App Key"]').setValue('preserved-unsaved-edit');
+    const error = new Error('saved-import-read-failed');
+    fixture.loadSettings.mockRejectedValueOnce(error);
+    fixture.imported();
+    await flushPromises();
+    expect(fixture.editing.dirty.value).toBe(true);
+    expect((fields.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+      'preserved-unsaved-edit'
+    );
+    expect(fixture.authorizations).toHaveBeenCalledOnce();
+    expect(toast.error).toHaveBeenCalledWith(error.message);
+    expect(fixture.wrapper.text()).not.toContain('\u51ed\u636e\u5df2\u83b7\u53d6\u5e76\u4fdd\u5b58');
+    fixture.wrapper.unmount();
+    fixture.editing.dispose();
+  });
+
+  it.each(['locked', 'unmounted'] as const)(
+    'ignores a late saved-import read after the sensitive view is %s',
+    async (state) => {
+      const fixture = await mountSavedImport();
+      const fields = await fixture.openEditor();
+      expect((fields.get('input[aria-label="App Key"]').element as HTMLInputElement).value).toBe(
+        'initial-key'
+      );
+      expect(document.querySelector('input[aria-label="App Key"]')).not.toBeNull();
+      const read = Promise.withResolvers<GatewaySettings>();
+      fixture.loadSettings.mockReturnValueOnce(read.promise);
+      fixture.imported();
+      await flushPromises();
+      if (state === 'unmounted') fixture.wrapper.unmount();
+      else {
+        fixture.lock();
+        await vi.waitFor(() => {
+          expect(document.querySelector('input[aria-label="App Key"]')).toBeNull();
+        });
+      }
+      const refreshesBeforeLateRead = fixture.authorizations.mock.calls.length;
+      read.resolve({
+        appKey: 'late-import-must-not-appear',
+        appSecret: '',
+        accessToken: '',
+        endpoint: ALIBABA_GATEWAY,
+        signMethod: 'hmac'
+      });
+      await flushPromises();
+      expect(fixture.authorizations).toHaveBeenCalledTimes(refreshesBeforeLateRead);
+      fixture.metadata.resolve(safeAuthorizationSummary());
+      await flushPromises();
+      expect(document.body.textContent).not.toContain('late-import-must-not-appear');
+      expect(document.body.textContent).not.toContain('\u51ed\u636e\u5df2\u83b7\u53d6\u5e76\u4fdd\u5b58');
+      if (fixture.wrapper.exists()) fixture.wrapper.unmount();
+      fixture.editing.dispose();
+    }
+  );
+});
 
 describe('SettingsView sensitive view lock and online authorization backup', () => {
   it('shows safe summaries while locked, without loading secrets or permitting management', async () => {

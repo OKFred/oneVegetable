@@ -422,12 +422,13 @@ async function handleAcquiredCredentialsSaved(status: CredentialVaultStatus): Pr
       ))
     )
       return;
+    // The imported credentials are already persisted; metadata refresh must not make them dirty.
+    credentialEditing.markClean();
     if (mode === 'extension') {
       authorizations.invalidateBinding();
       await authorizations.reload();
       notifyGatewayConfigurationChanged();
     }
-    credentialEditing.markClean();
     feedback.value = t('settings.credentials.acquired');
   } catch (cause) {
     const error = userVisibleCause(cause, credentialText('error'));
