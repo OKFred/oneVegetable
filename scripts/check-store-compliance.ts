@@ -100,7 +100,9 @@ const storageDisclosure =
 for (const phrase of [
   'Derived unlock keys persist in trusted chrome.storage.local',
   'no idle auto-lock',
-  'Manual locking removes recovery keys',
+  'Manual workbench locking hides sensitive configuration',
+  'retains derived recovery keys for background API use',
+  "clears both independent TOP and IOP tools' recovery keys in passphrase mode",
   'Copying the full browser profile may decrypt credentials',
   'Only to-dos use chrome.storage.sync',
   'credentials and recovery keys never sync'

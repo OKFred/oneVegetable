@@ -4,7 +4,7 @@
 
 Ship the product-score queue recovery already integrated in 6bbc7137cd2ab64ac300f7cdb7bb4a113fa42854. The fix branch CI passed in full on its second attempt; staging and master subsequently passed. The first attempt's unrelated template ZIP download timeout and three successful remote repetitions remain recorded in ignored artifacts.
 
-The release preparation changes seven workspace versions, listing metadata, bilingual release notes and their generated outputs. No new API, dependency, manifest permission, credential migration, default protocol or provider write allowance is introduced.
+The release preparation changes seven workspace versions, listing metadata, bilingual release notes and their generated outputs. The storage permission justification is aligned with the existing manual-view-lock implementation and privacy policies: workbench locking retains background API recovery keys and clears independent authorization-tool recovery keys in passphrase mode. The compliance gate requires both distinctions. No new API, dependency, manifest permission, credential migration, default protocol or provider write allowance is introduced.
 
 ## Protocol and safety boundary
 
