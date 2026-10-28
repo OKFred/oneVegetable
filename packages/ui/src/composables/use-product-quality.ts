@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import type { GatewayClient, Product, ProductScore } from '@one-vegetable/core';
-import { pageDetailIdentity, requestPageDetail, usePageDetails } from '../lib/page-details';
+import { requestPageDetail, usePageDetails } from '../lib/page-details';
 
 export function useProductQuality(
   gateway: GatewayClient,
@@ -20,13 +20,20 @@ export function useProductQuality(
     products,
     boundary,
     (p) => p.id,
-    (product, identity) =>
-      requestPageDetail(gateway, mode, language.value, { kind: 'score', id: product.id }, identity, refresh),
+    (product, identity, control) =>
+      requestPageDetail(
+        gateway,
+        mode,
+        language.value,
+        { kind: 'score', id: product.id },
+        identity,
+        refresh,
+        control
+      ),
     (product, data) => {
       if ('score' in data)
         results.value = { ...results.value, [product.id]: { score: data, at: Date.now(), stale: false } };
-    },
-    () => pageDetailIdentity(gateway, mode)
+    }
   );
   watch(
     [account, language],

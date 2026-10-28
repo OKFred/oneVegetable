@@ -160,6 +160,54 @@ describe('ProductsView selection toolbar', () => {
     expect(scoreCalls()).toHaveLength(2);
     wrapper.unmount();
   });
+  it('uses four context checks per score and does not restart on duplicate visibility events', async () => {
+    const gateway = new MockGatewayClient(0);
+    const contexts = vi.spyOn(gateway, 'galleryTransferContext');
+    const request = vi.spyOn(gateway, 'request');
+    const wrapper = mountView(gateway);
+    await waitForProducts(wrapper);
+    contexts.mockClear();
+    const regions = wrapper.findAllComponents(ProductVisibleRegion);
+    for (const region of regions.slice(0, 2)) {
+      (region.vm as { $emit(event: 'visible', value: boolean): void }).$emit('visible', true);
+    }
+    await vi.waitFor(() => {
+      expect(request.mock.calls.filter(([op]) => op === 'getProductScore')).toHaveLength(2);
+      expect(contexts).toHaveBeenCalledTimes(8);
+    });
+    for (const region of regions.slice(0, 2)) {
+      (region.vm as { $emit(event: 'visible', value: boolean): void }).$emit('visible', true);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(contexts).toHaveBeenCalledTimes(8);
+    wrapper.unmount();
+  });
+  it('offers an explicit failed-score retry without automatic resends', async () => {
+    const gateway = new MockGatewayClient(0);
+    const original = gateway.request.bind(gateway);
+    let deny = true;
+    const request = vi.spyOn(gateway, 'request').mockImplementation((operation, payload) => {
+      if (operation === 'getProductScore' && deny) return Promise.reject(new Error('read-failed'));
+      return original(operation, payload);
+    });
+    const wrapper = mountView(gateway);
+    await waitForProducts(wrapper);
+    const region = wrapper.findAllComponents(ProductVisibleRegion)[0];
+    if (!region) throw new Error('Score visibility region was not mounted');
+    (region.vm as { $emit(event: 'visible', value: boolean): void }).$emit('visible', true);
+    await vi.waitFor(() => {
+      expect(wrapper.find('button[aria-label="重新查询产品分"]').exists()).toBe(true);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(request.mock.calls.filter(([op]) => op === 'getProductScore')).toHaveLength(1);
+    deny = false;
+    await wrapper.get('button[aria-label="重新查询产品分"]').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('4.6');
+    });
+    expect(request.mock.calls.filter(([op]) => op === 'getProductScore')).toHaveLength(2);
+    wrapper.unmount();
+  });
 
   it('supports unchecked, mixed and current-page selected states with a visible count', async () => {
     const wrapper = mountView();

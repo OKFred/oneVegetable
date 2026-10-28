@@ -29,6 +29,28 @@ local suggestions. Field navigation is advisory and never edits content.
 - Real acceptance is read-only. This iteration does not publish, modify inventory,
   change authorizations, merge mainline, deploy Workers or submit the Store.
 
+## Visible score queue recovery (2026-10-28)
+
+- This optimization reuses the score protocol matrix above: TOP uses the exact
+  product's obfuscated ID, IOP uses its canonical plaintext ID, and selection is
+  still made before dispatch using the actual operation and payload. No new
+  methods, permissions, mutations, fallback routing, or public contracts.
+- The list and assessment freeze batch identity using the first checked read,
+  avoiding the separate identity HTTP request for every single-item queue run.
+  A fresh result uses four context reads plus one score request instead of six
+  HTTP requests. Independent before/after checks run in parallel, but both must
+  complete and match before dispatch/cache acceptance. Cached scores still
+  require current account and actual read contexts; no context TTL is added.
+- Visible rows drain serially with the existing 300 ms minimum interval. Each
+  row is rechecked before dispatch, so newly hidden rows do not send score reads.
+  Pausing clears transient loading states without aborting a dispatched read;
+  valid in-flight results may still finish. Account/configuration changes discard
+  late results, clear security-stop state, and require a new checked run.
+- Failed rows do not automatically retry. The explicit retry icon requests only
+  that row and respects the same authorization, cache, and account boundaries.
+- Development acceptance is remote-only. Worker deployment and mainline release
+  remain separate actions.
+
 ## User flow
 
 1. Select 1–30 products on the current product-list page, then choose **More →
@@ -45,7 +67,7 @@ local suggestions. Field navigation is advisory and never edits content.
 6. **Back to assessment** preserves this session's report. Refreshing or leaving
    the product workspace does not restore a report or resume any write.
 
-## Verified evidence
+## Verified evidence (2.20.0 baseline)
 
 - Windows `pnpm check`: 373 test files / 3,773 tests passed, OpenAPI and i18n
   checks passed, Web/API/formal MV3 builds and store compliance passed. The
@@ -83,3 +105,27 @@ prerequisite for a successful save and are not automatically polled.
 
 This development branch is not a published release. Store upload, mainline merge
 and Worker deployment remain separate actions.
+
+## Queue recovery verification (2026-10-28)
+
+- Remote Windows full pnpm check: 374 test files / 3,794 tests, formatting,
+  lint, i18n, generated contracts, authorization modes, typecheck, Web/API/formal
+  MV3 builds, bundle budgets and store compliance passed. MV3 unpacked size is
+  4,618,719 bytes; existing limits are unchanged.
+- Four focused browser cases passed: visible score cells, Chinese and
+  English/dark assessment flows, and the formal MV3 column/score flow. The MV3
+  case deliberately rejects the first read, proves it is not automatically
+  retried, then succeeds through the explicit retry button.
+- Twenty-four shared-list browser cases passed, including inventory, order
+  roles, column preferences, search/filter/paging and score visibility.
+- Isolated real Node BFF acceptance exercised the modified UI read queue in
+  TOP-only, IOP-only, dual/TOP-default and dual/IOP-default modes. Each read two
+  current products and returned scores 4.5 and 4.4. Four context requests per
+  initial score were observed; a second run reused cached scores without
+  additional score API calls. No loading state remained.
+- The independent read-wire guard allowed only product-list and score methods;
+  no business writes, Token refresh or active configuration changes occurred.
+  Private receipts and logs are in the ignored artifacts/score-recovery-* paths.
+- Real acceptance above covers Node BFF. Formal MV3 browser acceptance uses
+  isolated replay, not a newly installed extension's real domain permissions.
+  No mainline merge, production deployment or Store publication is included.

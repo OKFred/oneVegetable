@@ -1062,30 +1062,38 @@ const pageDetails = usePageDetails(
   currentPageProducts,
   detailBoundary,
   (row) => row.id,
-  async (row, identity) => {
+  async (row, identity, control) => {
     const result = await requestPageDetail(
       gateway,
       mode,
       language.value,
       { kind: 'score', id: row.id },
       identity,
-      staleScoreIds.has(row.id)
+      staleScoreIds.has(row.id),
+      control
     );
     staleScoreIds.delete(row.id);
     return result;
   },
   (row, data) => {
     if ('score' in data) productScores.value = { ...productScores.value, [row.id]: data };
-  },
-  () => pageDetailIdentity(gateway, mode)
+  }
 );
 const visibleScoreRegions = ref<Set<string>>(new Set());
 let scoreQueueTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
 function setScoreRegion(id: string, visible: boolean): void {
+  if (visibleScoreRegions.value.has(id) === visible) return;
   const regions = new Set(visibleScoreRegions.value);
   if (visible) regions.add(id);
   else regions.delete(id);
   visibleScoreRegions.value = regions;
+}
+function scoreRegionVisible(id: string): boolean {
+  return (
+    workspace.value === 'list' &&
+    globalThis.document.visibilityState !== 'hidden' &&
+    (visibleScoreRegions.value.has(id + ':score') || visibleScoreRegions.value.has(id + ':issues'))
+  );
 }
 function scheduleVisibleScores(): void {
   if (scoreQueueTimer !== undefined) globalThis.clearTimeout(scoreQueueTimer);
@@ -1106,21 +1114,23 @@ function scheduleVisibleScores(): void {
   if (pageDetails.busy.value || pageDetails.securityFailure.value) return;
   scoreQueueTimer = globalThis.setTimeout(() => {
     scoreQueueTimer = undefined;
-    const target = currentPageProducts.value.find(
+    const targets = currentPageProducts.value.filter(
       (row) =>
-        (visibleScoreRegions.value.has(row.id + ':score') ||
-          visibleScoreRegions.value.has(row.id + ':issues')) &&
+        scoreRegionVisible(row.id) &&
         row.id &&
         pageDetails.states.value[row.id] !== 'ready' &&
         pageDetails.states.value[row.id] !== 'failed'
     );
-    if (target && workspace.value === 'list' && globalThis.document.visibilityState !== 'hidden')
-      void pageDetails.load(false, [target]);
+    if (targets.length > 0) void pageDetails.load(false, targets, (row) => scoreRegionVisible(row.id));
   }, 300);
 }
-watch([visibleScoreRegions, pageDetails.busy, detailBoundary, currentPageProducts], scheduleVisibleScores, {
-  flush: 'post'
-});
+watch(
+  [visibleScoreRegions, pageDetails.busy, detailBoundary, currentPageProducts, queryingSelectedProductScores],
+  scheduleVisibleScores,
+  {
+    flush: 'post'
+  }
+);
 function checkEditorScore(visible: boolean): void {
   if (
     visible &&
@@ -2041,27 +2051,59 @@ const columns = computed<DataColumn<Product>[]>(() => [
           }
         },
         () =>
-          h('div', { class: 'min-w-0 space-y-0.5 whitespace-nowrap' }, [
-            h(
-              'span',
-              { class: 'font-medium tabular-nums' },
-              score
-                ? formatProductScore(score.score)
-                : t(
-                    `common.columns.${pageDetails.states.value[row.original.id] === 'loading' ? 'loading' : pageDetails.states.value[row.original.id] === 'failed' ? 'failed' : 'pending'}`
+          h(
+            'div',
+            {
+              class: 'min-w-0 space-y-0.5 whitespace-nowrap',
+              title:
+                error ??
+                (score
+                  ? undefined
+                  : t(
+                      pageDetails.states.value[row.original.id] === 'loading'
+                        ? 'products.view.scoreLoadingHint'
+                        : 'products.view.scorePendingHint'
+                    ))
+            },
+            [
+              h(
+                'span',
+                { class: 'font-medium tabular-nums' },
+                score
+                  ? formatProductScore(score.score)
+                  : t(
+                      `common.columns.${pageDetails.states.value[row.original.id] === 'loading' ? 'loading' : pageDetails.states.value[row.original.id] === 'failed' ? 'failed' : 'pending'}`
+                    )
+              ),
+              suggestions
+                ? h(
+                    'p',
+                    { class: 'truncate text-xs text-amber-700 dark:text-amber-400', title: suggestions },
+                    suggestions
                   )
-            ),
-            suggestions
-              ? h(
-                  'p',
-                  { class: 'truncate text-xs text-amber-700 dark:text-amber-400', title: suggestions },
-                  suggestions
-                )
-              : null,
-            error
-              ? h('p', { class: 'text-xs text-destructive', title: error }, t('products.view.scoreFailed'))
-              : null
-          ])
+                : null,
+              error
+                ? h('p', { class: 'text-xs text-destructive', title: error }, t('products.view.scoreFailed'))
+                : null,
+              error
+                ? h(
+                    Button,
+                    {
+                      size: 'sm',
+                      variant: 'ghost',
+                      class: 'h-7 px-1',
+                      disabled: pageDetails.busy.value,
+                      title: t('products.view.scoreRetry'),
+                      'aria-label': t('products.view.scoreRetry'),
+                      onClick: () => {
+                        void retryProductScore(row.original);
+                      }
+                    },
+                    () => h(RefreshCw, { class: 'size-3.5', 'aria-hidden': true })
+                  )
+                : null
+            ]
+          )
       );
     },
     meta: { width: '128px' }
@@ -2114,7 +2156,13 @@ const columns = computed<DataColumn<Product>[]>(() => [
             setScoreRegion(row.original.id + ':issues', visible);
           }
         },
-        () => String(scoreForProduct(row.original)?.issues.length ?? t('common.columns.pending'))
+        () =>
+          String(
+            scoreForProduct(row.original)?.issues.length ??
+              t(
+                `common.columns.${pageDetails.states.value[row.original.id] === 'loading' ? 'loading' : pageDetails.states.value[row.original.id] === 'failed' ? 'failed' : 'pending'}`
+              )
+          )
       )
   },
   {
@@ -2186,6 +2234,11 @@ function scoreErrorForProduct(product: Product): string | undefined {
   if (pageDetails.errors.value[product.id])
     return t(`common.columns.${detailErrorState(pageDetails.errors.value[product.id])}`);
   return productScoreErrors.value[product.id];
+}
+async function retryProductScore(product: Product): Promise<void> {
+  if (pageDetails.busy.value) return;
+  staleScoreIds.add(product.id);
+  await pageDetails.load(false, [product]);
 }
 
 async function querySelectedProductScores(): Promise<void> {
