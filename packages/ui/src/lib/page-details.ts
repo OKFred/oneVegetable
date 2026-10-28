@@ -13,6 +13,11 @@ interface Entry {
   at: number;
   data: Detail;
 }
+export interface PageDetailReadControl {
+  captureIdentity(identity: string): void;
+  shouldStart(): boolean;
+}
+class PageDetailReadCancelled extends Error {}
 const stores = new WeakMap<
   GatewayClient,
   { cache: Map<string, Entry>; pending: Map<string, Promise<Detail>> }
@@ -51,19 +56,14 @@ export async function requestPageDetail(
     | { kind: 'order'; order: TradeOrderSummary }
     | { kind: 'inventory'; id: string; source: 'product' | 'sku' },
   expectedIdentity?: string,
-  refresh = false
+  refresh = false,
+  control?: PageDetailReadControl
 ): Promise<Detail> {
   let store = stores.get(gateway);
   if (!store) {
     store = { cache: new Map(), pending: new Map() };
     stores.set(gateway, store);
   }
-  const context = await gateway.galleryTransferContext?.();
-  // Production gateways must expose an opaque identity before sharing cached account data.
-  if (!context && mode !== 'mock') throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
-  const identity = context ? JSON.stringify([context.identity, context.gateway]) : 'mock';
-  if (expectedIdentity !== undefined && expectedIdentity !== identity)
-    throw new Error('GALLERY_CONTEXT_CHANGED');
   const languageCode = language === 'zh_CN' ? 'zh_CN' : 'en_US';
   const operation =
     request.kind === 'inventory'
@@ -77,9 +77,20 @@ export async function requestPageDetail(
       : request.kind === 'score'
         ? { productId: request.id }
         : { order: request.order, language: languageCode };
-  const readContext = await gateway.galleryTransferContext?.(operation, payload);
+  // Independent checks share a round trip, not a credential/profile. The read
+  // context still resolves the actual operation AND payload before dispatch.
+  const [context, readContext] = await Promise.all([
+    gateway.galleryTransferContext?.(),
+    gateway.galleryTransferContext?.(operation, payload)
+  ]);
+  if (!context && mode !== 'mock') throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
+  const identity = context ? JSON.stringify([context.identity, context.gateway]) : 'mock';
+  if (expectedIdentity !== undefined && expectedIdentity !== identity)
+    throw new Error('GALLERY_CONTEXT_CHANGED');
   if ((!readContext && mode !== 'mock') || (context && readContext?.identity !== context.identity))
     throw new Error('GALLERY_CONTEXT_CHANGED');
+  if (control && !control.shouldStart()) throw new PageDetailReadCancelled();
+  control?.captureIdentity(identity);
   const key = JSON.stringify([
     mode,
     context,
@@ -115,8 +126,10 @@ export async function requestPageDetail(
               { order: request.order, language: language === 'zh_CN' ? 'zh_CN' : 'en_US' },
               options
             );
-    const latest = await gateway.galleryTransferContext?.();
-    const latestRead = await gateway.galleryTransferContext?.(operation, payload);
+    const [latest, latestRead] = await Promise.all([
+      gateway.galleryTransferContext?.(),
+      gateway.galleryTransferContext?.(operation, payload)
+    ]);
     if (
       JSON.stringify(latest) !== JSON.stringify(context) ||
       JSON.stringify(latestRead) !== JSON.stringify(readContext)
@@ -145,7 +158,7 @@ export function usePageDetails<T>(
   rows: Ref<T[]>,
   boundary: Ref<unknown>,
   id: (row: T) => string,
-  query: (row: T, identity?: string) => Promise<Detail>,
+  query: (row: T, identity?: string, control?: PageDetailReadControl) => Promise<Detail>,
   accept: (row: T, data: Detail) => void,
   readIdentity?: () => Promise<string>
 ) {
@@ -157,8 +170,16 @@ export function usePageDetails<T>(
   const securityFailure = ref(false);
   let epoch = 0;
   const stopRequested = ref(false);
+  function clearLoading(key?: string): void {
+    states.value = Object.fromEntries(
+      Object.entries(states.value).filter(
+        ([id, state]) => state !== 'loading' || (key !== undefined && id !== key)
+      )
+    );
+  }
   function stop(): void {
     stopRequested.value = true;
+    clearLoading();
   }
   function stopped(): boolean {
     return stopRequested.value;
@@ -168,12 +189,14 @@ export function usePageDetails<T>(
     stop();
     states.value = {};
     errors.value = {};
+    securityFailure.value = false;
   }
   watch(boundary, invalidate);
   onScopeDispose(invalidate);
   async function load(
     onlyFailed = false,
-    selected?: T[]
+    selected?: T[],
+    eligible?: (row: T) => boolean
   ): Promise<{ success: number; failed: number } | null> {
     if (busy.value) return null;
     const targets = (selected ?? rows.value).filter(
@@ -191,12 +214,19 @@ export function usePageDetails<T>(
     try {
       for (const row of targets) {
         if (stopped() || current !== epoch) break;
+        if (eligible && !eligible(row)) continue;
         const key = id(row);
         states.value = { ...states.value, [key]: 'loading' };
         try {
           identity ??= await readIdentity?.();
           if (stopped() || current !== epoch) break;
-          const result = await query(row, identity);
+          if (eligible && !eligible(row)) continue;
+          const result = await query(row, identity, {
+            captureIdentity: (checkedIdentity) => {
+              identity ??= checkedIdentity;
+            },
+            shouldStart: () => !stopped() && current === epoch && (!eligible || eligible(row))
+          });
           if (current !== epoch) break;
           accept(row, result);
           errors.value = Object.fromEntries(Object.entries(errors.value).filter(([id]) => id !== key));
@@ -204,6 +234,7 @@ export function usePageDetails<T>(
           states.value = { ...states.value, [key]: 'ready' };
         } catch (error: unknown) {
           if (current !== epoch) break;
+          if (error instanceof PageDetailReadCancelled) continue;
           failed++;
           errors.value = { ...errors.value, [key]: error };
           states.value = { ...states.value, [key]: 'failed' };
@@ -212,6 +243,8 @@ export function usePageDetails<T>(
             securityFailure.value = true;
             stop();
           }
+        } finally {
+          if (current === epoch) clearLoading(key);
         }
         done.value++;
         if (!stopped() && done.value < targets.length)
