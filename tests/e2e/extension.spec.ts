@@ -802,11 +802,13 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
       const startup = window as unknown as {
         releaseColumnTestContext: () => void;
         columnTestProductReads: number;
+        columnTestScoreReads: number;
       };
       const contextReady = new Promise<void>((resolve) => {
         startup.releaseColumnTestContext = resolve;
       });
       startup.columnTestProductReads = 0;
+      startup.columnTestScoreReads = 0;
       const runtime = (
         globalThis as unknown as {
           chrome: { runtime: { sendMessage: (message: unknown) => Promise<unknown> } };
@@ -823,7 +825,11 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
             typeof message.operation === 'string'
           ) {
             if (message.operation === 'listProducts') startup.columnTestProductReads += 1;
-            const result: unknown = (data as Record<string, unknown>)[message.operation];
+            const failFirstScore =
+              message.operation === 'getProductScore' && ++startup.columnTestScoreReads === 1;
+            const result: unknown = failFirstScore
+              ? undefined
+              : (data as Record<string, unknown>)[message.operation];
             return Promise.resolve(
               result
                 ? { requestId: message.requestId, ok: true, data: result }
@@ -874,7 +880,17 @@ test('formal MV3 workbench supports persistent columns and automatic detail load
     .evaluate((element) => (element as HTMLTableCellElement).cellIndex);
   const score = table.locator('tbody tr').first().locator('td').nth(scoreIndex);
   await score.scrollIntoViewIfNeeded();
+  const retryScore = score.getByRole('button', { name: '重新查询产品分', exact: true });
+  await expect(retryScore).toBeVisible();
+  await expect(retryScore).toBeEnabled();
+  const readCount = () =>
+    page.evaluate(() => (window as unknown as { columnTestScoreReads: number }).columnTestScoreReads);
+  const beforeRetry = await readCount();
+  await page.waitForTimeout(400);
+  expect(await readCount()).toBe(beforeRetry);
+  await retryScore.click();
   await expect(score.locator('span.font-medium')).toHaveText(String(fixtureData.getProductScore.score));
+  expect(await readCount()).toBe(beforeRetry + 1);
   await expect(score).not.toContainText('/6');
   // This suite owns a fresh temporary profile; restore it for the existing first-use tests.
   await page.evaluate(async () => {

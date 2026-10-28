@@ -713,6 +713,11 @@ export const products = {
     scoreNotQueried: 'Not queried',
     scoreSuggestions: '{count} suggestions',
     scoreFailed: 'Query failed',
+    scoreRetry: 'Retry product score',
+    scorePendingHint:
+      'Visible scores load one at a time. Return after pausing to continue; completed scores are retained.',
+    scoreLoadingHint:
+      'Reading the platform score. Leaving this page or scrolling out of view pauses subsequent reads.',
     edit: 'Edit',
     previewDescription: 'Product {id}',
     mutationBlocked: {

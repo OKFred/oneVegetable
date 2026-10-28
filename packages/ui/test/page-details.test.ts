@@ -8,6 +8,158 @@ import iopDetailFixture from '../../../mock/data/iop-order-public-detail.json';
 
 describe('page details', () => {
   afterEach(() => vi.useRealTimers());
+  it('clears loading immediately when stopped before identity resolves, without sending a read', async () => {
+    const identity = Promise.withResolvers<string>();
+    const query = vi.fn();
+    const scope = effectScope();
+    const service = scope.run(() =>
+      usePageDetails(
+        ref([{ id: 'one' }]),
+        ref('page'),
+        (row) => row.id,
+        query,
+        vi.fn(),
+        () => identity.promise
+      )
+    );
+    if (!service) throw new Error('Effect scope was inactive');
+    const job = service.load();
+    expect(service.states.value).toEqual({ one: 'loading' });
+    service.stop();
+    expect(service.states.value).toEqual({});
+    identity.resolve('account');
+    await job;
+    expect(query).not.toHaveBeenCalled();
+    expect(service.busy.value).toBe(false);
+    expect(service.states.value).toEqual({});
+    scope.stop();
+  });
+  it('retains an already dispatched result after stop without scheduling the next row', async () => {
+    const gateway = new MockGatewayClient(0);
+    const waiting = Promise.withResolvers<undefined>();
+    const query = vi.fn(async (row: { id: string }) => {
+      await waiting.promise;
+      return gateway.request('getProductScore', { productId: row.id });
+    });
+    const accept = vi.fn();
+    const scope = effectScope();
+    const service = scope.run(() =>
+      usePageDetails(ref([{ id: 'one' }, { id: 'two' }]), ref('page'), (row) => row.id, query, accept)
+    );
+    if (!service) throw new Error('Effect scope was inactive');
+    const job = service.load();
+    await Promise.resolve();
+    service.stop();
+    expect(service.states.value).toEqual({});
+    waiting.resolve(undefined);
+    await job;
+    expect(query).toHaveBeenCalledOnce();
+    expect(accept).toHaveBeenCalledOnce();
+    expect(service.states.value).toEqual({ one: 'ready' });
+    scope.stop();
+  });
+  it('resets security stop on a new boundary and rechecks queued row visibility', async () => {
+    const gateway = new MockGatewayClient(0);
+    const boundary = ref('first-account');
+    const query = vi
+      .fn()
+      .mockRejectedValue(
+        new GatewayException({ code: 'PERMISSION_DENIED', message: 'Denied', retryable: false })
+      );
+    const scope = effectScope();
+    const service = scope.run(() =>
+      usePageDetails(ref([{ id: 'one' }, { id: 'two' }]), boundary, (row) => row.id, query, vi.fn())
+    );
+    if (!service) throw new Error('Effect scope was inactive');
+    await service.load();
+    expect(service.securityFailure.value).toBe(true);
+    boundary.value = 'second-account';
+    await nextTick();
+    expect(service.securityFailure.value).toBe(false);
+    query.mockImplementation((row: { id: string }) =>
+      gateway.request('getProductScore', { productId: row.id })
+    );
+    await service.load(false, undefined, (row) => row.id === 'two');
+    expect(service.states.value).toEqual({ two: 'ready' });
+    expect(query).toHaveBeenCalledTimes(2);
+    scope.stop();
+  });
+  it('captures the first checked identity for the whole batch without a duplicate lookup', async () => {
+    const gateway = new MockGatewayClient(0);
+    const identities: (string | undefined)[] = [];
+    const scope = effectScope();
+    const service = scope.run(() =>
+      usePageDetails(
+        ref([{ id: 'one' }, { id: 'two' }]),
+        ref('page'),
+        (row) => row.id,
+        async (row, identity, control) => {
+          identities.push(identity);
+          control?.captureIdentity('account');
+          return gateway.request('getProductScore', { productId: row.id });
+        },
+        vi.fn()
+      )
+    );
+    if (!service) throw new Error('Effect scope was inactive');
+    await service.load();
+    expect(identities).toEqual([undefined, 'account']);
+    scope.stop();
+  });
+  it('rechecks row eligibility after async context work and leaves no cancelled error', async () => {
+    const gateway = new MockGatewayClient(0);
+    const waiting = Promise.withResolvers<undefined>();
+    const context = await gateway.galleryTransferContext();
+    vi.spyOn(gateway, 'galleryTransferContext').mockImplementation(async () => {
+      await waiting.promise;
+      return context;
+    });
+    const request = vi.spyOn(gateway, 'request');
+    const scope = effectScope();
+    let visible = true;
+    const service = scope.run(() =>
+      usePageDetails(
+        ref([{ id: 'one' }]),
+        ref('page'),
+        (row) => row.id,
+        (row, identity, control) =>
+          requestPageDetail(
+            gateway,
+            'mock',
+            'en_US',
+            { kind: 'score', id: row.id },
+            identity,
+            false,
+            control
+          ),
+        vi.fn()
+      )
+    );
+    if (!service) throw new Error('Effect scope was inactive');
+    const job = service.load(false, undefined, () => visible);
+    visible = false;
+    waiting.resolve(undefined);
+    await job;
+    expect(request).not.toHaveBeenCalled();
+    expect(service.states.value).toEqual({});
+    expect(service.errors.value).toEqual({});
+    expect(service.securityFailure.value).toBe(false);
+    scope.stop();
+  });
+  it('checks independent contexts concurrently before dispatch and after the response', async () => {
+    const gateway = new MockGatewayClient(0);
+    const context = await gateway.galleryTransferContext();
+    const gate = Promise.withResolvers<undefined>();
+    const contexts = vi.spyOn(gateway, 'galleryTransferContext').mockImplementation(async () => {
+      await gate.promise;
+      return context;
+    });
+    const job = requestPageDetail(gateway, 'mock', 'en_US', { kind: 'score', id: 'one' });
+    expect(contexts).toHaveBeenCalledTimes(2);
+    gate.resolve(undefined);
+    await job;
+    expect(contexts).toHaveBeenCalledTimes(4);
+  });
   it.each(['top-only', 'iop-only', 'dual'])(
     'resolves SKU inventory and order aggregate routes from their actual payloads with %s',
     async (configuration) => {

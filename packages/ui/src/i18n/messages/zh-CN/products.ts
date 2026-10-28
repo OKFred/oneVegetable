@@ -650,6 +650,9 @@ export const products = {
     scoreNotQueried: '未查询',
     scoreSuggestions: '{count} 项建议',
     scoreFailed: '查询失败',
+    scoreRetry: '重新查询产品分',
+    scorePendingHint: '产品分进入可视区域后逐项查询；暂停后可返回继续，已取得的分数会保留。',
+    scoreLoadingHint: '正在读取平台评分；切换页面或滚离可视区域会暂停后续查询。',
     edit: '编辑',
     previewDescription: '商品 {id}',
     mutationBlocked: {
