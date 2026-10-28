@@ -4,7 +4,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
-Version 2.19.1 fixes IOP posting-type query parameters and response mapping for new products, resolving missing-cat_id errors. TOP, legacy and dual authorization remain compatible. Existing credentials, default protocols and write capabilities stay unchanged, with no new permissions or failure-triggered cross-protocol retries.
+Version 2.20.1 improves on-demand product-score queries and pause recovery, clears lingering loading states, reduces redundant context requests and adds individual failed-row retries. TOP, IOP, legacy and dual authorization remain compatible. Existing credentials, default protocols and write capabilities stay unchanged, with no new permissions or failure-triggered cross-protocol retries.
 
 Known limitations: the checked authorizations still encounter IOP photo-group scope errors, video business rejections and TOP supplier upstream errors. Restrictions stay explicit and real failures never fall back to simulated results.
 
@@ -14,6 +14,7 @@ Key features (subject to the selected protocol and account permissions):
 
 - Review authorization time remaining in Overview: yellow below half of the current lifetime and red below one quarter or after expiry. Unknown expiry is never guessed, and display changes never automatically renew a token.
 - Visually edit Schema-based products and standard descriptions, choosing category-supported direct-order or inquiry/custom types when creating a product.
+- Assess selected current-page products, open relevant editor fields from suggestions, retain results on return and explicitly recheck scores. Assessments are read-only and never automatically submit product changes.
 - Fill text-only placeholders and compose up to ten safe company, logistics or other templates in order, then preview before insertion, append or confirmed replacement. The standalone extension stores templates locally; backend sites share them. Saving a template never updates a product automatically.
 - Exchange templates through JSON, image-inclusive ZIP or S3 previews. Relative image paths and integrity manifests replace original file IDs; confirm a target image group and verify uploads before saving new URLs. ZIPs are limited to 50 MiB, credentials stay out of packages and uncertain uploads are not automatically resent.
 - Select up to 30 existing formal products, preview group and keyword differences, deselect individual items and confirm serial updates. Only changed fields are sent; account or credential changes stop the workflow. Accepted requests still await platform review and field readback. Batch receipts stay in the task center; unknown writes are never resent automatically, and no bulk group-clearing or automatic-rollback control is added.

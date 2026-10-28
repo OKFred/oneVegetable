@@ -3,6 +3,56 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.20.1",
+      "releasedAt": "2026-10-28",
+      "title": {
+        "zh-CN": "产品分查询与暂停恢复修复",
+        "en-US": "Product-score queue recovery"
+      },
+      "summary": {
+        "zh-CN": "优化可见商品的产品分查询，修复暂停后“查询中”残留，提供单项重试并减少重复上下文请求。",
+        "en-US": "Improve visible product-score reads, clear paused loading states, add per-row retries and reduce redundant context requests."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.20.1",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.20.0...v2.20.1",
+      "changes": [
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "暂停后不再残留查询中",
+            "en-US": "Clear loading when queries pause"
+          },
+          "description": {
+            "zh-CN": "离页、滚出可视区域或切到后台时停止后续查询；有效的在途读取仍可完成，账号或配置变化后的过期结果不会应用。",
+            "en-US": "Pause subsequent reads when leaving, hiding the page or scrolling away. Valid in-flight reads may finish; stale results after account or configuration changes are discarded."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "减少重复检查并复用查询结果",
+            "en-US": "Reduce duplicate checks and reuse scores"
+          },
+          "description": {
+            "zh-CN": "可见商品共用串行队列，独立上下文检查并行执行；请求前后仍按实际操作及参数校验账号与授权，不在失败后换协议重试。",
+            "en-US": "Use one serial queue for visible products and parallel independent context checks. Preserve before-and-after account and authorization checks for the actual operation and payload, without failure-triggered protocol switching."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "失败评分可单独重试",
+            "en-US": "Retry failed scores individually"
+          },
+          "description": {
+            "zh-CN": "失败行提供主动重试入口和中英文状态提示，已完成分数复用缓存；不自动重复调度失败项，不新增接口权限或商品写能力。",
+            "en-US": "Retry a failed row explicitly with bilingual status hints and cached completed scores. Failed rows are not automatically rescheduled; no new permissions or product writes are added."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.20.0",
       "releasedAt": "2026-10-27",
       "title": {
