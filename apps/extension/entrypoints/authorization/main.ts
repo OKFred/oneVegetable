@@ -53,11 +53,7 @@ el('#alternatives').insertAdjacentHTML(
 );
 el('#form').insertAdjacentHTML(
   'beforebegin',
-  '<div id="topApplicationBackup" hidden><p class="muted" data-text="topApplicationHelp"></p><button id="chooseApplicationFile" data-text="readApplicationBackup"></button><input id="applicationFile" type="file" accept="application/json,.json" hidden></div>'
-);
-el('#form').insertAdjacentHTML(
-  'beforebegin',
-  `<h2 data-text="manualApplication"></h2><details id="topManualGuide" class="authorization-manual-guide" hidden><summary data-text="topManualTitle"></summary><ol><li data-text="topManualExisting"></li><li data-text="topManualPrepare"></li><li data-text="topManualApprove"></li><li data-text="topManualFinish"></li></ol><p class="warning" data-text="topManualUnavailable"></p><a href="https://developer.alibaba.com/docs/doc.htm?articleId=118846&amp;docType=1&amp;treeId=456" target="_blank" rel="noopener noreferrer" data-text="topManualDocumentation"></a></details>`
+  `<h2 data-text="manualApplication"></h2><div id="topApplicationBackup" hidden><div class="actions"><button id="chooseApplicationFile" type="button" class="primary" data-text="readApplicationBackup"></button><input id="applicationFile" type="file" accept="application/json,.json" hidden></div><p class="muted" data-text="topApplicationHelp"></p></div><details id="topManualGuide" class="authorization-manual-guide" hidden><summary data-text="topManualTitle"></summary><ol><li data-text="topManualExisting"></li><li data-text="topManualPrepare"></li><li data-text="topManualApprove"></li><li data-text="topManualFinish"></li></ol><p class="warning" data-text="topManualUnavailable"></p><a href="https://developer.alibaba.com/docs/doc.htm?articleId=118846&amp;docType=1&amp;treeId=456" target="_blank" rel="noopener noreferrer" data-text="topManualDocumentation"></a></details>`
 );
 el('#nextStep').insertAdjacentHTML(
   'afterend',

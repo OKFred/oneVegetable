@@ -1845,6 +1845,75 @@ test('TOP preparation has aligned entry buttons and no protocol-switch or manage
   expect(topCreates + creates + refreshes + topRefreshes).toBe(0);
 });
 
+test('TOP application-file action is prominent, spaced and usable in both languages and themes', async () => {
+  const tool = await openTool('top');
+  await prepareProtection(tool);
+  await tool.locator('#topReauthorize').click();
+  const notification = tool.locator('.authorization-toast-close');
+  if (await notification.count()) await notification.first().click();
+  const backup = tool.locator('#topApplicationBackup');
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await tool.emulateMedia({ colorScheme });
+    for (const language of ['zh-CN', 'en-US'] as const) {
+      if ((await tool.locator('html').getAttribute('lang')) !== language)
+        await tool.locator('#language').click();
+      for (const width of [1440, 390]) {
+        await tool.setViewportSize({ width, height: 1058 });
+        await expect(backup).toBeVisible();
+        await tool.screenshot({
+          path: resolve(
+            UI_SCREENSHOT_DIRECTORY,
+            `top-application-import-${language}-${colorScheme}-${width}.png`
+          ),
+          fullPage: true,
+          animations: 'disabled'
+        });
+        const layout = await backup.evaluate((element) => {
+          const heading = element.parentElement?.querySelector('h2');
+          const button = element.querySelector('button');
+          const help = element.querySelector('p');
+          const guide = element.parentElement?.querySelector('#topManualGuide');
+          if (!heading || !button || !help || !guide) throw new Error('Missing TOP application controls');
+          const rect = element.getBoundingClientRect();
+          const action = button.getBoundingClientRect();
+          return {
+            headingGap: rect.top - heading.getBoundingClientRect().bottom,
+            helpGap: help.getBoundingClientRect().top - action.bottom,
+            guideGap: guide.getBoundingClientRect().top - rect.bottom,
+            inset: action.left - rect.left,
+            height: action.height,
+            primary: button.classList.contains('primary'),
+            background: getComputedStyle(button).backgroundColor,
+            foreground: getComputedStyle(button).color,
+            fits: rect.left >= 0 && rect.right <= innerWidth && element.scrollWidth <= element.clientWidth
+          };
+        });
+        expect(Math.round(layout.headingGap)).toBeGreaterThanOrEqual(16);
+        expect(Math.round(layout.helpGap)).toBeGreaterThanOrEqual(12);
+        expect(Math.round(layout.guideGap)).toBeGreaterThanOrEqual(20);
+        expect(Math.round(layout.inset)).toBeGreaterThanOrEqual(16);
+        expect(Math.round(layout.height)).toBeGreaterThanOrEqual(44);
+        expect(layout.primary).toBe(true);
+        expect(layout.background).not.toBe('rgb(21, 93, 233)');
+        expect(layout.foreground).not.toBe(layout.background);
+        expect(layout.fits).toBe(true);
+        expect(await tool.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      }
+    }
+  }
+  const chooserPromise = tool.waitForEvent('filechooser');
+  await tool.locator('#chooseApplicationFile').click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({
+    name: 'old-top.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ ...applicationBackups.top, application: standalone.top }))
+  });
+  await expect(tool.locator('#appKey')).toHaveValue(standalone.top.appKey);
+  await expect(tool.locator('#callback')).toHaveValue(standalone.top.callbackUrl);
+  expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+});
+
 test('authorization forms and the return link retain spacing in both languages and themes', async () => {
   const tool = await openTool('iop');
   await expect(tool.locator('#protectionSection')).toBeVisible();
