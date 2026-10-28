@@ -4,7 +4,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
-Version 2.20.1 improves on-demand product-score queries and pause recovery, clears lingering loading states, reduces redundant context requests and adds individual failed-row retries. TOP, IOP, legacy and dual authorization remain compatible. Existing credentials, default protocols and write capabilities stay unchanged, with no new permissions or failure-triggered cross-protocol retries.
+Version 2.20.2 makes the legacy TOP application-file reader easier to find, placing its green action below the application heading in a separate padded panel with instructions underneath. Spacing stays readable in English and Chinese, light and dark themes, and small screens. Reading app details does not import the old token. Authorization, renewal and save flows, existing credentials, default protocols and write capabilities remain unchanged, with no new permissions.
 
 Known limitations: the checked authorizations still encounter IOP photo-group scope errors, video business rejections and TOP supplier upstream errors. Restrictions stay explicit and real failures never fall back to simulated results.
 

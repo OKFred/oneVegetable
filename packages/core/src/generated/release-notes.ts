@@ -4,6 +4,37 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.20.2',
+      releasedAt: '2026-10-29',
+      title: {
+        'zh-CN': 'TOP 重新授权入口布局优化',
+        'en-US': 'Clearer TOP reauthorization entry'
+      },
+      summary: {
+        'zh-CN': '让旧授权文件的应用资料读取入口更醒目，补齐间距，优化中英文与窄屏展示。',
+        'en-US':
+          'Make the legacy app-file reader easier to find, with consistent spacing across languages and screen sizes.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.20.2',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.20.1...v2.20.2',
+      changes: [
+        {
+          type: 'fix',
+          title: {
+            'zh-CN': '突出旧应用资料读取入口',
+            'en-US': 'Highlight the legacy application-file action'
+          },
+          description: {
+            'zh-CN':
+              '将读取按钮移至应用信息标题下方的独立浅底区域，使用主题绿色，说明放在按钮下方；补齐上下留白并适配中英文、明暗主题和窄屏。只读取应用资料，不导入旧 Token，不改变授权、续期或保存流程，也不新增权限或平台写入能力。',
+            'en-US':
+              'Place the file-reader action below the application heading in a separate padded panel, using the workbench green and instructions underneath. Preserve spacing in English and Chinese, light and dark themes, and small screens. Only application details are read: old tokens are not imported, authorization, renewal and save flows remain unchanged, and no permissions or platform writes are added.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.20.1',
       releasedAt: '2026-10-28',
       title: {
