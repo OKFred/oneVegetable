@@ -485,7 +485,7 @@ test('static page and MV3 callback retain legacy export, lock and refresh endpoi
   await expect(tool.locator('#status')).toHaveText('授权文件已安全保存');
   await tool.locator('#language').click();
   await expect(tool.locator('#authorizeOtherProtocol')).toHaveText(
-    'Continue authorizing another protocol (TOP)'
+    'Save and authorize another protocol (TOP)'
   );
   await tool.emulateMedia({ colorScheme: 'dark' });
   await expect(tool.locator('#authorizeOtherProtocol')).toBeEnabled();
@@ -848,8 +848,8 @@ for (const protocol of ['top', 'iop'] as const) {
             await tool.locator('#language').click();
           await expect(tool.locator('#authorizeOtherProtocol')).toHaveText(
             language === 'zh-CN'
-              ? `继续授权另一协议（${target}）`
-              : `Continue authorizing another protocol (${target})`
+              ? `保存并继续授权另一协议（${target}）`
+              : `Save and authorize another protocol (${target})`
           );
           await expect(tool.locator('#authorizeOtherProtocol')).toBeEnabled();
           await expect(tool.locator('#authorizeOtherProtocol svg')).toHaveCount(0);
@@ -922,7 +922,7 @@ for (const protocol of ['top', 'iop'] as const) {
   });
 
   for (const targetConfigured of [false, true]) {
-    test(`${protocol} preserves saved profiles and the default when preparing the ${targetConfigured ? 'saved' : 'empty'} other protocol without automatic network, permissions or save`, async () => {
+    test(`${protocol} saves before preparing the ${targetConfigured ? 'saved' : 'empty'} other protocol without OAuth or business requests`, async () => {
       const tool = await openTool(protocol);
       await prepareProtection(tool, '');
       await legacyToolAction(tool, 'import', { bundle: jsonImports[protocol], passphrase: '' });
@@ -1015,15 +1015,26 @@ for (const protocol of ['top', 'iop'] as const) {
           ).switchActivity
       );
       expect(observed.actions).toContainEqual({ action: 'status', protocol: target });
-      expect(observed.actions.every(({ action }) => ['status', 'protection-status'].includes(action))).toBe(
-        true
-      );
-      expect(observed.permissions).toBe(0);
-      expect(await storage()).toEqual(before);
+      expect(observed.actions.filter(({ action }) => action === 'apply-to-workbench')).toEqual([
+        { action: 'apply-to-workbench', protocol }
+      ]);
+      expect(
+        observed.actions.every(({ action }) =>
+          ['status', 'protection-status', 'apply-to-workbench'].includes(action)
+        )
+      ).toBe(true);
+      expect(observed.permissions).toBe(1);
+      expect(await legacyToolAction(tool, 'status', {}, protocol)).toMatchObject({ state: 'ready' });
+      const workbench = await openWorkbenchSettings();
+      expect(await sendWorkbench(workbench, 'credential-vault-request', 'authorizations')).toMatchObject({
+        ok: true,
+        data: { defaultProtocol: protocol, [protocol]: { configured: true } }
+      });
       const expectedPages = pagesBefore.map((url) => (url === toolUrlBefore ? tool.url() : url)).sort();
       expect(
         context
           .pages()
+          .filter((page) => page !== workbench)
           .map((page) => page.url())
           .sort()
       ).toEqual(expectedPages);
@@ -1033,6 +1044,152 @@ for (const protocol of ['top', 'iop'] as const) {
     });
   }
 }
+
+for (const first of ['iop', 'top'] as const) {
+  test(`first use saves ${first} before continuing and retains both profiles after final save and reload`, async () => {
+    const tool = first === 'iop' ? await authorize() : await openTool(first);
+    if (first === 'top') {
+      await prepareProtection(tool, '');
+      await tool.locator('#topImport').click();
+      await tool.locator('#file').setInputFiles({
+        name: 'credentialInfo.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(jsonImports.top))
+      });
+      await confirmToolAction(tool);
+    }
+    await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+    // No apply-to-workbench setup: this is the first-use path reported by the user.
+    const workbench = await openWorkbenchSettings();
+    expect(await sendWorkbench(workbench, 'credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { top: null, iop: null }
+    });
+    await tool.bringToFront();
+    await tool.locator('#authorizeOtherProtocol').click();
+    const second = first === 'iop' ? 'top' : 'iop';
+    await expect(tool.locator('#protocolBadge')).toHaveText(`oneVegetable · ${second.toUpperCase()}`);
+    expect(await sendWorkbench(workbench, 'credential-vault-request', 'authorizations')).toMatchObject({
+      ok: true,
+      data: { defaultProtocol: first, [first]: { configured: true }, [second]: null }
+    });
+    if (second === 'top') await tool.locator('#topImport').click();
+    await tool.locator('#file').setInputFiles({
+      name: 'credentialInfo.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(jsonImports[second]))
+    });
+    await confirmToolAction(tool);
+    await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+    await tool.locator('#applyWorkbench').click();
+    await confirmToolAction(tool);
+    await expect(tool).toHaveURL(`chrome-extension://${extensionId}/options.html#/dashboard`);
+    for (let reload = 0; reload < 2; reload++) {
+      expect(await sendWorkbench(tool, 'credential-vault-request', 'authorizations')).toMatchObject({
+        ok: true,
+        data: { defaultProtocol: first, top: { configured: true }, iop: { configured: true } }
+      });
+      await tool.reload();
+    }
+    expect(creates + topCreates).toBe(first === 'iop' ? 1 : 0);
+    expect(refreshes + topRefreshes).toBe(0);
+  });
+}
+
+for (const failure of ['permission', 'save', 'receipt'] as const) {
+  for (const continueAnyway of [false, true]) {
+    test(`failed ${failure} before protocol switch ${continueAnyway ? 'switches only after explicit confirmation' : 'stays for retry'}`, async () => {
+      const tool = await openTool('iop');
+      await prepareProtection(tool, '');
+      await legacyToolAction(tool, 'import', { bundle: jsonImports.iop, passphrase: '' });
+      await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+      await tool.evaluate((kind) => {
+        const api = (
+          globalThis as unknown as {
+            chrome: {
+              permissions: { request(options: unknown): Promise<boolean> };
+              runtime: { sendMessage(message: unknown): Promise<unknown> };
+            };
+          }
+        ).chrome;
+        if (kind === 'permission') api.permissions.request = () => Promise.resolve(false);
+        else {
+          const send = api.runtime.sendMessage.bind(api.runtime);
+          api.runtime.sendMessage = (message) =>
+            (message as { action?: string }).action === 'apply-to-workbench'
+              ? Promise.resolve(
+                  kind === 'receipt'
+                    ? { ok: true, data: { applied: false } }
+                    : { ok: false, error: { code: 'AUTH_ACTION_FAILED' } }
+                )
+              : send(message);
+        }
+      }, failure);
+      await tool.locator('#authorizeOtherProtocol').click();
+      const confirmation = tool.getByRole('dialog');
+      await expect(confirmation).toContainText('当前授权保存到工作台失败');
+      await expect(tool.locator('#protocolBadge')).toHaveText('oneVegetable · IOP');
+      await confirmation
+        .getByRole('button', { name: continueAnyway ? '仍然切换' : '返回重试', exact: true })
+        .click();
+      await expect(confirmation).toHaveCount(0);
+      await expect(tool.locator('#protocolBadge')).toHaveText(
+        `oneVegetable · ${continueAnyway ? 'TOP' : 'IOP'}`
+      );
+      expect(await legacyToolAction(tool, 'status', {}, 'iop')).toMatchObject({ state: 'ready' });
+      const workbench = await openWorkbenchSettings();
+      expect(await sendWorkbench(workbench, 'credential-vault-request', 'authorizations')).toMatchObject({
+        ok: true,
+        data: { top: null, iop: null }
+      });
+      expect(creates + topCreates + refreshes + topRefreshes).toBe(0);
+    });
+  }
+}
+
+test('continuing waits for the save receipt and prevents duplicate save clicks', async () => {
+  const tool = await openTool('iop');
+  await prepareProtection(tool, '');
+  await legacyToolAction(tool, 'import', { bundle: jsonImports.iop, passphrase: '' });
+  await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+  await tool.evaluate(() => {
+    const api = (
+      globalThis as unknown as { chrome: { runtime: { sendMessage(message: unknown): Promise<unknown> } } }
+    ).chrome;
+    const send = api.runtime.sendMessage.bind(api.runtime);
+    const state = {
+      count: 0,
+      release: () => {
+        throw new Error('Save has not started');
+      }
+    };
+    (globalThis as unknown as { pendingSave: typeof state }).pendingSave = state;
+    api.runtime.sendMessage = (message) => {
+      if ((message as { action?: string }).action !== 'apply-to-workbench') return send(message);
+      state.count++;
+      return new Promise((resolveResult, reject) => {
+        state.release = () => {
+          void send(message).then(resolveResult, reject);
+        };
+      });
+    };
+  });
+  await tool.locator('#authorizeOtherProtocol').click();
+  await expect(tool.locator('#authorizeOtherProtocol')).toBeDisabled();
+  await expect(tool.locator('#protocolBadge')).toHaveText('oneVegetable · IOP');
+  expect(
+    await tool.evaluate(() => (globalThis as unknown as { pendingSave: { count: number } }).pendingSave.count)
+  ).toBe(1);
+  await tool.evaluate(() => {
+    (globalThis as unknown as { pendingSave: { release(): void } }).pendingSave.release();
+  });
+  await expect(tool.locator('#protocolBadge')).toHaveText('oneVegetable · TOP');
+  const workbench = await openWorkbenchSettings();
+  expect(await sendWorkbench(workbench, 'credential-vault-request', 'authorizations')).toMatchObject({
+    ok: true,
+    data: { defaultProtocol: 'iop', iop: { configured: true } }
+  });
+});
 
 test('public pages cannot export; mismatched callback does not call the platform', async () => {
   const tool = await authorize();
@@ -1442,7 +1599,7 @@ test('standalone TOP and IOP use separate OAuth endpoints, encrypted vaults, ref
   expect(topCreates).toBe(1);
 });
 
-test('HTML confirmation is cancellable and import, save, reauthorization and protocol switch do nothing before confirmation', async () => {
+test('HTML confirmation is cancellable and import, save and reauthorization do nothing before confirmation', async () => {
   const tool = await authorize();
   const downloads: string[] = [];
   tool.on('download', (download) => downloads.push(download.suggestedFilename()));
@@ -1469,11 +1626,8 @@ test('HTML confirmation is cancellable and import, save, reauthorization and pro
   await dialog.getByRole('button', { name: '取消', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(tool.locator('#error')).toBeEmpty();
-  await tool.locator('#authorizeOtherProtocol').click();
-  await expect(tool.getByRole('dialog')).toContainText('切换授权类型');
-  await tool.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click();
   await expect(tool.locator('#protocolBadge')).toHaveText('oneVegetable · IOP');
-  await expect(tool.locator('#authorizeOtherProtocol')).toHaveText('继续授权另一协议（TOP）');
+  await expect(tool.locator('#authorizeOtherProtocol')).toHaveText('保存并继续授权另一协议（TOP）');
   await expect(tool.locator('#appName')).toHaveValue('Merchant fixture');
   expect(refreshes + topRefreshes + topCreates).toBe(0);
   expect(downloads).toEqual([]);

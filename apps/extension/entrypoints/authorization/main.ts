@@ -656,6 +656,7 @@ function switchProtocol(selected: Protocol): void {
   const apply = (): void => {
     if (
       protocol !== previousProtocol ||
+      pageClosed ||
       busy ||
       !protectionReady ||
       summary?.state !== 'ready' ||
@@ -682,16 +683,57 @@ function switchProtocol(selected: Protocol): void {
     transientMessage('', true);
     transientMessage('');
     render();
-    // Preparation only: read the other local profile. Never save, discover, request
-    // host permissions or launch OAuth here; those require their own user action.
+    // Switching never launches OAuth or reads the other profile's application.
     void update().catch(showError);
   };
+  const saveAndContinue = async (): Promise<void> => {
+    const isCurrentPage = (): boolean => !pageClosed && protocol === previousProtocol;
+    if (busy || !isCurrentPage()) return;
+    busy = true;
+    statusSequence += 1;
+    clearTimeout(timer);
+    transientMessage('', true);
+    transientMessage('');
+    render();
+    let failure: unknown;
+    try {
+      // Called directly from the user's click (or confirmation click), so an
+      // optional host permission request retains its required user gesture.
+      const allowed = await browser.permissions.request({
+        origins: [`${previousProtocol === 'iop' ? IOP_API_ORIGIN : 'https://eco.taobao.com'}/*`]
+      });
+      if (!allowed) throw new Error('AUTH_PERMISSION_REQUIRED');
+      if (!isCurrentPage()) return;
+      const saved = await request('apply-to-workbench', {}, previousProtocol);
+      if (!isRecord(saved) || saved.applied !== true || saved.protocol !== previousProtocol)
+        throw new Error('AUTH_ACTION_FAILED');
+    } catch (error) {
+      failure = error;
+    } finally {
+      busy = false;
+      if (isCurrentPage()) await update().catch(showError);
+    }
+    if (!isCurrentPage()) return;
+    if (failure !== undefined) {
+      confirmAction(
+        `${t('saveBeforeSwitchFailed')}\n\n${errorText(failure instanceof Error ? failure.message : 'AUTH_ACTION_FAILED')}`,
+        apply,
+        { confirm: t('switchWithoutSaving'), cancel: t('stayAndRetry') }
+      );
+    } else {
+      apply();
+      transientMessage(t('savedBeforeSwitch'));
+    }
+  };
   if (
-    ['appName', 'appKey', 'appSecret', 'passphrase'].some((id) => value(id) !== '') ||
+    (alternativeRequested &&
+      ['appName', 'appKey', 'appSecret', 'passphrase'].some((id) => value(id) !== '')) ||
     (jsonInput.value.trim() !== '' && jsonInput.value !== jsonExample)
   )
-    confirmAction(t('switchProtocolConfirm'), apply);
-  else apply();
+    confirmAction(t('switchProtocolConfirm'), () => {
+      void saveAndContinue();
+    });
+  else void saveAndContinue();
 }
 el('#authorizeOtherProtocol').onclick = () => {
   switchProtocol(protocol === 'top' ? 'iop' : 'top');

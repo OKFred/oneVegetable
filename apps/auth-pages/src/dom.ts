@@ -75,7 +75,11 @@ export function transientMessage(message: string, error = false): void {
 
 let activeConfirmation: HTMLDialogElement | null = null;
 /** The approved action runs directly in the final click gesture for host permissions. */
-export function confirmAction(message: string, onConfirm: () => void): void {
+export function confirmAction(
+  message: string,
+  onConfirm: () => void,
+  labels: { confirm?: string; cancel?: string } = {}
+): void {
   if (activeConfirmation) return;
   const trigger = document.activeElement;
   const dialog = document.createElement('dialog');
@@ -92,11 +96,11 @@ export function confirmAction(message: string, onConfirm: () => void): void {
   actions.className = 'actions confirmation-actions';
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.textContent = t('confirmationCancel');
+  cancel.textContent = labels.cancel ?? t('confirmationCancel');
   const proceed = document.createElement('button');
   proceed.type = 'button';
   proceed.className = 'primary';
-  proceed.textContent = t('confirmationContinue');
+  proceed.textContent = labels.confirm ?? t('confirmationContinue');
   proceed.dataset.testid = 'authorization-confirm';
   const close = (): void => {
     dialog.close();
