@@ -999,7 +999,7 @@ for (const protocol of ['top', 'iop'] as const) {
       );
       await expect(tool.getByRole('dialog')).toHaveCount(0);
       if (targetConfigured) {
-        await expect(tool.locator('#authorizeOtherProtocol')).toBeVisible();
+        await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
         await expect(tool.locator('#name')).toHaveText(jsonImports[target].application.appName);
       } else {
         await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
@@ -1081,6 +1081,9 @@ for (const first of ['iop', 'top'] as const) {
     });
     await confirmToolAction(tool);
     await expect(tool.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+    // The other protocol is already in the workbench. Finish saving this one,
+    // rather than inviting the user to configure the completed protocol again.
+    await expect(tool.locator('#authorizeOtherProtocol')).toBeHidden();
     await tool.locator('#applyWorkbench').click();
     await confirmToolAction(tool);
     await expect(tool).toHaveURL(`chrome-extension://${extensionId}/options.html#/dashboard`);
@@ -1093,6 +1096,16 @@ for (const first of ['iop', 'top'] as const) {
     }
     expect(creates + topCreates).toBe(first === 'iop' ? 1 : 0);
     expect(refreshes + topRefreshes).toBe(0);
+    for (const protocol of ['top', 'iop'] as const) {
+      const review = await openTool(protocol);
+      await expect(review.locator('body')).toHaveAttribute('data-authorization-ready', 'true');
+      await expect(review.locator('#authorizeOtherProtocol')).toBeHidden();
+      await expect(review.locator('#applyWorkbench')).toBeVisible();
+    }
+    await sendWorkbench(workbench, 'credential-vault-request', 'clear-authorization', { protocol: second });
+    const review = await openTool(first);
+    await expect(review.locator('#authorizeOtherProtocol')).toBeVisible();
+    await expect(review.locator('#authorizeOtherProtocol')).toBeEnabled();
   });
 }
 

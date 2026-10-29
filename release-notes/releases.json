@@ -6,12 +6,12 @@
       "version": "2.20.2",
       "releasedAt": "2026-10-29",
       "title": {
-        "zh-CN": "TOP 重新授权入口布局优化",
-        "en-US": "Clearer TOP reauthorization entry"
+        "zh-CN": "双授权接续保存与 TOP 入口优化",
+        "en-US": "Authorization handoff and TOP entry fixes"
       },
       "summary": {
-        "zh-CN": "让旧授权文件的应用资料读取入口更醒目，补齐间距，优化中英文与窄屏展示。",
-        "en-US": "Make the legacy app-file reader easier to find, with consistent spacing across languages and screen sizes."
+        "zh-CN": "继续另一协议前先保存当前授权，两份已配置后隐藏重复入口；同时优化旧 TOP 应用资料读取入口的布局。",
+        "en-US": "Save the current authorization before continuing to the other protocol, hide the redundant action when it is already configured, and clarify the legacy TOP app-file reader."
       },
       "source": "release",
       "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.20.2",
@@ -24,8 +24,19 @@
             "en-US": "Highlight the legacy application-file action"
           },
           "description": {
-            "zh-CN": "将读取按钮移至应用信息标题下方的独立浅底区域，使用主题绿色，说明放在按钮下方；补齐上下留白并适配中英文、明暗主题和窄屏。只读取应用资料，不导入旧 Token，不改变授权、续期或保存流程，也不新增权限或平台写入能力。",
-            "en-US": "Place the file-reader action below the application heading in a separate padded panel, using the workbench green and instructions underneath. Preserve spacing in English and Chinese, light and dark themes, and small screens. Only application details are read: old tokens are not imported, authorization, renewal and save flows remain unchanged, and no permissions or platform writes are added."
+            "zh-CN": "将读取按钮移至应用信息标题下方的独立浅底区域，使用主题绿色，说明放在按钮下方；补齐上下留白并适配中英文、明暗主题和窄屏。只读取应用资料，不导入旧 Token，不改变 OAuth 或续期端点，不新增权限或平台写入能力。",
+            "en-US": "Place the file-reader action below the application heading in a separate padded panel, using the workbench green and instructions underneath. Preserve spacing in English and Chinese, light and dark themes, and small screens. Only application details are read: old tokens are not imported, OAuth and renewal endpoints stay unchanged, and no permissions or platform writes are added."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "继续另一协议前保存授权，完成后隐藏重复入口",
+            "en-US": "Save before switching and hide completed authorization steps"
+          },
+          "description": {
+            "zh-CN": "继续 TOP 或 IOP 前先将当前授权保存到工作台，成功后再切换；失败可返回重试或确认仍然切换。保留另一份授权及默认选项。另一份已保存时隐藏继续入口，清除后恢复；仅在工具就绪但未保存的授权不计为已配置。状态检查复用本机元数据，不新增平台请求。",
+            "en-US": "Save the current authorization to the workbench before continuing to TOP or IOP. Switch after success; on failure, return to retry or explicitly switch anyway. Preserve the other profile and existing default. Hide the action when the other profile is saved and restore it after clearing; a ready but unapplied tool bundle does not count as configured. Reuse local metadata without new platform requests."
           }
         }
       ]

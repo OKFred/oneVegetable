@@ -2,7 +2,7 @@
 
 ## Scope and compatibility
 
-Prepare the TOP application-file layout fix in 8a87804 on top of v2.20.1 (9b312ea). The action now follows the application heading, uses the existing green primary style inside a padded panel, and has instructions below it. English/Chinese, light/dark and desktop/narrow layouts are covered.
+Prepare the TOP application-file layout fix and dual-authorization handoff fixes on top of v2.20.1 (9b312ea). The file action follows the application heading, uses the existing green primary style inside a padded panel, and has instructions below it. Continuing another protocol first saves the current authorization, then switches after an explicit success receipt; a failure offers retry or an explicit switch without saving. Hide this action when the other profile is already saved to the workbench, not merely ready in the tool. English/Chinese, light/dark and desktop/narrow layouts are covered.
 
 | Sub-capability                                            | TOP                                                                  | IOP                                         | Risk and acceptance                                                                                     |
 | --------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -10,6 +10,8 @@ Prepare the TOP application-file layout fix in 8a87804 on top of v2.20.1 (9b312e
 | OAuth, renewal and workbench save                         | Existing TOP endpoints and guards unchanged                          | Existing IOP endpoints and guards unchanged | No new API, permission, credential migration or write allowance; isolated authorization regression only |
 
 No new network client, registry mapping, default-protocol change, provider mutation, database migration or dependency is introduced. Mock fixtures are restricted to disposable test profiles and never become a production fallback.
+
+Button visibility reuses the existing local `protection-status.pool` TOP/IOP booleans and local storage-change notifications. It adds no provider request or credential exposure. Clearing the other workbench profile restores its setup action. Saved authorizations and defaults survive refresh; the last profile can still be saved normally.
 
 ## Verification and artifacts
 
@@ -21,4 +23,4 @@ Keep ZIP <= 2,000,000 bytes and unpacked files <= 5,470,000 bytes, without relax
 
 ## Delivery boundary
 
-Push the development branch and prepare a 2.20.2 candidate ZIP and bilingual listing notes. Do not promote staging/master, create a Tag/GitHub Release, deploy Cloudflare or submit Chrome Web Store without a later instruction. Do not replace v2.20.1, its Release or its ZIP. Update the planned release date if formal publication happens on another day.
+For the authorized final delivery, push this development branch, wait for its exact commit to pass CI, then promote staging/master and refresh the final 2.20.2 ZIP on both the remote and local artifact directories. Verify it against the same passing CI artifact and keep old candidate checksums separate. This final ZIP supersedes both the layout-only candidate and the earlier handoff-only package. Do not create a Tag/GitHub Release, deploy Cloudflare or submit Chrome Web Store without a later instruction. Do not replace v2.20.1, its Release or its ZIP. Update the planned release date if formal publication happens on another day.

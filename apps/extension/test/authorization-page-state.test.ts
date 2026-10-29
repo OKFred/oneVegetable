@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
 import type { IopAuthorizationSummary } from '../lib/iop-authorization';
+import { SETTINGS_STORAGE_KEY } from '@one-vegetable/core';
 
 const mocks = vi.hoisted(() => ({
   send: vi.fn<(message: { action: string }) => Promise<unknown>>(),
@@ -26,9 +27,13 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   history.replaceState(null, '', '/authorization.html?protocol=top');
   document.body.innerHTML = '<main id="app"></main>';
   let state: IopAuthorizationSummary['state'] = 'ready';
+  const pool = { top: false, iop: false };
   mocks.send.mockImplementation((message: { action: string }) => {
     if (message.action === 'protection-status')
-      return Promise.resolve({ ok: true, data: { state: 'unlocked', deviceProtected: false } });
+      return Promise.resolve({
+        ok: true,
+        data: { state: 'unlocked', deviceProtected: false, pool: { ...pool } }
+      });
     if (message.action === 'unlock') state = 'ready';
     return Promise.resolve({
       ok: true,
@@ -115,11 +120,21 @@ it('resynchronizes a stale ready page and keeps the old vault input editable acr
   expect(summary.hidden).toBe(false);
   expect(otherProtocol.hidden).toBe(false);
   expect(otherProtocol.disabled).toBe(false);
-  state = 'empty';
   const onChange = mocks.onStorageChanged.mock.calls[0]?.[0] as (
     changes: Record<string, unknown>,
     area: string
   ) => void;
+  pool.iop = true;
+  onChange({ [SETTINGS_STORAGE_KEY]: {} }, 'local');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(otherProtocol.hidden).toBe(true);
+  expect(otherProtocol.disabled).toBe(true);
+  pool.iop = false;
+  onChange({ [SETTINGS_STORAGE_KEY]: {} }, 'local');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(otherProtocol.hidden).toBe(false);
+  expect(otherProtocol.disabled).toBe(false);
+  state = 'empty';
   onChange({ 'one-vegetable-top-authorization-v1': {} }, 'local');
   await vi.advanceTimersByTimeAsync(0);
   expect(summary.hidden).toBe(true);

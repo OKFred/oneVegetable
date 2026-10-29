@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { IOP_API_ORIGIN, PUBLIC_AUTH_CALLBACK } from '@one-vegetable/core/alibaba-iop';
+import { SETTINGS_STORAGE_KEY } from '@one-vegetable/core';
 import {
   confirmAction,
   transientMessage,
@@ -81,6 +82,7 @@ let statusUnavailable = false;
 let protectionState = '';
 let deviceProtected = false;
 let protectionReady = false;
+let workbenchProtocols = { top: false, iop: false };
 let discoverAfterProtection = false;
 let topFlow: 'reauthorize' | 'import' | null = null;
 let alternativeRequested = false;
@@ -175,10 +177,11 @@ function render(): void {
   el('#restartConnection').hidden = !ready;
   el<HTMLButtonElement>('#restartConnection').disabled = busy || !protectionReady || !summary?.canReauthorize;
   el('#nextStep').hidden = ready;
-  el('#authorizeOtherProtocol').hidden = !ready || !protectionReady;
+  const otherConfigured = workbenchProtocols[top ? 'iop' : 'top'];
+  el('#authorizeOtherProtocol').hidden = !ready || !protectionReady || otherConfigured;
   el('#authorizeOtherProtocol').textContent = t(top ? 'authorizeOtherIop' : 'authorizeOtherTop');
   el<HTMLButtonElement>('#authorizeOtherProtocol').disabled =
-    busy || !protectionReady || !ready || !!summary?.canSave;
+    busy || !protectionReady || !ready || !!summary?.canSave || otherConfigured;
   el('#topEntries').hidden = !top || !protectionReady || !summary || waiting || ready;
   for (const id of ['topReauthorize', 'topImport', 'chooseApplicationFile'])
     el<HTMLButtonElement>(`#${id}`).disabled = busy || !protectionReady || !summary || waiting;
@@ -256,6 +259,10 @@ async function update(): Promise<void> {
   protectionState = protection.state;
   deviceProtected = protection.deviceProtected === true;
   protectionReady = protection.state === 'unlocked';
+  // Reuse existing safe workbench metadata, not standalone tool readiness or
+  // provider requests. A ready but unapplied bundle must not count as configured.
+  const pool = isRecord(protection.pool) ? protection.pool : {};
+  workbenchProtocols = { top: pool.top === true, iop: pool.iop === true };
   const data = await request('status', {}, selected);
   // pagehide also advances statusSequence, invalidating this second awaited read.
   if (selected !== protocol || sequence !== statusSequence) return;
@@ -650,7 +657,14 @@ el<HTMLInputElement>('#file').onchange = (event) => {
     });
 };
 function switchProtocol(selected: Protocol): void {
-  if (selected === protocol || busy || !protectionReady || summary?.state !== 'ready' || summary.canSave)
+  if (
+    selected === protocol ||
+    busy ||
+    !protectionReady ||
+    summary?.state !== 'ready' ||
+    summary.canSave ||
+    workbenchProtocols[selected]
+  )
     return;
   const previousProtocol = protocol;
   const apply = (): void => {
@@ -745,7 +759,12 @@ document.addEventListener('visibilitychange', () => {
 });
 browser.storage.onChanged.addListener((changes, areaName) => {
   const key = protocol === 'top' ? TOP_VAULT_KEY : IOP_VAULT_KEY;
-  if (areaName === 'local' && Object.hasOwn(changes, key) && !pageClosed && !busy)
+  if (
+    areaName === 'local' &&
+    (Object.hasOwn(changes, key) || Object.hasOwn(changes, SETTINGS_STORAGE_KEY)) &&
+    !pageClosed &&
+    !busy
+  )
     void update().catch(showError);
 });
 window.addEventListener('focus', () => {
