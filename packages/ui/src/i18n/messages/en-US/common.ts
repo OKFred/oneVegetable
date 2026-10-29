@@ -195,8 +195,7 @@ export const common = {
     mediaGuidance: {
       configureTop: 'Check TOP authorization',
       official: 'Open Alibaba',
-      photoScope:
-        'These results were rejected to prevent selecting images from the wrong group. Check TOP authorization and query again, or use Alibaba. Authorization will not switch automatically.',
+      photoScope: 'Use TOP authorization, or view images on Alibaba.',
       chooseGroup:
         'Choose a specific image group before querying. IOP does not support querying all images or ungrouped images.',
       importReadback:

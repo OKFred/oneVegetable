@@ -13,6 +13,8 @@ No new network client, registry mapping, default-protocol change, provider mutat
 
 Button visibility reuses the existing local `protection-status.pool` TOP/IOP booleans and local storage-change notifications. It adds no provider request or credential exposure. Clearing the other workbench profile restores its setup action. Saved authorizations and defaults survive refresh; the last profile can still be saved normally.
 
+The final candidate also shortens the bilingual IOP photo-group mismatch message and its next-action guidance. The error still means that the returned group does not match the requested group; it does not establish that the platform has not finished developing the feature. Group-scope validation, error codes, protocol selection and retry behavior are unchanged.
+
 ## Verification and artifacts
 
 Run release-version, the full pnpm check, Worker replay, Web/formal-MV3 E2E, BFF replay, authorization E2E, Node-credential E2E and the official v2.20.1-to-candidate upgrade checks on remote Windows. Do not rebuild the extension while browser tests use the output. The layout regression initially fails on the old heading/spacing, then verifies eight locale/theme/viewport combinations and file selection.

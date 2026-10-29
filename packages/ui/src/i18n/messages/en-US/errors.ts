@@ -40,8 +40,7 @@ export const errors = {
       'The platform explicitly rejected this IOP operation. Check business conditions; do not resubmit.',
     ALIBABA_IOP_PHOTO_GROUP_REQUIRED:
       'Choose a specific group for IOP photos; all photos and ungrouped photos are unsupported.',
-    ALIBABA_IOP_PHOTO_SCOPE_MISMATCH:
-      'IOP returned another group, so this folder query is currently unavailable. This is not an empty folder or proof of missing permission. Query stopped. You can add TOP authorization. Group creation, renaming and uploads remain available when independently supported.',
+    ALIBABA_IOP_PHOTO_SCOPE_MISMATCH: 'Alibaba IOP image-group queries are currently unreliable.',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH:
       'The protocol and gateway endpoint do not match. Check the TOP or IOP configuration.',
     ALIBABA_IOP_RESPONSE_INVALID:

@@ -193,8 +193,7 @@ export const common = {
     mediaGuidance: {
       configureTop: '检查 TOP 授权',
       official: '前往国际站',
-      photoScope:
-        '为避免选错图片，已停止使用这页结果。请检查 TOP 授权后重新查询，或到国际站处理；不会自动切换授权。',
+      photoScope: '可使用 TOP 授权，或前往国际站查看。',
       chooseGroup: '请先选择具体图片分组再查询；当前 IOP 不支持全库或未分组查询。',
       importReadback:
         '此导入需要按目标分组核对上传结果，当前 IOP 尚不能可靠核对。已停止后续上传和建目录；请补充 TOP 授权后重新预览，或到国际站处理。',

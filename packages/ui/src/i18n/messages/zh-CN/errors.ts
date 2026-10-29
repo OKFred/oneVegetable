@@ -30,8 +30,7 @@ export const errors = {
     GALLERY_CONTEXT_UNAVAILABLE:
       '暂时无法确认当前账号与素材配置，已停止操作。请检查授权和存储设置后重新预览。',
     ALIBABA_IOP_PHOTO_GROUP_REQUIRED: 'IOP 图片查询需要具体分组，请选择分组；不支持全部图片或未分组。',
-    ALIBABA_IOP_PHOTO_SCOPE_MISMATCH:
-      'IOP 返回的图片分组与所选目录不符，当前目录查询不可用。这不代表空组，也不表示权限不足。已停止本次查询，可补充 TOP 授权。分组新增、改名和上传等独立操作仍按各自可用状态开放。',
+    ALIBABA_IOP_PHOTO_SCOPE_MISMATCH: '阿里平台 IOP 图片分组查询暂有异常。',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH: '协议与网关地址不匹配，请核对 TOP 或 IOP 配置。',
     ALIBABA_IOP_RESPONSE_INVALID: 'IOP 响应格式不符合预期，请核对配置和接口；不会回退 TOP。',
     ALIBABA_IOP_API_REJECTED: 'Alibaba IOP 拒绝了请求，请核对授权和接口权限。',

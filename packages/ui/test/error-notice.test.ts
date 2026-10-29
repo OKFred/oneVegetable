@@ -161,9 +161,10 @@ describe('ErrorNotice', () => {
     expect(wrapper.text()).not.toContain('errors.codes.');
     const chinese = wrapper.text();
     if (code === 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH') {
-      expect(chinese).toContain('不代表空组');
-      expect(chinese).toContain('已停止');
-      expect(chinese).toContain('TOP');
+      expect(chinese).toContain('阿里平台 IOP 图片分组查询暂有异常。');
+      expect(chinese).toContain('可使用 TOP 授权，或前往国际站查看。');
+      expect(chinese).not.toContain('还没开发完');
+      expect(chinese).not.toContain('分组新增、改名');
     }
     uiI18n.global.locale.value = 'en-US';
     await flushPromises();
@@ -172,8 +173,9 @@ describe('ErrorNotice', () => {
     if (code === 'ALIBABA_IOP_PHOTO_GROUP_REQUIRED')
       expect(wrapper.text()).toContain('Choose a specific group');
     if (code === 'ALIBABA_IOP_PHOTO_SCOPE_MISMATCH') {
-      expect(wrapper.text()).toContain('another group');
+      expect(wrapper.text()).toContain('Alibaba IOP image-group queries are currently unreliable.');
       expect(wrapper.text()).toContain('TOP authorization');
+      expect(wrapper.text()).not.toContain('Group creation, renaming');
     }
     if (code === 'ALIBABA_IOP_PARAMETER_UNSUPPORTED')
       expect(wrapper.text()).toContain('never silently ignored');
