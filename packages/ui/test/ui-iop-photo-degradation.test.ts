@@ -123,8 +123,14 @@ describe.each(['view', 'picker'] as const)('IOP photo degradation in the %s', (s
     const body = new DOMWrapper(document.body);
     const alert = body.get('[role="alert"]');
     expect(alert.text()).toContain(uiI18n.global.t(`errors.codes.${scopeMismatch.code}`));
-    expect(alert.text()).toContain(locale === 'zh-CN' ? '当前目录查询不可用' : 'currently unavailable');
-    expect(alert.text()).toContain(locale === 'zh-CN' ? '不表示权限不足' : 'not an empty folder or proof');
+    const message = uiI18n.global.t('errors.codes.ALIBABA_IOP_PHOTO_SCOPE_MISMATCH');
+    expect(message).toBe(
+      locale === 'zh-CN'
+        ? '阿里平台 IOP 图片分组查询暂有异常。'
+        : 'Alibaba IOP image-group queries are currently unreliable.'
+    );
+    expect(message.length).toBeLessThanOrEqual(70);
+    expect(alert.text()).toContain(uiI18n.global.t('common.error.mediaGuidance.photoScope'));
     expect(alert.text()).toContain('TOP');
     expect(body.text()).not.toContain(uiI18n.global.t('photos.emptyFilter'));
     expect(body.find('[data-testid="photo-card-grid"]').exists()).toBe(false);
