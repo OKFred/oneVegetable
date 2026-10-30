@@ -1,4 +1,4 @@
-import { PRODUCT_MAINTENANCE_METHODS } from './product-maintenance-api';
+import { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
 
 export type ProductMaintenanceExecutionRuntime = 'node' | 'worker' | 'extension';
 export type ProductMaintenanceNativeMethod =

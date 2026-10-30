@@ -72,11 +72,38 @@ export default defineConfig({
               includeDependenciesRecursively: false
             },
             {
+              // Durable maintenance is shared by MV3 and its lazy workspace, not background registration.
+              name: 'product-maintenance-model',
+              test: /core[\\\\/]src[\\\\/]product-maintenance-(?:api|service)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              // Never merge background registration with the model consumed by the Options page.
+              name: 'product-maintenance-backend',
+              test: /(?:apps[\\\\/]extension[\\\\/]lib[\\\\/]product-maintenance-(?:service|repository)|core[\\\\/]src[\\\\/]product-maintenance-(?:platform|runtime-policy))\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'product-workbench-identifiers',
+              test: /core[\\\\/]src[\\\\/]product-(?:workbench-methods|reference-methods)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'bff-control',
+              test: /core[\\\\/]src[\\\\/]control-client\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'product-maintenance-control',
+              test: /core[\\\\/]src[\\\\/]product-maintenance-control\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
               // Retain validator grouping; Options also uses the shared protocol selector.
               name(id) {
                 const path = id.replaceAll('\\', '/');
                 if (path.endsWith('/packages/core/src/validation-equal.ts')) return 'validation-equal';
-                return /\/generated\/(validators-(?:product|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
+                return /\/generated\/(validators-(?:product|product-workbench|product-maintenance(?:-parameters)?|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
                   path
                 )?.[1];
               }

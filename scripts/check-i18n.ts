@@ -3,6 +3,12 @@ import { zh as iopZh, en as iopEn } from '../packages/core/src/iop-authorization
 import { relative, resolve } from 'node:path';
 
 import { enUS } from '../packages/ui/src/i18n/messages/en-US/index';
+import { productLookup as lookupZh } from '../packages/ui/src/i18n/messages/zh-CN/productLookup';
+import { productValueMaintenance as valueMaintenanceZh } from '../packages/ui/src/i18n/messages/zh-CN/productValueMaintenance';
+import { productValueMaintenance as valueMaintenanceEn } from '../packages/ui/src/i18n/messages/en-US/productValueMaintenance';
+import { productLookup as lookupEn } from '../packages/ui/src/i18n/messages/en-US/productLookup';
+import { productReadTools as readToolsZh } from '../packages/ui/src/i18n/messages/zh-CN/productReadTools';
+import { productReadTools as readToolsEn } from '../packages/ui/src/i18n/messages/en-US/productReadTools';
 import { video as videoZh } from '../packages/ui/src/i18n/messages/zh-CN/video';
 import { video as videoEn } from '../packages/ui/src/i18n/messages/en-US/video';
 import { logistics as logisticsZh } from '../packages/ui/src/i18n/messages/zh-CN/logistics';
@@ -49,6 +55,9 @@ const hardcodedHanAllowlist: Readonly<Record<string, readonly RegExp[]>> = {
 };
 
 const errors = [
+  ...compareCatalogs(lookupZh, lookupEn),
+  ...compareCatalogs(valueMaintenanceZh, valueMaintenanceEn),
+  ...compareCatalogs(readToolsZh, readToolsEn),
   ...compareCatalogs(iopZh, iopEn),
   ...compareCatalogs(maintenanceZh, maintenanceEn),
   ...compareCatalogs(tasksZh, tasksEn),

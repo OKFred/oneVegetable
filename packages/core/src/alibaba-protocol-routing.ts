@@ -1,7 +1,7 @@
 import { GatewayException } from './errors';
 import { isProductReferenceMethod } from './product-reference-methods';
 import { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
-import { iopMethodReason, isAccountVerifiedIopMethod } from './alibaba-iop-business';
+import { iopMethodReason, isAccountVerifiedIopMethod } from './alibaba-iop-availability';
 import { getIopOperationSupport, iopOperationMethods } from './alibaba-iop-registry';
 import type { GatewayCredentials, OperationId } from './types';
 

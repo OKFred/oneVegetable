@@ -1,8 +1,6 @@
 import type { GalleryRequestOptions } from './gallery-transfer-context';
-import {
-  validateProductMaintenanceServiceResult,
-  type ProductMaintenanceControl
-} from './product-maintenance-control';
+import type { ProductMaintenanceControl } from './product-maintenance-control';
+import type { ProductMaintenanceServiceResult } from './product-maintenance-service';
 import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
@@ -363,6 +361,7 @@ export interface BffControlClientOptions {
   bearerToken?: () => string | null;
   extensionId?: string;
   onAuthenticationRequired?: BffAuthenticationRequiredHandler;
+  productMaintenanceResultValidator?: (value: unknown) => Promise<ProductMaintenanceServiceResult>;
 }
 
 export class BffControlClient implements ControlClient {
@@ -375,6 +374,7 @@ export class BffControlClient implements ControlClient {
   readonly #extensionId: string | undefined;
   readonly #onAuthenticationRequired: BffAuthenticationRequiredHandler | undefined;
   #sessionCsrfToken: string | null = null;
+  readonly #productMaintenanceResultValidator: BffControlClientOptions['productMaintenanceResultValidator'];
 
   constructor(options: BffControlClientOptions) {
     this.#baseUrl = new URL(options.baseUrl);
@@ -386,6 +386,7 @@ export class BffControlClient implements ControlClient {
     this.#bearerToken = options.bearerToken;
     this.#extensionId = options.extensionId;
     this.#onAuthenticationRequired = options.onAuthenticationRequired;
+    this.#productMaintenanceResultValidator = options.productMaintenanceResultValidator;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {
@@ -726,12 +727,20 @@ export class BffControlClient implements ControlClient {
     context,
     requestId
   ) => {
+    const validate = this.#productMaintenanceResultValidator;
+    if (!validate) {
+      throw new GatewayException({
+        code: 'PRODUCT_MAINTENANCE_VALIDATION_UNAVAILABLE',
+        message: 'PRODUCT_MAINTENANCE_VALIDATION_UNAVAILABLE',
+        retryable: false
+      });
+    }
     const result = await this.#call('/product-maintenance/call', {
       command,
       context,
       ...(requestId ? { requestId } : {})
     });
-    return await validateProductMaintenanceServiceResult(result);
+    return await validate(result);
   };
 
   updateS3StorageConfiguration(

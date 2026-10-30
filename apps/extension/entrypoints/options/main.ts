@@ -18,7 +18,6 @@ import {
 
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import {
-  BffControlClient,
   ALIBABA_GATEWAY,
   GatewayException,
   CHROME_WEB_STORE_REVIEW_URL,
@@ -69,6 +68,7 @@ import {
   type SocialPublishingClient,
   type SettingsRepository
 } from '@one-vegetable/core/runtime';
+import type { BffControlClient } from '@one-vegetable/core/control-client';
 import type { AlibabaAuthorizationsSummary } from '@one-vegetable/core';
 import '@one-vegetable/ui/styles.css';
 import type { DashboardTodoRepository } from '@one-vegetable/ui';
@@ -130,6 +130,7 @@ const extensionSocialBackend: ExtensionSocialBackendRepository = {
       [`${new URL(normalizedBaseUrl).origin}/*`],
       translateUi('settings.extensionRuntime.permissionPurposes.socialBackend')
     );
+    const { BffControlClient } = await import('@one-vegetable/core/control-client');
     const client = new BffControlClient({
       baseUrl: normalizedBaseUrl,
       extensionId: browser.runtime.id
@@ -155,6 +156,7 @@ const extensionSocialBackend: ExtensionSocialBackendRepository = {
     if (stored.state !== 'pending' || !stored.pairingId || !stored.pairingCode) {
       return publicExtensionSocialStatus(stored);
     }
+    const { BffControlClient } = await import('@one-vegetable/core/control-client');
     const client = new BffControlClient({
       baseUrl: stored.baseUrl,
       extensionId: stored.extensionId
@@ -804,6 +806,7 @@ async function withSocialControl<T>(action: (client: BffControlClient) => Promis
       retryable: false
     });
   }
+  const { BffControlClient } = await import('@one-vegetable/core/control-client');
   return action(
     new BffControlClient({
       baseUrl: stored.baseUrl,

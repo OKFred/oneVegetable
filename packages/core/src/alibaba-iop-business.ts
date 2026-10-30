@@ -9,12 +9,15 @@ import { isProductReferenceMethod, IOP_REFERENCE_METHODS } from './product-refer
 import { IOP_BUSINESS_ENDPOINT, isRecord, signIopRequest } from './alibaba-iop';
 import { serializeAlibabaParameters } from './signing';
 import { assertAlibabaBusinessParameters } from './transport-security';
-import type { GatewayCredentials, OperationId } from './types';
-import {
-  getIopMethod,
-  iopMethodAvailabilityReason,
-  iopRegisteredOperationReason
-} from './alibaba-iop-registry';
+import type { GatewayCredentials } from './types';
+import { getIopMethod } from './alibaba-iop-registry';
+import { iopMethodReason } from './alibaba-iop-availability';
+export {
+  iopOperationReason,
+  iopMethodReason,
+  isAccountVerifiedIopMethod,
+  applyIopCapabilityProtocol
+} from './alibaba-iop-availability';
 
 const INVENTORY = 'alibaba.icbu.product.inventory.get';
 const INVENTORY_UPDATE = 'alibaba.icbu.product.inventory.update';
@@ -25,31 +28,6 @@ const PHOTO_GROUP = 'alibaba.icbu.photobank.group.operate';
 const VIDEO_QUERY = 'alibaba.icbu.video.query';
 const PRODUCT_GROUP_ADD = 'alibaba.icbu.product.group.add';
 const PRODUCT_TYPES = 'alibaba.icbu.product.type.available.get';
-
-export function iopOperationReason(operation: OperationId, method?: unknown): string | null {
-  return iopRegisteredOperationReason(operation, method);
-}
-
-export function iopMethodReason(
-  method: unknown,
-  parameters?: Readonly<Record<string, unknown>>
-): string | null {
-  return iopMethodAvailabilityReason(method, parameters);
-}
-
-export function isAccountVerifiedIopMethod(method: string): boolean {
-  return getIopMethod(method)?.accountVerified === true;
-}
-
-export function applyIopCapabilityProtocol<T extends { method: string; realCallEnabled: boolean }>(
-  capability: T
-): T {
-  return {
-    ...capability,
-    realCallEnabled: capability.realCallEnabled && iopMethodReason(capability.method) === null,
-    verification: getIopMethod(capability.method)?.accountVerified ? 'account-verified' : 'documented'
-  };
-}
 
 export async function createIopBusinessRequest(
   credentials: GatewayCredentials,

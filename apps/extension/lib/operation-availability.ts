@@ -6,7 +6,7 @@ import {
   type OperationAvailabilityClient,
   type OperationId
 } from '@one-vegetable/core/runtime';
-import { applyIopCapabilityProtocol, iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
+import { applyIopCapabilityProtocol, iopOperationReason } from '@one-vegetable/core/alibaba-iop-availability';
 import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
 import {
   selectAlibabaOperationProtocol,

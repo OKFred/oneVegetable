@@ -62,6 +62,11 @@ const control =
         baseUrl: bffBaseUrl,
         apiPrefix: import.meta.env.VITE_BFF_API_PREFIX,
         csrfToken: () => readCookie('ov_csrf'),
+        productMaintenanceResultValidator: async (value) => {
+          const { validateProductMaintenanceServiceResult } =
+            await import('@one-vegetable/core/product-maintenance-control');
+          return validateProductMaintenanceServiceResult(value);
+        },
         ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
     : undefined;

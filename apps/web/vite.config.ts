@@ -16,6 +16,17 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              // Keep each bilingual catalog independently bounded without duplicating the runtime.
+              name: 'i18n-messages-zh-CN',
+              test: /ui[\\\\/]src[\\\\/]i18n[\\\\/]messages[\\\\/]zh-CN[\\\\/]/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'i18n-messages-en-US',
+              test: /ui[\\\\/]src[\\\\/]i18n[\\\\/]messages[\\\\/]en-US[\\\\/]/u,
+              includeDependenciesRecursively: false
+            },
+            {
               // Historical notes belong to the lazy release page, not the eager catalogs.
               name: 'release-notes',
               test: /core[\\/]src[\\/](?:generated[\\/])?release-notes\.ts$/u,

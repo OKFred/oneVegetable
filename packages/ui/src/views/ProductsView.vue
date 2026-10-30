@@ -27,6 +27,9 @@ import { useShowcaseI18n } from '../i18n/showcase';
 import { useInventoryI18n } from '../i18n/inventory';
 import { useProductInventory } from '../lib/product-inventory';
 import { useProductReferenceI18n } from '../i18n/product-reference';
+import { useProductLookupI18n } from '../i18n/product-lookup';
+import { useProductReadToolsI18n } from '../i18n/product-read-tools';
+import { useProductValueMaintenanceI18n } from '../i18n/product-value-maintenance';
 import ProductReferenceTools from '../components/ProductReferenceTools.vue';
 import { useListIdentityScope } from '../lib/list-identity-scope';
 import type { ProductCategorySuggestion } from '@one-vegetable/core/product-reference';
@@ -41,12 +44,26 @@ import { productReadbackNotice } from '../lib/platform-readback-notice';
 const ProductInventoryDrawer = defineAsyncComponent(() => import('../components/ProductInventoryDrawer.vue'));
 const ProductReferenceDrawer = defineAsyncComponent(() => import('../components/ProductReferenceDrawer.vue'));
 const referenceProductId = ref('');
+const ProductLookupDialog = defineAsyncComponent(() => import('../components/ProductLookupDialog.vue'));
+const ProductReadToolsDialog = defineAsyncComponent(() => import('../components/ProductReadToolsDialog.vue'));
+const productLookupOpen = ref(false);
+const productReadTool = ref<'translation' | 'shipping' | null>(null);
+const ProductValueMaintenanceDialog = defineAsyncComponent(
+  () => import('../components/ProductValueMaintenanceDialog.vue')
+);
+const valueMaintenance = ref<{ kind: 'price' | 'inventory' | 'drafts'; productId?: string } | null>(null);
+const vm = useProductValueMaintenanceI18n();
+const pl = useProductLookupI18n();
+const rt = useProductReadToolsI18n();
 const pr = useProductReferenceI18n();
 const referenceScope = useListIdentityScope();
 watch(
   referenceScope,
   () => {
     referenceProductId.value = '';
+    productLookupOpen.value = false;
+    productReadTool.value = null;
+    valueMaintenance.value = null;
   },
   { flush: 'sync' }
 );
@@ -234,7 +251,7 @@ const workspaceIds = new Set<Workspace>([
 const editorModes = new Set<ProductEditorMode>(['quick', 'guided', 'advanced']);
 const editorStepIds = new Set<ProductEditorStepId>(PRODUCT_EDITOR_STEP_IDS);
 
-const { gateway, mode, productMutationJobs } = useServices();
+const { gateway, mode, productMutationJobs, productMaintenance } = useServices();
 const photoHandoffs = useProductPhotoHandoff();
 const photoSeed = ref<ProductPhotoHandoff | null>(null);
 const photoSeedWriteContexts = ref<ProductPhotoHandoff['productContexts']>({});
@@ -2193,6 +2210,32 @@ const columns = computed<DataColumn<Product>[]>(() => [
           },
           () => it('title')
         ),
+        ...(productMaintenance
+          ? [
+              h(
+                Button,
+                {
+                  size: 'sm',
+                  variant: 'outline',
+                  onClick: () => {
+                    valueMaintenance.value = { kind: 'price', productId: row.original.id };
+                  }
+                },
+                () => vm('priceTitle')
+              ),
+              h(
+                Button,
+                {
+                  size: 'sm',
+                  variant: 'outline',
+                  onClick: () => {
+                    valueMaintenance.value = { kind: 'inventory', productId: row.original.id };
+                  }
+                },
+                () => vm('inventoryTitle')
+              )
+            ]
+          : []),
         row.original.detailUrl
           ? h(
               'a',
@@ -3040,10 +3083,32 @@ onBeforeUnmount(() => {
                 </DropdownMenuTrigger>
                 <DropdownMenuPortal>
                   <DropdownMenuContent
-                    class="ov-dropdown-content z-[65] min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+                    class="ov-dropdown-content z-[65] min-w-48 max-w-[calc(100vw-1rem)] whitespace-normal break-words rounded-md border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
                     :side-offset="6"
+                    :collision-padding="8"
                     align="end"
                   >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent"
+                      @select="productLookupOpen = true"
+                      >{{ pl('title') }}</DropdownMenuItem
+                    >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent"
+                      @select="productReadTool = 'translation'"
+                      >{{ rt('translationTitle') }}</DropdownMenuItem
+                    >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent"
+                      @select="productReadTool = 'shipping'"
+                      >{{ rt('shippingTitle') }}</DropdownMenuItem
+                    >
+                    <DropdownMenuItem
+                      class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent"
+                      @select="valueMaintenance = { kind: 'drafts' }"
+                      >{{ vm('draftsTitle') }}</DropdownMenuItem
+                    >
+                    <DropdownMenuSeparator class="my-1 h-px bg-border" />
                     <DropdownMenuItem
                       class="flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm outline-none focus:bg-accent data-[disabled]:opacity-50"
                       :disabled="
@@ -3689,6 +3754,25 @@ onBeforeUnmount(() => {
     v-if="referenceProductId && !taskHistoryReadOnly"
     :product-id="referenceProductId"
     @close="referenceProductId = ''"
+  />
+  <ProductLookupDialog
+    v-if="productLookupOpen && !taskHistoryReadOnly"
+    @close="productLookupOpen = false"
+    @select="
+      referenceProductId = $event;
+      productLookupOpen = false;
+    "
+  />
+  <ProductReadToolsDialog
+    v-if="productReadTool && !taskHistoryReadOnly"
+    :kind="productReadTool"
+    @close="productReadTool = null"
+  />
+  <ProductValueMaintenanceDialog
+    v-if="valueMaintenance && !taskHistoryReadOnly"
+    :kind="valueMaintenance.kind"
+    :product-id="valueMaintenance.productId ?? ''"
+    @close="valueMaintenance = null"
   />
   <ProductInventoryDrawer
     v-if="inventory.selected.value && !taskHistoryReadOnly"

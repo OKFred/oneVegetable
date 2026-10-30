@@ -1,5 +1,5 @@
 import { authorizeCapabilityCall, type GatewaySettings, type OperationId } from '@one-vegetable/core';
-import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
+import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-availability';
 import {
   resolveExtensionStaticOperationAvailability,
   type ExtensionOperationPolicyDecision

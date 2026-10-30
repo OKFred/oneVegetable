@@ -1,9 +1,6 @@
 import { browser } from 'wxt/browser';
 import { GatewayException } from '@one-vegetable/core/errors';
-import {
-  validateProductMaintenanceServiceResult,
-  type ProductMaintenanceControl
-} from '@one-vegetable/core/product-maintenance-control';
+import type { ProductMaintenanceControl } from '@one-vegetable/core/product-maintenance-control';
 
 export const requestProductMaintenance: ProductMaintenanceControl['productMaintenance'] = async (
   command,
@@ -37,5 +34,7 @@ export const requestProductMaintenance: ProductMaintenanceControl['productMainte
         : 'PRODUCT_MAINTENANCE_FAILED';
     throw new GatewayException({ code, message: code, retryable: false }, requestId);
   }
+  const { validateProductMaintenanceServiceResult } =
+    await import('@one-vegetable/core/product-maintenance-control');
   return validateProductMaintenanceServiceResult('data' in result ? result.data : null);
 };
