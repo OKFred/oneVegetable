@@ -24409,6 +24409,7 @@
       "errorCodes": [],
       "requestExample": { "model_number": "sample-model-001", "page_index": 1, "page_size": 20 },
       "responseExample": {
+        "code": "0",
         "success": true,
         "product_info": [],
         "page": { "page_index": 1, "page_size": 20, "total_item": 0, "total_page": 0 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createRequestId, getCapabilityDefinition } from '@one-vegetable/core';
+import { IOP_REFERENCE_METHODS } from '@one-vegetable/core/product-reference';
 import {
   createDocumentationReplayGateway,
   DocumentationReplayTransport,
@@ -11,6 +12,19 @@ const method = 'alibaba.icbu.product.list';
 const parameters = getCapabilityDefinition(method)?.requestExample as Record<string, unknown>;
 
 describe('Alibaba documentation replay', () => {
+  it.each(Object.values(IOP_REFERENCE_METHODS))(
+    'replays the native read example through its success normalizer: %s',
+    async (nativeMethod) => {
+      const definition = getCapabilityDefinition(nativeMethod);
+      if (!definition) throw new Error('Missing native read definition');
+      await expect(
+        createDocumentationReplayGateway().request('callCapability', {
+          method: nativeMethod,
+          parameters: definition.requestExample
+        })
+      ).resolves.toMatchObject({ method: nativeMethod, contractValid: true });
+    }
+  );
   it('replays sanitized contract examples through signing and response validation', async () => {
     const requestId = createRequestId();
     const gateway = createDocumentationReplayGateway();

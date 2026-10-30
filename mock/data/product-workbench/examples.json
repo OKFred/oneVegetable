@@ -2,6 +2,7 @@
   "/alibaba/icbu/product/search/v2": {
     "request": { "model_number": "sample-model-001", "page_index": 1, "page_size": 20 },
     "response": {
+      "code": "0",
       "success": true,
       "product_info": [],
       "page": { "page_index": 1, "page_size": 20, "total_item": 0, "total_page": 0 }
