@@ -99,10 +99,16 @@ describe('extension operation policy', () => {
     expect(backgroundSource).not.toContain("import('../lib/authorization-refresh')");
     expect(runtimeImports('../lib/operation-availability.ts')).toEqual([
       '@one-vegetable/core/runtime',
-      '@one-vegetable/core/alibaba-iop-business',
+      '@one-vegetable/core/alibaba-iop-availability',
       '@one-vegetable/core/alibaba-iop-registry',
       '@one-vegetable/core/alibaba-protocol-routing'
     ]);
+    const availabilitySource = readFileSync(
+      new URL('../../../packages/core/src/alibaba-iop-availability.ts', import.meta.url),
+      'utf8'
+    );
+    expect(availabilitySource).not.toContain('alibaba-iop-business');
+    expect(availabilitySource).not.toContain('validators-product-maintenance');
   });
   it('keeps legacy and explicit TOP decisions identical for every operation', () => {
     for (const operation of OPERATION_IDS) {
