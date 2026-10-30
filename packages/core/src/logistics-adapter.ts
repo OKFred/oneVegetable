@@ -1,4 +1,5 @@
 import type { AlibabaClient } from './alibaba-client';
+import { GatewayException } from './errors';
 import type {
   LogisticsAddress,
   LogisticsAddressNode,
@@ -148,10 +149,29 @@ export class LogisticsAdapter {
       count: 100
     });
     const root = unwrap(call.data, call.method);
-    return findRecords(root, ['items']).map((item) => ({
-      id: readString(item, ['id']) ?? '',
-      name: readString(item, ['title']) ?? '未命名运费模板'
-    }));
+    const invalid = (code: string): never => {
+      throw new GatewayException({ code, message: code, retryable: false });
+    };
+    // doc25394 and the safe real shape agree on this exact container. Do not
+    // recursively accept an unrelated array or infer IDs from other fields.
+    const result = findRecordAt(root, 'list_template_response');
+    if (!result || !Array.isArray(result.items)) return invalid('SHIPPING_TEMPLATE_RESPONSE_INVALID');
+    return result.items.map((item: unknown) => {
+      if (!isRecord(item)) return invalid('SHIPPING_TEMPLATE_RESPONSE_INVALID');
+      const value = item.id;
+      const id =
+        typeof value === 'number'
+          ? Number.isSafeInteger(value) && value > 0
+            ? String(value)
+            : null
+          : typeof value === 'string' && /^[1-9][0-9]*$/u.test(value)
+            ? value
+            : null;
+      if (id === null) return invalid('SHIPPING_TEMPLATE_ID_INVALID');
+      if (item.title !== undefined && item.title !== null && typeof item.title !== 'string')
+        return invalid('SHIPPING_TEMPLATE_RESPONSE_INVALID');
+      return { id, name: typeof item.title === 'string' && item.title.trim() ? item.title : '\u2014' };
+    });
   }
 
   async createOrder(request: RequestOf<'createLogisticsOrder'>): Promise<LogisticsOrderMutationResult> {

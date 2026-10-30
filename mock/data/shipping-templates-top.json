@@ -1,0 +1,17 @@
+{
+  "method": "alibaba.wholesale.shippingline.template.list",
+  "response": {
+    "list_template_response": {
+      "total": 2,
+      "items": [
+        { "id": 420001, "title": "Synthetic standard shipping" },
+        { "id": "9007199254740993", "title": "Synthetic express shipping" }
+      ]
+    }
+  },
+  "emptyResponse": { "list_template_response": { "total": 0, "items": [] } },
+  "expected": [
+    { "id": "420001", "name": "Synthetic standard shipping" },
+    { "id": "9007199254740993", "name": "Synthetic express shipping" }
+  ]
+}
