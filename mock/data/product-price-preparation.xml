@@ -1,0 +1,8 @@
+<itemSchema>
+  <field id="inventory" name="Inventory" type="multiInput">
+    <rules>
+      <rule name="valueAttributeRule" value="warehouseCode"/>
+      <rule name="valueAttributeRule" value="srcValue"/>
+    </rules>
+  </field>
+</itemSchema>

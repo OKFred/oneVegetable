@@ -307,3 +307,48 @@ certify the parent's actual SQLite/D1/IndexedDB implementation, routes, browser,
 permissions, real provider writes, production deployment or live readback.
 Manifest version remains 2.20.2. No existing registry/contracts, package exports,
 generators, global formatting, builds, commits or pushes are part of this sidecar.
+
+## Layered acceptance update (2026-10-30)
+
+This records the subsequent operator-executed acceptance result. Earlier
+no-live statements describe the initial documentation/pure-domain test phase,
+not this later, narrowly scoped CLI run.
+
+- **Node CLI / real platform, target amount only:** on a newly created,
+  unbranded test product with trusted creation proof, USD 1.00 changed to 1.01
+  and was independently read back; restoration to USD 1.00 was then sent and
+  independently read back. The operator reported 9 receipt events, exactly
+  2 native edit-price writes and no write retry. This establishes the intended
+  monetary change and restoration only, not preservation of non-target fields,
+  full price-business acceptance, account-wide entitlement or acceptance of
+  other runtimes or maintenance methods.
+- **Non-target fields / unresolved isolation:** after review, the same product's
+  modelNumber was missing and publicSchema also showed an empty model. It is
+  not yet known whether the price write, review processing or another cause
+  explains this observation. A separate control product with no price or
+  inventory writes is being prepared to compare post-review behavior; no
+  control outcome is claimed. Keep the payload price-only: do not add model
+  fields, automatic model restoration or compensating writes.
+- **BFF/HTTP, MV3 extension and Worker:** current evidence remains isolated/offline
+  validation. The CLI result is not a real HTTP-route, MV3 or Worker write
+  acceptance result, nor evidence of a production deployment being enabled.
+- **Runtime gate:** the node, worker and extension acceptance whitelists remain
+  empty. This CLI acceptance does not change them, account-verification flags or
+  global mutation permissions, and does not automatically enable production.
+- **Inventory:** remains disabled for live acceptance because a usable minimal
+  inventory baseline is unavailable. Target-amount readback supplies no inventory evidence.
+- **Draft deletion:** remains disabled because reliable, independent draft
+  absence readback is unavailable. An acknowledgement, query failure or generic
+  success flag is not deletion evidence.
+
+The smoke stops on explicit rejection, an unaccepted/ambiguous write outcome or
+unresolved readback; it never compensates or resends after such a result.
+Restoration is the planned second write only after explicit price acceptance,
+confirmed target-price readback and a fresh match immediately before restoration.
+
+Private evidence stays outside Git under ignored, repository-relative artifact
+paths, represented here as
+`artifacts/<redacted-run>/price-live-receipts.jsonl`. The directory component is a
+redacted placeholder, not a disclosed run location. Keep receipt, creation-proof,
+minimal-baseline and one-shot-claim files ignored; do not copy account/product
+identifiers, traces, credentials or raw provider bodies into tracked notes.

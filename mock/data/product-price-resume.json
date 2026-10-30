@@ -1,0 +1,8 @@
+{
+  "note": "Synthetic read-only accepted-receipt recovery metadata, not a live product capture.",
+  "ageMs": 60000,
+  "pendingStatus": "pending",
+  "pendingAuditStatus": "pending",
+  "otherProductId": "880999",
+  "wrongReceiptId": "synthetic-other-receipt"
+}

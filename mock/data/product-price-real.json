@@ -1,0 +1,550 @@
+{
+  "note": "Offline synthetic price-only samples. Not account data or live acceptance.",
+  "now": 1793339600000,
+  "proof": {
+    "schemaVersion": 1,
+    "purpose": "product-price-maintenance-test",
+    "context": {
+      "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "createdTimeUtc": 1793339600000,
+    "product": {
+      "id": "880901",
+      "creationReceiptId": "fixture-new-formal-create-1",
+      "unbranded": true
+    }
+  },
+  "requestId": "11111111-1111-4111-8111-111111111111",
+  "marker": "synthetic-private-provider-body",
+  "plans": {
+    "tiered": {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      }
+    },
+    "range": {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "range",
+        "currency": "USD",
+        "minPrice": "10.01",
+        "maxPrice": "20.01"
+      }
+    },
+    "sku": {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "sku",
+        "currency": "USD",
+        "skus": [
+          {
+            "skuId": "990901",
+            "price": "10.01"
+          }
+        ]
+      }
+    },
+    "noChange": {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.00"
+          }
+        ]
+      }
+    }
+  },
+  "baseline": {
+    "tiered": {
+      "productId": "880901",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.00"
+          }
+        ]
+      },
+      "inventory": null,
+      "skus": []
+    },
+    "range": {
+      "productId": "880901",
+      "price": {
+        "type": "RANGE",
+        "currency": "USD",
+        "min": "10.00",
+        "max": "20.00",
+        "tiers": []
+      },
+      "inventory": null,
+      "skus": []
+    },
+    "sku": {
+      "productId": "880901",
+      "price": {
+        "type": null,
+        "currency": null,
+        "min": null,
+        "max": null,
+        "tiers": []
+      },
+      "inventory": null,
+      "skus": [
+        {
+          "id": "990901",
+          "code": null,
+          "price": "10.00",
+          "currency": "USD",
+          "inventory": null,
+          "attributes": []
+        }
+      ]
+    }
+  },
+  "changed": {
+    "tiered": {
+      "productId": "880901",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      },
+      "inventory": null,
+      "skus": []
+    },
+    "range": {
+      "productId": "880901",
+      "price": {
+        "type": "RANGE",
+        "currency": "USD",
+        "min": "10.01",
+        "max": "20.01",
+        "tiers": []
+      },
+      "inventory": null,
+      "skus": []
+    },
+    "sku": {
+      "productId": "880901",
+      "price": {
+        "type": null,
+        "currency": null,
+        "min": null,
+        "max": null,
+        "tiers": []
+      },
+      "inventory": null,
+      "skus": [
+        {
+          "id": "990901",
+          "code": null,
+          "price": "10.01",
+          "currency": "USD",
+          "inventory": null,
+          "attributes": []
+        }
+      ]
+    }
+  },
+  "concurrent": {
+    "productId": "880901",
+    "price": {
+      "type": "TIERED",
+      "currency": "USD",
+      "min": null,
+      "max": null,
+      "tiers": [
+        {
+          "quantity": "10",
+          "price": "10.02"
+        }
+      ]
+    },
+    "inventory": null,
+    "skus": []
+  },
+  "credentials": {
+    "protocol": "iop",
+    "appKey": "fixture-key",
+    "appSecret": "fixture-secret",
+    "accessToken": "fixture-token",
+    "endpoint": "https://openapi-api.alibaba.com/rest",
+    "signMethod": "hmac-sha256"
+  },
+  "responses": {
+    "accepted": {
+      "code": "0",
+      "request_id": "trace_synthetic-01",
+      "result": {
+        "success": true,
+        "data": null,
+        "message": "",
+        "msg_code": ""
+      }
+    },
+    "rejected": {
+      "code": "0",
+      "request_id": "trace_synthetic-01",
+      "result": {
+        "success": false,
+        "data": null,
+        "message": "synthetic-private-provider-body",
+        "msg_code": "B_PRICE_REJECTED"
+      }
+    },
+    "malformed": {
+      "code": "0",
+      "result": {
+        "success": true,
+        "data": null,
+        "message": {
+          "private": "synthetic-private-provider-body"
+        },
+        "msg_code": ""
+      }
+    },
+    "read": {
+      "code": "0",
+      "success": true,
+      "message": "",
+      "msg_code": "",
+      "product_info": {
+        "basic_info": {
+          "product_id": 880901
+        },
+        "trade_info": {
+          "price": {
+            "price_type": "TIERED",
+            "currency": "USD",
+            "tiered_price": [
+              {
+                "quantity": 10,
+                "price": "10.00"
+              }
+            ]
+          },
+          "sku_info": []
+        }
+      }
+    },
+    "unknown": {
+      "gatewayError": {
+        "code": "NETWORK_ERROR",
+        "subCode": "socket-closed",
+        "message": "synthetic-private-provider-body",
+        "traceId": "trace_synthetic-02",
+        "retryable": true
+      }
+    }
+  },
+  "invalidProofs": [
+    {
+      "schemaVersion": 1,
+      "purpose": "product-value-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600000,
+      "product": {
+        "id": "880901",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600000,
+      "product": {
+        "id": "10000050957582",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600000,
+      "product": {
+        "id": "880902",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600000,
+      "product": {
+        "id": "880901",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": false
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600000,
+      "product": {
+        "id": "880901",
+        "creationReceiptId": "artifacts/path.json",
+        "unbranded": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793253199999,
+      "product": {
+        "id": "880901",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600001,
+      "product": {
+        "id": "880901",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600000,
+      "product": {
+        "id": "880901",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": true
+      },
+      "draft": {
+        "id": "770901"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "purpose": "product-price-maintenance-test",
+      "context": {
+        "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "createdTimeUtc": 1793339600000,
+      "product": {
+        "id": "880901",
+        "creationReceiptId": "fixture-new-formal-create-1",
+        "unbranded": true
+      },
+      "inventory": "0"
+    }
+  ],
+  "invalidPlans": [
+    {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      },
+      "inventory": {
+        "operation": "setInventory",
+        "productId": "880901",
+        "mode": "spu",
+        "inventory": "0"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      },
+      "deleteDraft": {
+        "draftIds": ["770901"]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "10000050957582",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880902",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setInventory",
+        "productId": "880901",
+        "mode": "spu",
+        "inventory": "0"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "tiered",
+        "currency": "EUR",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": 10.01
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "price": {
+        "operation": "setPrice",
+        "productId": "880901",
+        "mode": "tiered",
+        "currency": "USD",
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "10.01"
+          }
+        ]
+      }
+    }
+  ],
+  "cli": [
+    "--confirm-real-write",
+    "--credential=artifacts/synthetic/credential.json",
+    "--creation-proof=artifacts/synthetic/price-proof.json",
+    "--plan=artifacts/synthetic/price-plan.json",
+    "--product-id=880901",
+    "--baseline=artifacts/synthetic/price-baseline.json",
+    "--receipt=artifacts/synthetic/price-receipt.jsonl"
+  ],
+  "transport": {
+    "url": "https://openapi-api.alibaba.com/rest/icbu/product/edit-price",
+    "foreign": "https://example.com/rest/icbu/product/edit-price",
+    "body": {
+      "product_id": "880901"
+    },
+    "changedBody": {
+      "product_id": "880902"
+    },
+    "forbidden": ["/icbu/product/edit-inventory", "/alibaba/icbu/draft/delete", "/icbu/product/schema/update"]
+  }
+}

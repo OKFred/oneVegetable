@@ -1,0 +1,35 @@
+{
+  "note": "Synthetic price-only preparation plans; no real product or warehouse values.",
+  "valuePlan": {
+    "schemaVersion": 1,
+    "price": {
+      "operation": "setPrice",
+      "productId": "NEW_PRODUCT_ID",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [{ "quantity": "10", "price": "1.51" }]
+    }
+  },
+  "rangePrice": { "type": "RANGE", "currency": "USD", "min": "1.50", "max": "2.50", "tiers": [] },
+  "rangeValuePlan": {
+    "schemaVersion": 1,
+    "price": {
+      "operation": "setPrice",
+      "productId": "NEW_PRODUCT_ID",
+      "mode": "range",
+      "currency": "USD",
+      "minPrice": "1.51",
+      "maxPrice": "2.51"
+    }
+  },
+  "skuValuePlan": {
+    "schemaVersion": 1,
+    "price": {
+      "operation": "setPrice",
+      "productId": "NEW_PRODUCT_ID",
+      "mode": "sku",
+      "currency": "USD",
+      "skus": [{ "skuId": "990001", "price": "1.51" }]
+    }
+  }
+}

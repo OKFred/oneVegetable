@@ -1,0 +1,63 @@
+<itemSchema>
+  <field id="unusedSkuPricing" name="Unused SKU pricing" type="multiComplex">
+    <fields>
+      <field id="price" name="Uninstantiated SKU price" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value/>
+      </field>
+    </fields>
+  </field>
+  <field id="unusedProperties" name="Uninstantiated custom attributes" type="multiComplex">
+    <fields>
+      <field id="propertySlot" name="Property slot definition" type="complex">
+        <fields>
+          <field id="propName" name="Property name" type="input">
+            <rules><rule name="requiredRule" value="true"/></rules><value/>
+          </field>
+          <field id="valueName" name="Property value" type="input">
+            <rules><rule name="requiredRule" value="true"/></rules><value/>
+          </field>
+        </fields>
+      </field>
+    </fields>
+  </field>
+  <field id="unusedRange" name="Unselected range price" type="complex">
+    <fields>
+      <field id="range_min" name="Minimum price" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value/>
+      </field>
+      <field id="range_max" name="Maximum price" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value/>
+      </field>
+    </fields>
+  </field>
+  <field id="unusedModelPrototype" name="Model prototype" type="complex">
+    <fields>
+      <field id="modelNumber" name="Model Number" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value/>
+      </field>
+    </fields>
+  </field>
+  <field id="priceMode" name="Selected pricing mode" type="singleCheck"><value>TIERED</value></field>
+  <field id="inactiveRangeAmount" name="Conditional range amount" type="input">
+    <rules>
+      <rule name="requiredRule" value="true">
+        <depend-group operator="and"><depend-express fieldId="priceMode" symbol="=" value="RANGE"/></depend-group>
+      </rule>
+    </rules><value/>
+  </field>
+  <field id="disabledRequiredValue" name="Disabled optional field" type="input">
+    <rules><rule name="requiredRule" value="true"/><rule name="disableRule" value="true"/></rules><value/>
+  </field>
+  <field id="selectedPricing" name="Instantiated tiered pricing" type="multiComplex">
+    <complex-values>
+      <field id="activePrice" name="Selected price" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value>10.00</value>
+      </field>
+    </complex-values>
+    <fields>
+      <field id="activePrice" name="Price template" type="input">
+        <rules><rule name="requiredRule" value="true"/></rules><value/>
+      </field>
+    </fields>
+  </field>
+</itemSchema>
