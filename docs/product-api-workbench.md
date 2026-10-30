@@ -46,3 +46,34 @@ User approved only new unbranded test data: small price change/restoration, inve
 change/restoration, newly created test draft deletion after exact ID matching.
 No daily products, payments or blanket deletion. Use ignored artifacts/product-api-workbench.
 Permission/prerequisite failures are recorded, never counted as passed.
+
+## Current delivery and acceptance boundaries
+
+- Product list More opens model/SKU-code lookup, translation, country freight determinacy and
+  account-scoped draft receipts. Row actions contain the independent price and absolute-inventory
+  workspaces. These are lazy views, not automatic business writes.
+- Lookup is IOP-only. Translation and freight determinacy use TOP, independently of the selected
+  default authorization. Failed requests never retry through the other protocol.
+- Live lookup returned the new controlled sample. Numeric tier prices and lead times observed in
+  the response are supported explicitly; unrelated fields remain strict.
+- The TOP country list returned 281 grouped records, not necessarily 281 unique countries.
+  Translation was rejected by the test application's permission package. Neither result implies
+  every merchant has the same entitlement.
+- Freight template reading and determinacy passed with a returned TOP template and an explicitly
+  hypothetical 1 kg, 10 x 10 x 10 cm package. The response contained 246 country records, not a
+  monetary quote or a logistics order. The template operation returns its first page (up to 100),
+  not a claimed scan of every template.
+- Price amount change, readback, restoration and final amount readback passed in the opt-in Node
+  CLI. Non-target model information was later missing; a separate unmodified control retained its
+  model after approval. This observation is not universal causation proof, and full price integrity
+  acceptance has **not** passed. The standalone price endpoint remains disabled.
+- Absolute inventory has no usable readback baseline on these samples. Draft deletion has no
+  reliable independent absence reader. Both remain disabled; no stock change or draft deletion
+  was attempted.
+- Node/Worker/MV3 runtime acceptance whitelists stay empty. Offline HTTP, MV3 and workerd tests
+  must not be described as provider write acceptance or a production deployment.
+
+Only the two new unbranded test products were created. The first had two bounded price writes
+and its original amount was restored; the second is a no-price/no-inventory-write control.
+Existing goods, inventory, authorization profiles and defaults were not changed. Keep private
+receipts, baselines and one-shot claims under ignored artifacts; do not upload them as fixtures.

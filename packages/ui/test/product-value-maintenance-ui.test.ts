@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import api from '../../../mock/data/product-maintenance-api.json';
 import persisted from '../../../mock/data/product-maintenance-repository.json';
@@ -159,6 +159,7 @@ function setup(kind: 'price' | 'inventory' | 'drafts' = 'inventory', available =
             template: '<section v-if="open"><h2>{{ title }}</h2><slot/><slot name="footer"/></section>'
           },
           ConfirmActionDialog: {
+            name: 'ConfirmActionDialog',
             props: ['open', 'pending', 'confirmLabel'],
             emits: ['confirm', 'update:open'],
             template:
@@ -205,6 +206,24 @@ async function prepareInventory(wrapper: VueWrapper) {
   await wrapper.get('form').trigger('submit');
   await settle();
 }
+async function preparePrice(wrapper: VueWrapper, mode: 'tiered' | 'range' | 'sku' = 'tiered') {
+  await set(wrapper, 'priceMode', mode);
+  if (mode === 'range') {
+    await set(wrapper, 'minPrice', api.drafts.range.minPrice);
+    await set(wrapper, 'maxPrice', api.drafts.range.maxPrice);
+  } else if (mode === 'sku') {
+    const row = api.drafts.skuPrice.skus[0];
+    await set(wrapper, 'currency', api.drafts.skuPrice.currency);
+    await set(wrapper, 'price-sku-0', row?.skuId ?? '');
+    await set(wrapper, 'sku-price-0', row?.price ?? '');
+  } else {
+    const row = api.drafts.tiered.tiers[0];
+    await set(wrapper, 'tier-quantity-0', row?.quantity ?? '');
+    await set(wrapper, 'tier-price-0', row?.price ?? '');
+  }
+  await wrapper.get('form').trigger('submit');
+  await settle();
+}
 async function confirm(wrapper: VueWrapper) {
   await wrapper.get('[data-action="review"]').trigger('click');
   expect(wrapper.find('[data-confirm]').exists()).toBe(true);
@@ -212,9 +231,122 @@ async function confirm(wrapper: VueWrapper) {
   await settle();
 }
 describe('product value maintenance UI', () => {
+  it.each(['en-US', 'zh-CN'] as const)(
+    'explains the limited price-safety concern and original-editor alternative in %s without API calls',
+    async (locale) => {
+      uiI18n.global.locale.value = locale;
+      const labels = locale === 'en-US' ? en : zh;
+      const { wrapper, control, contextRead, providerCall } = setup('price');
+      await settle();
+      const notice = wrapper.get('[data-price-safety]');
+      expect(notice.attributes('role')).toBe('note');
+      expect(notice.attributes('aria-label')).toBe(labels.priceSafetyTitle);
+      expect(notice.text()).toContain(labels.priceSafetyTitle);
+      expect(notice.text()).toContain(labels.priceSafetyHint);
+      expect(notice.text()).toContain(labels.priceEditorHint);
+      expect(wrapper.text()).not.toContain(labels.inventoryHint);
+      expect(control).not.toHaveBeenCalled();
+      expect(contextRead).not.toHaveBeenCalled();
+      expect(providerCall).not.toHaveBeenCalled();
+    }
+  );
+  it.each(['inventory', 'drafts'] as const)(
+    'does not change %s into the price-safety screen',
+    async (kind) => {
+      const { wrapper, control } = setup(kind);
+      await settle();
+      expect(wrapper.find('[data-price-safety]').exists()).toBe(false);
+      expect(control).not.toHaveBeenCalled();
+    }
+  );
   it('keeps both locale catalogs aligned and nonempty', () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort());
     for (const value of [...Object.values(en), ...Object.values(zh)]) expect(value.trim()).not.toBe('');
+  });
+  it('updates the price safety notice when the locale changes without any service calls', async () => {
+    const { wrapper, control, contextRead, providerCall } = setup('price');
+    expect(wrapper.get('[data-price-safety]').text()).toContain(en.priceSafetyTitle);
+    uiI18n.global.locale.value = 'zh-CN';
+    await nextTick();
+    expect(wrapper.get('[data-price-safety]').text()).toContain(zh.priceEditorHint);
+    expect(wrapper.get('[data-price-safety]').text()).not.toContain(en.priceSafetyTitle);
+    expect(control).not.toHaveBeenCalled();
+    expect(contextRead).not.toHaveBeenCalled();
+    expect(providerCall).not.toHaveBeenCalled();
+  });
+  it.each(['tiered', 'range', 'sku'] as const)(
+    'preserves the %s price preview but blocks review and even a forced confirm event',
+    async (mode) => {
+      const { wrapper, control, providerCall } = setup('price');
+      await preparePrice(wrapper, mode);
+      expect(wrapper.find('[data-result="preview"]').exists()).toBe(true);
+      expect(wrapper.get('[data-action="review"]').attributes('disabled')).toBeDefined();
+      await wrapper.get('[data-action="review"]').trigger('click');
+      expect(wrapper.find('[data-confirm]').exists()).toBe(false);
+      wrapper.getComponent<ComponentPublicInstance>({ name: 'ConfirmActionDialog' }).vm.$emit('confirm');
+      await settle();
+      expect(control.mock.calls.map(([command]) => command.action)).toEqual(['create']);
+      expect(providerCall).not.toHaveBeenCalled();
+      await wrapper.get('[data-action="refresh"]').trigger('click');
+      await settle();
+      expect(control.mock.calls.map(([command]) => command.action)).toEqual(['create', 'get']);
+      await wrapper.get('[data-action="cancel-preview"]').trigger('click');
+      await settle();
+      expect(control.mock.calls.map(([command]) => command.action)).toEqual(['create', 'get', 'cancel']);
+      expect(wrapper.find('[data-result="preview"]').exists()).toBe(false);
+      expect(providerCall).not.toHaveBeenCalled();
+    }
+  );
+  it('reads and cancels an existing unsent price task without enabling submission', async () => {
+    const state = setup('price');
+    await preparePrice(state.wrapper);
+    await state.wrapper.get('[data-action="close"]').trigger('click');
+    await state.reopen();
+    await state.wrapper.get('[data-action="load-tasks"]').trigger('click');
+    await settle();
+    await state.wrapper.get('[data-action="select-task"]').trigger('click');
+    expect(state.wrapper.text()).toContain(en.resumedHint);
+    expect(state.wrapper.find('[data-result="preview"]').exists()).toBe(true);
+    expect(state.wrapper.get('[data-action="review"]').attributes('disabled')).toBeDefined();
+    await state.wrapper.get('[data-action="refresh"]').trigger('click');
+    await settle();
+    await state.wrapper.get('[data-action="cancel-preview"]').trigger('click');
+    await settle();
+    expect(state.control.mock.calls.map(([command]) => command.action)).toEqual([
+      'create',
+      'list',
+      'get',
+      'cancel'
+    ]);
+    expect(state.providerCall).not.toHaveBeenCalled();
+  });
+  it('still reads and verifies a previously attempted price task without another provider write', async () => {
+    const state = setup('price');
+    // Seed a historical submission through the isolated fake service, not through the now-disabled UI.
+    const created = await state.control(
+      { action: 'create', draft: api.drafts.tiered },
+      api.service.context,
+      crypto.randomUUID()
+    );
+    const task = created.tasks[0];
+    if (!task) throw new Error('Missing fixture task');
+    await state.control(
+      { action: 'send', taskId: task.id, revision: task.revision, fingerprint: task.intent.fingerprint },
+      api.service.context,
+      crypto.randomUUID()
+    );
+    state.control.mockClear();
+    state.providerCall.mockClear();
+    await state.wrapper.get('[data-action="load-tasks"]').trigger('click');
+    await settle();
+    await state.wrapper.get('[data-action="select-task"]').trigger('click');
+    expect(state.wrapper.get('[data-action="review"]').attributes('disabled')).toBeDefined();
+    expect(state.wrapper.get('[data-action="verify"]').attributes('disabled')).toBeUndefined();
+    await state.wrapper.get('[data-action="verify"]').trigger('click');
+    await settle();
+    expect(state.control.mock.calls.map(([command]) => command.action)).toEqual(['list', 'get', 'verify']);
+    expect(state.wrapper.text()).toContain(en.verified);
+    expect(state.providerCall).not.toHaveBeenCalled();
   });
   it.each(['price', 'inventory', 'drafts'] as const)(
     'does not automatically call APIs on opening %s',

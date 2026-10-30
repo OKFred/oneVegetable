@@ -324,10 +324,12 @@ not this later, narrowly scoped CLI run.
   other runtimes or maintenance methods.
 - **Non-target fields / unresolved isolation:** after review, the same product's
   modelNumber was missing and publicSchema also showed an empty model. It is
-  not yet known whether the price write, review processing or another cause
-  explains this observation. A separate control product with no price or
-  inventory writes is being prepared to compare post-review behavior; no
-  control outcome is claimed. Keep the payload price-only: do not add model
+  not established whether the price write or another concurrent cause
+  explains this observation. The separate control product had no subsequent
+  price or inventory writes, reached online/approved, and retained its model.
+  This paired observation is not universal causation proof or acceptance for
+  other products/accounts. Non-target-field integrity has not passed.
+  Keep the payload price-only: do not add model
   fields, automatic model restoration or compensating writes.
 - **BFF/HTTP, MV3 extension and Worker:** current evidence remains isolated/offline
   validation. The CLI result is not a real HTTP-route, MV3 or Worker write

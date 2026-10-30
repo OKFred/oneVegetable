@@ -1,4 +1,8 @@
 export const productValueMaintenance = {
+  priceSafetyTitle: '独立改价暂未开放。',
+  priceSafetyHint: '受控验证发现其他商品字段可能未被保留，该操作的字段完整性尚未确认。',
+  priceEditorHint:
+    '建议通过原商品编辑器调整价格，并在保存后核对关键字段。现有任务仍可读取和验证；预览不代表允许提交。',
   receiptRejectedHint: '平台已明确拒绝本次变更，请展开回执诊断查看原因码；此任务不可重发。',
   receiptIssueHint: '平台回执包含诊断码，请展开查看并只读核验，不要重发此任务。',
   traceId: '平台追踪 ID',

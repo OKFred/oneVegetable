@@ -27,6 +27,11 @@ export const productValueMaintenance = {
   permissionDenied:
     'The application API permission was denied. Request the required IOP capability before continuing; an attempted submission must not be resent.',
   priceTitle: 'Price maintenance',
+  priceSafetyTitle: 'Standalone price updates are not enabled yet.',
+  priceSafetyHint:
+    'Controlled checks found a risk that other product fields may not be preserved. Field integrity for this operation is not yet confirmed.',
+  priceEditorHint:
+    'Use the existing product editor to change prices, then verify key fields after saving. Existing tasks can still be read and verified; previews do not enable submission.',
   inventoryTitle: 'Absolute inventory maintenance',
   draftsTitle: 'Verified draft receipts',
   iopHint:

@@ -123,6 +123,7 @@ const attempted = computed(() =>
 );
 const canSend = computed(() =>
   Boolean(
+    props.kind !== 'price' &&
     task.value &&
     !busy.value &&
     !attempted.value &&
@@ -413,7 +414,7 @@ function prepareDelete(job: ProductMutationJob): void {
   prepare();
 }
 function send(): void {
-  if (!canSend.value || !task.value) return;
+  if (props.kind === 'price' || !canSend.value || !task.value) return;
   const value = task.value;
   confirmationOpen.value = false;
   void run(async (scope, current) => {
@@ -549,11 +550,22 @@ function close(): void {
     :open="true"
     :dismissible="!busy"
     :title="pm(kind === 'price' ? 'priceTitle' : kind === 'inventory' ? 'inventoryTitle' : 'draftsTitle')"
-    :description="pm('iopHint')"
+    :description="pm(kind === 'price' ? 'priceSafetyTitle' : 'iopHint')"
     size="lg"
     @update:open="close"
   >
     <div class="space-y-4 text-sm" :aria-busy="busy">
+      <section
+        v-if="kind === 'price'"
+        role="note"
+        data-price-safety
+        :aria-label="pm('priceSafetyTitle')"
+        class="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
+      >
+        <h3 class="font-medium">{{ pm('priceSafetyTitle') }}</h3>
+        <p>{{ pm('priceSafetyHint') }}</p>
+        <p>{{ pm('priceEditorHint') }}</p>
+      </section>
       <p v-if="!services.productMaintenance" role="status" class="rounded-md border p-3">
         {{ pm('unavailable') }}
       </p>
@@ -592,7 +604,7 @@ function close(): void {
           <span class="text-muted-foreground">{{ pm('product') }}:</span>
           <span class="break-all font-mono">{{ productId || pm('productRequired') }}</span>
         </p>
-        <p class="text-muted-foreground">{{ pm('inventoryHint') }}</p>
+        <p v-if="kind === 'inventory'" class="text-muted-foreground">{{ pm('inventoryHint') }}</p>
         <form class="space-y-3" @submit.prevent="prepare">
           <fieldset class="space-y-3 disabled:opacity-70" :disabled="busy || Boolean(task)">
             <template v-if="kind === 'price'">
@@ -867,7 +879,7 @@ function close(): void {
           <Button variant="outline" data-action="back-tasks" :disabled="busy" @click="backToTasks">{{
             pm('backToTasks')
           }}</Button>
-          <Button data-action="review" :disabled="!canSend" @click="confirmationOpen = true">{{
+          <Button data-action="review" :disabled="!canSend" @click="canSend && (confirmationOpen = true)">{{
             pm('confirm')
           }}</Button>
           <Button variant="outline" data-action="verify" :disabled="!canVerify" @click="refresh(true)">{{
