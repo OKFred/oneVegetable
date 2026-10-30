@@ -5,6 +5,20 @@ const id: Schema = { type: 'string', pattern: '^[1-9][0-9]{0,18}$' };
 const int: Schema = { type: 'string', pattern: '^(0|[1-9][0-9]{0,18})$' };
 const money: Schema = { type: 'string', maxLength: 128, pattern: '^(0|[1-9][0-9]*)(\\.[0-9]+)?$' };
 const hash: Schema = { type: 'string', pattern: '^[a-f0-9]{64}$' };
+const diagnosticCode: Schema = {
+  type: 'string',
+  minLength: 1,
+  maxLength: 64,
+  pattern: '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$',
+  not: { enum: ['0', 'null'] }
+};
+const diagnosticTrace: Schema = {
+  type: 'string',
+  minLength: 1,
+  maxLength: 128,
+  pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$',
+  not: { enum: ['0', 'null'] }
+};
 const revision: Schema = { type: 'integer', minimum: 1 };
 const time: Schema = { type: 'integer', minimum: 0 };
 const nullable = (schema: Schema): Schema => ({ anyOf: [schema, { type: 'null' }] });
@@ -75,6 +89,9 @@ export function productMaintenanceTransportSchemas(): Record<string, Schema> {
       status: { enum: ['accepted', 'rejected', 'partial', 'ambiguous'] },
       reason: { enum: ['explicit-success', 'explicit-rejection', 'incomplete-evidence', 'unknown-outcome'] },
       readbackRequired: { const: true },
+      errorCode: diagnosticCode,
+      subCode: diagnosticCode,
+      traceId: diagnosticTrace,
       items: {
         type: 'array',
         items: obj({ draftId: id, status: { enum: ['reported-deleted', 'rejected', 'ambiguous'] } })

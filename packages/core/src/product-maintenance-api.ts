@@ -1,11 +1,8 @@
 import type { AlibabaClient } from './alibaba-client';
 import type { ProductReference } from './product-reference';
 
-export const PRODUCT_MAINTENANCE_METHODS = {
-  setPrice: '/icbu/product/edit-price',
-  setInventory: '/icbu/product/edit-inventory',
-  deleteDraft: '/alibaba/icbu/draft/delete'
-} as const;
+import { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
+export { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
 
 export type ProductMaintenanceOperation = keyof typeof PRODUCT_MAINTENANCE_METHODS;
 export type ProductPriceDraft = { operation: 'setPrice'; productId: string } & (
@@ -46,6 +43,10 @@ export interface ProductMaintenanceResult {
   status: 'accepted' | 'rejected' | 'partial' | 'ambiguous';
   reason: 'explicit-success' | 'explicit-rejection' | 'incomplete-evidence' | 'unknown-outcome';
   readbackRequired: true;
+  /** Sanitized stable provider/gateway atoms only; never raw messages or request parameters. */
+  errorCode?: string;
+  subCode?: string;
+  traceId?: string;
   items?: readonly {
     draftId: string;
     status: 'reported-deleted' | 'rejected' | 'ambiguous';
@@ -354,6 +355,64 @@ function result(
 ): ProductMaintenanceResult {
   return { operation, protocol: 'iop', status, reason, readbackRequired: true };
 }
+type ProductMaintenanceDiagnostics = Pick<ProductMaintenanceResult, 'errorCode' | 'subCode' | 'traceId'>;
+function diagnosticCode(value: unknown): string | undefined {
+  const code = typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? String(value) : value;
+  return typeof code === 'string' && /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/u.test(code) && !noErrorCode(code)
+    ? code
+    : undefined;
+}
+function diagnosticTrace(value: unknown): string | undefined {
+  return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u.test(value) && !noErrorCode(value)
+    ? value
+    : undefined;
+}
+/** Strict optional scalar metadata only. Never trim/truncate or inspect messages, bodies, parameters or causes. */
+export function validateProductMaintenanceDiagnostics(value: unknown): boolean {
+  const item = record(value);
+  if (!item) return false;
+  return (
+    (!Object.hasOwn(item, 'errorCode') ||
+      (typeof item.errorCode === 'string' && diagnosticCode(item.errorCode) !== undefined)) &&
+    (!Object.hasOwn(item, 'subCode') ||
+      (typeof item.subCode === 'string' && diagnosticCode(item.subCode) !== undefined)) &&
+    (!Object.hasOwn(item, 'traceId') || diagnosticTrace(item.traceId) !== undefined)
+  );
+}
+function diagnostics(errorCode: unknown, subCode: unknown, traceId: unknown): ProductMaintenanceDiagnostics {
+  const code = diagnosticCode(errorCode);
+  const sub = diagnosticCode(subCode);
+  const trace = diagnosticTrace(traceId);
+  return {
+    ...(code ? { errorCode: code } : {}),
+    ...(sub ? { subCode: sub } : {}),
+    ...(trace ? { traceId: trace } : {})
+  };
+}
+function firstCode(values: readonly unknown[]): string | undefined {
+  return values.map(diagnosticCode).find((value) => value !== undefined);
+}
+function firstTrace(values: readonly unknown[]): string | undefined {
+  return values.map(diagnosticTrace).find((value) => value !== undefined);
+}
+function responseDiagnostics(root: Record<string, unknown> | null): ProductMaintenanceDiagnostics {
+  const business = record(root?.result);
+  const provider = record(root?.error_response);
+  return diagnostics(
+    firstCode([provider?.code, business?.msg_code, root?.msg_code, root?.code]),
+    firstCode([provider?.sub_code, business?.sub_code, root?.sub_code]),
+    firstTrace([root?.request_id, business?.trace_id, provider?.request_id, root?.trace_id])
+  );
+}
+function errorDiagnostics(error: unknown): ProductMaintenanceDiagnostics {
+  const item = record(record(error)?.gatewayError) ?? record(error);
+  return diagnostics(
+    item?.code,
+    item?.subCode ?? item?.sub_code,
+    item?.traceId ?? item?.trace_id ?? item?.request_id
+  );
+}
+
 function responseId(value: unknown): string | null {
   try {
     return integer(typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : value, true);
@@ -373,7 +432,12 @@ export function classifyProductMaintenanceResponse(
 ): ProductMaintenanceResult {
   const draft = parseDraft(draftValue);
   const root = record(raw);
-  const ambiguous = () => result(draft.operation, 'ambiguous', 'incomplete-evidence');
+  const metadata = responseDiagnostics(root);
+  const responseResult = (
+    status: ProductMaintenanceResult['status'],
+    reason: ProductMaintenanceResult['reason']
+  ): ProductMaintenanceResult => ({ ...result(draft.operation, status, reason), ...metadata });
+  const ambiguous = () => responseResult('ambiguous', 'incomplete-evidence');
   if (!root) return ambiguous();
   // A nonzero transport/API envelope is insufficient to infer a mutation's final business outcome.
   if (
@@ -385,14 +449,14 @@ export function classifyProductMaintenanceResponse(
   if (draft.operation !== 'deleteDraft') {
     const business = record(root.result);
     if (!business) return ambiguous();
-    if (bool(business.success) === false) return result(draft.operation, 'rejected', 'explicit-rejection');
+    if (bool(business.success) === false) return responseResult('rejected', 'explicit-rejection');
     if (
       bool(business.success) !== true ||
       !noErrorCode(business.msg_code) ||
       (business.data !== undefined && business.data !== null)
     )
       return ambiguous();
-    return result(draft.operation, 'accepted', 'explicit-success');
+    return responseResult('accepted', 'explicit-success');
   }
   if (!Array.isArray(root.deleted_draft_ids)) return ambiguous();
   const deleted = (root.deleted_draft_ids as unknown[]).map(responseId);
@@ -442,8 +506,7 @@ export function classifyProductMaintenanceResponse(
           ? 'rejected'
           : 'ambiguous';
   return {
-    ...result(
-      draft.operation,
+    ...responseResult(
       status,
       status === 'accepted'
         ? 'explicit-success'
@@ -472,11 +535,14 @@ export function classifyProductMaintenanceError(
       'ALIBABA_IOP_PARAMETER_UNSUPPORTED',
       'ALIBABA_IOP_METHOD_UNSUPPORTED'
     ].includes(code);
-  return result(
-    operation,
-    rejected ? 'rejected' : 'ambiguous',
-    rejected ? 'explicit-rejection' : 'unknown-outcome'
-  );
+  return {
+    ...result(
+      operation,
+      rejected ? 'rejected' : 'ambiguous',
+      rejected ? 'explicit-rejection' : 'unknown-outcome'
+    ),
+    ...errorDiagnostics(error)
+  };
 }
 function comparison(): ProductMaintenanceReadback {
   return { status: 'matched', mismatchedFields: [], unavailableFields: [] };
@@ -602,6 +668,9 @@ export class ProductMaintenanceAdapter {
           response.method === frozen.method
             ? classifyProductMaintenanceResponse(frozen.draft, response.data)
             : result(frozen.operation, 'ambiguous', 'incomplete-evidence');
+        const traceId = diagnosticTrace(response.traceId);
+        if (response.method === frozen.method && !dispatch.result.traceId && traceId)
+          dispatch.result.traceId = traceId;
       } catch (error: unknown) {
         dispatch.result = classifyProductMaintenanceError(frozen.operation, error);
       }

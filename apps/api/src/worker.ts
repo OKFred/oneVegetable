@@ -1,5 +1,6 @@
 import { createApiApp } from './app';
 import { SqlVideoUploadRepository } from './video-uploads/repository';
+import { SqlProductMaintenanceRepository } from './product-maintenance/repository';
 import { EmergencyPauseFeatureFlags, StaticOperationFeatureFlags } from './abac';
 import { AdminService } from './auth/admin-service';
 import { SqlAuthRepository } from './auth/repository';
@@ -158,6 +159,10 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       ? {
           videoUploads: {
             repository: new SqlVideoUploadRepository(database.executor),
+            credentials: credentialProvider
+          },
+          productMaintenance: {
+            repository: new SqlProductMaintenanceRepository(database.executor),
             credentials: credentialProvider
           }
         }

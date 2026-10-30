@@ -4,6 +4,8 @@ import photoFixture from '../../../mock/data/alibaba-auth/iop-photo-responses.js
 import showcaseFixture from '../../../mock/data/showcase-management.json';
 import skuFixture from '../../../mock/data/product-sku-inventory.json';
 import referenceFixture from '../../../mock/data/product-reference/examples.json';
+import lookupFixture from '../../../mock/data/product-lookup.json';
+import { ProductLookupClient } from '@one-vegetable/core/product-lookup';
 import scoreFixture from '../../../mock/data/product-score-protocols.json';
 import { ProductReferenceClient, IOP_REFERENCE_METHODS } from '@one-vegetable/core/product-reference';
 import { BffGatewayClient } from '@one-vegetable/core';
@@ -227,7 +229,10 @@ describe('independent TOP and IOP credentials', () => {
         const url = new URL(input instanceof Request ? input.url : String(input));
         expect(url.origin).toBe('https://openapi-api.alibaba.com');
         const path = url.pathname.replace(/^\/rest/u, '');
-        const example = referenceFixture[path as keyof typeof referenceFixture];
+        const example =
+          path === lookupFixture.method
+            ? { response: lookupFixture.nativeResponse }
+            : referenceFixture[path as keyof typeof referenceFixture];
         expect(example).toBeDefined();
         const parameters =
           init.body instanceof URLSearchParams
@@ -249,8 +254,12 @@ describe('independent TOP and IOP credentials', () => {
       expect((await client.predictCategory({ title: 'Glass cup' })).categoryId).toBe('220001');
       expect((await client.getAttributes('220001')).attributes.length).toBe(1);
       expect((await client.listShippingTemplates()).length).toBe(2);
+      const lookup = new ProductLookupClient(gateway);
+      const found = await lookup.search({ modelNumber: lookupFixture.queries.modelNumber });
+      expect(found.items[0]?.productId).toBe('880101');
+      expect(found.totalItems).toBe(lookupFixture.response.page.total_item);
       expect(new Set(seen)).toEqual(new Set(Object.values(IOP_REFERENCE_METHODS)));
-      expect(send).toHaveBeenCalledTimes(5);
+      expect(send).toHaveBeenCalledTimes(6);
       const catalogue = await gateway.request('listCapabilities', undefined);
       for (const method of Object.values(IOP_REFERENCE_METHODS)) {
         expect(catalogue.find((entry) => entry.method === method)?.realCallEnabled).toBe(true);
@@ -261,10 +270,13 @@ describe('independent TOP and IOP credentials', () => {
       await expect(client.getProduct('880001')).rejects.toMatchObject({
         gatewayError: { code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED' }
       });
+      await expect(lookup.search({ skuCode: lookupFixture.queries.skuCode })).rejects.toMatchObject({
+        gatewayError: { code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED' }
+      });
       const remaining = await gateway.request('listCapabilities', undefined);
       for (const method of Object.values(IOP_REFERENCE_METHODS))
         expect(remaining.find((entry) => entry.method === method)?.realCallEnabled).toBe(false);
-      expect(send).toHaveBeenCalledTimes(5);
+      expect(send).toHaveBeenCalledTimes(6);
     }
   );
   it.each(['top', 'iop'] as const)(

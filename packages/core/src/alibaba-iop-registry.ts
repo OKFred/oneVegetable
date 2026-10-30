@@ -1,6 +1,6 @@
 import { OPERATION_IDS } from './operation-id';
 import { IOP_REFERENCE_METHODS } from './product-reference-methods';
-import { PRODUCT_MAINTENANCE_METHODS } from './product-maintenance-api';
+import { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
 import type { OperationId } from './types';
 
 export type IopBusinessPath = `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`;

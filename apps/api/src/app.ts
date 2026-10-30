@@ -45,6 +45,8 @@ import { registerProductMutationRoutes } from './product-mutations/routes';
 import { registerMetaSocialRoutes } from './social-meta/routes';
 import { registerS3StorageRoutes } from './storage/s3-routes';
 import { registerVideoUploadRoutes } from './video-uploads/routes';
+import { registerProductMaintenanceRoutes } from './product-maintenance/routes';
+import type { ProductMaintenanceRepository } from '@one-vegetable/core/product-maintenance-service';
 import type { VideoUploadRepository } from '@one-vegetable/core/video-upload-service';
 import {
   ProductDisplayNoChangeError,
@@ -130,6 +132,10 @@ export interface ApiAppOptions {
   extensionSocialDevices?: ExtensionSocialDeviceService;
   s3Storage?: S3StorageConfigurationService;
   videoUploads?: { repository: VideoUploadRepository; credentials: AsyncAlibabaCredentialProvider };
+  productMaintenance?: {
+    repository: ProductMaintenanceRepository;
+    credentials: AsyncAlibabaCredentialProvider;
+  };
 }
 
 export interface RequestLogContext {
@@ -411,6 +417,34 @@ export function createApiApp(options: ApiAppOptions): Hono {
       authService: options.authService,
       service: productMutations,
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && options.productMaintenance) {
+    registerProductMaintenanceRoutes(api, {
+      ...options.productMaintenance,
+      runtime: options.runtime,
+      auth: options.authService,
+      flags: featureFlags,
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
+      knownDrafts: async (ownerId, gatewayId) => {
+        if (!options.productMutationJobs) return [];
+        const page = await options.productMutationJobs.list({ page: 1, pageSize: 100, actorId: ownerId });
+        return page.items
+          .filter(
+            (job) =>
+              job.operation === 'saveProductDraft' &&
+              job.protocol === 'iop' &&
+              job.productContext?.gateway === gatewayId &&
+              /^[1-9][0-9]*$/u.test(job.productId) &&
+              job.status === 'verified'
+          )
+          .map((job) => ({
+            kind: 'draft' as const,
+            draftId: job.productId,
+            source: 'draft-create' as const
+          }));
+      }
     });
   }
 

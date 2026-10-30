@@ -21,6 +21,7 @@ import type { RuntimeMetaStatus } from './data-source';
 import type { DashboardTodoRepository } from './todo-repository';
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
+import type { ProductMaintenanceControl } from '@one-vegetable/core/product-maintenance-control';
 
 export interface AppRuntimeState {
   backendMeta: BackendMeta | null;
@@ -40,6 +41,7 @@ export interface AppServices {
   control?: ControlClient;
   s3Storage?: S3StorageControl;
   videoUploads?: VideoUploadControl;
+  productMaintenance?: ProductMaintenanceControl;
   socialPublishing?: SocialPublishingClient;
   extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;

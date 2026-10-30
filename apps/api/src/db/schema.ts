@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const schemaMigrations = sqliteTable('schema_migrations', {
   version: integer('version').primaryKey(),
@@ -542,7 +542,38 @@ export const videoUploadTasks = sqliteTable(
   (table) => [index('video_upload_tasks_owner_updated').on(table.ownerId, table.updateTimeUtc)]
 );
 
+export const productMaintenanceJobs = sqliteTable(
+  'product_maintenance_jobs',
+  {
+    ownerId: text('owner_id').notNull(),
+    id: text('id').notNull(),
+    contextIdentity: text('context_identity').notNull(),
+    contextGateway: text('context_gateway').notNull(),
+    entityKeysJson: text('entity_keys_json').notNull(),
+    requestId: text('request_id').notNull(),
+    payloadFingerprint: text('payload_fingerprint').notNull(),
+    revision: integer('revision').notNull(),
+    status: text('status').notNull(),
+    submitAttempted: integer('submit_attempted').notNull(),
+    createTimeUtc: integer('create_time_utc').notNull(),
+    updateTimeUtc: integer('update_time_utc').notNull(),
+    active: integer('active').notNull(),
+    recordJson: text('record_json').notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.id] }),
+    index('product_maintenance_jobs_owner_updated').on(table.ownerId, table.updateTimeUtc, table.id),
+    index('product_maintenance_jobs_context_active').on(
+      table.ownerId,
+      table.contextIdentity,
+      table.contextGateway,
+      table.active
+    )
+  ]
+);
+
 export const schema = {
+  productMaintenanceJobs,
   videoUploadTasks,
   schemaMigrations,
   appMetadata,
@@ -584,4 +615,4 @@ export const s3StorageConfigurations = sqliteTable('s3_storage_configurations', 
   remark: text('remark')
 });
 
-export const CURRENT_SCHEMA_VERSION = 17;
+export const CURRENT_SCHEMA_VERSION = 18;

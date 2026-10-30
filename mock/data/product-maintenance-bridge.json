@@ -1,0 +1,231 @@
+{
+  "note": "Synthetic offline bridge-policy samples only. No credentials or live acceptance evidence.",
+  "requestId": "11111111-1111-4111-8111-111111111111",
+  "marker": "synthetic-private-detail",
+  "wrongMethod": "/alibaba/icbu/product/get/v2",
+  "unsupportedMethod": "/alibaba/icbu/product/delete",
+  "invalidParameters": {
+    "product_id": "880001",
+    "inventory": "0",
+    "unexpected": true
+  },
+  "responses": {
+    "accepted": {
+      "code": "0",
+      "result": {
+        "data": null,
+        "success": true,
+        "message": "",
+        "msg_code": ""
+      }
+    },
+    "rejected": {
+      "code": "0",
+      "result": {
+        "data": null,
+        "success": false,
+        "message": "Synthetic rejection",
+        "msg_code": "B_PRICE_CONFLICT"
+      }
+    },
+    "invalidMessage": {
+      "code": "0",
+      "result": {
+        "data": null,
+        "success": true,
+        "message": {
+          "detail": "synthetic-private-detail"
+        },
+        "msg_code": ""
+      }
+    },
+    "invalidSuccess": {
+      "code": "0",
+      "result": {
+        "data": null,
+        "success": 1,
+        "message": "",
+        "msg_code": ""
+      }
+    },
+    "missingRoot": {
+      "code": "0",
+      "success": true
+    },
+    "errorRoot": {
+      "code": "0",
+      "result": {
+        "data": null,
+        "success": true,
+        "message": "",
+        "msg_code": ""
+      },
+      "error_response": {
+        "code": "B_ERROR",
+        "msg": "synthetic-private-detail"
+      }
+    },
+    "badEnvelope": {
+      "code": "B_ERROR",
+      "result": {
+        "data": null,
+        "success": true,
+        "message": "",
+        "msg_code": ""
+      }
+    },
+    "deleteAccepted": {
+      "code": "0",
+      "deleted_draft_ids": [770001],
+      "success": true,
+      "message": "",
+      "msg_code": "",
+      "errors": []
+    },
+    "deletePartial": {
+      "code": "0",
+      "deleted_draft_ids": [770001],
+      "success": false,
+      "message": "Synthetic partial",
+      "msg_code": "B_PARTIAL",
+      "errors": []
+    }
+  },
+  "baselineChanges": [
+    {
+      "kind": "fingerprint",
+      "fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "kind": "field",
+      "path": "inventory",
+      "value": "51"
+    },
+    {
+      "kind": "product",
+      "productId": "880002"
+    }
+  ],
+  "readbacks": [
+    {
+      "name": "matched",
+      "valid": true,
+      "value": {
+        "status": "matched",
+        "mismatchedFields": [],
+        "unavailableFields": [],
+        "checkedTimeUtc": 1767225600000
+      }
+    },
+    {
+      "name": "matched-with-mismatch",
+      "valid": false,
+      "value": {
+        "status": "matched",
+        "mismatchedFields": ["inventory"],
+        "unavailableFields": [],
+        "checkedTimeUtc": 1767225600000
+      }
+    },
+    {
+      "name": "matched-with-unavailable",
+      "valid": false,
+      "value": {
+        "status": "matched",
+        "mismatchedFields": [],
+        "unavailableFields": ["inventory"],
+        "checkedTimeUtc": 1767225600000
+      }
+    },
+    {
+      "name": "mismatched",
+      "valid": true,
+      "value": {
+        "status": "mismatched",
+        "mismatchedFields": ["inventory"],
+        "unavailableFields": [],
+        "checkedTimeUtc": 1767225600000
+      }
+    },
+    {
+      "name": "empty-mismatch",
+      "valid": false,
+      "value": {
+        "status": "mismatched",
+        "mismatchedFields": [],
+        "unavailableFields": [],
+        "checkedTimeUtc": 1767225600000
+      }
+    },
+    {
+      "name": "unavailable",
+      "valid": true,
+      "value": {
+        "status": "unavailable",
+        "mismatchedFields": [],
+        "unavailableFields": ["inventory"],
+        "checkedTimeUtc": 1767225600000
+      }
+    },
+    {
+      "name": "empty-unavailable",
+      "valid": false,
+      "value": {
+        "status": "unavailable",
+        "mismatchedFields": [],
+        "unavailableFields": [],
+        "checkedTimeUtc": 1767225600000
+      }
+    },
+    {
+      "name": "unavailable-with-mismatch",
+      "valid": false,
+      "value": {
+        "status": "unavailable",
+        "mismatchedFields": ["inventory"],
+        "unavailableFields": ["inventory"],
+        "checkedTimeUtc": 1767225600000
+      }
+    }
+  ],
+  "hashes": {
+    "valid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "invalid": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "invalidMethods": [
+    "",
+    "alibaba.icbu.product.inventory.update",
+    "/alibaba/icbu/product/delete",
+    "/icbu/product/edit-price/",
+    "__proto__",
+    null,
+    42
+  ],
+  "invalidRuntimes": ["", "bff", "browser", "Node", "toString", "__proto__", null, 42],
+  "flags": [
+    {
+      "methodEnabled": true,
+      "mutationsPaused": false
+    },
+    {
+      "methodEnabled": true,
+      "mutationsPaused": true
+    },
+    {
+      "methodEnabled": false,
+      "mutationsPaused": false
+    },
+    {
+      "methodEnabled": "true",
+      "mutationsPaused": false
+    },
+    {
+      "methodEnabled": true,
+      "mutationsPaused": "false"
+    },
+    {
+      "methodEnabled": true,
+      "mutationsPaused": null
+    }
+  ]
+}

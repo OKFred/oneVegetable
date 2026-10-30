@@ -5,6 +5,8 @@ const validation = /* @__PURE__ */ createCapabilityValidation((domain) => {
   switch (domain) {
     case 'product':
       return import('./generated/validators-product');
+    case 'product-workbench':
+      return import('./generated/validators-product-workbench');
     case 'rfq':
       return import('./generated/validators-rfq');
     case 'trade':

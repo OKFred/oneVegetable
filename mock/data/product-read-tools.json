@@ -159,6 +159,13 @@
     "retryable": false,
     "traceId": "gateway-denied-trace"
   },
+  "applicationPermissionDenial": {
+    "code": "11",
+    "subCode": "isv.permission-api-package-limit",
+    "message": "Application API package denied",
+    "retryable": false,
+    "traceId": "application-denied-trace"
+  },
   "context": {
     "identity": "fixture-account",
     "gateway": "fixture-top-config",

@@ -1,0 +1,152 @@
+{
+  "note": "Synthetic offline diagnostic atoms only. No credential values or real provider receipts.",
+  "requestId": "11111111-1111-4111-8111-111111111111",
+  "privateMarker": "synthetic-private-body-and-parameters",
+  "diagnostics": {
+    "errorCode": "B_PRODUCT_PERMISSION_DENIED",
+    "subCode": "isv.permission-denied",
+    "traceId": "0ba2887315178178017221014"
+  },
+  "bounds": {
+    "errorCode": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "subCode": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+    "traceId": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+  },
+  "fallbackTrace": "trace_fallback-012345",
+  "response": {
+    "code": "0",
+    "request_id": "0ba2887315178178017221014",
+    "result": {
+      "success": false,
+      "data": null,
+      "msg_code": "B_PRODUCT_PERMISSION_DENIED",
+      "sub_code": "isv.permission-denied",
+      "message": "synthetic-private-body-and-parameters",
+      "parameters": {
+        "private": "synthetic-private-body-and-parameters"
+      }
+    }
+  },
+  "errorRoot": {
+    "code": "0",
+    "error_response": {
+      "code": 53,
+      "sub_code": "isv.permission-denied",
+      "request_id": "0ba2887315178178017221014",
+      "msg": "synthetic-private-body-and-parameters"
+    }
+  },
+  "envelope": {
+    "code": "IllegalAccessToken",
+    "sub_code": "isv.permission-denied",
+    "request_id": "0ba2887315178178017221014",
+    "message": "synthetic-private-body-and-parameters"
+  },
+  "exception": {
+    "gatewayError": {
+      "code": "ALIBABA_IOP_API_REJECTED",
+      "subCode": "isv.permission-denied",
+      "traceId": "0ba2887315178178017221014",
+      "message": "synthetic-private-body-and-parameters",
+      "retryable": false,
+      "body": {
+        "private": "synthetic-private-body-and-parameters"
+      }
+    }
+  },
+  "permission": {
+    "gatewayError": {
+      "code": "PERMISSION_DENIED",
+      "subCode": "isv.permission-denied",
+      "traceId": "0ba2887315178178017221014",
+      "message": "synthetic-private-body-and-parameters",
+      "retryable": false
+    }
+  },
+  "accepted": {
+    "code": "0",
+    "request_id": "0ba2887315178178017221014",
+    "result": {
+      "success": true,
+      "data": null,
+      "msg_code": "",
+      "message": "synthetic-private-body-and-parameters"
+    }
+  },
+  "draftRejected": {
+    "code": "0",
+    "success": false,
+    "deleted_draft_ids": [],
+    "errors": [],
+    "msg_code": "B_DRAFT_PERMISSION_DENIED",
+    "sub_code": "isv.permission-denied",
+    "request_id": "0ba2887315178178017221014",
+    "message": "synthetic-private-body-and-parameters"
+  },
+  "rawPartial": {
+    "code": "0",
+    "success": false,
+    "deleted_draft_ids": ["770001"],
+    "errors": [],
+    "msg_code": "B_DRAFT_PARTIAL",
+    "sub_code": "isv.permission-denied",
+    "request_id": "0ba2887315178178017221014",
+    "message": "synthetic-private-body-and-parameters"
+  },
+  "messageOnly": {
+    "message": "synthetic-private-body-and-parameters",
+    "body": {
+      "code": "NEVER_INSPECT_BODY"
+    },
+    "cause": {
+      "code": "NEVER_INSPECT_CAUSE"
+    }
+  },
+  "invalidCodeValues": [
+    "",
+    " ",
+    "bad code",
+    "CODE\nSECOND",
+    "https://example.com/token",
+    "secret=value",
+    "bad{json}",
+    "错误码",
+    "_LEADING",
+    "0",
+    "null",
+    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    false,
+    null,
+    {},
+    [],
+    1.5,
+    -1,
+    9007199254740992
+  ],
+  "invalidTraceValues": [
+    "",
+    " ",
+    "bad trace",
+    "trace\nnext",
+    "https://example.com/path",
+    "trace:secret",
+    "trace.secret",
+    "追踪",
+    "_LEADING",
+    "0",
+    "null",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    false,
+    null,
+    {},
+    [],
+    42
+  ],
+  "invalidStoredValues": [42, 1.5, null, false, {}, []],
+  "stableNumericCode": 53,
+  "paths": {
+    "code": "errorCode",
+    "sub": "subCode",
+    "trace": "traceId"
+  }
+}

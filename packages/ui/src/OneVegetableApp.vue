@@ -93,6 +93,7 @@ import {
 } from './lib/todo-repository';
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
+import type { ProductMaintenanceControl } from '@one-vegetable/core/product-maintenance-control';
 import { provideListIdentityScope } from './lib/list-identity-scope';
 import { ProductPhotoHandoffService, provideProductPhotoHandoff } from './lib/product-photo-handoff';
 import { openAlibabaAuthorizationTool } from './lib/alibaba-authorization-tool';
@@ -110,6 +111,7 @@ const props = defineProps<{
   control?: ControlClient;
   s3Storage?: S3StorageControl;
   videoUploads?: VideoUploadControl;
+  productMaintenance?: ProductMaintenanceControl;
   socialPublishing?: SocialPublishingClient;
   extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;
@@ -195,6 +197,7 @@ provideServices({
   ...(props.control ? { control: props.control } : {}),
   ...(props.s3Storage ? { s3Storage: props.s3Storage } : {}),
   ...(props.videoUploads ? { videoUploads: props.videoUploads } : {}),
+  ...(props.productMaintenance ? { productMaintenance: props.productMaintenance } : {}),
   ...(props.socialPublishing ? { socialPublishing: props.socialPublishing } : {}),
   ...(props.extensionSocialBackend ? { extensionSocialBackend: props.extensionSocialBackend } : {}),
   ...(props.productDescriptionTemplates

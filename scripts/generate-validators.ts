@@ -8,6 +8,7 @@ import addFormats from 'ajv-formats';
 import { validationSchema } from './lib/validator-schema';
 import { compactStandaloneSchemaConstants } from './lib/standalone-schema-constants';
 import { writeTextFileWithRetry } from './lib/safe-write';
+import { isProductWorkbenchMethod } from '../packages/core/src/product-workbench-methods';
 
 type CapabilityDomain =
   'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform' | 'free-api';
@@ -204,12 +205,26 @@ for (const domain of domains) {
   const definitions = document[`x-${domain}-capabilities`] ?? {};
   const prefix = domain === 'free-api' ? 'FreeApi' : `${domain[0]?.toUpperCase()}${domain.slice(1)}`;
   const selected: Record<string, object | undefined> = {};
-  for (const [index, definition] of Object.values(definitions).entries()) {
-    selected[`validate${prefix}Capability${index}Request`] = schemas[definition.requestSchema];
-    selected[`validate${prefix}Capability${index}Response`] = schemas[definition.responseSchema];
+  const workbench: Record<string, object | undefined> = {};
+  for (const [index, [method, definition]] of Object.entries(definitions).entries()) {
+    const output = domain === 'product' && isProductWorkbenchMethod(method) ? workbench : selected;
+    output[`validate${prefix}Capability${index}Request`] = schemas[definition.requestSchema];
+    output[`validate${prefix}Capability${index}Response`] = schemas[definition.responseSchema];
   }
   targets.set(`validators-${domain}.ts`, compileValidators(selected));
+  if (domain === 'product') targets.set('validators-product-workbench.ts', compileValidators(workbench));
 }
+targets.set(
+  'validators-product-maintenance-parameters.ts',
+  compileValidators(
+    {
+      validateIopMaintenancePriceRequest: schemas.AlibabaProductIopMaintenance0Request,
+      validateIopMaintenanceInventoryRequest: schemas.AlibabaProductIopMaintenance1Request,
+      validateIopMaintenanceDraftDeleteRequest: schemas.AlibabaProductIopMaintenance2Request
+    },
+    'fast'
+  )
+);
 
 for (const [fileName, output] of targets) {
   const target = resolve(generatedDirectory, fileName);

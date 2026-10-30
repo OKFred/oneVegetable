@@ -21168,6 +21168,27 @@
                     ]
                   },
                   "readbackRequired": { "const": true },
+                  "errorCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$",
+                    "not": { "enum": ["0", "null"] }
+                  },
+                  "subCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$",
+                    "not": { "enum": ["0", "null"] }
+                  },
+                  "traceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+                    "not": { "enum": ["0", "null"] }
+                  },
                   "items": {
                     "type": "array",
                     "items": {

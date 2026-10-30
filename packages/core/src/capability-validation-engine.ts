@@ -1,4 +1,5 @@
 import type { ErrorObject } from 'ajv';
+import { isProductWorkbenchMethod } from './product-workbench-methods';
 import { PRODUCT_CAPABILITY_DEFINITIONS } from './generated/product-capabilities';
 import { RFQ_CAPABILITY_DEFINITIONS } from './generated/rfq-capabilities';
 import { TRADE_CAPABILITY_DEFINITIONS } from './generated/trade-capabilities';
@@ -10,7 +11,15 @@ import { FREE_API_CAPABILITY_DEFINITIONS } from './generated/free-api-capabiliti
 import type { CapabilityContractIssue } from './types';
 
 export type CapabilityValidatorDomain =
-  'product' | 'rfq' | 'trade' | 'logistics' | 'insights' | 'photo' | 'platform' | 'free-api';
+  | 'product'
+  | 'product-workbench'
+  | 'rfq'
+  | 'trade'
+  | 'logistics'
+  | 'insights'
+  | 'photo'
+  | 'platform'
+  | 'free-api';
 export type CapabilityValidatorModule = Readonly<Record<string, unknown>>;
 interface StandaloneValidator {
   (value: unknown): boolean;
@@ -32,7 +41,17 @@ const domains = [
 const references = new Map<string, { domain: CapabilityValidatorDomain; name: string }>(
   domains.flatMap(([domain, prefix, definitions]) =>
     Object.keys(definitions).map(
-      (method, index) => [method, { domain, name: `validate${prefix}Capability${index}` }] as const
+      (method, index) =>
+        [
+          method,
+          {
+            domain:
+              domain === 'product' && isProductWorkbenchMethod(method)
+                ? ('product-workbench' as const)
+                : domain,
+            name: `validate${prefix}Capability${index}`
+          }
+        ] as const
     )
   )
 );

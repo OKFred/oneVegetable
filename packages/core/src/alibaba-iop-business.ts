@@ -1,6 +1,10 @@
 import { GatewayException } from './errors';
-import { PRODUCT_MAINTENANCE_METHODS } from './product-maintenance-api';
-import { validateCapabilityRequest } from './capability-validation-lazy';
+import { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
+import {
+  validateIopMaintenancePriceRequest,
+  validateIopMaintenanceInventoryRequest,
+  validateIopMaintenanceDraftDeleteRequest
+} from './generated/validators-product-maintenance-parameters';
 import { isProductReferenceMethod, IOP_REFERENCE_METHODS } from './product-reference-methods';
 import { IOP_BUSINESS_ENDPOINT, isRecord, signIopRequest } from './alibaba-iop';
 import { serializeAlibabaParameters } from './signing';
@@ -63,7 +67,13 @@ export async function createIopBusinessRequest(
   if (!definition.adapted) throw failure(iopMethodReason(method) ?? 'ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
   if ((Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(method)) {
-    if ((await validateCapabilityRequest(method, input)).length) throw failure('REQUEST_CONTRACT_INVALID');
+    const valid =
+      method === PRODUCT_MAINTENANCE_METHODS.setPrice
+        ? validateIopMaintenancePriceRequest(input)
+        : method === PRODUCT_MAINTENANCE_METHODS.setInventory
+          ? validateIopMaintenanceInventoryRequest(input)
+          : validateIopMaintenanceDraftDeleteRequest(input);
+    if (!valid) throw failure('REQUEST_CONTRACT_INVALID');
     business = input;
   } else if (method === IOP_REFERENCE_METHODS.searchProducts) {
     if (

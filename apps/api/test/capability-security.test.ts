@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import lookupFixture from '../../../mock/data/product-lookup.json';
 import {
   AlibabaClient,
   createRequestId,
@@ -146,10 +147,14 @@ describe('BFF / extension generic security parity', () => {
       if (!resolveExtensionOperationAvailability('callCapability', payload).allowed) continue;
       const requestId = createRequestId();
       const native = isProductReferenceMethod(capability.method);
+      const responseExample =
+        capability.method === lookupFixture.method
+          ? lookupFixture.nativeResponse
+          : definition.responseExample;
       const { bff, extension, send } = transports(
         native
-          ? definition.responseExample
-          : { [`${capability.method.replaceAll('.', '_')}_response`]: definition.responseExample },
+          ? responseExample
+          : { [`${capability.method.replaceAll('.', '_')}_response`]: responseExample },
         native ? 'iop' : 'top'
       );
       const result = await bff.request('callCapability', payload, { requestId });
@@ -158,7 +163,15 @@ describe('BFF / extension generic security parity', () => {
       );
       // Historical documentation examples can drift. Preserve that evidence instead of flattening
       // TOP typed-array wrappers to make a validator pass.
-      expect(result.data, capability.method).toEqual(redactCapabilityResponse(definition.responseExample));
+      expect(result.data, capability.method).toEqual(redactCapabilityResponse(responseExample));
+      if (capability.method === lookupFixture.method) {
+        expect(result.contractValid).toBe(true);
+        expect(result.data).toMatchObject({
+          success: true,
+          product_info: lookupFixture.nativeResponse.product_info,
+          page: lookupFixture.nativeResponse.page
+        });
+      }
       expect(result.contractValid, capability.method).toBe(result.contractIssues.length === 0);
       expect(send, capability.method).toHaveBeenCalledTimes(2);
       for (const [url, init] of send.mock.calls) {

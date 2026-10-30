@@ -30,6 +30,7 @@
     "./product-maintenance-service": "./src/product-maintenance-service.ts",
     "./product-maintenance-platform": "./src/product-maintenance-platform.ts",
     "./product-maintenance-control": "./src/product-maintenance-control.ts",
+    "./product-maintenance-runtime-policy": "./src/product-maintenance-runtime-policy.ts",
     "./product-operation-context": "./src/product-operation-context.ts",
     "./product-display-identity": "./src/product-display-identity.ts",
     "./product-update-outcome": "./src/product-update-outcome.ts",

@@ -110,6 +110,8 @@ import { ExtensionS3Service } from '../lib/s3-service';
 import { s3LocalStore } from '../lib/s3-local-store';
 import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
 import { handleVideoUpload } from '../lib/video-upload-service';
+import { handleProductMaintenance } from '../lib/product-maintenance-service';
+import { ExtensionProductMaintenanceRepository } from '../lib/product-maintenance-repository';
 import {
   authorizationAvailability,
   authorizationProfiles,
@@ -224,6 +226,7 @@ export default defineBackground({
         serializeVaultOperation(async () => {
           // Wait for in-flight create/unlock/rotation, then clear inside the same
           // boundary. A late passphrase derivation cannot restore deleted credentials.
+          await new ExtensionProductMaintenanceRepository().clearAll();
           await vaultSession.lock('manual');
           await resetIopAuthorization();
           await new ExtensionVideoUploadRepository().clearAll();
@@ -245,6 +248,44 @@ export default defineBackground({
         return storageAccessReady.then(() => handleAuthorization(value, sender));
       }
       const trustedOptionsPage = isTrustedOptionsPageSender(sender);
+      if (
+        value &&
+        typeof value === 'object' &&
+        'kind' in value &&
+        value.kind === 'product-maintenance-request'
+      ) {
+        return storageAccessReady.then(() =>
+          handleProductMaintenance(
+            value,
+            trustedOptionsPage,
+            async (intent, expectedGateway) =>
+              resolveAuthorization(
+                await loadAuthorizationSettings(),
+                'callCapability',
+                { method: intent.method, parameters: intent.parameters },
+                expectedGateway,
+                'PRODUCT_CONTEXT_CHANGED'
+              ),
+            async (gatewayId) => {
+              const page = await productMutations.list({ page: 1, pageSize: 100 });
+              return page.items
+                .filter(
+                  (job) =>
+                    job.operation === 'saveProductDraft' &&
+                    job.protocol === 'iop' &&
+                    job.productContext?.gateway === gatewayId &&
+                    job.status === 'verified' &&
+                    /^[1-9][0-9]*$/u.test(job.productId)
+                )
+                .map((job) => ({
+                  kind: 'draft' as const,
+                  draftId: job.productId,
+                  source: 'draft-create' as const
+                }));
+            }
+          )
+        );
+      }
       if (value && typeof value === 'object' && 'kind' in value && value.kind === 'video-upload-request') {
         return storageAccessReady.then(() =>
           handleVideoUpload(value, trustedOptionsPage, s3, async (expectedGateway?: string) =>

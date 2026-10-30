@@ -11462,6 +11462,9 @@ export interface components {
                 reason: "explicit-success" | "explicit-rejection" | "incomplete-evidence" | "unknown-outcome";
                 /** @constant */
                 readbackRequired: true;
+                errorCode?: string;
+                subCode?: string;
+                traceId?: string;
                 items?: {
                     draftId: string;
                     /** @enum {unknown} */

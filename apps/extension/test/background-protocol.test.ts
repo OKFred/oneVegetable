@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
+import maintenanceFixture from '../../../mock/data/product-maintenance-repository.json';
+import maintenanceDomain from '../../../mock/data/product-maintenance-api.json';
+import { parseProductMaintenanceRecord } from '@one-vegetable/core/product-maintenance-service';
+import { classifyProductMaintenanceResponse } from '@one-vegetable/core/product-maintenance-api';
 import { browser } from 'wxt/browser';
 import {
   ALIBABA_GATEWAY,
@@ -34,6 +39,7 @@ import { ExtensionCredentialVaultSession } from '../lib/credential-vault-session
 import { AUTHORIZATION_REFRESH_INTENTS_KEY } from '../lib/authorization-refresh';
 import { s3LocalStore } from '../lib/s3-local-store';
 import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
+import { ExtensionProductMaintenanceRepository } from '../lib/product-maintenance-repository';
 import { handleAuthorization, resetIopAuthorization } from '../lib/iop-authorization-runtime';
 import { authorizationProfiles } from '../lib/alibaba-authorizations';
 
@@ -252,7 +258,12 @@ async function fixtureContext(value = settings) {
     galleryAccountGeneration: configurationId
   });
 }
+let maintenanceClearSpy: { mockRestore(): void };
 beforeEach(() => {
+  vi.stubGlobal('indexedDB', new IDBFactory());
+  maintenanceClearSpy = vi
+    .spyOn(ExtensionProductMaintenanceRepository.prototype, 'clearAll')
+    .mockResolvedValue();
   displayGate.enabled = false;
   restoreXmlGlobals = installNodeXmlDomGlobals();
   state.local = {};
@@ -490,6 +501,68 @@ describe('extension background protocol persistence and dispatch', () => {
       data: { state: 'empty' }
     });
   });
+  it.each(['prepared', 'dispatching', 'accepted', 'partial', 'ambiguous'] as const)(
+    'preserves both authorizations and protection when a %s maintenance task prevents clearing',
+    async (status) => {
+      await createPair(false);
+      vi.stubGlobal('indexedDB', new IDBFactory());
+      maintenanceClearSpy.mockRestore();
+      const clear = vi.spyOn(ExtensionProductMaintenanceRepository.prototype, 'clearAll');
+      const videoClear = vi.spyOn(ExtensionVideoUploadRepository.prototype, 'clearAll').mockResolvedValue();
+      const remove = vi.spyOn(s3LocalStore, 'remove').mockResolvedValue();
+      const removeKey = vi.spyOn(s3LocalStore, 'removeKey').mockResolvedValue();
+      const repository = new ExtensionProductMaintenanceRepository();
+      const record = parseProductMaintenanceRecord(
+        maintenanceFixture.records[status === 'partial' ? 'deleteBatch' : 'inventory']
+      );
+      record.ownerId = 'extension:local-admin';
+      record.task.context = await fixtureContext(settings);
+      await repository.save(record, null);
+      if (status !== 'prepared') {
+        record.task.revision = 2;
+        record.task.status = status;
+        record.task.submitAttempted = true;
+        record.task.submittedTimeUtc = maintenanceFixture.now;
+        record.task.receipt =
+          status === 'accepted' || status === 'partial'
+            ? classifyProductMaintenanceResponse(
+                record.task.intent.draft,
+                status === 'partial'
+                  ? maintenanceDomain.responses.partial
+                  : maintenanceDomain.responses.accepted
+              )
+            : null;
+        await repository.save(record, 1);
+      }
+      const beforeStatus = await send('credential-vault-request', 'status');
+      expect(beforeStatus).toMatchObject({ ok: true, data: { state: 'unlocked' } });
+      const beforeAuthorizations = await send('credential-vault-request', 'authorizations');
+      const beforeLocal = structuredClone(state.local);
+      const beforeSession = structuredClone(state.session);
+      expect(
+        await sendEnvelope({ kind: 's3-storage-request', operation: 'reset', payload: {} })
+      ).toMatchObject({ ok: false, error: { code: 'S3_STORAGE_FAILED' } });
+      expect(clear).toHaveBeenCalledOnce();
+      expect(videoClear).not.toHaveBeenCalled();
+      expect(remove).not.toHaveBeenCalled();
+      expect(removeKey).not.toHaveBeenCalled();
+      expect(state.local).toEqual(beforeLocal);
+      expect(state.session).toEqual(beforeSession);
+      const afterStatus = await send('credential-vault-request', 'status');
+      expect(afterStatus.ok).toBe(true);
+      const beforeProtection = { ...beforeStatus.data };
+      const afterProtection = { ...afterStatus.data };
+      // Merely reading status may update activity time; encrypted data and protection must not change.
+      delete beforeProtection.lastActivityAt;
+      delete afterProtection.lastActivityAt;
+      expect(afterProtection).toEqual(beforeProtection);
+      expect((await send('credential-vault-request', 'authorizations')).data).toEqual(
+        beforeAuthorizations.data
+      );
+      expect(await repository.get(record.task.id, record.ownerId)).toEqual(record);
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  );
   it('restricts dashboard sync storage to trusted extension contexts', () => {
     expect(setSyncAccessLevel).toHaveBeenCalledWith({ accessLevel: 'TRUSTED_CONTEXTS' });
   });

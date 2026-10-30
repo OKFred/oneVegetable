@@ -1,0 +1,234 @@
+{
+  "note": "Synthetic offline SQL repository samples only.",
+  "ownerId": "repo-owner-a",
+  "otherOwnerId": "repo-owner-b",
+  "taskId": "repo-task-a",
+  "secondTaskId": "repo-task-b",
+  "requestId": "repo-request-a",
+  "now": 1767225600000,
+  "context": {
+    "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "otherContext": {
+    "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "gateway": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "otherIdentityContext": {
+    "identity": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "records": {
+    "inventory": {
+      "ownerId": "repo-owner-a",
+      "task": {
+        "schemaVersion": 1,
+        "id": "repo-task-a",
+        "revision": 1,
+        "requestId": "repo-request-a",
+        "context": {
+          "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "protocol": "iop",
+        "intent": {
+          "version": 1,
+          "operation": "setInventory",
+          "protocol": "iop",
+          "method": "/icbu/product/edit-inventory",
+          "parameters": {
+            "product_id": "880001",
+            "inventory": "0"
+          },
+          "draft": {
+            "operation": "setInventory",
+            "productId": "880001",
+            "mode": "spu",
+            "inventory": "0"
+          },
+          "fingerprint": "b00f36717fe64b717b07256e3b9c9ce72f7ab2dfa6c0a3903945d19e908f2f91"
+        },
+        "baseline": {
+          "productId": "880001",
+          "fields": {
+            "inventory": "50"
+          },
+          "fingerprint": "583884d6e76b3978cf39968f65923ba3acf06060d353760468c7ac002ef07f2a"
+        },
+        "status": "prepared",
+        "submitAttempted": false,
+        "createTimeUtc": 1767225600000,
+        "updateTimeUtc": 1767225600000,
+        "submittedTimeUtc": null,
+        "receipt": null,
+        "readback": null,
+        "reasonCode": null
+      }
+    },
+    "price": {
+      "ownerId": "repo-owner-a",
+      "task": {
+        "schemaVersion": 1,
+        "id": "repo-task-a",
+        "revision": 1,
+        "requestId": "repo-request-a",
+        "context": {
+          "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "protocol": "iop",
+        "intent": {
+          "version": 1,
+          "operation": "setPrice",
+          "protocol": "iop",
+          "method": "/icbu/product/edit-price",
+          "parameters": {
+            "product_id": "880001",
+            "price": {
+              "price_type": "TIERED",
+              "currency": "USD",
+              "tiered_price": [
+                {
+                  "quantity": "1",
+                  "price": "1.50000000000000000001"
+                },
+                {
+                  "quantity": "10",
+                  "price": "1.40"
+                }
+              ]
+            }
+          },
+          "draft": {
+            "operation": "setPrice",
+            "productId": "880001",
+            "mode": "tiered",
+            "currency": "USD",
+            "tiers": [
+              {
+                "quantity": "1",
+                "price": "1.50000000000000000001"
+              },
+              {
+                "quantity": "10",
+                "price": "1.40"
+              }
+            ]
+          },
+          "fingerprint": "ee80808c9158cc897357454e333d3461a631df05fa025bb5dc301a5c6a2af6bc"
+        },
+        "baseline": {
+          "productId": "880001",
+          "fields": {
+            "price/type": "TIERED",
+            "price/currency": "USD",
+            "price/tiers/10": "1.5"
+          },
+          "fingerprint": "83952aee1832cc8e20eaa5f56fd9358ca1ed278509575e59f266085a1477ee25"
+        },
+        "status": "prepared",
+        "submitAttempted": false,
+        "createTimeUtc": 1767225600000,
+        "updateTimeUtc": 1767225600000,
+        "submittedTimeUtc": null,
+        "receipt": null,
+        "readback": null,
+        "reasonCode": null
+      }
+    },
+    "deleteOne": {
+      "ownerId": "repo-owner-a",
+      "task": {
+        "schemaVersion": 1,
+        "id": "repo-task-a",
+        "revision": 1,
+        "requestId": "repo-request-a",
+        "context": {
+          "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "protocol": "iop",
+        "intent": {
+          "version": 1,
+          "operation": "deleteDraft",
+          "protocol": "iop",
+          "method": "/alibaba/icbu/draft/delete",
+          "parameters": {
+            "product_id_list": ["770001"]
+          },
+          "draft": {
+            "operation": "deleteDraft",
+            "draftIds": ["770001"],
+            "knownDrafts": [
+              {
+                "kind": "draft",
+                "draftId": "770001",
+                "source": "draft-create"
+              }
+            ]
+          },
+          "fingerprint": "0c816976f2b6faff4f4a19228ea88c878c04fa11c31904a42f5953bd182c84e6"
+        },
+        "baseline": null,
+        "status": "prepared",
+        "submitAttempted": false,
+        "createTimeUtc": 1767225600000,
+        "updateTimeUtc": 1767225600000,
+        "submittedTimeUtc": null,
+        "receipt": null,
+        "readback": null,
+        "reasonCode": null
+      }
+    },
+    "deleteBatch": {
+      "ownerId": "repo-owner-a",
+      "task": {
+        "schemaVersion": 1,
+        "id": "repo-task-a",
+        "revision": 1,
+        "requestId": "repo-request-a",
+        "context": {
+          "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "protocol": "iop",
+        "intent": {
+          "version": 1,
+          "operation": "deleteDraft",
+          "protocol": "iop",
+          "method": "/alibaba/icbu/draft/delete",
+          "parameters": {
+            "product_id_list": ["770001", "770002"]
+          },
+          "draft": {
+            "operation": "deleteDraft",
+            "draftIds": ["770001", "770002"],
+            "knownDrafts": [
+              {
+                "kind": "draft",
+                "draftId": "770001",
+                "source": "draft-create"
+              },
+              {
+                "kind": "draft",
+                "draftId": "770002",
+                "source": "draft-list"
+              }
+            ],
+            "allowBatch": true
+          },
+          "fingerprint": "e80e9829161dc0eae87474769eb9ee4df1bb38d6c0488e5f2837e7f5d5733624"
+        },
+        "baseline": null,
+        "status": "prepared",
+        "submitAttempted": false,
+        "createTimeUtc": 1767225600000,
+        "updateTimeUtc": 1767225600000,
+        "submittedTimeUtc": null,
+        "receipt": null,
+        "readback": null,
+        "reasonCode": null
+      }
+    }
+  }
+}

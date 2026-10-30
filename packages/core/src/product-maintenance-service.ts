@@ -3,7 +3,8 @@ import {
   ProductMaintenanceAdapter,
   createProductMaintenanceIntent,
   comparePriceReadback,
-  compareInventoryReadback
+  compareInventoryReadback,
+  validateProductMaintenanceDiagnostics
 } from './product-maintenance-api';
 import type {
   KnownProductDraft,
@@ -129,7 +130,18 @@ function receiptValid(value: unknown, operation: unknown): boolean {
   const item = record(value);
   if (
     !item ||
-    !keys(item, ['operation', 'protocol', 'status', 'reason', 'readbackRequired', 'items']) ||
+    !keys(item, [
+      'operation',
+      'protocol',
+      'status',
+      'reason',
+      'readbackRequired',
+      'items',
+      'errorCode',
+      'subCode',
+      'traceId'
+    ]) ||
+    !validateProductMaintenanceDiagnostics(item) ||
     item.operation !== operation ||
     item.protocol !== 'iop' ||
     item.readbackRequired !== true ||
@@ -410,6 +422,7 @@ export class ProductMaintenanceService {
     const runtime = await this.runtime(request, task.intent, 'send', task.context);
     if (!runtime.enabled) return fail('PRODUCT_MAINTENANCE_METHOD_DISABLED');
     if (task.intent.draft.operation === 'deleteDraft') {
+      if (!runtime.readDrafts) return fail('PRODUCT_MAINTENANCE_DRAFT_VERIFICATION_UNAVAILABLE');
       if (!runtime.knownDrafts) return fail('PRODUCT_MAINTENANCE_KNOWN_DRAFT_REQUIRED');
       await createProductMaintenanceIntent({ ...task.intent.draft, knownDrafts: runtime.knownDrafts });
     }
@@ -515,6 +528,9 @@ export class ProductMaintenanceService {
     });
   }
 }
+/** Pure canonical hash over a read-only field map; no platform response or mutation. */
+export { baselineFingerprint as createProductMaintenanceBaselineFingerprint };
+
 export interface ProductMaintenanceBaseline {
   productId: string;
   /** Canonical scalars for ONLY the target field set. Never a ProductReference or platform response. */

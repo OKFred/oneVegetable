@@ -120,6 +120,7 @@ const app = createApp(OneVegetableApp, {
   mode: gatewayMode,
   ...(control ? { control } : {}),
   ...(control ? { videoUploads: control } : {}),
+  ...(control ? { productMaintenance: control } : {}),
   ...(authenticationEvents ? { authenticationEvents } : {}),
   ...(control ? { socialPublishing: control } : {}),
   ...(onboarding ? { onboarding } : {}),

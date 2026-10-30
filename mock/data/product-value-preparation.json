@@ -1,0 +1,95 @@
+{
+  "note": "Synthetic offline samples, not a source-product capture.",
+  "marker": "OVVM-offline-001",
+  "productId": "880901",
+  "draftId": "770901",
+  "source": {
+    "productId": "10000050957582",
+    "title": "Unbranded glass cup",
+    "keywords": "glass cup",
+    "descriptionHtml": "<p>A reusable glass cup.</p>",
+    "language": "en_US",
+    "status": "online",
+    "auditStatus": "approved",
+    "modelNumber": null,
+    "createdTimestamp": "1767225600000",
+    "modifiedTimestamp": "1767312000000",
+    "categoryId": "220001",
+    "categoryPath": "Home / Drinkware / Drinking Glasses",
+    "attributes": [
+      {
+        "name": "Material",
+        "value": "Glass"
+      }
+    ],
+    "shippingTemplateId": null,
+    "weight": null,
+    "dimension": {
+      "length": null,
+      "width": null,
+      "height": null
+    },
+    "leadTimes": [
+      {
+        "quantity": "10",
+        "days": "7"
+      }
+    ],
+    "moq": "10",
+    "unit": "piece",
+    "price": {
+      "type": "TIERED",
+      "currency": "USD",
+      "min": null,
+      "max": null,
+      "tiers": [
+        {
+          "quantity": "10",
+          "price": "1.50"
+        }
+      ]
+    },
+    "inventory": "50",
+    "skus": [
+      {
+        "id": "990001",
+        "code": "CUP-CLEAR",
+        "price": "1.50",
+        "currency": "USD",
+        "inventory": "50",
+        "attributes": [
+          {
+            "name": "Color",
+            "value": "Clear",
+            "imageUrl": null
+          }
+        ]
+      }
+    ]
+  },
+  "valuePlan": {
+    "schemaVersion": 1,
+    "price": {
+      "operation": "setPrice",
+      "productId": "NEW_PRODUCT_ID",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    "inventory": {
+      "operation": "setInventory",
+      "productId": "NEW_PRODUCT_ID",
+      "mode": "spu",
+      "inventory": "0"
+    }
+  }
+}

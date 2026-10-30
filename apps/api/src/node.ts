@@ -36,6 +36,7 @@ import { MetaPublisher } from './social-meta/meta-publisher';
 import { SocialPublishingService } from './social-meta/publishing-service';
 import { SqlExtensionSocialDeviceRepository } from './social-meta/extension-device-repository';
 import { SqlVideoUploadRepository } from './video-uploads/repository';
+import { SqlProductMaintenanceRepository } from './product-maintenance/repository';
 import { ExtensionSocialDeviceService } from './social-meta/extension-device-service';
 import {
   S3StorageConfigurationCipher,
@@ -216,6 +217,17 @@ const app = createApiApp({
       }
     : {}),
   socialMediaAssets,
+  ...(gatewayMode === 'real'
+    ? {
+        productMaintenance: {
+          repository: new SqlProductMaintenanceRepository(database.executor),
+          credentials: activeCredentialProvider ?? {
+            status: () => Promise.resolve(legacyCredentialProvider().status()),
+            requireCredentials: () => Promise.resolve(legacyCredentialProvider().requireCredentials())
+          }
+        }
+      }
+    : {}),
   ...(socialPublishing ? { socialPublishing } : {}),
   extensionSocialDevices,
   requestEvents: new SqlRequestEventRepository(database.executor),
