@@ -177,5 +177,12 @@
         }
       ]
     }
+  },
+  "/alibaba/icbu/product/status/get/v2": {
+    "request": { "product_id": 771901 },
+    "response": {
+      "code": "0",
+      "result": { "success": true, "data": { "status": "draft" } }
+    }
   }
 }

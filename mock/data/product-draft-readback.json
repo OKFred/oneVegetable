@@ -1,0 +1,87 @@
+{
+  "note": "Synthetic offline samples only. No real account, draft or provider data.",
+  "actorId": "synthetic-draft-owner",
+  "now": 1793376000000,
+  "context": {
+    "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "otherContext": {
+    "identity": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "gateway": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "draftId": "771901",
+  "otherDraftId": "771902",
+  "requestId": "fixture-draft-read-1",
+  "receipt": {
+    "kind": "draft",
+    "source": "draft-create",
+    "verified": true,
+    "receiptId": "synthetic-create-receipt",
+    "draftId": "771901",
+    "protocol": "iop",
+    "context": {
+      "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "observedTimeUtc": 1793375999000,
+    "expiresTimeUtc": 1793376300000
+  },
+  "responses": {
+    "isp": {
+      "type": "ISP",
+      "message": "Synthetic upstream failure; do not expose provider message",
+      "request_id": "synthetic-upstream-request",
+      "_trace_id_": "synthetic-upstream-trace"
+    },
+    "draft": {
+      "code": "0",
+      "result": {
+        "success": true,
+        "data": {
+          "status": "draft"
+        },
+        "message": "",
+        "msg_code": ""
+      }
+    },
+    "online": {
+      "result": {
+        "success": true,
+        "data": {
+          "status": "online"
+        }
+      }
+    },
+    "deleted": {
+      "result": {
+        "success": true,
+        "data": {
+          "status": "deleted"
+        }
+      }
+    },
+    "rejected": {
+      "result": {
+        "success": false,
+        "data": {
+          "status": "draft"
+        },
+        "msg_code": "PUB_BIZCHECK_PRODUCT_STATUS_INVALID"
+      }
+    }
+  },
+  "job": {
+    "id": "synthetic-create-receipt",
+    "operation": "saveProductDraft",
+    "protocol": "iop",
+    "status": "verified",
+    "productId": "771901",
+    "productContext": {
+      "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "creatorId": "synthetic-draft-owner",
+    "completedTimeUtc": 1793375999000
+  }
+}

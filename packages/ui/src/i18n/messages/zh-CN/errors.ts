@@ -33,6 +33,7 @@ export const errors = {
     ALIBABA_IOP_PHOTO_SCOPE_MISMATCH: '阿里平台 IOP 图片分组查询暂有异常。',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH: '协议与网关地址不匹配，请核对 TOP 或 IOP 配置。',
     ALIBABA_IOP_RESPONSE_INVALID: 'IOP 响应格式不符合预期，请核对配置和接口；不会回退 TOP。',
+    ALIBABA_IOP_UPSTREAM_ERROR: 'Alibaba IOP 返回服务端错误，请稍后手动查询；不要重复提交已发送的写操作。',
     ALIBABA_IOP_API_REJECTED: 'Alibaba IOP 拒绝了请求，请核对授权和接口权限。',
     PRODUCT_CONTEXT_CHANGED: '账号或 Alibaba 凭据配置已变化。请重新选择商品并预览，不要重发旧任务。',
     PRODUCT_CONTEXT_UNAVAILABLE: '无法读取当前账号上下文。请检查登录和 Alibaba 凭据配置。',

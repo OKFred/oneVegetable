@@ -162,6 +162,28 @@
       }
     },
     {
+      "method": "/alibaba/icbu/product/status/get/v2",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/product/status/get/v2",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fstatus%2Fget%2Fv2&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
       "method": "/alibaba/order/get",
       "documentedProtocols": "iop",
       "top": {

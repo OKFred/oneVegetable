@@ -27,7 +27,8 @@ export const referencePaths = [
   '/alibaba/icbu/category/attribute/get/v2',
   '/alibaba/icbu/product/get/v2',
   '/alibaba/icbu/product/list/shipping/templates',
-  '/alibaba/icbu/product/search/v2'
+  '/alibaba/icbu/product/search/v2',
+  '/alibaba/icbu/product/status/get/v2'
 ] as const satisfies readonly IopBusinessPath[];
 
 function parameter(node: Parameter): Schema {
@@ -150,14 +151,19 @@ export function buildIopReferenceContracts(
         ]);
       }
     }
-    response.required = path.endsWith('/category/predict/v2')
+    const resultResponse = path.endsWith('/category/predict/v2') || path.endsWith('/product/status/get/v2');
+    response.required = resultResponse
       ? ['result']
       : path.endsWith('/product/search/v2')
         ? ['success', 'page']
         : ['success'];
-    if (path.endsWith('/category/predict/v2')) {
+    if (resultResponse) {
       const result = (response.properties as Record<string, Schema>).result;
       if (result) result.required = ['success', 'data'];
+      if (path.endsWith('/product/status/get/v2')) {
+        (response.properties as Record<string, Schema>).code = { enum: [0, '0'] };
+        (response.required as string[]).push('code');
+      }
     } else {
       (response.required as string[]).push(
         path.endsWith('/product/get/v2') || path.endsWith('/product/search/v2')

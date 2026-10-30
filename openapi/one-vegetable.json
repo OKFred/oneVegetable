@@ -16171,6 +16171,65 @@
         "required": ["success", "page", "product_info"],
         "title": "/alibaba/icbu/product/search/v2 response"
       },
+      "AlibabaProductIopReference6Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "Product ID"
+          }
+        },
+        "required": ["product_id"],
+        "title": "/alibaba/icbu/product/status/get/v2 request"
+      },
+      "AlibabaProductIopReference6Response": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "A product listing can have one of the following statuses: online, draft, failed, or pending"
+                  },
+                  "status_desc": {
+                    "type": "string",
+                    "description": "If product listing failed, description of listing status"
+                  }
+                },
+                "description": "Result data."
+              },
+              "success": {
+                "type": "boolean",
+                "description": "If the API call succeeds, it returns true, otherwise return false"
+              },
+              "message": {
+                "type": "string",
+                "description": "If the API call fails, the detailed error information returned"
+              },
+              "msg_code": {
+                "type": "string",
+                "description": "If the API call fails, the error code returned."
+              }
+            },
+            "description": "Result of product listing status query.",
+            "required": ["success", "data"]
+          },
+          "code": { "enum": [0, "0"] }
+        },
+        "required": ["result", "code"],
+        "title": "/alibaba/icbu/product/status/get/v2 response"
+      },
       "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -18745,6 +18804,7 @@
               { "$ref": "#/components/schemas/AlibabaProductIopReference3Response" },
               { "$ref": "#/components/schemas/AlibabaProductIopReference4Response" },
               { "$ref": "#/components/schemas/AlibabaProductIopReference5Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopReference6Response" },
               { "$ref": "#/components/schemas/AlibabaProductIopMaintenance0Response" },
               { "$ref": "#/components/schemas/AlibabaProductIopMaintenance1Response" },
               { "$ref": "#/components/schemas/AlibabaProductIopMaintenance2Response" },
@@ -24329,6 +24389,10 @@
             "title": "Unbranded glass cup",
             "keywords": "glass cup",
             "description": "<p>A reusable glass cup.</p>",
+            "product_images": [
+              { "image_url": "https://sc04.alicdn.com/kf/fixture-cup-front.jpg" },
+              { "image_url": "https://sc04.alicdn.com/kf/fixture-cup-side.jpg" }
+            ],
             "language": "en_US",
             "create_timestamp": 1767225600000,
             "last_modified_timestamp": 1767312000000,
@@ -24415,6 +24479,23 @@
         "page": { "page_index": 1, "page_size": 20, "total_item": 0, "total_page": 0 }
       },
       "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fsearch%2Fv2&methodType=GET%2FPOST"
+    },
+    "/alibaba/icbu/product/status/get/v2": {
+      "requestSchema": "AlibabaProductIopReference6Request",
+      "responseSchema": "AlibabaProductIopReference6Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-10-30",
+      "updatedAt": "2025-06-19",
+      "title": "Query product listing status",
+      "description": "Get the status of the product listing. A product listing can have one of the following statuses: online, draft, failed, or pending.",
+      "errorCodes": [],
+      "requestExample": { "product_id": 771901 },
+      "responseExample": { "code": "0", "result": { "success": true, "data": { "status": "draft" } } },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fstatus%2Fget%2Fv2&methodType=GET%2FPOST"
     },
     "/icbu/product/edit-price": {
       "requestSchema": "AlibabaProductIopMaintenance0Request",

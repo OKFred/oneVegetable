@@ -44,6 +44,7 @@ export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>
   [IOP_REFERENCE_METHODS.getProduct]: read(IOP_REFERENCE_METHODS.getProduct, true),
   [IOP_REFERENCE_METHODS.listShippingTemplates]: read(IOP_REFERENCE_METHODS.listShippingTemplates, true),
   [IOP_REFERENCE_METHODS.searchProducts]: read(IOP_REFERENCE_METHODS.searchProducts),
+  [IOP_REFERENCE_METHODS.getProductStatus]: read(IOP_REFERENCE_METHODS.getProductStatus),
   // Adapted for isolated acceptance. Production writes remain blocked until
   // each method has an independent real write/readback/restore receipt.
   [PRODUCT_MAINTENANCE_METHODS.setPrice]: { ...write(PRODUCT_MAINTENANCE_METHODS.setPrice), adapted: true },

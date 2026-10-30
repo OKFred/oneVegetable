@@ -8,7 +8,8 @@ const paths = [
   '/alibaba/icbu/product/search/v2',
   '/icbu/product/edit-price',
   '/icbu/product/edit-inventory',
-  '/alibaba/icbu/draft/delete'
+  '/alibaba/icbu/draft/delete',
+  '/alibaba/icbu/product/status/get/v2'
 ] as const;
 const network = new NetworkManager({
   policies: {
@@ -80,4 +81,4 @@ await writeTextFileWithRetry(
   resolve('docs/alibaba-product-workbench-docs.json'),
   JSON.stringify({ schemaVersion: 1, checkedAt, documents }, null, 2) + '\n'
 );
-console.log('Captured four free public IOP documents; zero business requests.');
+console.log('Captured five free public IOP documents; zero business requests.');

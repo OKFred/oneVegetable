@@ -77,3 +77,40 @@ Only the two new unbranded test products were created. The first had two bounded
 and its original amount was restored; the second is a no-price/no-inventory-write control.
 Existing goods, inventory, authorization profiles and defaults were not changed. Keep private
 receipts, baselines and one-shot claims under ignored artifacts; do not upload them as fixtures.
+
+## Follow-up: field integrity and readback (2026-10-30)
+
+- The original price intent fingerprint matches its saved dispatch. Its only business parameters
+  were `product_id` and `price` (currency, price type and tiers). No empty model, Schema or full
+  product object was sent. The native endpoint has no documented model-preservation parameter;
+  the observed collateral-field risk remains unresolved and no runtime write gate was opened.
+- A single, explicit incremental Schema update restored only the new test product's model number.
+  The first bounded readback ended while the platform was reviewing it; that original receipt is
+  preserved. Later get/v2 and the official product list confirmed the original model and USD 1.00.
+  No repeat restoration was sent. Independent read-only comparison of 24 protected hashes matched.
+- Both the restored product and the untouched control expose their model in get/v2, while Schema
+  render leaves the model field empty. Empty rendered Schema is therefore not an independent proof
+  of model deletion for these samples. Do not silently fill or overwrite platform fields from it.
+- New maintenance previews persist target values plus non-target hashes, not full product content.
+  The send preflight checks both. Price/inventory readback cannot become verified when model,
+  title, pictures, identifiers or other protected data differs or cannot be checked. Historical
+  target-only tasks remain readable, but cannot acquire missing integrity evidence retroactively.
+  A pending/unknown review cannot become verified from an early matching amount; dispatch requires
+  a confirmed product state and readback waits for approval, without replaying a write.
+- The price-only acceptance CLI has the same guard and stops after a collateral-field mismatch;
+  it does not automatically compensate or resend. UI previews hide integrity hashes and show a
+  localized next action when non-target fields differ or evidence is unavailable.
+- Inventory diagnostic used six one-shot public reads across the two new products. Both were
+  approved: get/v2 omitted inventory, the inventory API explicitly returned an empty list, and
+  Schema provided neither a quantity nor a warehouse code. This is not stock zero and supplies no
+  restorable inventory baseline. Absolute inventory writes remain disabled.
+- Native IOP status/get/v2 is now typed as a read capability. Successful status=draft can establish
+  scoped presence from a trusted draft receipt; all other statuses/errors remain unknown. There
+  is still no documented independent absence result, so draft deletion remains disabled. No
+  matching verified draft receipt was available for live presence acceptance; no draft was created
+  or deleted merely to manufacture an acceptance result. A separate read-only status request on the
+  new formal sample returned an HTTP 200 ISP error envelope, not a documented success result.
+  This is recorded as an upstream failure, never draft presence, absence or a permission pass.
+
+All follow-up business operations used the isolated IOP profile. TOP/defaults, existing products,
+stock, S3 configuration and production deployments were not changed.

@@ -79,7 +79,9 @@ export async function createIopBusinessRequest(
             ? ['category_id']
             : method === IOP_REFERENCE_METHODS.getProduct
               ? ['product_id', 'sku_id']
-              : [];
+              : method === IOP_REFERENCE_METHODS.getProductStatus
+                ? ['product_id']
+                : [];
     if (Object.keys(input).some((key) => !allowed.includes(key)))
       throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
     business = Object.fromEntries(
@@ -99,7 +101,8 @@ export async function createIopBusinessRequest(
     if (
       (method === IOP_REFERENCE_METHODS.predictCategory && !input.title) ||
       (method === IOP_REFERENCE_METHODS.getAttributes && !input.category_id) ||
-      (method === IOP_REFERENCE_METHODS.getProduct && !input.product_id && !input.sku_id)
+      (method === IOP_REFERENCE_METHODS.getProduct && !input.product_id && !input.sku_id) ||
+      (method === IOP_REFERENCE_METHODS.getProductStatus && !input.product_id)
     )
       throw failure('REQUEST_CONTRACT_INVALID');
   } else if (method === PRODUCT_TYPES) {
@@ -299,6 +302,23 @@ export function normalizeIopBusinessResponse(
   credentials: GatewayCredentials,
   request?: Readonly<Record<string, string>>
 ): unknown {
+  // Observed native upstream failure: this is not a code-less success payload.
+  // Keep the message static; a provider message may contain URLs or account data.
+  if (isRecord(value) && value.type === 'ISP') {
+    if (
+      typeof value.message !== 'string' ||
+      !value.message.trim() ||
+      ['code', 'result', 'success', 'data'].some((key) => Object.hasOwn(value, key))
+    )
+      throw failure();
+    throw providerFailure(
+      'ISP',
+      'ALIBABA_IOP_UPSTREAM_ERROR',
+      value.request_id ?? value._trace_id_,
+      credentials,
+      'ALIBABA_IOP_UPSTREAM_ERROR'
+    );
+  }
   if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string')) throw failure();
   if (value.code !== '0' && value.code !== 0)
     throw providerFailure(value.code, value.message, value.request_id, credentials);
@@ -306,7 +326,10 @@ export function normalizeIopBusinessResponse(
   // Missing success fields are ambiguous, never silently manufactured.
   if ((Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(method)) return value;
   if (isProductReferenceMethod(method)) {
-    const data = method === IOP_REFERENCE_METHODS.predictCategory ? value.result : value;
+    const data =
+      method === IOP_REFERENCE_METHODS.predictCategory || method === IOP_REFERENCE_METHODS.getProductStatus
+        ? value.result
+        : value;
     if (!isRecord(data)) throw failure();
     if (data.success === false)
       throw providerFailure(
@@ -317,6 +340,26 @@ export function normalizeIopBusinessResponse(
         'ALIBABA_IOP_BUSINESS_REJECTED'
       );
     if (data.success !== true) throw failure();
+    if (method === IOP_REFERENCE_METHODS.getProductStatus) {
+      if (
+        value.success === false ||
+        !isRecord(data.data) ||
+        (data.data.status !== undefined && typeof data.data.status !== 'string')
+      )
+        throw failure();
+      if (
+        data.msg_code !== undefined &&
+        data.msg_code !== null &&
+        !['', '0', 0].includes(data.msg_code as string | number)
+      )
+        throw providerFailure(
+          data.msg_code,
+          data.message,
+          value.request_id,
+          credentials,
+          'ALIBABA_IOP_BUSINESS_REJECTED'
+        );
+    }
     // Preserve native semantics rather than manufacturing a TOP response root.
     return value;
   }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-10-30T05:56:12.132Z",
+  "checkedAt": "2026-10-30T10:02:49.944Z",
   "documents": [
     {
       "path": "/alibaba/icbu/product/search/v2",
@@ -8,7 +8,7 @@
       "description": "query product by model number or sku code, may return multiple records",
       "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fsearch%2Fv2&methodType=GET%2FPOST",
       "updatedAt": "2025-06-11 17:13:51",
-      "checkedAt": "2026-10-30T05:56:12.132Z",
+      "checkedAt": "2026-10-30T10:02:49.944Z",
       "chargeable": false,
       "authorizationType": 1,
       "request": [
@@ -487,7 +487,7 @@
       "description": "Edit Product Price according to product ID or SKU id\n\nUpdate price information for either the SPU or SKU level. When only SKU price info is provided. Update the price for specified SKUs. When only price is provided: update price at SPU level.\n",
       "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Ficbu%2Fproduct%2Fedit-price&methodType=GET%2FPOST",
       "updatedAt": "2025-06-19 20:16:58",
-      "checkedAt": "2026-10-30T05:56:12.132Z",
+      "checkedAt": "2026-10-30T10:02:49.944Z",
       "chargeable": false,
       "authorizationType": 1,
       "request": [
@@ -631,7 +631,7 @@
       "description": "Updates inventory information for either the SPU or SKU  level.\n    When SKU inventory info is provided: Updates inventory for specified SKUs (takes priority).\n    When only inventory is provided: Updates inventory at the SPU level.\nCannot process SPU and SKU inventory simultaneously.\n",
       "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Ficbu%2Fproduct%2Fedit-inventory&methodType=GET%2FPOST",
       "updatedAt": "2025-06-11 15:10:43",
-      "checkedAt": "2026-10-30T05:56:12.132Z",
+      "checkedAt": "2026-10-30T10:02:49.944Z",
       "chargeable": false,
       "authorizationType": 1,
       "request": [
@@ -721,7 +721,7 @@
       "description": "delete list of drafts by productId",
       "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fdraft%2Fdelete&methodType=GET%2FPOST",
       "updatedAt": "2025-06-11 17:22:31",
-      "checkedAt": "2026-10-30T05:56:12.132Z",
+      "checkedAt": "2026-10-30T10:02:49.944Z",
       "chargeable": false,
       "authorizationType": 1,
       "request": [
@@ -788,6 +788,73 @@
                   "description": "Detailed error code for the draft that failed to delete."
                 }
               ]
+            }
+          ]
+        }
+      ],
+      "errors": []
+    },
+    {
+      "path": "/alibaba/icbu/product/status/get/v2",
+      "title": "Query product listing status",
+      "description": "Get the status of the product listing. A product listing can have one of the following statuses: online, draft, failed, or pending.",
+      "documentUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fstatus%2Fget%2Fv2&methodType=GET%2FPOST",
+      "updatedAt": "2025-06-19 17:08:11",
+      "checkedAt": "2026-10-30T10:02:49.944Z",
+      "chargeable": false,
+      "authorizationType": 1,
+      "request": [
+        {
+          "name": "product_id",
+          "type": "Number",
+          "required": true,
+          "description": "Product ID"
+        }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "Result of product listing status query.",
+          "children": [
+            {
+              "name": "data",
+              "type": "Object",
+              "required": true,
+              "description": "Result data.",
+              "children": [
+                {
+                  "name": "status",
+                  "type": "String",
+                  "required": false,
+                  "description": "A product listing can have one of the following statuses: online, draft, failed, or pending"
+                },
+                {
+                  "name": "status_desc",
+                  "type": "String",
+                  "required": false,
+                  "description": "If product listing failed, description of listing status"
+                }
+              ]
+            },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "If the API call succeeds, it returns true, otherwise return false"
+            },
+            {
+              "name": "message",
+              "type": "String",
+              "required": true,
+              "description": "If the API call fails, the detailed error information returned"
+            },
+            {
+              "name": "msg_code",
+              "type": "String",
+              "required": true,
+              "description": "If the API call fails, the error code returned."
             }
           ]
         }

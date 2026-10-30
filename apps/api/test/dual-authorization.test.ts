@@ -258,8 +258,13 @@ describe('independent TOP and IOP credentials', () => {
       const found = await lookup.search({ modelNumber: lookupFixture.queries.modelNumber });
       expect(found.items[0]?.productId).toBe('880101');
       expect(found.totalItems).toBe(lookupFixture.response.page.total_item);
+      const statusRead = await gateway.request('callCapability', {
+        method: IOP_REFERENCE_METHODS.getProductStatus,
+        parameters: referenceFixture[IOP_REFERENCE_METHODS.getProductStatus].request
+      });
+      expect(statusRead.contractValid).toBe(true);
       expect(new Set(seen)).toEqual(new Set(Object.values(IOP_REFERENCE_METHODS)));
-      expect(send).toHaveBeenCalledTimes(6);
+      expect(send).toHaveBeenCalledTimes(7);
       const catalogue = await gateway.request('listCapabilities', undefined);
       for (const method of Object.values(IOP_REFERENCE_METHODS)) {
         expect(catalogue.find((entry) => entry.method === method)?.realCallEnabled).toBe(true);
@@ -276,7 +281,7 @@ describe('independent TOP and IOP credentials', () => {
       const remaining = await gateway.request('listCapabilities', undefined);
       for (const method of Object.values(IOP_REFERENCE_METHODS))
         expect(remaining.find((entry) => entry.method === method)?.realCallEnabled).toBe(false);
-      expect(send).toHaveBeenCalledTimes(6);
+      expect(send).toHaveBeenCalledTimes(7);
     }
   );
   it.each(['top', 'iop'] as const)(

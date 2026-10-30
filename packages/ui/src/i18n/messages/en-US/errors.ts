@@ -43,6 +43,8 @@ export const errors = {
     ALIBABA_IOP_PHOTO_SCOPE_MISMATCH: 'Alibaba IOP image-group queries are currently unreliable.',
     ALIBABA_PROTOCOL_ENDPOINT_MISMATCH:
       'The protocol and gateway endpoint do not match. Check the TOP or IOP configuration.',
+    ALIBABA_IOP_UPSTREAM_ERROR:
+      'Alibaba IOP returned a server error. Check again later; do not resend an attempted write.',
     ALIBABA_IOP_RESPONSE_INVALID:
       'Unexpected IOP response format. Check the configuration and endpoint; no TOP fallback.',
     ALIBABA_IOP_API_REJECTED:

@@ -1,0 +1,222 @@
+{
+  "productIds": ["880901", "880902"],
+  "otherProductId": "880903",
+  "maximumExactId": "9007199254740991",
+  "invalidProductIds": [
+    {
+      "name": "empty",
+      "ids": []
+    },
+    {
+      "name": "zero",
+      "ids": ["0"]
+    },
+    {
+      "name": "negative",
+      "ids": ["-1"]
+    },
+    {
+      "name": "leading-zero",
+      "ids": ["0880901"]
+    },
+    {
+      "name": "fraction",
+      "ids": ["880901.5"]
+    },
+    {
+      "name": "whitespace",
+      "ids": [" 880901"]
+    },
+    {
+      "name": "duplicate",
+      "ids": ["880901", "880901"]
+    },
+    {
+      "name": "three",
+      "ids": ["880901", "880902", "880903"]
+    },
+    {
+      "name": "unsafe-decimal",
+      "ids": ["9007199254740992"]
+    },
+    {
+      "name": "long-outside-safe-wire",
+      "ids": ["9223372036854775807"]
+    },
+    {
+      "name": "number-not-string",
+      "ids": [880901]
+    },
+    {
+      "name": "unsafe-number",
+      "ids": [9007199254740992]
+    },
+    {
+      "name": "null",
+      "ids": [null]
+    },
+    {
+      "name": "exponent",
+      "ids": ["1e6"]
+    },
+    {
+      "name": "embedded-list",
+      "ids": ["880901,880902"]
+    }
+  ],
+  "note": "Synthetic offline inventory diagnostics. No live warehouse, product body, credentials or response capture.",
+  "credentials": {
+    "appKey": "synthetic-diagnostic-app",
+    "appSecret": "synthetic-diagnostic-secret",
+    "accessToken": "synthetic-diagnostic-token"
+  },
+  "categoryId": 230001,
+  "privateText": "SYNTHETIC_BODY_MUST_NOT_BE_SAVED",
+  "product": {
+    "code": "0",
+    "success": true,
+    "message": "",
+    "msg_code": "",
+    "product_info": {
+      "basic_info": {
+        "product_id": "PLACEHOLDER",
+        "title": "SYNTHETIC_BODY_MUST_NOT_BE_SAVED",
+        "description": "SYNTHETIC_BODY_MUST_NOT_BE_SAVED",
+        "model_number": "SYNTHETIC_BODY_MUST_NOT_BE_SAVED",
+        "status": "offline",
+        "audit_status": "approved"
+      },
+      "category_info": {
+        "category_id": 230001
+      },
+      "trade_info": {
+        "inventory": "0",
+        "sku_info": []
+      }
+    }
+  },
+  "inventory": {
+    "code": "0",
+    "result": {
+      "success": true,
+      "trace_id": "synthetic-trace",
+      "message_info": "",
+      "msg_code": "",
+      "data_list": [
+        {
+          "sku_id": -1,
+          "inventory_code": "SYNTHETIC_WAREHOUSE_NOT_REAL",
+          "inventory": 0,
+          "sku_outer_id": "SYNTHETIC_BODY_MUST_NOT_BE_SAVED"
+        }
+      ]
+    }
+  },
+  "schemaResponse": {
+    "code": "0",
+    "result": {
+      "success": true,
+      "trace_id": "synthetic-schema-trace",
+      "msg": "",
+      "msg_code": ""
+    }
+  },
+  "schema": "<itemSchema><field id='inventory' name='Inventory' type='multiInput'><rules><rule name='valueAttributeRule' value='warehouseCode'/><rule name='valueAttributeRule' value='srcValue'/></rules><values><value warehouseCode='SYNTHETIC_WAREHOUSE_NOT_REAL' srcValue='0'>7</value></values></field><field id='sku' type='multiComplex'><fields><field id='skuStock' type='multiInput'><values><value warehouseCode='UNINSTANTIATED_MUST_NOT_BE_SAVED' srcValue='0'>99</value></values></field></fields></field><field id='subject' type='input'><value>SYNTHETIC_BODY_MUST_NOT_BE_SAVED</value></field></itemSchema>",
+  "numericCases": [
+    {
+      "name": "missing",
+      "missing": true,
+      "expected": {
+        "present": false,
+        "type": "missing"
+      }
+    },
+    {
+      "name": "null",
+      "value": null,
+      "expected": {
+        "present": true,
+        "type": "null"
+      }
+    },
+    {
+      "name": "number-zero",
+      "value": 0,
+      "expected": {
+        "present": true,
+        "type": "number",
+        "safeInteger": true,
+        "integerString": "0"
+      }
+    },
+    {
+      "name": "string-zero",
+      "value": "0",
+      "expected": {
+        "present": true,
+        "type": "string",
+        "integerString": "0"
+      }
+    },
+    {
+      "name": "long-string",
+      "value": "9223372036854775807",
+      "expected": {
+        "present": true,
+        "type": "string",
+        "integerString": "9223372036854775807"
+      }
+    },
+    {
+      "name": "unsafe-number",
+      "value": 9007199254740992,
+      "expected": {
+        "present": true,
+        "type": "number",
+        "safeInteger": false
+      }
+    },
+    {
+      "name": "fraction",
+      "value": 1.5,
+      "expected": {
+        "present": true,
+        "type": "number",
+        "safeInteger": false
+      }
+    },
+    {
+      "name": "empty",
+      "value": "",
+      "expected": {
+        "present": true,
+        "type": "string"
+      }
+    },
+    {
+      "name": "negative",
+      "value": -1,
+      "expected": {
+        "present": true,
+        "type": "number",
+        "safeInteger": true
+      }
+    },
+    {
+      "name": "too-large",
+      "value": "9223372036854775808",
+      "expected": {
+        "present": true,
+        "type": "string"
+      }
+    },
+    {
+      "name": "body-not-number",
+      "value": "SYNTHETIC_BODY_MUST_NOT_BE_SAVED",
+      "expected": {
+        "present": true,
+        "type": "string"
+      }
+    }
+  ]
+}

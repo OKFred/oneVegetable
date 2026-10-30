@@ -45,6 +45,13 @@
       "accountVerified": false,
       "authorizationRequired": true
     },
+    "/alibaba/icbu/product/status/get/v2": {
+      "path": "/alibaba/icbu/product/status/get/v2",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
     "/icbu/product/edit-price": {
       "path": "/icbu/product/edit-price",
       "risk": "mutation",
