@@ -6,6 +6,7 @@ import {
   type ProductLookupQuery
 } from '../src/product-lookup';
 import fixture from '../../../mock/data/product-lookup.json';
+import numericFixture from '../../../mock/data/product-search-numeric-fields.json';
 
 function setup(data: unknown = fixture.response) {
   const request = vi.fn(() =>
@@ -27,6 +28,26 @@ function productResponse() {
 }
 
 describe('read-only product lookup facade', () => {
+  it('maps a validated numeric lead-time/price response without exposing or changing those fields', async () => {
+    const data = structuredClone(numericFixture.response);
+    const before = structuredClone(data);
+    const { client, request } = setup(data);
+    const page = await client.search({ modelNumber: numericFixture.query.modelNumber });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(page.items).toEqual([
+      {
+        productId: '881901',
+        title: 'Synthetic numeric-field glass cup',
+        modelNumber: numericFixture.query.modelNumber,
+        status: 'online',
+        skus: [{ id: '991901', code: numericFixture.query.skuCode }]
+      }
+    ]);
+    expect(page.hasNextPage).toBe(false);
+    expect(data).toEqual(before);
+    expect(JSON.stringify(page)).not.toContain('tiered_price');
+    expect(JSON.stringify(page)).not.toContain('tiered_lead_time');
+  });
   it('uses only the native IOP method and trimmed model number with bounded defaults', async () => {
     const { client, request } = setup();
     await client.search({ modelNumber: '  ' + fixture.queries.modelNumber + '  ' });

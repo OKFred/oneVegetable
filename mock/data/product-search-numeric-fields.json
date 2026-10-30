@@ -1,0 +1,41 @@
+{
+  "method": "/alibaba/icbu/product/search/v2",
+  "query": { "modelNumber": "SYNTHETIC-NUMERIC-CUP", "skuCode": "SYNTHETIC-NUMERIC-SKU" },
+  "response": {
+    "success": true,
+    "product_info": [
+      {
+        "basic_info": {
+          "product_id": "881901",
+          "title": "Synthetic numeric-field glass cup",
+          "model_number": "SYNTHETIC-NUMERIC-CUP",
+          "language": "en_US",
+          "status": "online"
+        },
+        "logistics_info": {
+          "weight": "0.4",
+          "dimension": { "length": "15", "width": "10", "height": "8" },
+          "tiered_lead_time": [{ "quantity": 5, "lead_time": 9 }]
+        },
+        "trade_info": {
+          "moq": 5,
+          "price": {
+            "price_type": "TIERED",
+            "currency": "USD",
+            "tiered_price": [{ "quantity": 5, "price": 3.25 }]
+          },
+          "inventory": 25
+        },
+        "sku_info": [
+          {
+            "sku_id": "991901",
+            "sku_code": "SYNTHETIC-NUMERIC-SKU",
+            "sku_price": { "currency": "USD", "price": "3.25" },
+            "inventory": 25
+          }
+        ]
+      }
+    ],
+    "page": { "page_index": 1, "page_size": 20, "total_item": 1, "total_page": 1 }
+  }
+}

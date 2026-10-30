@@ -8209,7 +8209,7 @@ export interface components {
                         /** @description Minimum quantity for the current tier. */
                         quantity?: number;
                         /** @description Lead time for the current tier. */
-                        lead_time?: string;
+                        lead_time?: string | number;
                     } & {
                         [key: string]: unknown;
                     })[];
@@ -8242,7 +8242,7 @@ export interface components {
                             /** @description Minimum Quantity for the current tier. */
                             quantity?: number;
                             /** @description Price for the current tier. */
-                            price?: string;
+                            price?: string | number;
                         } & {
                             [key: string]: unknown;
                         })[];

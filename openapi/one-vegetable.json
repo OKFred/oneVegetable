@@ -16011,7 +16011,10 @@
                             "type": "number",
                             "description": "Minimum quantity for the current tier."
                           },
-                          "lead_time": { "type": "string", "description": "Lead time for the current tier." }
+                          "lead_time": {
+                            "type": ["string", "number"],
+                            "description": "Lead time for the current tier."
+                          }
                         }
                       },
                       "description": "This is a list of estimated delivery working days based on the order quantity."
@@ -16062,7 +16065,10 @@
                                 "type": "number",
                                 "description": "Minimum Quantity for the current tier."
                               },
-                              "price": { "type": "string", "description": "Price for the current tier." }
+                              "price": {
+                                "type": ["string", "number"],
+                                "description": "Price for the current tier."
+                              }
                             }
                           },
                           "description": "Activated when product_type is TIERED."

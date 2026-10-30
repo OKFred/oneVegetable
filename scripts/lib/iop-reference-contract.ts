@@ -65,6 +65,18 @@ function object(nodes: Parameter[], request: boolean): Schema {
   };
 }
 
+/** Explicit response paths only: retain native numbers and documented strings without coercion. */
+function allowObservedStringOrNumber(response: Schema, path: readonly string[]): void {
+  let node = response;
+  for (const key of path) {
+    const next = key === '*' ? node.items : (node.properties as Record<string, Schema> | undefined)?.[key];
+    if (typeof next !== 'object' || next === null || Array.isArray(next))
+      throw new Error('Missing public product response schema: ' + path.join('/'));
+    node = next as Schema;
+  }
+  node.type = ['string', 'number'];
+}
+
 /** Separate native IOP contracts; never advertise these paths as TOP methods. */
 export function buildIopReferenceContracts(
   snapshot: { checkedAt: string; documents: Document[] },
@@ -115,17 +127,28 @@ export function buildIopReferenceContracts(
     }
     // Actual successful IOP responses omit message/msg_code. Success and payload remain mandatory.
     const response = object(doc.response, false);
-    if (path.endsWith('/product/get/v2')) {
-      // Observed native IOP returns a JSON number for tiered_price[].price although
-      // the public document says String. Preserve both representations, no rounding.
-      let priceNode = response;
-      for (const key of ['product_info', 'trade_info', 'price', 'tiered_price']) {
-        const next = (priceNode.properties as Record<string, Schema>)[key];
-        if (!next) throw new Error('Missing public product price schema: ' + key);
-        priceNode = next;
+    if (path.endsWith('/product/get/v2') || path.endsWith('/product/search/v2')) {
+      const productPath = path.endsWith('/product/search/v2') ? ['product_info', '*'] : ['product_info'];
+      // Both native reads return numeric tier prices despite the documented String.
+      allowObservedStringOrNumber(response, [
+        ...productPath,
+        'trade_info',
+        'price',
+        'tiered_price',
+        '*',
+        'price'
+      ]);
+      if (path.endsWith('/product/search/v2')) {
+        // Search documents String, while get/v2 documents Number for this same scalar.
+        // The search-only safe shape receipt confirms Number; no other field is widened.
+        allowObservedStringOrNumber(response, [
+          ...productPath,
+          'logistics_info',
+          'tiered_lead_time',
+          '*',
+          'lead_time'
+        ]);
       }
-      const fields = (priceNode.items as Schema).properties as Record<string, Schema>;
-      fields.price = { ...fields.price, type: ['string', 'number'] };
     }
     response.required = path.endsWith('/category/predict/v2')
       ? ['result']
