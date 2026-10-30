@@ -15,6 +15,12 @@ import type { GatewayClient, GatewayCredentials } from '../src/types';
 const fixture = JSON.parse(
   await readFile(new URL('../../../mock/data/product-reference/examples.json', import.meta.url), 'utf8')
 ) as Record<string, { request: Record<string, unknown>; response: Record<string, unknown> }>;
+Object.assign(
+  fixture,
+  JSON.parse(
+    await readFile(new URL('../../../mock/data/product-workbench/examples.json', import.meta.url), 'utf8')
+  )
+);
 const credentials: GatewayCredentials = {
   protocol: 'iop',
   appKey: 'fixture-key',
@@ -74,7 +80,7 @@ describe('product reference facade', () => {
 });
 
 describe('native IOP product reference', () => {
-  it('registers five read-only methods and validates every synthetic example', async () => {
+  it('registers native read-only methods and validates every synthetic example', async () => {
     for (const method of Object.values(IOP_REFERENCE_METHODS)) {
       expect(listCapabilities().filter((entry) => entry.method === method)).toHaveLength(1);
       expect(getCapabilityDefinition(method)?.risk).toBe('read');

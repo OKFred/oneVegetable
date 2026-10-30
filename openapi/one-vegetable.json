@@ -14736,6 +14736,474 @@
         },
         "title": "alibaba.scbp.showcase.updateproduct response"
       },
+      "AlibabaProductIopMaintenance0Request": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+            ]
+          },
+          "price": {
+            "type": "object",
+            "properties": {
+              "price_type": { "enum": ["TIERED", "RANGE"] },
+              "currency": { "const": "USD" },
+              "tiered_price": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "quantity": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                      ]
+                    },
+                    "price": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                    }
+                  },
+                  "required": ["quantity", "price"],
+                  "additionalProperties": false
+                }
+              },
+              "range_price": {
+                "type": "object",
+                "properties": {
+                  "min_price": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                  },
+                  "max_price": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                  }
+                },
+                "required": ["min_price", "max_price"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["price_type", "currency"],
+            "additionalProperties": false
+          },
+          "sku_price": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "sku_id": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                  ]
+                },
+                "price": { "type": "string", "maxLength": 128, "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$" }
+              },
+              "required": ["sku_id", "price"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["product_id"],
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "price": {
+                "type": "object",
+                "properties": {
+                  "price_type": { "enum": ["TIERED", "RANGE"] },
+                  "currency": { "const": "USD" },
+                  "tiered_price": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "quantity": {
+                          "anyOf": [
+                            { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                            { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                          ]
+                        },
+                        "price": {
+                          "type": "string",
+                          "maxLength": 128,
+                          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                        }
+                      },
+                      "required": ["quantity", "price"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "range_price": {
+                    "type": "object",
+                    "properties": {
+                      "min_price": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                      },
+                      "max_price": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                      }
+                    },
+                    "required": ["min_price", "max_price"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["price_type", "currency"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["price"],
+            "not": {
+              "properties": {
+                "sku_price": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sku_id": {
+                        "anyOf": [
+                          { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                          { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                        ]
+                      },
+                      "price": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                      }
+                    },
+                    "required": ["sku_id", "price"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": ["sku_price"]
+            }
+          },
+          {
+            "properties": {
+              "sku_price": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sku_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                      ]
+                    },
+                    "price": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                    }
+                  },
+                  "required": ["sku_id", "price"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["sku_price"],
+            "not": {
+              "properties": {
+                "price": {
+                  "type": "object",
+                  "properties": {
+                    "price_type": { "enum": ["TIERED", "RANGE"] },
+                    "currency": { "const": "USD" },
+                    "tiered_price": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "quantity": {
+                            "anyOf": [
+                              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                              { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                            ]
+                          },
+                          "price": {
+                            "type": "string",
+                            "maxLength": 128,
+                            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                          }
+                        },
+                        "required": ["quantity", "price"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "range_price": {
+                      "type": "object",
+                      "properties": {
+                        "min_price": {
+                          "type": "string",
+                          "maxLength": 128,
+                          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                        },
+                        "max_price": {
+                          "type": "string",
+                          "maxLength": 128,
+                          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                        }
+                      },
+                      "required": ["min_price", "max_price"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["price_type", "currency"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["price"]
+            }
+          }
+        ],
+        "title": "/icbu/product/edit-price request"
+      },
+      "AlibabaProductIopMaintenance0Response": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "success": { "type": "boolean" },
+              "data": { "type": ["object", "null"], "additionalProperties": true },
+              "message": { "type": "string" },
+              "msg_code": { "type": "string" }
+            },
+            "required": ["success"],
+            "additionalProperties": true
+          }
+        },
+        "required": ["result"],
+        "additionalProperties": true,
+        "title": "/icbu/product/edit-price response"
+      },
+      "AlibabaProductIopMaintenance1Request": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+            ]
+          },
+          "inventory": {
+            "anyOf": [
+              { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+            ]
+          },
+          "sku_inventory": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "sku_id": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                  ]
+                },
+                "inventory": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+                  ]
+                }
+              },
+              "required": ["sku_id", "inventory"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["product_id"],
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "inventory": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+                ]
+              }
+            },
+            "required": ["inventory"],
+            "not": {
+              "properties": {
+                "sku_inventory": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sku_id": {
+                        "anyOf": [
+                          { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                          { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                        ]
+                      },
+                      "inventory": {
+                        "anyOf": [
+                          { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                          { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+                        ]
+                      }
+                    },
+                    "required": ["sku_id", "inventory"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": ["sku_inventory"]
+            }
+          },
+          {
+            "properties": {
+              "sku_inventory": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sku_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                      ]
+                    },
+                    "inventory": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+                      ]
+                    }
+                  },
+                  "required": ["sku_id", "inventory"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["sku_inventory"],
+            "not": {
+              "properties": {
+                "inventory": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+                  ]
+                }
+              },
+              "required": ["inventory"]
+            }
+          }
+        ],
+        "title": "/icbu/product/edit-inventory request"
+      },
+      "AlibabaProductIopMaintenance1Response": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "success": { "type": "boolean" },
+              "data": { "type": ["object", "null"], "additionalProperties": true },
+              "message": { "type": "string" },
+              "msg_code": { "type": "string" }
+            },
+            "required": ["success"],
+            "additionalProperties": true
+          }
+        },
+        "required": ["result"],
+        "additionalProperties": true,
+        "title": "/icbu/product/edit-inventory response"
+      },
+      "AlibabaProductIopMaintenance2Request": {
+        "type": "object",
+        "properties": {
+          "product_id_list": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "anyOf": [
+                { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+              ]
+            }
+          }
+        },
+        "required": ["product_id_list"],
+        "additionalProperties": false,
+        "title": "/alibaba/icbu/draft/delete request"
+      },
+      "AlibabaProductIopMaintenance2Response": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "deleted_draft_ids": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+              ]
+            }
+          },
+          "message": { "type": "string" },
+          "msg_code": { "type": "string" },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "draft_id": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+                  ]
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": { "message": { "type": "string" }, "msg_code": { "type": "string" } },
+                    "required": [],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "required": ["draft_id"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["success", "deleted_draft_ids"],
+        "additionalProperties": true,
+        "title": "/alibaba/icbu/draft/delete response"
+      },
       "AlibabaProductIopReference0Request": {
         "type": "object",
         "additionalProperties": false,
@@ -15366,6 +15834,336 @@
         },
         "required": ["success", "template_info_list"],
         "title": "/alibaba/icbu/product/list/shipping/templates response"
+      },
+      "AlibabaProductIopReference5Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page_index": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+          "page_size": { "type": "integer", "minimum": 1, "maximum": 20 },
+          "model_number": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S" },
+          "sku_code": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S" }
+        },
+        "required": [],
+        "oneOf": [
+          {
+            "required": ["model_number"],
+            "properties": {
+              "model_number": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S" }
+            },
+            "not": {
+              "properties": {
+                "sku_code": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S" }
+              },
+              "required": ["sku_code"]
+            }
+          },
+          {
+            "required": ["sku_code"],
+            "properties": {
+              "sku_code": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S" }
+            },
+            "not": {
+              "properties": {
+                "model_number": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S" }
+              },
+              "required": ["model_number"]
+            }
+          }
+        ],
+        "title": "/alibaba/icbu/product/search/v2 request"
+      },
+      "AlibabaProductIopReference5Response": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "product_info": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "basic_info": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "product_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                      ],
+                      "description": "Product id generated by alibaba.com."
+                    },
+                    "title": { "type": "string", "description": "Product Name." },
+                    "keywords": {
+                      "type": "string",
+                      "description": "A set of phrases highly relevant to the product."
+                    },
+                    "description": { "type": "string", "description": "Product description." },
+                    "product_images": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "image_url": { "type": "string", "description": "Product image address." }
+                        }
+                      },
+                      "description": "Product images."
+                    },
+                    "language": {
+                      "type": "string",
+                      "description": "The language code used when this product information was originally created. Currently only en_US is supported"
+                    },
+                    "create_timestamp": {
+                      "type": "number",
+                      "description": "The timestamp when the product record was first created, using the Unix timestamp"
+                    },
+                    "last_modified_timestamp": {
+                      "type": "number",
+                      "description": "The timestamp of the last modification or update of this product record, using the Unix timestamp"
+                    },
+                    "owner_ali_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                      ],
+                      "description": "This field indicates the ali id ​​of the person in charge of the product. Each sub-account is isolated from each other, and different sub-accounts cannot see each other's products."
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "The status of the product. Currently there are 3 enumeration values:  online: The product has been approved and successfully released online, and users can see and purchase it (if inventory allows) offline: The product has been manually removed from the shelves and is not visible or available for purchase by users. deleted: The product has been deleted and is no longer visible on the entire platform."
+                    },
+                    "audit_status": {
+                      "type": "string",
+                      "description": "All products on alibaba.com are subject to risk control and compliance review. The optional values are:  approved: The product information has passed the review and can be online.  pending: The product information has been submitted and is waiting for review by the administrator or system. It has not yet been released.  rejected: The product information has not passed the review and needs to be modified and resubmitted."
+                    },
+                    "model_number": {
+                      "type": "string",
+                      "description": "The unique identifier that specifies your product."
+                    }
+                  },
+                  "description": "Basic product information."
+                },
+                "category_info": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "category_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                      ],
+                      "description": "Leaf category id of alibaba."
+                    },
+                    "category_name": {
+                      "type": "string",
+                      "description": "The full path of the category to which the product belongs, from the first-level category to the second-level category, all the way to the leaf category, separated by /."
+                    },
+                    "attributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "attribute_name": { "type": "string", "description": "Attribute name." },
+                          "attribute_value": { "type": "string", "description": "Attribute value." }
+                        }
+                      },
+                      "description": "Basic features, such as brand, place of origin, material composition and etc."
+                    }
+                  },
+                  "description": "Product category information."
+                },
+                "logistics_info": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "shipping_template_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                      ],
+                      "description": "The unique logistics shipping template Id associated with the product."
+                    },
+                    "weight": {
+                      "type": "string",
+                      "description": "The total weight(in kilogram) of the product. This includes the weight of the product itself and all inner packaging materials (such as fillers, bubble bags). "
+                    },
+                    "desi": { "type": "number", "description": "Dimensional weight (Turkiye Only)." },
+                    "dimension": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "length": { "type": "string", "description": "Length of package, in centimeter." },
+                        "width": { "type": "string", "description": "Width of package, in centimeter." },
+                        "height": { "type": "string", "description": "Height of package, in centimeter." }
+                      },
+                      "description": "The external dimensions of the product."
+                    },
+                    "tiered_lead_time": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "quantity": {
+                            "type": "number",
+                            "description": "Minimum quantity for the current tier."
+                          },
+                          "lead_time": { "type": "string", "description": "Lead time for the current tier." }
+                        }
+                      },
+                      "description": "This is a list of estimated delivery working days based on the order quantity."
+                    }
+                  },
+                  "description": "The logistics fulfillment information of the product."
+                },
+                "trade_info": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "moq": { "type": "number", "description": "Minimum order quantity." },
+                    "unit": { "type": "string", "description": "Selling units." },
+                    "price": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "price_type": {
+                          "type": "string",
+                          "description": "The options are as follows: TIERED-tiered pricing; RANGE-range pricing. The tiered pricing refers to how much the unit price is if you order at least one item, and it can be setted multi tiered. The range pricing refers to a range price and such products cannot be directly ordered by the buyer."
+                        },
+                        "currency": {
+                          "type": "string",
+                          "description": "ISO 4217 code of the product transaction currency."
+                        },
+                        "range_price": {
+                          "type": "object",
+                          "additionalProperties": true,
+                          "properties": {
+                            "min_price": {
+                              "type": "string",
+                              "description": "The minimum price in the price range."
+                            },
+                            "max_price": {
+                              "type": "string",
+                              "description": "The maximum price in the price range."
+                            }
+                          },
+                          "description": "Activated when price_type is RANGE."
+                        },
+                        "tiered_price": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "quantity": {
+                                "type": "number",
+                                "description": "Minimum Quantity for the current tier."
+                              },
+                              "price": { "type": "string", "description": "Price for the current tier." }
+                            }
+                          },
+                          "description": "Activated when product_type is TIERED."
+                        }
+                      },
+                      "description": "We support 3 types: tiered pricing, range pricing, and sku pricing. Here is for tiered pricing and range pricing. "
+                    },
+                    "inventory": { "type": "number", "description": "The inventory of product(SPU) level." }
+                  },
+                  "description": "Contains price, inventory and sku info."
+                },
+                "sku_info": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                      "sku_id": {
+                        "anyOf": [
+                          { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                          { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                        ],
+                        "description": "SKU id generated by alibaba.com."
+                      },
+                      "sku_code": {
+                        "type": "string",
+                        "description": "SKU code for sellers to manage and identify specific product specifications, usually follows certain coding rules, such as barcode, EAN code."
+                      },
+                      "sku_price": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "currency": {
+                            "type": "string",
+                            "description": "ISO 4217 code of the product transaction currency."
+                          },
+                          "price": { "type": "string", "description": "SKU price." }
+                        },
+                        "description": "It is for sku pricing."
+                      },
+                      "inventory": { "type": "number", "description": "Here is the inventory of sku level." },
+                      "sale_attributes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true,
+                          "properties": {
+                            "attribute_name": { "type": "string", "description": "SKU attribute name." },
+                            "attribute_value": { "type": "string", "description": "SKU attribute value." },
+                            "image": {
+                              "type": "object",
+                              "additionalProperties": true,
+                              "properties": {
+                                "image_url": { "type": "string", "description": "Image address." }
+                              },
+                              "description": "When listing a product, some attributes allow to bind an image at the same time. This field is the image associated with the attribute. On the product details page, buyers can see the image to get more information and help with purchasing decisions."
+                            }
+                          }
+                        },
+                        "description": "Attributes that directly impact the product pricing (e.g., size/color variants, material grades)."
+                      }
+                    }
+                  },
+                  "description": "A sku list of the product. Each sku contains sale-attributes(such as different colors, sizes, versions, etc.), price and inventory."
+                }
+              }
+            },
+            "description": "Product information."
+          },
+          "success": {
+            "type": "boolean",
+            "description": "If the API call succeeds, it returns true, otherwise return false"
+          },
+          "page": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "page_index": { "type": "number", "description": "The page index of the current query" },
+              "total_item": {
+                "type": "number",
+                "description": "The number of products that meet the query criteria"
+              },
+              "total_page": {
+                "type": "number",
+                "description": "The total number of pages that match the query criteria"
+              },
+              "page_size": { "type": "number", "description": "Number of products per page" }
+            },
+            "description": "Pagination results"
+          },
+          "message": {
+            "type": "string",
+            "description": "If the API call fails, the detailed error information returned"
+          },
+          "msg_code": {
+            "type": "string",
+            "description": "If the API call fails, the error code returned.The optional values are as follows： B_PRODUCT_PARAM_INVALID: input param is invalid,productId or skuId is required. B_PRODUCT_NOT_FOUND: product not found S_PRODUCT_SEARCH_ERROR: system error"
+          }
+        },
+        "required": ["success", "page", "product_info"],
+        "title": "/alibaba/icbu/product/search/v2 response"
       },
       "AlibabaRfqAlibabaIcbuAnnexUploadRequest": {
         "type": "object",
@@ -17940,6 +18738,10 @@
               { "$ref": "#/components/schemas/AlibabaProductIopReference2Response" },
               { "$ref": "#/components/schemas/AlibabaProductIopReference3Response" },
               { "$ref": "#/components/schemas/AlibabaProductIopReference4Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopReference5Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopMaintenance0Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopMaintenance1Response" },
+              { "$ref": "#/components/schemas/AlibabaProductIopMaintenance2Response" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuAnnexUploadResponse" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuQuotationPostResponse" },
               { "$ref": "#/components/schemas/AlibabaRfqAlibabaIcbuRfqMyequityResponse" },
@@ -20068,6 +20870,360 @@
           "targetOrder": { "type": "integer", "minimum": 1 },
           "expectedEntries": { "$ref": "#/components/schemas/ProductShowcaseBaseline" }
         }
+      },
+      "ProductValueMaintenanceCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "action": { "const": "create" },
+              "draft": { "$ref": "#/components/schemas/ProductValueMaintenanceDraft" }
+            },
+            "required": ["action", "draft"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "const": "get" },
+              "taskId": { "type": "string", "minLength": 1, "maxLength": 128 }
+            },
+            "required": ["action", "taskId"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": { "action": { "const": "list" } },
+            "required": ["action"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "const": "send" },
+              "taskId": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "revision": { "type": "integer", "minimum": 1 },
+              "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            },
+            "required": ["action", "taskId", "revision", "fingerprint"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": { "enum": ["verify", "cancel"] },
+              "taskId": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "revision": { "type": "integer", "minimum": 1 }
+            },
+            "required": ["action", "taskId", "revision"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProductValueMaintenanceDraft": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "setPrice" },
+              "productId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+              "mode": { "const": "tiered" },
+              "currency": { "const": "USD" },
+              "tiers": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 500,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "quantity": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" },
+                    "price": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                    }
+                  },
+                  "required": ["quantity", "price"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["operation", "productId", "mode", "currency", "tiers"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "setPrice" },
+              "productId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+              "mode": { "const": "range" },
+              "currency": { "const": "USD" },
+              "minPrice": { "type": "string", "maxLength": 128, "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$" },
+              "maxPrice": { "type": "string", "maxLength": 128, "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$" }
+            },
+            "required": ["operation", "productId", "mode", "currency", "minPrice", "maxPrice"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "setPrice" },
+              "productId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+              "mode": { "const": "sku" },
+              "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+              "skus": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 500,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skuId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+                    "price": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                    }
+                  },
+                  "required": ["skuId", "price"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["operation", "productId", "mode", "currency", "skus"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "setInventory" },
+              "productId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+              "mode": { "const": "spu" },
+              "inventory": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+            },
+            "required": ["operation", "productId", "mode", "inventory"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "setInventory" },
+              "productId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+              "mode": { "const": "sku" },
+              "skus": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 500,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skuId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+                    "inventory": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$" }
+                  },
+                  "required": ["skuId", "inventory"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["operation", "productId", "mode", "skus"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": { "const": "deleteDraft" },
+              "draftIds": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" }
+              },
+              "knownDrafts": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": { "const": "draft" },
+                    "draftId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+                    "source": { "enum": ["draft-list", "draft-create"] }
+                  },
+                  "required": ["kind", "draftId", "source"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["operation", "draftIds", "knownDrafts"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProductValueMaintenanceRequest": {
+        "type": "object",
+        "properties": {
+          "requestId": { "type": "string", "format": "uuid" },
+          "context": { "$ref": "#/components/schemas/ProductOperationContext" },
+          "command": { "$ref": "#/components/schemas/ProductValueMaintenanceCommand" }
+        },
+        "required": ["requestId", "context", "command"],
+        "additionalProperties": false
+      },
+      "ProductValueMaintenanceResponse": {
+        "type": "object",
+        "properties": {
+          "requestId": { "type": "string", "format": "uuid" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/ProductValueMaintenanceResult" }
+        },
+        "required": ["requestId", "ok", "data"],
+        "additionalProperties": false
+      },
+      "ProductValueMaintenanceResult": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "maxItems": 100,
+            "items": { "$ref": "#/components/schemas/ProductValueMaintenanceTask" }
+          }
+        },
+        "required": ["tasks"],
+        "additionalProperties": false
+      },
+      "ProductValueMaintenanceTask": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "const": 1 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "requestId": { "type": "string", "format": "uuid" },
+          "context": { "$ref": "#/components/schemas/ProductOperationContext" },
+          "protocol": { "const": "iop" },
+          "intent": {
+            "type": "object",
+            "properties": {
+              "version": { "const": 1 },
+              "operation": { "enum": ["setPrice", "setInventory", "deleteDraft"] },
+              "protocol": { "const": "iop" },
+              "method": {
+                "enum": [
+                  "/icbu/product/edit-price",
+                  "/icbu/product/edit-inventory",
+                  "/alibaba/icbu/draft/delete"
+                ]
+              },
+              "parameters": { "type": "object", "additionalProperties": true },
+              "draft": { "$ref": "#/components/schemas/ProductValueMaintenanceDraft" },
+              "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            },
+            "required": ["version", "operation", "protocol", "method", "parameters", "draft", "fingerprint"],
+            "additionalProperties": false
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "productId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+                  "fields": { "type": "object", "additionalProperties": { "type": "string" } },
+                  "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+                },
+                "required": ["productId", "fields", "fingerprint"],
+                "additionalProperties": false
+              },
+              { "type": "null" }
+            ]
+          },
+          "status": {
+            "enum": [
+              "prepared",
+              "dispatching",
+              "accepted",
+              "rejected",
+              "partial",
+              "ambiguous",
+              "verified",
+              "cancelled"
+            ]
+          },
+          "submitAttempted": { "type": "boolean" },
+          "createTimeUtc": { "type": "integer", "minimum": 0 },
+          "updateTimeUtc": { "type": "integer", "minimum": 0 },
+          "submittedTimeUtc": { "anyOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+          "receipt": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "operation": { "enum": ["setPrice", "setInventory", "deleteDraft"] },
+                  "protocol": { "const": "iop" },
+                  "status": { "enum": ["accepted", "rejected", "partial", "ambiguous"] },
+                  "reason": {
+                    "enum": [
+                      "explicit-success",
+                      "explicit-rejection",
+                      "incomplete-evidence",
+                      "unknown-outcome"
+                    ]
+                  },
+                  "readbackRequired": { "const": true },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "draftId": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" },
+                        "status": { "enum": ["reported-deleted", "rejected", "ambiguous"] }
+                      },
+                      "required": ["draftId", "status"],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": ["operation", "protocol", "status", "reason", "readbackRequired"],
+                "additionalProperties": false
+              },
+              { "type": "null" }
+            ]
+          },
+          "readback": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": { "enum": ["matched", "mismatched", "unavailable"] },
+                  "mismatchedFields": { "type": "array", "items": { "type": "string", "maxLength": 256 } },
+                  "unavailableFields": { "type": "array", "items": { "type": "string", "maxLength": 256 } },
+                  "checkedTimeUtc": { "type": "integer", "minimum": 0 }
+                },
+                "required": ["status", "mismatchedFields", "unavailableFields", "checkedTimeUtc"],
+                "additionalProperties": false
+              },
+              { "type": "null" }
+            ]
+          },
+          "reasonCode": { "anyOf": [{ "type": "string", "pattern": "^[A-Z_]{1,128}$" }, { "type": "null" }] }
+        },
+        "required": [
+          "schemaVersion",
+          "id",
+          "revision",
+          "requestId",
+          "context",
+          "protocol",
+          "intent",
+          "baseline",
+          "status",
+          "submitAttempted",
+          "createTimeUtc",
+          "updateTimeUtc",
+          "submittedTimeUtc",
+          "receipt",
+          "readback",
+          "reasonCode"
+        ],
+        "additionalProperties": false
       },
       "RealMutationPauseUpdateRequest": {
         "type": "object",
@@ -23210,6 +24366,85 @@
         ]
       },
       "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Flist%2Fshipping%2Ftemplates&methodType=GET%2FPOST"
+    },
+    "/alibaba/icbu/product/search/v2": {
+      "requestSchema": "AlibabaProductIopReference5Request",
+      "responseSchema": "AlibabaProductIopReference5Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-10-30",
+      "updatedAt": "2025-06-11",
+      "title": "Query Product List",
+      "description": "query product by model number or sku code, may return multiple records",
+      "errorCodes": [],
+      "requestExample": { "model_number": "sample-model-001", "page_index": 1, "page_size": 20 },
+      "responseExample": {
+        "success": true,
+        "product_info": [],
+        "page": { "page_index": 1, "page_size": 20, "total_item": 0, "total_page": 0 }
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fsearch%2Fv2&methodType=GET%2FPOST"
+    },
+    "/icbu/product/edit-price": {
+      "requestSchema": "AlibabaProductIopMaintenance0Request",
+      "responseSchema": "AlibabaProductIopMaintenance0Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-10-30",
+      "updatedAt": "2025-06-19",
+      "title": "Edit Product Price",
+      "description": "Edit Product Price according to product ID or SKU id\n\nUpdate price information for either the SPU or SKU level. When only SKU price info is provided. Update the price for specified SKUs. When only price is provided: update price at SPU level.\n",
+      "errorCodes": [],
+      "requestExample": {
+        "product_id": "880001",
+        "price": {
+          "price_type": "TIERED",
+          "currency": "USD",
+          "tiered_price": [{ "quantity": "1", "price": "12.50" }]
+        }
+      },
+      "responseExample": { "result": { "success": true, "data": null } },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Ficbu%2Fproduct%2Fedit-price&methodType=GET%2FPOST"
+    },
+    "/icbu/product/edit-inventory": {
+      "requestSchema": "AlibabaProductIopMaintenance1Request",
+      "responseSchema": "AlibabaProductIopMaintenance1Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-10-30",
+      "updatedAt": "2025-06-11",
+      "title": "Edit Product Inventory",
+      "description": "Updates inventory information for either the SPU or SKU  level.\n    When SKU inventory info is provided: Updates inventory for specified SKUs (takes priority).\n    When only inventory is provided: Updates inventory at the SPU level.\nCannot process SPU and SKU inventory simultaneously.\n",
+      "errorCodes": [],
+      "requestExample": { "product_id": "880001", "inventory": "51" },
+      "responseExample": { "result": { "success": true, "data": null } },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Ficbu%2Fproduct%2Fedit-inventory&methodType=GET%2FPOST"
+    },
+    "/alibaba/icbu/draft/delete": {
+      "requestSchema": "AlibabaProductIopMaintenance2Request",
+      "responseSchema": "AlibabaProductIopMaintenance2Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-10-30",
+      "updatedAt": "2025-06-11",
+      "title": "Delete draft",
+      "description": "delete list of drafts by productId",
+      "errorCodes": [],
+      "requestExample": { "product_id_list": ["770001"] },
+      "responseExample": { "success": true, "deleted_draft_ids": [770001] },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fdraft%2Fdelete&methodType=GET%2FPOST"
     }
   },
   "x-product-request-schemas": {

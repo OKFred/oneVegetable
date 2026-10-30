@@ -74,6 +74,28 @@
       }
     },
     {
+      "method": "/alibaba/icbu/draft/delete",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/draft/delete",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fdraft%2Fdelete&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["mutation-unverified"],
+        "notes": []
+      }
+    },
+    {
       "method": "/alibaba/icbu/product/get/v2",
       "documentedProtocols": "iop",
       "top": {
@@ -118,6 +140,28 @@
       }
     },
     {
+      "method": "/alibaba/icbu/product/search/v2",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/icbu/product/search/v2",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Falibaba%2Ficbu%2Fproduct%2Fsearch%2Fv2&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
       "method": "/alibaba/order/get",
       "documentedProtocols": "iop",
       "top": {
@@ -136,6 +180,50 @@
         "accountVerified": true,
         "authorizationRequired": true,
         "constraints": ["getTradeOrderAggregate:paid-amount-unavailable"],
+        "notes": []
+      }
+    },
+    {
+      "method": "/icbu/product/edit-inventory",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/edit-inventory",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Ficbu%2Fproduct%2Fedit-inventory&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["mutation-unverified"],
+        "notes": []
+      }
+    },
+    {
+      "method": "/icbu/product/edit-price",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/icbu/product/edit-price",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=11&path=%2Ficbu%2Fproduct%2Fedit-price&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": ["mutation-unverified"],
         "notes": []
       }
     },

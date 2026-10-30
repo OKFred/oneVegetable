@@ -1,5 +1,6 @@
 import { OPERATION_IDS } from './operation-id';
 import { IOP_REFERENCE_METHODS } from './product-reference-methods';
+import { PRODUCT_MAINTENANCE_METHODS } from './product-maintenance-api';
 import type { OperationId } from './types';
 
 export type IopBusinessPath = `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`;
@@ -42,6 +43,18 @@ export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>
   [IOP_REFERENCE_METHODS.getAttributes]: read(IOP_REFERENCE_METHODS.getAttributes, true),
   [IOP_REFERENCE_METHODS.getProduct]: read(IOP_REFERENCE_METHODS.getProduct, true),
   [IOP_REFERENCE_METHODS.listShippingTemplates]: read(IOP_REFERENCE_METHODS.listShippingTemplates, true),
+  [IOP_REFERENCE_METHODS.searchProducts]: read(IOP_REFERENCE_METHODS.searchProducts),
+  // Adapted for isolated acceptance. Production writes remain blocked until
+  // each method has an independent real write/readback/restore receipt.
+  [PRODUCT_MAINTENANCE_METHODS.setPrice]: { ...write(PRODUCT_MAINTENANCE_METHODS.setPrice), adapted: true },
+  [PRODUCT_MAINTENANCE_METHODS.setInventory]: {
+    ...write(PRODUCT_MAINTENANCE_METHODS.setInventory),
+    adapted: true
+  },
+  [PRODUCT_MAINTENANCE_METHODS.deleteDraft]: {
+    ...write(PRODUCT_MAINTENANCE_METHODS.deleteDraft),
+    adapted: true
+  },
   'alibaba.icbu.product.list': read('/alibaba/icbu/product/list', true),
   // Live accepted legacy alias; absent from the current menu, not an advertised catalog guarantee.
   'alibaba.icbu.product.group.get': read('/alibaba/icbu/product/group/get', true),

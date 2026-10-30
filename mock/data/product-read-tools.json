@@ -1,0 +1,167 @@
+{
+  "translationInput": {
+    "text": "A reusable cotton bag.",
+    "appName": "fixture-only-app",
+    "sourceLanguage": "en",
+    "targetLanguage": "es",
+    "fieldType": "title"
+  },
+  "translation": {
+    "result": [
+      {
+        "success": true,
+        "translate_result_text": "Una bolsa de algodón reutilizable.",
+        "source_language": "en",
+        "target_language": "es",
+        "trace_id": "translation-trace"
+      }
+    ]
+  },
+  "translationFailure": {
+    "result": [
+      {
+        "success": false,
+        "error_code": {
+          "code": "isv.permission-api-package-limit",
+          "display_text": "Permission denied"
+        },
+        "trace_id": "denied-trace"
+      }
+    ]
+  },
+  "translationPartial": {
+    "result": [
+      {
+        "success": true,
+        "translate_result_text": "A result"
+      },
+      {
+        "success": false,
+        "error_code": {
+          "code": "10001"
+        }
+      }
+    ]
+  },
+  "unsafeTranslation": {
+    "result": [
+      {
+        "success": true,
+        "translate_result_text": "<img src=x onerror='alert(1)'><script>alert(2)</script>& text",
+        "source_language": "en",
+        "target_language": "es",
+        "trace_id": "escaped-trace"
+      }
+    ]
+  },
+  "shippingInput": {
+    "shippingTemplateId": "123456",
+    "weightKg": "1.5",
+    "lengthCm": "20",
+    "widthCm": "21",
+    "heightCm": "22",
+    "saleType": "normal",
+    "productType": 1,
+    "moq": 10
+  },
+  "shippingRequest": {
+    "country_logistics_cost_status_request": {
+      "shipping_template_id": 123456,
+      "unit_weight": "1.5",
+      "unit_size": "20X21X22",
+      "sale_type": "normal",
+      "product_type": 1,
+      "moq": 10
+    }
+  },
+  "templates": [
+    {
+      "id": "123456",
+      "name": "Fixture template"
+    }
+  ],
+  "countries": {
+    "biz_success": true,
+    "trace_id": "country-trace",
+    "data": [
+      {
+        "continent_code": "NA",
+        "continent_name": "North America",
+        "country_list": [
+          {
+            "country_code": "US",
+            "country_name": "United States"
+          }
+        ]
+      }
+    ]
+  },
+  "countriesWrapped": {
+    "biz_success": true,
+    "trace_id": "wrapped-trace",
+    "data": {
+      "continent_d_t_o": [
+        {
+          "continent_code": "NA",
+          "continent_name": "North America",
+          "country_list": {
+            "country_d_t_o": [
+              {
+                "country_code": "US",
+                "country_name": "United States"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "coverage": {
+    "biz_success": true,
+    "trace_id": "coverage-trace",
+    "data": {
+      "core_country_logistics_cost_list": [
+        {
+          "country_code": "US",
+          "country_name": "United States",
+          "is_freight_cost_certain": true
+        },
+        {
+          "country_code": "CA",
+          "country_name": "Canada",
+          "is_freight_cost_certain": false
+        }
+      ],
+      "non_core_country_logistics_cost_list": [
+        {
+          "country_code": "AU",
+          "country_name": "Australia",
+          "is_freight_cost_certain": "false"
+        },
+        {
+          "country_code": "NZ",
+          "country_name": "New Zealand"
+        }
+      ]
+    }
+  },
+  "coverageFailure": {
+    "biz_success": false,
+    "msg_code": "SYS_ERROR",
+    "trace_id": "failed-coverage",
+    "data": {
+      "core_country_logistics_cost_list": []
+    }
+  },
+  "gatewayDenial": {
+    "code": "ALIBABA_PERMISSION_DENIED",
+    "message": "Permission denied",
+    "retryable": false,
+    "traceId": "gateway-denied-trace"
+  },
+  "context": {
+    "identity": "fixture-account",
+    "gateway": "fixture-top-config",
+    "storage": null
+  }
+}

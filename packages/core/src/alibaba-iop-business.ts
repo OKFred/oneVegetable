@@ -1,4 +1,6 @@
 import { GatewayException } from './errors';
+import { PRODUCT_MAINTENANCE_METHODS } from './product-maintenance-api';
+import { validateCapabilityRequest } from './capability-validation-lazy';
 import { isProductReferenceMethod, IOP_REFERENCE_METHODS } from './product-reference-methods';
 import { IOP_BUSINESS_ENDPOINT, isRecord, signIopRequest } from './alibaba-iop';
 import { serializeAlibabaParameters } from './signing';
@@ -60,7 +62,26 @@ export async function createIopBusinessRequest(
   if (!path) throw failure('ALIBABA_IOP_METHOD_UNSUPPORTED');
   if (!definition.adapted) throw failure(iopMethodReason(method) ?? 'ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
-  if (isProductReferenceMethod(method)) {
+  if ((Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(method)) {
+    if ((await validateCapabilityRequest(method, input)).length) throw failure('REQUEST_CONTRACT_INVALID');
+    business = input;
+  } else if (method === IOP_REFERENCE_METHODS.searchProducts) {
+    if (
+      Object.keys(input).some((key) => !['model_number', 'sku_code', 'page_index', 'page_size'].includes(key))
+    )
+      throw failure('ALIBABA_IOP_PARAMETER_UNSUPPORTED');
+    const model = input.model_number;
+    const sku = input.sku_code;
+    if ((model === undefined) === (sku === undefined)) throw failure('REQUEST_CONTRACT_INVALID');
+    const key = model === undefined ? 'sku_code' : 'model_number';
+    const value = requiredText(model ?? sku);
+    if (value.trim() !== value || value.length > 200 || /\p{Cc}/u.test(value))
+      throw failure('REQUEST_CONTRACT_INVALID');
+    const page = input.page_index === undefined ? 1 : positiveInteger(input.page_index);
+    const size = input.page_size === undefined ? 20 : positiveInteger(input.page_size);
+    if (page > 1000000 || size > 20) throw failure('REQUEST_CONTRACT_INVALID');
+    business = { [key]: value, page_index: page, page_size: size };
+  } else if (isProductReferenceMethod(method)) {
     const allowed =
       method === IOP_REFERENCE_METHODS.predictCategory
         ? ['title', 'description', 'image']
@@ -293,6 +314,9 @@ export function normalizeIopBusinessResponse(
   if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string')) throw failure();
   if (value.code !== '0' && value.code !== 0)
     throw providerFailure(value.code, value.message, value.request_id, credentials);
+  // Keep native business evidence intact for the durable maintenance classifier.
+  // Missing success fields are ambiguous, never silently manufactured.
+  if ((Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(method)) return value;
   if (isProductReferenceMethod(method)) {
     const data = method === IOP_REFERENCE_METHODS.predictCategory ? value.result : value;
     if (!isRecord(data)) throw failure();

@@ -4,7 +4,8 @@ export const IOP_REFERENCE_METHODS = {
   listCategories: '/alibaba/icbu/category/get/v2',
   getAttributes: '/alibaba/icbu/category/attribute/get/v2',
   getProduct: '/alibaba/icbu/product/get/v2',
-  listShippingTemplates: '/alibaba/icbu/product/list/shipping/templates'
+  listShippingTemplates: '/alibaba/icbu/product/list/shipping/templates',
+  searchProducts: '/alibaba/icbu/product/search/v2'
 } as const;
 const methods = new Set<string>(Object.values(IOP_REFERENCE_METHODS));
 export function isProductReferenceMethod(

@@ -13,6 +13,7 @@ interface Document {
   description: string;
   documentUrl: string;
   updatedAt: string;
+  checkedAt?: string;
   chargeable: boolean;
   authorizationType: number | null;
   request: Parameter[];
@@ -25,7 +26,8 @@ export const referencePaths = [
   '/alibaba/icbu/category/get/v2',
   '/alibaba/icbu/category/attribute/get/v2',
   '/alibaba/icbu/product/get/v2',
-  '/alibaba/icbu/product/list/shipping/templates'
+  '/alibaba/icbu/product/list/shipping/templates',
+  '/alibaba/icbu/product/search/v2'
 ] as const satisfies readonly IopBusinessPath[];
 
 function parameter(node: Parameter): Schema {
@@ -78,6 +80,25 @@ export function buildIopReferenceContracts(
     const requestSchema = 'AlibabaProductIopReference' + String(index) + 'Request';
     const responseSchema = 'AlibabaProductIopReference' + String(index) + 'Response';
     const request = object(doc.request, true);
+    if (path.endsWith('/product/search/v2')) {
+      const properties = request.properties as Record<string, Schema>;
+      for (const name of ['model_number', 'sku_code'])
+        properties[name] = { type: 'string', minLength: 1, maxLength: 200, pattern: '\\S' };
+      properties.page_index = { type: 'integer', minimum: 1, maximum: 1000000 };
+      properties.page_size = { type: 'integer', minimum: 1, maximum: 20 };
+      request.oneOf = [
+        {
+          required: ['model_number'],
+          properties: { model_number: properties.model_number },
+          not: { properties: { sku_code: properties.sku_code }, required: ['sku_code'] }
+        },
+        {
+          required: ['sku_code'],
+          properties: { sku_code: properties.sku_code },
+          not: { properties: { model_number: properties.model_number }, required: ['model_number'] }
+        }
+      ];
+    }
     if (path.endsWith('/product/get/v2')) {
       const properties = request.properties as Record<string, Schema>;
       request.anyOf = [
@@ -106,13 +127,17 @@ export function buildIopReferenceContracts(
       const fields = (priceNode.items as Schema).properties as Record<string, Schema>;
       fields.price = { ...fields.price, type: ['string', 'number'] };
     }
-    response.required = path.endsWith('/category/predict/v2') ? ['result'] : ['success'];
+    response.required = path.endsWith('/category/predict/v2')
+      ? ['result']
+      : path.endsWith('/product/search/v2')
+        ? ['success', 'page']
+        : ['success'];
     if (path.endsWith('/category/predict/v2')) {
       const result = (response.properties as Record<string, Schema>).result;
       if (result) result.required = ['success', 'data'];
     } else {
       (response.required as string[]).push(
-        path.endsWith('/product/get/v2')
+        path.endsWith('/product/get/v2') || path.endsWith('/product/search/v2')
           ? 'product_info'
           : path.endsWith('/shipping/templates')
             ? 'template_info_list'
@@ -129,7 +154,7 @@ export function buildIopReferenceContracts(
       risk: 'read',
       verification: 'documented',
       realCallEnabled: true,
-      checkedAt: snapshot.checkedAt.slice(0, 10),
+      checkedAt: (doc.checkedAt ?? snapshot.checkedAt).slice(0, 10),
       updatedAt: doc.updatedAt.slice(0, 10) || null,
       title: doc.title,
       description: doc.description,

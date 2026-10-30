@@ -1,0 +1,1675 @@
+{
+  "note": "Synthetic offline samples only. No account data or credentials.",
+  "service": {
+    "ownerId": "fixture-owner",
+    "otherOwnerId": "fixture-other-owner",
+    "requestId": "fixture-request-1",
+    "taskIds": ["fixture-task-1", "fixture-task-2", "fixture-task-3"],
+    "context": {
+      "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "otherContext": {
+      "identity": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "gateway": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "now": 1793339600000,
+    "knownDrafts": [
+      {
+        "kind": "draft",
+        "draftId": "770001",
+        "source": "draft-create"
+      },
+      {
+        "kind": "draft",
+        "draftId": "770002",
+        "source": "draft-list"
+      }
+    ],
+    "draftReads": {
+      "absent": [
+        {
+          "draftId": "770001",
+          "status": "absent"
+        },
+        {
+          "draftId": "770002",
+          "status": "absent"
+        }
+      ],
+      "partial": [
+        {
+          "draftId": "770001",
+          "status": "absent"
+        },
+        {
+          "draftId": "770002",
+          "status": "present"
+        }
+      ],
+      "unknown": [
+        {
+          "draftId": "770001",
+          "status": "unknown"
+        },
+        {
+          "draftId": "770002",
+          "status": "unknown"
+        }
+      ],
+      "incomplete": [
+        {
+          "draftId": "770001",
+          "status": "absent"
+        }
+      ],
+      "duplicate": [
+        {
+          "draftId": "770001",
+          "status": "absent"
+        },
+        {
+          "draftId": "770001",
+          "status": "absent"
+        }
+      ]
+    }
+  },
+  "persistedIntentId": "fixture-maintenance-1",
+  "drafts": {
+    "tiered": {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    "range": {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "range",
+      "currency": "USD",
+      "minPrice": "9007199254740993.00000000000000000001",
+      "maxPrice": "9007199254740993.00000000000000000002"
+    },
+    "skuPrice": {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "sku",
+      "currency": "EUR",
+      "skus": [
+        {
+          "skuId": "990001",
+          "price": "1.50000000000000000001"
+        }
+      ]
+    },
+    "inventory": {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "0"
+    },
+    "skuInventory": {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "sku",
+      "skus": [
+        {
+          "skuId": "990001",
+          "inventory": "9223372036854775807"
+        },
+        {
+          "skuId": "990002",
+          "inventory": "0"
+        }
+      ]
+    },
+    "deleteOne": {
+      "operation": "deleteDraft",
+      "draftIds": ["770001"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ]
+    },
+    "deleteBatch": {
+      "operation": "deleteDraft",
+      "draftIds": ["770001", "770002"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        },
+        {
+          "kind": "draft",
+          "draftId": "770002",
+          "source": "draft-list"
+        }
+      ],
+      "allowBatch": true
+    },
+    "largeId": {
+      "operation": "setInventory",
+      "productId": "9223372036854775807",
+      "mode": "spu",
+      "inventory": "9223372036854775807"
+    }
+  },
+  "requests": {
+    "tiered": {
+      "product_id": "880001",
+      "price": {
+        "price_type": "TIERED",
+        "currency": "USD",
+        "tiered_price": [
+          {
+            "quantity": "1",
+            "price": "1.50000000000000000001"
+          },
+          {
+            "quantity": "10",
+            "price": "1.40"
+          }
+        ]
+      }
+    },
+    "range": {
+      "product_id": "880001",
+      "price": {
+        "price_type": "RANGE",
+        "currency": "USD",
+        "range_price": {
+          "min_price": "9007199254740993.00000000000000000001",
+          "max_price": "9007199254740993.00000000000000000002"
+        }
+      }
+    },
+    "skuPrice": {
+      "product_id": "880001",
+      "sku_price": [
+        {
+          "sku_id": "990001",
+          "price": "1.50000000000000000001"
+        }
+      ]
+    },
+    "inventory": {
+      "product_id": "880001",
+      "inventory": "0"
+    },
+    "skuInventory": {
+      "product_id": "880001",
+      "sku_inventory": [
+        {
+          "sku_id": "990001",
+          "inventory": "9223372036854775807"
+        },
+        {
+          "sku_id": "990002",
+          "inventory": "0"
+        }
+      ]
+    },
+    "deleteOne": {
+      "product_id_list": ["770001"]
+    },
+    "deleteBatch": {
+      "product_id_list": ["770001", "770002"]
+    }
+  },
+  "invalidPrices": [
+    {
+      "operation": "setPrice",
+      "productId": "",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "01",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "-1",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "0",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "1e3",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "1.2",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "9223372036854775808",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": 9007199254740992,
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": 1.5
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": 0.30000000000000004
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1e-7"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "NaN"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "Infinity"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "-1.2"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "01.50"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1."
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": " 1.50"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": []
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "EUR",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "0",
+          "price": "1"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "2",
+          "price": "1"
+        },
+        {
+          "quantity": "1",
+          "price": "0.9"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1"
+        },
+        {
+          "quantity": "1",
+          "price": "0.9"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1",
+          "extra": true
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ],
+      "price": {
+        "min_price": "1"
+      }
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ],
+      "skus": [
+        {
+          "skuId": "990001",
+          "price": "1.50000000000000000001"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ],
+      "description": "unintended"
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "range",
+      "currency": "USD",
+      "minPrice": "9007199254740993.00000000000000000002",
+      "maxPrice": "9007199254740993.00000000000000000001"
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "range",
+      "currency": "USD",
+      "minPrice": "9007199254740993.00000000000000000001",
+      "maxPrice": "9007199254740993.00000000000000000002",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "quantity": "10",
+          "price": "1.40"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "sku",
+      "currency": "eur",
+      "skus": [
+        {
+          "skuId": "990001",
+          "price": "1.50000000000000000001"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "sku",
+      "currency": "EUR",
+      "skus": []
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "sku",
+      "currency": "EUR",
+      "skus": [
+        {
+          "skuId": "990001",
+          "price": "1.50000000000000000001"
+        },
+        {
+          "skuId": "990001",
+          "price": "1.50000000000000000001"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "sku",
+      "currency": "EUR",
+      "skus": [
+        {
+          "skuId": "990001",
+          "price": "1.5",
+          "currency": "EUR"
+        }
+      ]
+    },
+    {
+      "operation": "setPrice",
+      "productId": "880001",
+      "mode": "raw",
+      "currency": "EUR",
+      "skus": [
+        {
+          "skuId": "990001",
+          "price": "1.50000000000000000001"
+        }
+      ],
+      "parameters": {
+        "price": {}
+      }
+    }
+  ],
+  "invalidInventories": [
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": -1
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": 1.5
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": 100
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "-1"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "1.5"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "1e3"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "01"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "9223372036854775808"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "0",
+      "delta": "1"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "0",
+      "skus": [
+        {
+          "skuId": "990001",
+          "inventory": "9223372036854775807"
+        },
+        {
+          "skuId": "990002",
+          "inventory": "0"
+        }
+      ]
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "spu",
+      "inventory": "0",
+      "inventoryCode": "default"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "sku",
+      "skus": [
+        {
+          "skuId": "990001",
+          "inventory": "9223372036854775807"
+        },
+        {
+          "skuId": "990002",
+          "inventory": "0"
+        }
+      ],
+      "inventory": "1"
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "sku",
+      "skus": []
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "sku",
+      "skus": [
+        {
+          "skuId": "990001",
+          "inventory": "9223372036854775807"
+        },
+        {
+          "skuId": "990001",
+          "inventory": "9223372036854775807"
+        }
+      ]
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "sku",
+      "skus": {
+        "990001": "1"
+      }
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "sku",
+      "skus": [
+        {
+          "sku_id": "990001",
+          "inventory": "1"
+        }
+      ]
+    },
+    {
+      "operation": "setInventory",
+      "productId": "880001",
+      "mode": "sku",
+      "skus": [
+        {
+          "skuId": "990001",
+          "inventory": "1",
+          "delta": "1"
+        }
+      ]
+    }
+  ],
+  "invalidDeletes": [
+    {
+      "operation": "deleteDraft",
+      "draftIds": [],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ]
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["880001"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ]
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001"],
+      "knownDrafts": []
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001"],
+      "knownDrafts": [
+        {
+          "kind": "product",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ]
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "product-get"
+        }
+      ]
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ],
+      "productId": "880001"
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001", "770002"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        },
+        {
+          "kind": "draft",
+          "draftId": "770002",
+          "source": "draft-list"
+        }
+      ]
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001", "770002"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        },
+        {
+          "kind": "draft",
+          "draftId": "770002",
+          "source": "draft-list"
+        }
+      ],
+      "allowBatch": false
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001", "770001"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ],
+      "allowBatch": true
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        },
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ]
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": [9007199254740992],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ]
+    },
+    {
+      "operation": "deleteDraft",
+      "draftIds": ["770001"],
+      "knownDrafts": [
+        {
+          "kind": "draft",
+          "draftId": "770001",
+          "source": "draft-create"
+        }
+      ],
+      "parameters": {
+        "product_id": "880001"
+      }
+    }
+  ],
+  "snapshots": {
+    "matching": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "range": {
+      "productId": "880001",
+      "price": {
+        "type": "RANGE",
+        "currency": "USD",
+        "min": "9007199254740993.0000000000000000000100",
+        "max": "9007199254740993.00000000000000000002",
+        "tiers": []
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "priceMismatch": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.50000000000000000002",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "currencyMismatch": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "USD",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "missingCurrency": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": null,
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "missingPrice": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "1",
+            "price": null
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "missingSku": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": []
+    },
+    "duplicateSku": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        }
+      ]
+    },
+    "duplicateTier": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "inventoryMismatch": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "1",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "missingInventory": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": null,
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "malformedInventory": {
+      "productId": "880001",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "-1",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    },
+    "wrongProduct": {
+      "productId": "880002",
+      "price": {
+        "type": "TIERED",
+        "currency": "USD",
+        "min": null,
+        "max": null,
+        "tiers": [
+          {
+            "quantity": "10",
+            "price": "1.4000"
+          },
+          {
+            "quantity": "1",
+            "price": "1.5000000000000000000100"
+          }
+        ]
+      },
+      "inventory": "0",
+      "skus": [
+        {
+          "id": "990001",
+          "code": null,
+          "price": "1.500000000000000000010",
+          "currency": "EUR",
+          "inventory": "9223372036854775807",
+          "attributes": []
+        },
+        {
+          "id": "990002",
+          "code": null,
+          "price": null,
+          "currency": null,
+          "inventory": "0",
+          "attributes": []
+        }
+      ]
+    }
+  },
+  "responses": {
+    "accepted": {
+      "code": "0",
+      "result": {
+        "success": true,
+        "data": null
+      }
+    },
+    "acceptedString": {
+      "code": "0",
+      "result": {
+        "success": "true"
+      }
+    },
+    "rejected": {
+      "code": "0",
+      "result": {
+        "success": false,
+        "msg_code": "B_PRICE_CONFLICT",
+        "message": "Synthetic rejection"
+      }
+    },
+    "httpOnly": {
+      "code": "0",
+      "status": 200
+    },
+    "rootSuccessOnly": {
+      "success": true
+    },
+    "wrongSuccess": {
+      "result": {
+        "success": 1
+      }
+    },
+    "contradictory": {
+      "result": {
+        "success": true,
+        "msg_code": "S_COMMON_INTERNAL_ERROR"
+      }
+    },
+    "wrongData": {
+      "result": {
+        "success": true,
+        "data": true
+      }
+    },
+    "apiError": {
+      "code": "Error",
+      "message": "Synthetic provider error"
+    },
+    "empty": {},
+    "deleteOne": {
+      "code": "0",
+      "success": true,
+      "deleted_draft_ids": [770001],
+      "errors": []
+    },
+    "deleteBatch": {
+      "code": "0",
+      "success": "true",
+      "deleted_draft_ids": ["770001", "770002"],
+      "errors": []
+    },
+    "partial": {
+      "code": "0",
+      "success": false,
+      "deleted_draft_ids": ["770001"],
+      "errors": [
+        {
+          "draft_id": "770002",
+          "errors": [
+            {
+              "msg_code": "B_NOT_FOUND",
+              "message": "Synthetic missing draft"
+            }
+          ]
+        }
+      ]
+    },
+    "opaquePartial": {
+      "success": false,
+      "deleted_draft_ids": ["770001"],
+      "errors": [
+        {
+          "draft_id": {},
+          "errors": [
+            {
+              "msg_code": "B_NOT_FOUND"
+            }
+          ]
+        }
+      ]
+    },
+    "deleteRejected": {
+      "success": false,
+      "deleted_draft_ids": [],
+      "errors": []
+    },
+    "deleteMissing": {
+      "success": true,
+      "deleted_draft_ids": ["770001"],
+      "errors": []
+    },
+    "deleteHttpOnly": {
+      "code": "0",
+      "success": true
+    },
+    "deleteForeign": {
+      "success": true,
+      "deleted_draft_ids": ["880001"],
+      "errors": []
+    },
+    "deleteUnsafe": {
+      "success": true,
+      "deleted_draft_ids": [9007199254740992],
+      "errors": []
+    },
+    "deleteDuplicate": {
+      "success": true,
+      "deleted_draft_ids": ["770001", "770001"],
+      "errors": []
+    },
+    "deleteConflict": {
+      "success": true,
+      "deleted_draft_ids": ["770001"],
+      "errors": [
+        {
+          "draft_id": "770001",
+          "errors": [
+            {
+              "msg_code": "B_FAILED"
+            }
+          ]
+        }
+      ]
+    },
+    "deleteOpaque": {
+      "success": true,
+      "deleted_draft_ids": ["770001"],
+      "errors": [
+        {
+          "draft_id": {},
+          "errors": [
+            {
+              "msg_code": "B_FAILED"
+            }
+          ]
+        }
+      ]
+    },
+    "deleteUnknown": {
+      "success": false,
+      "deleted_draft_ids": [],
+      "errors": [
+        {
+          "draft_id": {},
+          "errors": [
+            {
+              "msg_code": "B_FAILED"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "errors": {
+    "network": {
+      "gatewayError": {
+        "code": "NETWORK_ERROR",
+        "message": "Synthetic private detail",
+        "retryable": true
+      }
+    },
+    "timeout": {
+      "gatewayError": {
+        "code": "ETIMEDOUT"
+      }
+    },
+    "upstream": {
+      "gatewayError": {
+        "code": "UPSTREAM_UNAVAILABLE"
+      }
+    },
+    "auth": {
+      "gatewayError": {
+        "code": "PERMISSION_DENIED"
+      }
+    },
+    "unknown": {
+      "message": "Synthetic private detail"
+    },
+    "business": {
+      "gatewayError": {
+        "code": "ALIBABA_IOP_API_REJECTED",
+        "subCode": "B_PRICE_CONFLICT"
+      }
+    }
+  }
+}

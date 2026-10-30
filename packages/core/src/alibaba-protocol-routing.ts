@@ -1,5 +1,6 @@
 import { GatewayException } from './errors';
 import { isProductReferenceMethod } from './product-reference-methods';
+import { PRODUCT_MAINTENANCE_METHODS } from './product-maintenance-api';
 import { iopMethodReason, isAccountVerifiedIopMethod } from './alibaba-iop-business';
 import { getIopOperationSupport, iopOperationMethods } from './alibaba-iop-registry';
 import type { GatewayCredentials, OperationId } from './types';
@@ -21,7 +22,12 @@ export function selectAlibabaOperationProtocol(
 ): AlibabaProtocol {
   const input = record(payload);
   // These native paths have no TOP counterpart, regardless of the configured default.
-  if (operation === 'callCapability' && isProductReferenceMethod(input.method)) {
+  if (
+    operation === 'callCapability' &&
+    (isProductReferenceMethod(input.method) ||
+      (typeof input.method === 'string' &&
+        (Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(input.method)))
+  ) {
     if (!available.iop)
       throw new GatewayException({
         code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',

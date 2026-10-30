@@ -1,0 +1,144 @@
+{
+  "method": "/alibaba/icbu/product/search/v2",
+  "queries": {
+    "modelNumber": "MODEL-CUP",
+    "skuCode": "CUP-CLEAR"
+  },
+  "response": {
+    "success": true,
+    "product_info": [
+      {
+        "basic_info": {
+          "product_id": 880101,
+          "title": "Unbranded lookup glass cup",
+          "model_number": "MODEL-CUP",
+          "status": "online",
+          "owner_ali_id": "synthetic-owner-never-display"
+        },
+        "sku_info": [
+          {
+            "sku_id": 990101,
+            "sku_code": "CUP-CLEAR"
+          },
+          {
+            "sku_id": "9007199254740993",
+            "sku_code": null
+          }
+        ]
+      },
+      {
+        "basic_info": {
+          "product_id": "9007199254740993",
+          "title": "Second lookup product",
+          "status": "FUTURE_NATIVE_STATE"
+        }
+      }
+    ],
+    "page": {
+      "page_index": 1,
+      "total_item": 21,
+      "total_page": 2,
+      "page_size": 20
+    }
+  },
+  "secondPageResponse": {
+    "success": true,
+    "product_info": [
+      {
+        "basic_info": {
+          "product_id": 880102,
+          "title": "Second page lookup cup",
+          "model_number": "MODEL-CUP",
+          "status": "offline"
+        },
+        "sku_info": []
+      }
+    ],
+    "page": {
+      "page_index": 2,
+      "total_item": 21,
+      "total_page": 2,
+      "page_size": 20
+    }
+  },
+  "unknownTotalsResponse": {
+    "success": true,
+    "product_info": [
+      {
+        "basic_info": {
+          "product_id": 880101,
+          "title": "Unknown total first",
+          "model_number": "MODEL-CUP"
+        }
+      },
+      {
+        "basic_info": {
+          "product_id": 880102,
+          "title": "Unknown total second"
+        }
+      }
+    ],
+    "page": {
+      "page_index": 1,
+      "page_size": 2
+    }
+  },
+  "minimalResponse": {
+    "success": true,
+    "product_info": [{}]
+  },
+  "emptyResponse": {
+    "success": true,
+    "product_info": [],
+    "page": {
+      "page_index": 1,
+      "total_item": 0,
+      "total_page": 0,
+      "page_size": 20
+    }
+  },
+  "businessRejectedResponse": {
+    "success": false,
+    "product_info": [],
+    "message": "Synthetic denied",
+    "msg_code": "S_PRODUCT_SEARCH_ERROR"
+  },
+  "nativeResponse": {
+    "success": true,
+    "product_info": [
+      {
+        "basic_info": {
+          "product_id": 880101,
+          "title": "Unbranded lookup glass cup",
+          "model_number": "MODEL-CUP",
+          "status": "online"
+        },
+        "sku_info": [
+          {
+            "sku_id": 990101,
+            "sku_code": "CUP-CLEAR"
+          },
+          {
+            "sku_id": "9007199254740993"
+          }
+        ]
+      },
+      {
+        "basic_info": {
+          "product_id": "9007199254740993",
+          "title": "Second lookup product",
+          "status": "FUTURE_NATIVE_STATE"
+        }
+      }
+    ],
+    "page": {
+      "page_index": 1,
+      "total_item": 21,
+      "total_page": 2,
+      "page_size": 20
+    },
+    "code": "0"
+  },
+  "unsafeTitle": "<script>window.unexpectedLookupWrite = true</script>",
+  "privateMarker": "synthetic-owner-never-display"
+}

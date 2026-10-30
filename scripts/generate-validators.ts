@@ -106,6 +106,17 @@ targets.set(
   )
 );
 targets.set(
+  'validators-product-maintenance.ts',
+  compileValidators(
+    Object.fromEntries(
+      ['ProductValueMaintenanceDraft', 'ProductValueMaintenanceRequest', 'ProductValueMaintenanceResult'].map(
+        (name) => ['validate' + name, schemas[name]]
+      )
+    ),
+    'fast'
+  )
+);
+targets.set(
   'validators-video-association.ts',
   compileValidators(
     Object.fromEntries(

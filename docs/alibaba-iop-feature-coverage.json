@@ -38,6 +38,34 @@
       "accountVerified": true,
       "authorizationRequired": true
     },
+    "/alibaba/icbu/product/search/v2": {
+      "path": "/alibaba/icbu/product/search/v2",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/icbu/product/edit-price": {
+      "path": "/icbu/product/edit-price",
+      "risk": "mutation",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/icbu/product/edit-inventory": {
+      "path": "/icbu/product/edit-inventory",
+      "risk": "mutation",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/alibaba/icbu/draft/delete": {
+      "path": "/alibaba/icbu/draft/delete",
+      "risk": "mutation",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
     "alibaba.icbu.product.list": {
       "path": "/alibaba/icbu/product/list",
       "risk": "read",

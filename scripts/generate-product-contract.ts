@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { sharedJsonSource } from './lib/shared-json-codegen';
 import { buildIopReferenceContracts } from './lib/iop-reference-contract';
+import { buildIopMaintenanceContracts } from './lib/iop-maintenance-contract';
+import { productMaintenanceTransportSchemas } from './lib/product-maintenance-transport';
 import { resolve } from 'node:path';
 
 import { format } from 'prettier';
@@ -247,16 +249,51 @@ for (const definition of snapshot.definitions) {
         : `https://developer.alibaba.com/docs/doc.htm?articleId=${definition.articleId ?? ''}&docType=1`)
   };
 }
+const iopSnapshot = JSON.parse(
+  await readFile(resolve(root, 'docs/alibaba-iop-api-docs.json'), 'utf8')
+) as Parameters<typeof buildIopReferenceContracts>[0];
+const workbenchSnapshot = JSON.parse(
+  await readFile(resolve(root, 'docs/alibaba-product-workbench-docs.json'), 'utf8')
+) as Parameters<typeof buildIopReferenceContracts>[0];
 const iopReference = buildIopReferenceContracts(
-  JSON.parse(await readFile(resolve(root, 'docs/alibaba-iop-api-docs.json'), 'utf8')) as Parameters<
-    typeof buildIopReferenceContracts
-  >[0],
-  JSON.parse(
-    await readFile(resolve(root, 'mock/data/product-reference/examples.json'), 'utf8')
-  ) as Parameters<typeof buildIopReferenceContracts>[1]
+  { ...iopSnapshot, documents: [...iopSnapshot.documents, ...workbenchSnapshot.documents] },
+  {
+    ...JSON.parse(await readFile(resolve(root, 'mock/data/product-reference/examples.json'), 'utf8')),
+    ...JSON.parse(await readFile(resolve(root, 'mock/data/product-workbench/examples.json'), 'utf8'))
+  } as Parameters<typeof buildIopReferenceContracts>[1]
 );
 Object.assign(document.components.schemas, iopReference.schemas);
 Object.assign(capabilityMap, iopReference.definitions);
+const iopMaintenance = buildIopMaintenanceContracts(workbenchSnapshot);
+Object.assign(document.components.schemas, iopMaintenance.schemas);
+Object.assign(capabilityMap, iopMaintenance.definitions);
+Object.assign(document.components.schemas, productMaintenanceTransportSchemas());
+document.paths['/product-maintenance/call'] = {
+  post: {
+    operationId: 'callProductValueMaintenance',
+    summary: 'Execute an account-bound durable product maintenance command',
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ProductValueMaintenanceRequest' }
+        }
+      }
+    },
+    responses: {
+      '200': {
+        description: 'Durable maintenance tasks',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ProductValueMaintenanceResponse' }
+          }
+        }
+      },
+      '4XX': { $ref: '#/components/responses/GatewayFailure' },
+      default: { $ref: '#/components/responses/GatewayFailure' }
+    }
+  }
+};
 document['x-product-capabilities'] = capabilityMap;
 
 const apiCapability = document.components.schemas.ApiCapability;

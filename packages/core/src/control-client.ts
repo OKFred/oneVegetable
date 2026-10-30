@@ -1,4 +1,8 @@
 import type { GalleryRequestOptions } from './gallery-transfer-context';
+import {
+  validateProductMaintenanceServiceResult,
+  type ProductMaintenanceControl
+} from './product-maintenance-control';
 import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
@@ -281,6 +285,7 @@ export interface ControlClient {
   testGatewayCredential?(protocol?: AlibabaProtocol): Promise<GatewayCredentialTestResult>;
   s3StorageConfiguration?(): Promise<S3StorageConfigurationSummary>;
   videoUpload?: VideoUploadControl['videoUpload'];
+  productMaintenance?: ProductMaintenanceControl['productMaintenance'];
   updateS3StorageConfiguration?(
     configuration: S3StorageConfiguration,
     revision: number | null,
@@ -714,6 +719,19 @@ export class BffControlClient implements ControlClient {
         retryable: false
       });
     return result;
+  };
+
+  productMaintenance: ProductMaintenanceControl['productMaintenance'] = async (
+    command,
+    context,
+    requestId
+  ) => {
+    const result = await this.#call('/product-maintenance/call', {
+      command,
+      context,
+      ...(requestId ? { requestId } : {})
+    });
+    return await validateProductMaintenanceServiceResult(result);
   };
 
   updateS3StorageConfiguration(
