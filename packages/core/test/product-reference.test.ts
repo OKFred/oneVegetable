@@ -45,6 +45,9 @@ describe('product reference facade', () => {
     expect(product.price.tiers[0]?.price).toBe('1.50');
     expect(product.inventory).toBe('50');
     expect(product.skus[0]?.id).toBe('990001');
+    expect(product.images).toHaveLength(2);
+    expect(product.images[0]).toContain('front');
+    expect(product.images[1]).toContain('side');
     expect(product.createdTimestamp).toBe('1767225600000');
     expect(product).not.toHaveProperty('owner_ali_id');
     await expect(make().getProduct('880002')).rejects.toThrow('ALIBABA_IOP_RESPONSE_INVALID');
@@ -88,7 +91,10 @@ describe('native IOP product reference', () => {
       await expect(validateCapabilityRequest(method, example(method).request)).resolves.toEqual([]);
       await expect(validateCapabilityResponse(method, example(method).response)).resolves.toEqual([]);
     }
-    expect(getCapabilityDefinition('/alibaba/icbu/product/status/get/v2')).toBeNull();
+    expect(getCapabilityDefinition(IOP_REFERENCE_METHODS.getProductStatus)).toMatchObject({
+      risk: 'read',
+      realCallEnabled: true
+    });
   });
   it.each(['top', 'iop'] as const)('uses IOP with both authorizations and default %s', (defaultProtocol) => {
     for (const method of Object.values(IOP_REFERENCE_METHODS)) {

@@ -1,0 +1,205 @@
+{
+  "orderedPrecisionTiers": [
+    { "quantity": "1", "price": "1" },
+    { "quantity": "2", "price": "0.99" },
+    { "quantity": "10", "price": "0.98" },
+    { "quantity": "9007199254740992", "price": "0.97" },
+    { "quantity": "9007199254740993", "price": "0.96" },
+    { "quantity": "9223372036854775807", "price": "0.95" }
+  ],
+  "precisionSkuIds": ["9007199254740992", "9007199254740993"],
+  "values": {
+    "changedInventory": "101",
+    "selectedInventory": "41",
+    "unrelatedInventory": "99",
+    "otherProductId": "880124",
+    "normalizedWeight": "01.000",
+    "normalizedSkuPrice": "01.1000",
+    "normalizedSpuPrice": "001.0000"
+  },
+  "snapshot": {
+    "productId": "880123",
+    "title": "Synthetic integrity title",
+    "keywords": "synthetic, integrity",
+    "descriptionHtml": "<p>Synthetic integrity body</p>",
+    "language": "en_US",
+    "status": "online",
+    "auditStatus": "approved",
+    "modelNumber": "SYN-INTEGRITY-A",
+    "createdTimestamp": "1700000000",
+    "modifiedTimestamp": "1700000010",
+    "categoryId": "12345",
+    "categoryPath": "Synthetic / Category",
+    "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+    "attributes": [
+      {
+        "name": "Synthetic material",
+        "value": "Synthetic steel"
+      }
+    ],
+    "shippingTemplateId": "555",
+    "weight": "1.00",
+    "dimension": {
+      "length": "10",
+      "width": "20",
+      "height": "30"
+    },
+    "leadTimes": [
+      {
+        "quantity": "1",
+        "days": "7"
+      }
+    ],
+    "moq": "1",
+    "unit": "Piece",
+    "price": {
+      "type": "TIERED",
+      "currency": "USD",
+      "min": null,
+      "max": null,
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.00"
+        },
+        {
+          "quantity": "10",
+          "price": "0.90"
+        }
+      ]
+    },
+    "inventory": "100",
+    "skus": [
+      {
+        "id": "990123",
+        "code": "SYN-A",
+        "price": "1.00",
+        "currency": "USD",
+        "inventory": "40",
+        "attributes": [
+          {
+            "name": "Synthetic color",
+            "value": "Red",
+            "imageUrl": "https://example.invalid/red.png"
+          }
+        ]
+      },
+      {
+        "id": "990124",
+        "code": "SYN-B",
+        "price": "1.10",
+        "currency": "USD",
+        "inventory": "60",
+        "attributes": [
+          {
+            "name": "Synthetic color",
+            "value": "Blue",
+            "imageUrl": "https://example.invalid/blue.png"
+          }
+        ]
+      }
+    ]
+  },
+  "drafts": {
+    "tiered": {
+      "operation": "setPrice",
+      "productId": "880123",
+      "mode": "tiered",
+      "currency": "USD",
+      "tiers": [
+        {
+          "quantity": "1",
+          "price": "1.01"
+        },
+        {
+          "quantity": "10",
+          "price": "0.91"
+        }
+      ]
+    },
+    "range": {
+      "operation": "setPrice",
+      "productId": "880123",
+      "mode": "range",
+      "currency": "USD",
+      "minPrice": "1.01",
+      "maxPrice": "2.01"
+    },
+    "skuPrice": {
+      "operation": "setPrice",
+      "productId": "880123",
+      "mode": "sku",
+      "currency": "USD",
+      "skus": [
+        {
+          "skuId": "990123",
+          "price": "1.01"
+        }
+      ]
+    },
+    "spuInventory": {
+      "operation": "setInventory",
+      "productId": "880123",
+      "mode": "spu",
+      "inventory": "101"
+    },
+    "skuInventory": {
+      "operation": "setInventory",
+      "productId": "880123",
+      "mode": "sku",
+      "skus": [
+        {
+          "skuId": "990123",
+          "inventory": "41"
+        }
+      ]
+    }
+  },
+  "changes": [
+    ["title", "Changed synthetic title", "title"],
+    ["modelNumber", "SYN-CHANGED", "modelNumber"],
+    ["categoryId", "12346", "categoryId"],
+    ["keywords", "changed synthetic keyword", "keywords"],
+    ["images", ["https://example.invalid/changed.png"], "images"],
+    ["descriptionHtml", "<p>Changed synthetic body</p>", "descriptionHtml"],
+    ["language", "fr_FR", "language"],
+    ["categoryPath", "Synthetic / Changed", "categoryPath"],
+    ["attributes.0.value", "Synthetic wood", "attributes"],
+    ["shippingTemplateId", "556", "shippingTemplateId"],
+    ["weight", "2", "weight"],
+    ["dimension.height", "31", "dimension"],
+    ["leadTimes.0.days", "8", "leadTimes"],
+    ["moq", "2", "moq"],
+    ["unit", "Box", "unit"],
+    ["inventory", "99", "inventory"],
+    ["skus.0.id", "990125", "skuIdentity"],
+    ["skus.0.code", "SYN-C", "skuCodes"],
+    ["skus.0.currency", "EUR", "skuCurrencies"],
+    ["skus.0.attributes.0.value", "Green", "skuAttributes"],
+    ["skus.0.price", "1.20", "skuPrices"],
+    ["skus.0.inventory", "39", "skuInventories"]
+  ],
+  "changedPrice": {
+    "type": "TIERED",
+    "currency": "USD",
+    "min": null,
+    "max": null,
+    "tiers": [
+      {
+        "quantity": "1",
+        "price": "1.01"
+      },
+      {
+        "quantity": "10",
+        "price": "0.91"
+      }
+    ]
+  },
+  "rangePrice": {
+    "type": "RANGE",
+    "currency": "USD",
+    "min": "1.00",
+    "max": "2.00",
+    "tiers": []
+  }
+}

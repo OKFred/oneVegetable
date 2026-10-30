@@ -156,6 +156,11 @@ const permissionDenied = computed(() =>
 const maintenanceHints = {
   METHOD_DISABLED: 'methodDisabledHint',
   BASELINE_CHANGED: 'baselineChangedHint',
+  REVIEW_PENDING: 'reviewPendingHint',
+  PRODUCT_STATE_UNCONFIRMED: 'reviewPendingHint',
+  NON_TARGET_FIELDS_CHANGED: 'nonTargetChangedHint',
+  INTEGRITY_UNAVAILABLE: 'integrityUnavailableHint',
+  INTEGRITY_SNAPSHOT_UNAVAILABLE: 'integrityUnavailableHint',
   ENTITY_BUSY: 'entityBusyHint',
   ALREADY_ATTEMPTED: 'alreadyAttemptedHint',
   DRAFT_VERIFICATION_UNAVAILABLE: 'draftVerificationUnavailableHint'
@@ -202,6 +207,9 @@ const receiptHint = computed(() => {
 });
 
 function fieldLabel(path: string): string {
+  if (path === 'auditStatus' || path === 'productStatus') return pm('reviewState');
+  if (path === 'integrity/modelNumber') return pm('modelNumber');
+  if (path.startsWith('integrity/')) return pm('nonTargetField');
   if (path === 'inventory') return pm('inventory');
   if (path === 'draft') return pm('draftId');
   const parts = path.split('/');
@@ -253,12 +261,14 @@ const previewRows = computed(() => {
   if (!task.value) return [];
   const target = targetFields(task.value.intent.draft),
     baseline = task.value.baseline?.fields ?? {};
-  return [...new Set([...Object.keys(baseline), ...Object.keys(target)])].map((path) => ({
-    path,
-    label: fieldLabel(path),
-    before: baseline[path] ?? '—',
-    after: target[path] ?? '—'
-  }));
+  return [...new Set([...Object.keys(baseline), ...Object.keys(target)])]
+    .filter((path) => !path.startsWith('integrity/'))
+    .map((path) => ({
+      path,
+      label: fieldLabel(path),
+      before: baseline[path] ?? '—',
+      after: target[path] ?? '—'
+    }));
 });
 function invalidate(): void {
   sequence++;

@@ -1,4 +1,13 @@
 export const productValueMaintenance = {
+  modelNumber: 'Model number',
+  reviewState: 'Product and review state',
+  reviewPendingHint:
+    'The product review state is not ready for verification. Check the platform review result; this task will only verify read-only and will not resend.',
+  nonTargetField: 'Unedited field',
+  nonTargetChangedHint:
+    'An unedited field, such as the model number, changed. Full integrity is not confirmed. Check the platform and do not resend.',
+  integrityUnavailableHint:
+    'Unedited fields cannot be fully checked. Keep the task and preview again or verify read-only. Do not resend.',
   receiptRejectedHint:
     'The platform explicitly rejected this change. Expand the receipt diagnostics to check the reason code; this task must not be resent.',
   receiptIssueHint:

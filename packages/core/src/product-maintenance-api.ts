@@ -52,7 +52,11 @@ export interface ProductMaintenanceResult {
     status: 'reported-deleted' | 'rejected' | 'ambiguous';
   }[];
 }
-export type ProductMaintenanceSnapshot = Pick<ProductReference, 'productId' | 'price' | 'inventory' | 'skus'>;
+export type ProductMaintenanceSnapshot = Pick<
+  ProductReference,
+  'productId' | 'price' | 'inventory' | 'skus'
+> &
+  Partial<Pick<ProductReference, 'status' | 'auditStatus'>>;
 export interface ProductMaintenanceReadback {
   status: 'matched' | 'mismatched' | 'unavailable';
   mismatchedFields: string[];

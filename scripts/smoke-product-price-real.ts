@@ -32,7 +32,8 @@ import type {
   ProductMaintenanceIntent,
   ProductMaintenanceResult
 } from '../packages/core/src/product-maintenance-api';
-import { createProductMaintenanceBaseline } from '../packages/core/src/product-maintenance-service';
+import { createProductMaintenanceGuardedBaseline as createProductMaintenanceBaseline } from '../packages/core/src/product-maintenance-service';
+import { compareProductMaintenanceIntegrityFields } from '../packages/core/src/product-maintenance-integrity';
 import type { ProductMaintenanceBaseline } from '../packages/core/src/product-maintenance-service';
 import type { GatewayCredentials } from '../packages/core/src/types';
 import type { ProductPriceCreationProof, ProductPricePlan } from './lib/product-price-real-types';
@@ -237,6 +238,8 @@ export async function runProductPriceMaintenancePlan(
   )
     return fail('PREVIOUS_ATTEMPT_NO_RESEND');
   const snapshot = await io.readProduct(proof.product.id);
+  if (snapshot.auditStatus !== 'approved' || !['online', 'offline'].includes(snapshot.status ?? ''))
+    return fail('PRODUCT_STATE_UNCONFIRMED');
   const price = await createProductMaintenanceBaseline(plan.price, snapshot);
   if (comparePriceReadback(plan.price, snapshot).status === 'matched') return fail('PRICE_PLAN_UNCHANGED');
   const original = restorePrice(plan.price, price);
@@ -260,7 +263,9 @@ export async function runProductPriceMaintenancePlan(
     scope: 'price-only',
     priceFingerprint: price.fingerprint
   });
-  const fresh = await createProductMaintenanceBaseline(plan.price, await io.readProduct(proof.product.id));
+  const freshSnapshot = await io.readProduct(proof.product.id);
+  if (freshSnapshot.auditStatus !== 'approved') return fail('PRODUCT_STATE_UNCONFIRMED');
+  const fresh = await createProductMaintenanceBaseline(plan.price, freshSnapshot);
   if (fresh.fingerprint !== price.fingerprint) return fail('BASELINE_CHANGED');
   const send = async (intent: ProductMaintenanceIntent, step: 'change' | 'restore') => {
     const requestId = crypto.randomUUID();
@@ -296,10 +301,33 @@ export async function runProductPriceMaintenancePlan(
       if (remaining <= 0) break;
       let matched = false;
       try {
-        matched =
-          comparePriceReadback(draft, await io.readProduct(proof.product.id, Math.min(30000, remaining)))
-            .status === 'matched';
-      } catch {
+        const snapshot = await io.readProduct(proof.product.id, Math.min(30000, remaining));
+        if (snapshot.auditStatus === 'pending') {
+          if (attempt === 1) await io.appendReceipt({ phase: 'review-pending', step });
+          continue;
+        }
+        if (snapshot.auditStatus !== 'approved' || !['online', 'offline'].includes(snapshot.status ?? ''))
+          return fail('PRODUCT_STATE_UNCONFIRMED');
+        // Both planned writes protect the same non-target baseline and original acceptance scope.
+        const integrity = await compareProductMaintenanceIntegrityFields(price.fields, plan.price, snapshot);
+        if (integrity.status !== 'matched') {
+          await io.appendReceipt({
+            phase: 'integrity-unresolved',
+            step,
+            ...integrity,
+            noResend: true
+          });
+          return fail('NON_TARGET_FIELDS_UNRESOLVED');
+        }
+        matched = comparePriceReadback(draft, snapshot).status === 'matched';
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          ['PRODUCT_PRICE_NON_TARGET_FIELDS_UNRESOLVED', 'PRODUCT_PRICE_PRODUCT_STATE_UNCONFIRMED'].includes(
+            error.message
+          )
+        )
+          throw error;
         /* Retry bounded reads only; never retry a write or infer success from an error. */
       }
       if (matched) {
@@ -311,7 +339,13 @@ export async function runProductPriceMaintenancePlan(
   };
   await send(target, 'change');
   await verify(plan.price, 'change');
-  if (comparePriceReadback(plan.price, await io.readProduct(proof.product.id)).status !== 'matched')
+  const beforeRestore = await io.readProduct(proof.product.id);
+  if (
+    comparePriceReadback(plan.price, beforeRestore).status !== 'matched' ||
+    beforeRestore.auditStatus !== 'approved' ||
+    (await compareProductMaintenanceIntegrityFields(price.fields, plan.price, beforeRestore)).status !==
+      'matched'
+  )
     return fail('CONCURRENT_CHANGE_STOPPED_RESTORATION');
   await send(originalIntent, 'restore');
   await verify(original, 'restore');

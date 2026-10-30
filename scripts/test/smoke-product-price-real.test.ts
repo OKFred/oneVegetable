@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdir, mkdtemp, open, rm } from 'node:fs/promises';
 import { resolve, join, dirname } from 'node:path';
 import fixture from '../../mock/data/product-price-real.json';
+import integrityFixture from '../../mock/data/product-maintenance-integrity.json';
 import {
   parseProductPriceSmokeOptions,
   parseProductPriceCreationProof,
@@ -24,13 +25,17 @@ import type { GatewayCredentials } from '../../packages/core/src/types';
 
 const proof = () => parseProductPriceCreationProof(fixture.proof, fixture.proof.product.id, fixture.now);
 function harness(name: 'tiered' | 'range' | 'sku' = 'tiered') {
-  let current: ProductMaintenanceSnapshot = structuredClone(fixture.baseline[name]);
+  const complete = (value: ProductMaintenanceSnapshot) => ({
+    ...structuredClone(integrityFixture.snapshot),
+    ...structuredClone(value)
+  });
+  let current: ProductMaintenanceSnapshot = complete(fixture.baseline[name]);
   let baseline: ProductPriceSmokeBaseline | null = null;
   let now = fixture.now;
   let writes = 0;
   const events: Readonly<Record<string, unknown>>[] = [];
   const write = vi.fn<ProductPriceSmokeIO['write']>((intent) => {
-    current = structuredClone(++writes === 1 ? fixture.changed[name] : fixture.baseline[name]);
+    current = complete(++writes === 1 ? fixture.changed[name] : fixture.baseline[name]);
     return Promise.resolve(classifyProductMaintenanceResponse(intent.draft, fixture.responses.accepted));
   });
   const io: ProductPriceSmokeIO = {
@@ -294,7 +299,10 @@ describe('price-only durable two-write roundtrip', () => {
     const before = harness();
     let reads = 0;
     before.io.readProduct = () =>
-      Promise.resolve(structuredClone(++reads === 1 ? fixture.baseline.tiered : fixture.concurrent));
+      Promise.resolve({
+        ...structuredClone(integrityFixture.snapshot),
+        ...structuredClone(++reads === 1 ? fixture.baseline.tiered : fixture.concurrent)
+      });
     await expect(runProductPriceMaintenancePlan(plan, proof(), before.io)).rejects.toThrow(
       'BASELINE_CHANGED'
     );
@@ -303,11 +311,56 @@ describe('price-only durable two-write roundtrip', () => {
     const original = during.io.readProduct;
     reads = 0;
     during.io.readProduct = (id, timeout) =>
-      ++reads === 4 ? Promise.resolve(structuredClone(fixture.concurrent)) : original(id, timeout);
+      ++reads === 4
+        ? Promise.resolve({
+            ...structuredClone(integrityFixture.snapshot),
+            ...structuredClone(fixture.concurrent)
+          })
+        : original(id, timeout);
     await expect(runProductPriceMaintenancePlan(plan, proof(), during.io)).rejects.toThrow(
       'CONCURRENT_CHANGE_STOPPED_RESTORATION'
     );
     expect(during.write).toHaveBeenCalledTimes(1);
+  });
+  it('stops after one price write if a non-target model value disappears', async () => {
+    const h = harness();
+    const read = h.io.readProduct;
+    let reads = 0;
+    h.io.readProduct = async (id, timeout) => {
+      const result = await read(id, timeout);
+      return ++reads >= 3 ? { ...result, modelNumber: null } : result;
+    };
+    await expect(
+      runProductPriceMaintenancePlan(
+        await parseProductPricePlan(fixture.plans.tiered, proof()),
+        proof(),
+        h.io
+      )
+    ).rejects.toThrow('NON_TARGET_FIELDS_UNRESOLVED');
+    expect(h.write).toHaveBeenCalledTimes(1);
+    const stopped = h.events.find((row) => row.phase === 'integrity-unresolved');
+    expect(stopped?.mismatchedFields).toContain('integrity/modelNumber');
+    expect(stopped?.noResend).toBe(true);
+    expect(h.events.some((row) => row.phase === 'price-restored')).toBe(false);
+  });
+  it('does not restore or declare completion while the platform is reviewing', async () => {
+    const h = harness();
+    const read = h.io.readProduct;
+    let reads = 0;
+    h.io.readProduct = async (id, timeout) => {
+      const result = await read(id, timeout);
+      return ++reads >= 3 ? { ...result, auditStatus: 'pending' } : result;
+    };
+    await expect(
+      runProductPriceMaintenancePlan(
+        await parseProductPricePlan(fixture.plans.tiered, proof()),
+        proof(),
+        h.io
+      )
+    ).rejects.toThrow('READBACK_UNRESOLVED');
+    expect(h.write).toHaveBeenCalledTimes(1);
+    expect(h.events).toContainEqual({ phase: 'review-pending', step: 'change' });
+    expect(h.events.some((row) => row.phase === 'price-restored')).toBe(false);
   });
   it('does not swallow receipt failure as a retryable read error', async () => {
     const h = harness();

@@ -90,6 +90,10 @@
           "title": "Unbranded glass cup",
           "keywords": "glass cup",
           "description": "<p>A reusable glass cup.</p>",
+          "product_images": [
+            { "image_url": "https://sc04.alicdn.com/kf/fixture-cup-front.jpg" },
+            { "image_url": "https://sc04.alicdn.com/kf/fixture-cup-side.jpg" }
+          ],
           "language": "en_US",
           "create_timestamp": 1767225600000,
           "last_modified_timestamp": 1767312000000,

@@ -21,6 +21,10 @@ import {
   requireProductOperationContext
 } from './product-operation-context';
 import type { ProductOperationContext } from './product-operation-context';
+import {
+  buildProductMaintenanceIntegrityFields,
+  compareProductMaintenanceIntegrityFields
+} from './product-maintenance-integrity';
 
 export type ProductMaintenanceTaskStatus =
   'prepared' | 'dispatching' | 'accepted' | 'rejected' | 'partial' | 'ambiguous' | 'verified' | 'cancelled';
@@ -375,7 +379,10 @@ export class ProductMaintenanceService {
   ): Promise<ProductMaintenanceBaseline> {
     if (intent.draft.operation === 'deleteDraft' || !runtime.readProduct)
       return fail('PRODUCT_MAINTENANCE_BASELINE_UNAVAILABLE');
-    return createProductMaintenanceBaseline(intent.draft, await runtime.readProduct(intent.draft.productId));
+    return createProductMaintenanceGuardedBaseline(
+      intent.draft,
+      await runtime.readProduct(intent.draft.productId)
+    );
   }
   private time(): number {
     const now = this.now();
@@ -430,7 +437,10 @@ export class ProductMaintenanceService {
     if (task.intent.draft.operation !== 'deleteDraft') {
       if (!runtime.readProduct || !task.baseline) return fail('PRODUCT_MAINTENANCE_BASELINE_UNAVAILABLE');
       reference = await runtime.readProduct(task.intent.draft.productId);
-      const current = await createProductMaintenanceBaseline(task.intent.draft, reference);
+      if (reference.auditStatus === 'pending') return fail('PRODUCT_MAINTENANCE_REVIEW_PENDING');
+      if (reference.auditStatus !== 'approved' || !['online', 'offline'].includes(reference.status ?? ''))
+        return fail('PRODUCT_MAINTENANCE_PRODUCT_STATE_UNCONFIRMED');
+      const current = await createProductMaintenanceGuardedBaseline(task.intent.draft, reference);
       if (current.fingerprint !== task.baseline.fingerprint)
         return fail('PRODUCT_MAINTENANCE_BASELINE_CHANGED');
     }
@@ -487,6 +497,31 @@ export class ProductMaintenanceService {
           draft.operation === 'setPrice'
             ? comparePriceReadback(draft, snapshot)
             : compareInventoryReadback(draft, snapshot);
+        const integrity = await compareProductMaintenanceIntegrityFields(
+          item.task.baseline?.fields ?? {},
+          draft,
+          snapshot
+        );
+        const mismatchedFields = [...readback.mismatchedFields, ...integrity.mismatchedFields];
+        const unavailableFields = [...readback.unavailableFields, ...integrity.unavailableFields];
+        readback = {
+          status: mismatchedFields.length
+            ? 'mismatched'
+            : unavailableFields.length
+              ? 'unavailable'
+              : 'matched',
+          mismatchedFields,
+          unavailableFields
+        };
+        // An accepted price may be visible before the reviewed product version settles.
+        if (snapshot.auditStatus !== 'approved') {
+          readback.unavailableFields.push('auditStatus');
+          if (!readback.mismatchedFields.length) readback.status = 'unavailable';
+        }
+        if (!['online', 'offline'].includes(snapshot.status ?? '')) {
+          readback.unavailableFields.push('productStatus');
+          if (!readback.mismatchedFields.length) readback.status = 'unavailable';
+        }
       } else if (draft.operation === 'deleteDraft' && runtime.readDrafts) {
         const rows = await runtime.readDrafts(draft.draftIds);
         const mismatchedFields: string[] = [];
@@ -522,9 +557,15 @@ export class ProductMaintenanceService {
       reasonCode:
         readback.status === 'matched'
           ? null
-          : readback.status === 'mismatched'
-            ? 'PRODUCT_MAINTENANCE_READBACK_MISMATCH'
-            : 'PRODUCT_MAINTENANCE_READBACK_UNAVAILABLE'
+          : readback.unavailableFields.some((path) => path === 'auditStatus' || path === 'productStatus')
+            ? 'PRODUCT_MAINTENANCE_PRODUCT_STATE_UNCONFIRMED'
+            : readback.mismatchedFields.some((path) => path.startsWith('integrity/'))
+              ? 'PRODUCT_MAINTENANCE_NON_TARGET_FIELDS_CHANGED'
+              : readback.unavailableFields.some((path) => path.startsWith('integrity/'))
+                ? 'PRODUCT_MAINTENANCE_INTEGRITY_UNAVAILABLE'
+                : readback.status === 'mismatched'
+                  ? 'PRODUCT_MAINTENANCE_READBACK_MISMATCH'
+                  : 'PRODUCT_MAINTENANCE_READBACK_UNAVAILABLE'
     });
   }
 }
@@ -533,7 +574,7 @@ export { baselineFingerprint as createProductMaintenanceBaselineFingerprint };
 
 export interface ProductMaintenanceBaseline {
   productId: string;
-  /** Canonical scalars for ONLY the target field set. Never a ProductReference or platform response. */
+  /** Target scalars plus optional non-target hashes; never a full ProductReference or response. */
   fields: Readonly<Record<string, string>>;
   fingerprint: string;
 }
@@ -551,16 +592,18 @@ function baselineValid(value: unknown): value is ProductMaintenanceBaseline {
     Object.keys(fields).length > 0 &&
     Object.entries(fields).every(
       ([key, item]) =>
-        /^(price\/(type|currency|min|max|tiers\/[1-9][0-9]*)|inventory|skus\/[1-9][0-9]*\/(price|currency|inventory))$/u.test(
+        /^(price\/(type|currency|min|max|tiers\/[1-9][0-9]*)|inventory|skus\/[1-9][0-9]*\/(price|currency|inventory)|integrity\/[A-Za-z][A-Za-z0-9]*)$/u.test(
           key
         ) &&
         typeof item === 'string' &&
         item.length <= 128 &&
-        (key.endsWith('type')
-          ? item === 'TIERED' || item === 'RANGE'
-          : key.endsWith('currency')
-            ? /^[A-Z]{3}$/u.test(item)
-            : /^(0|[1-9][0-9]*)(\.[0-9]+)?$/u.test(item))
+        (key.startsWith('integrity/')
+          ? /^[a-f0-9]{64}$/u.test(item)
+          : key.endsWith('type')
+            ? item === 'TIERED' || item === 'RANGE'
+            : key.endsWith('currency')
+              ? /^[A-Z]{3}$/u.test(item)
+              : /^(0|[1-9][0-9]*)(\.[0-9]+)?$/u.test(item))
     )
   );
 }
@@ -632,5 +675,22 @@ export async function createProductMaintenanceBaseline(
     productId: draft.productId,
     fields,
     fingerprint: await baselineFingerprint(draft.productId, fields)
+  };
+}
+
+/** Fresh writes require complete non-target evidence; historical target-only tasks cannot bypass it. */
+export async function createProductMaintenanceGuardedBaseline(
+  value: unknown,
+  snapshot: ProductMaintenanceSnapshot
+): Promise<ProductMaintenanceBaseline> {
+  const target = await createProductMaintenanceBaseline(value, snapshot);
+  const fields = {
+    ...target.fields,
+    ...(await buildProductMaintenanceIntegrityFields(value, snapshot))
+  };
+  return {
+    productId: target.productId,
+    fields,
+    fingerprint: await baselineFingerprint(target.productId, fields)
   };
 }

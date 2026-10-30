@@ -37,6 +37,8 @@ export interface ProductReference {
   title: string | null;
   keywords: string | null;
   descriptionHtml: string | null;
+  /** Ordered main-image URLs returned by get/v2; no additional asset request. */
+  images: string[];
   language: string | null;
   status: string | null;
   auditStatus: string | null;
@@ -220,6 +222,9 @@ export class ProductReferenceClient {
       title: text(basic.title),
       keywords: text(basic.keywords),
       descriptionHtml: text(basic.description),
+      images: items(basic.product_images)
+        .map((item) => text(item.image_url))
+        .filter((value): value is string => value !== null),
       language: text(basic.language),
       status: text(basic.status),
       auditStatus: text(basic.audit_status),

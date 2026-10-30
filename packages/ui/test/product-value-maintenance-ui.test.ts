@@ -603,6 +603,10 @@ describe('product value maintenance UI', () => {
   it.each([
     ['METHOD_DISABLED', 'methodDisabledHint'],
     ['BASELINE_CHANGED', 'baselineChangedHint'],
+    ['REVIEW_PENDING', 'reviewPendingHint'],
+    ['PRODUCT_STATE_UNCONFIRMED', 'reviewPendingHint'],
+    ['NON_TARGET_FIELDS_CHANGED', 'nonTargetChangedHint'],
+    ['INTEGRITY_UNAVAILABLE', 'integrityUnavailableHint'],
     ['ENTITY_BUSY', 'entityBusyHint'],
     ['ALREADY_ATTEMPTED', 'alreadyAttemptedHint'],
     ['DRAFT_VERIFICATION_UNAVAILABLE', 'draftVerificationUnavailableHint']
@@ -626,6 +630,15 @@ describe('product value maintenance UI', () => {
     }
   );
 
+  it('keeps non-target hashes out of the editable value preview', async () => {
+    const { wrapper, records } = setup();
+    await prepareInventory(wrapper);
+    const record = [...records.values()][0];
+    const hash = record?.task.baseline?.fields['integrity/modelNumber'];
+    expect(hash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(wrapper.text()).not.toContain(hash);
+    expect(wrapper.text()).not.toContain('integrity/modelNumber');
+  });
   it('does not call an absent service and changes labels without provider calls', async () => {
     const { wrapper, control } = setup('inventory', false);
     expect(wrapper.text()).toContain(en.unavailable);

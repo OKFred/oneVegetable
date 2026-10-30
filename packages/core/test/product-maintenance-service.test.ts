@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
+import integrityFixture from '../../../mock/data/product-maintenance-integrity.json';
 import {
   ProductMaintenanceService,
   parseProductMaintenanceRecord,
@@ -91,7 +92,7 @@ class MemoryRepository implements ProductMaintenanceRepository {
 function sampleSnapshot(name: string): ProductMaintenanceSnapshot {
   const value = data.snapshots[name];
   if (!value) throw new Error('Missing synthetic snapshot');
-  return value;
+  return { ...structuredClone(integrityFixture.snapshot), ...value };
 }
 function setup() {
   const repo = new MemoryRepository();
@@ -145,16 +146,18 @@ function setup() {
 }
 
 describe('durable product maintenance state machine', () => {
-  it('captures only target baseline fields and sends nothing during create', async () => {
+  it('captures target values and non-target hashes without sending during create', async () => {
     const h = setup();
     const item = await h.create('skuPrice');
     expect(item.status).toBe('prepared');
-    expect(item.baseline?.fields).toEqual({
+    expect(item.baseline?.fields).toMatchObject({
       'skus/990001/currency': 'EUR',
       'skus/990001/price': '1.50000000000000000001'
     });
     expect(item.baseline).not.toHaveProperty('skus');
     expect(item.baseline).not.toHaveProperty('snapshot');
+    expect(item.baseline?.fields['integrity/modelNumber']).toMatch(/^[a-f0-9]{64}$/u);
+    expect(JSON.stringify(item.baseline)).not.toContain(integrityFixture.snapshot.title);
     expect(item.submitAttempted).toBe(false);
     expect(h.client.call).not.toHaveBeenCalled();
     expect(h.repo.history).toHaveLength(1);
@@ -185,11 +188,76 @@ describe('durable product maintenance state machine', () => {
     expect(h.client.call).not.toHaveBeenCalled();
     expect((await h.repo.get(item.id, fx.ownerId))?.task.submitAttempted).toBe(false);
   });
-  it('does not block changes to fields outside the inventory target set', async () => {
+  it('requires another preview when non-target data changes before sending', async () => {
     const h = setup();
     const item = await h.create();
     h.current.snapshot = sampleSnapshot('priceMismatch');
-    expect(task(await h.send(item)).status).toBe('accepted');
+    await expect(h.send(item)).rejects.toThrow('BASELINE_CHANGED');
+    expect(h.client.call).not.toHaveBeenCalled();
+  });
+  it('does not verify matching prices when the model number disappears', async () => {
+    const h = setup();
+    const sent = task(await h.send(await h.create('skuPrice')));
+    Object.assign(h.current.snapshot, { modelNumber: null });
+    const verified = task(await h.verify(sent));
+    expect(verified.status).toBe('accepted');
+    expect(verified.reasonCode).toBe('PRODUCT_MAINTENANCE_NON_TARGET_FIELDS_CHANGED');
+    expect(verified.readback?.mismatchedFields).toContain('integrity/modelNumber');
+    expect(h.client.call).toHaveBeenCalledTimes(1);
+    await expect(h.send(verified)).rejects.toThrow('ALREADY_ATTEMPTED');
+  });
+  it('rejects missing metadata rather than claiming complete baseline evidence', async () => {
+    const h = setup();
+    Reflect.deleteProperty(h.current.snapshot, 'modelNumber');
+    await expect(h.create()).rejects.toThrow('INTEGRITY_SNAPSHOT_UNAVAILABLE');
+    expect(h.repo.history).toHaveLength(0);
+    expect(h.client.call).not.toHaveBeenCalled();
+  });
+  it('keeps historical target-only receipts readable without upgrading them to verified', async () => {
+    const h = setup();
+    const sent = task(await h.send(await h.create()));
+    const stored = h.repo.rows.get(sent.id);
+    if (!stored) throw new Error('Missing stored task');
+    stored.task.baseline = await createProductMaintenanceBaseline(
+      stored.task.intent.draft,
+      h.current.snapshot
+    );
+    expect(
+      task(await h.service.execute(fx.ownerId, h.request({ action: 'get', taskId: sent.id }))).status
+    ).toBe('accepted');
+    const checked = task(await h.verify(sent));
+    expect(checked.status).toBe('accepted');
+    expect(checked.reasonCode).toBe('PRODUCT_MAINTENANCE_INTEGRITY_UNAVAILABLE');
+    expect(checked.readback?.unavailableFields).toContain('integrity/modelNumber');
+    expect(h.client.call).toHaveBeenCalledTimes(1);
+  });
+  it('blocks dispatch while the platform is reviewing the product', async () => {
+    const h = setup();
+    const item = await h.create();
+    Object.assign(h.current.snapshot, { auditStatus: 'pending' });
+    await expect(h.send(item)).rejects.toThrow('REVIEW_PENDING');
+    expect(h.client.call).not.toHaveBeenCalled();
+  });
+  it('waits for approval even when the target values already match', async () => {
+    const h = setup();
+    const sent = task(await h.send(await h.create()));
+    Object.assign(h.current.snapshot, { auditStatus: 'pending' });
+    const pending = task(await h.verify(sent));
+    expect(pending.status).toBe('accepted');
+    expect(pending.reasonCode).toBe('PRODUCT_MAINTENANCE_PRODUCT_STATE_UNCONFIRMED');
+    expect(pending.readback?.unavailableFields).toContain('auditStatus');
+    Object.assign(h.current.snapshot, { auditStatus: 'approved' });
+    expect(task(await h.verify(pending)).status).toBe('verified');
+    expect(h.client.call).toHaveBeenCalledTimes(1);
+  });
+  it('does not verify a deleted product from otherwise matching metadata', async () => {
+    const h = setup();
+    const sent = task(await h.send(await h.create()));
+    Object.assign(h.current.snapshot, { status: 'deleted' });
+    const checked = task(await h.verify(sent));
+    expect(checked.status).toBe('accepted');
+    expect(checked.readback?.unavailableFields).toContain('productStatus');
+    expect(h.client.call).toHaveBeenCalledTimes(1);
   });
   it('requires complete baseline data rather than filling missing values with zero', async () => {
     const h = setup();

@@ -1011,6 +1011,39 @@
   "snapshots": {
     "matching": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1049,6 +1082,39 @@
     },
     "range": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "RANGE",
         "currency": "USD",
@@ -1078,6 +1144,39 @@
     },
     "priceMismatch": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1116,6 +1215,39 @@
     },
     "currencyMismatch": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1154,6 +1286,39 @@
     },
     "missingCurrency": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1192,6 +1357,39 @@
     },
     "missingPrice": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1226,6 +1424,39 @@
     },
     "missingSku": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1247,6 +1478,39 @@
     },
     "duplicateSku": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1285,6 +1549,39 @@
     },
     "duplicateTier": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1323,6 +1620,39 @@
     },
     "inventoryMismatch": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1361,6 +1691,39 @@
     },
     "missingInventory": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1399,6 +1762,39 @@
     },
     "malformedInventory": {
       "productId": "880001",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",
@@ -1437,6 +1833,39 @@
     },
     "wrongProduct": {
       "productId": "880002",
+      "title": "Synthetic integrity title",
+      "keywords": "synthetic, integrity",
+      "descriptionHtml": "<p>Synthetic integrity body</p>",
+      "language": "en_US",
+      "status": "online",
+      "auditStatus": "approved",
+      "modelNumber": "SYN-INTEGRITY-A",
+      "createdTimestamp": "1700000000",
+      "modifiedTimestamp": "1700000010",
+      "categoryId": "12345",
+      "categoryPath": "Synthetic / Category",
+      "images": ["https://example.invalid/one.png", "https://example.invalid/two.png"],
+      "attributes": [
+        {
+          "name": "Synthetic material",
+          "value": "Synthetic steel"
+        }
+      ],
+      "shippingTemplateId": "555",
+      "weight": "1.00",
+      "dimension": {
+        "length": "10",
+        "width": "20",
+        "height": "30"
+      },
+      "leadTimes": [
+        {
+          "quantity": "1",
+          "days": "7"
+        }
+      ],
+      "moq": "1",
+      "unit": "Piece",
       "price": {
         "type": "TIERED",
         "currency": "USD",

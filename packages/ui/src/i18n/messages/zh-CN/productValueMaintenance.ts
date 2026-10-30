@@ -1,4 +1,10 @@
 export const productValueMaintenance = {
+  modelNumber: '型号',
+  reviewState: '商品及审核状态',
+  reviewPendingHint: '商品审核状态尚未满足核验条件。请到平台核对审核结果；任务只做只读核验，不会重复提交。',
+  nonTargetField: '未编辑字段',
+  nonTargetChangedHint: '发现型号等未编辑字段发生变化，暂不能确认操作完整成功。请到平台核对，不要重复提交。',
+  integrityUnavailableHint: '暂时无法完整核对未编辑字段。请保留任务并重新预览或只读核验，不要重复提交。',
   priceSafetyTitle: '独立改价暂未开放。',
   priceSafetyHint: '受控验证发现其他商品字段可能未被保留，该操作的字段完整性尚未确认。',
   priceEditorHint:
