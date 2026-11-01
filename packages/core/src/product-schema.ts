@@ -386,14 +386,19 @@ export function inspectProductSchemaSerialization(
 
 export function inspectProductSchemaPatchSerialization(
   model: ProductSchemaModel,
-  locale: UiLocale = 'zh-CN'
+  locale: UiLocale = 'zh-CN',
+  preserveRootIds: readonly string[] = []
 ): ProductSchemaSerializationInspection {
   const fullInspection = inspectProductSchemaSerialization(model, locale);
   if (!fullInspection.safe) return fullInspection;
   if (fullInspection.noOp) return { ...fullInspection, xml: '' };
 
   const changedKeys = new Set(fullInspection.changedFieldKeys);
-  const changedFields = model.fields.filter((field) => changedKeys.has(field.key));
+  // Some provider paths require an unchanged root to be explicitly preserved.
+  // No-op inputs still produce no request; existing callers remain delta-only.
+  const changedFields = model.fields.filter(
+    (field) => changedKeys.has(field.key) || preserveRootIds.includes(field.id)
+  );
   const document = parseXml(fullInspection.xml);
   const sourceFields = schemaFieldElements(document.documentElement);
   const patchRoot = document.documentElement.cloneNode(false) as Element;

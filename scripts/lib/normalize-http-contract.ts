@@ -347,13 +347,63 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
     page: { type: 'integer', minimum: 1, default: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
   });
+  schemas.ProductSchemaPriceGuard = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['version', 'draft', 'baseline', 'schemaFingerprint'],
+    properties: {
+      version: { const: 1 },
+      draft: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['operation', 'productId', 'mode', 'currency', 'tiers'],
+        properties: {
+          operation: { const: 'setPrice' },
+          productId: { type: 'string', pattern: '^[1-9][0-9]{0,15}$' },
+          mode: { const: 'tiered' },
+          currency: { const: 'USD' },
+          tiers: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 500,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['quantity', 'price'],
+              properties: {
+                quantity: { type: 'string', pattern: '^[1-9][0-9]*$', maxLength: 19 },
+                price: { type: 'string', pattern: '^(0|[1-9][0-9]*)(\\.[0-9]+)?$', maxLength: 128 }
+              }
+            }
+          }
+        }
+      },
+      baseline: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['productId', 'fields', 'fingerprint'],
+        properties: {
+          productId: { type: 'string', pattern: '^[1-9][0-9]{0,15}$' },
+          fields: {
+            type: 'object',
+            minProperties: 1,
+            maxProperties: 1000,
+            additionalProperties: { type: 'string', maxLength: 128 }
+          },
+          fingerprint: { type: 'string', pattern: '^[a-f0-9]{64}$' }
+        }
+      },
+      schemaFingerprint: { type: 'string', pattern: '^[a-f0-9]{64}$' }
+    }
+  };
   schemas.ProductMutationFieldExpectation = {
     type: 'object',
     additionalProperties: false,
     required: ['fieldId', 'fingerprint'],
     properties: {
       fieldId: { type: 'string', minLength: 1, maxLength: 128 },
-      fingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' }
+      fingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
+      priceGuard: { $ref: '#/components/schemas/ProductSchemaPriceGuard' }
     }
   };
   schemas.ProductOperationContext = {

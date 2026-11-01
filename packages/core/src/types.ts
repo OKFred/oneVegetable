@@ -8,6 +8,7 @@ import type {
 import type { GalleryTransferContext } from './gallery-transfer-task';
 import type { ProductOperationContext, ProductOperationOptions } from './product-operation-context';
 import type { components } from './generated/api';
+import type { ProductSchemaPriceGuard } from './product-schema-price';
 import type {
   ProductCapabilityRequestMap,
   ProductCapabilityResponseMap
@@ -45,7 +46,12 @@ export type ProductSchemaRequest = components['schemas']['ProductSchemaRequest']
 export type ProductSchemaRenderRequest = components['schemas']['ProductSchemaRenderRequest'];
 export type ProductSchema = components['schemas']['ProductSchema'];
 export type SchemaPublishRequest = components['schemas']['SchemaPublishRequest'];
-export type ProductSchemaUpdateRequest = components['schemas']['ProductSchemaUpdateRequest'];
+export type ProductSchemaUpdateRequest = Omit<
+  components['schemas']['ProductSchemaUpdateRequest'],
+  'priceGuard'
+> & {
+  priceGuard?: ProductSchemaPriceGuard;
+};
 export type ProductMutationResult = components['schemas']['ProductMutationResult'];
 export type ProductDisplayRequest = components['schemas']['ProductDisplayRequest'];
 export type ProductDisplayMutationResult = components['schemas']['ProductDisplayMutationResult'];

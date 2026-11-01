@@ -3,6 +3,7 @@ import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
 import { createRequestId, isRequestId, NetworkManager } from './network';
 import { isProductOperationContext } from './product-operation-context';
+import { isProductSchemaPriceGuard } from './product-schema-price-guard';
 
 import type { ApiResponse } from './api-contract';
 import type { BffAuthenticationRequiredHandler } from './bff-authentication';
@@ -163,8 +164,19 @@ export function isProductMutationJob(value: unknown): value is ProductMutationJo
     typeof value.payloadFingerprint === 'string' &&
     Array.isArray(value.fieldExpectations) &&
     value.fieldExpectations.every(
-      (item) => isRecord(item) && typeof item.fieldId === 'string' && typeof item.fingerprint === 'string'
+      (item) =>
+        isRecord(item) &&
+        typeof item.fieldId === 'string' &&
+        typeof item.fingerprint === 'string' &&
+        (item.priceGuard === undefined ||
+          (item.fieldId === 'ladderPrice' &&
+            isProductSchemaPriceGuard(item.priceGuard) &&
+            item.priceGuard.draft.productId === value.productId &&
+            value.protocol === 'iop' &&
+            value.operation === 'updateProduct' &&
+            isProductOperationContext(value.productContext)))
     ) &&
+    value.fieldExpectations.filter((item) => isRecord(item) && item.priceGuard !== undefined).length <= 1 &&
     isNullableString(value.encryptedProductId) &&
     (value.targetDisplay === null || isEnum(value.targetDisplay, ['online', 'offline'])) &&
     (value.originalDisplay === null || isEnum(value.originalDisplay, ['online', 'offline'])) &&

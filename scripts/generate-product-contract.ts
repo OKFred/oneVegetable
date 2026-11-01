@@ -449,7 +449,8 @@ document.components.schemas.ProductSchemaUpdateRequest = {
     productId: { type: 'string', pattern: '^[1-9][0-9]*$' },
     categoryId: { type: 'integer', minimum: 1 },
     language: { type: 'string', enum: ['zh_CN', 'en_US'] },
-    schemaPatchXml: { type: 'string', minLength: 1 }
+    schemaPatchXml: { type: 'string', minLength: 1 },
+    priceGuard: { $ref: '#/components/schemas/ProductSchemaPriceGuard' }
   }
 };
 document.components.schemas.ProductDisplayRequest = {

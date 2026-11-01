@@ -1,0 +1,20 @@
+{
+  "draft": {
+    "operation": "setPrice",
+    "productId": "880123",
+    "mode": "tiered",
+    "currency": "USD",
+    "tiers": [
+      {
+        "quantity": "1",
+        "price": "1.25"
+      },
+      {
+        "quantity": "10",
+        "price": "0.85"
+      }
+    ]
+  },
+  "nestedXml": "<itemSchema xmlns:ov=\"urn:synthetic\" version=\"2\"><unknown keep=\"root\"/><field id=\"subject\" type=\"input\"><value>Never patch</value></field><field id=\"modelNumber\" type=\"input\" keep=\"model\"><value>SYN-INTEGRITY-A</value></field><field id=\"ladderPrice\" type=\"complex\" keep=\"root\"><rules><rule name=\"requiredRule\" value=\"true\"/></rules><complex-value keep=\"outer\"><field id=\"currency\" type=\"input\"><value>USD</value></field><field id=\"unit\" type=\"input\"><value>Piece</value></field><field id=\"sku\" type=\"input\"><value>Keep SKU</value></field><field id=\"ladderPrice_0\" type=\"complex\"><complex-value keep=\"slot-0\"><unknown ov:keep=\"yes\"/><field id=\"quantity\" type=\"input\"><value keep=\"quantity\">1</value></field><field id=\"price\" type=\"input\"><values><value keep=\"price\"><![CDATA[1.00]]></value></values></field><field id=\"extra\" type=\"input\"><value>Keep child</value></field></complex-value><fields><field id=\"quantity\" type=\"input\"><value/></field><field id=\"price\" type=\"input\"><value/></field></fields></field><field id=\"ladderPrice_1\" type=\"complex\"><complex-value keep=\"slot-1\"><field id=\"quantity\" type=\"input\"><value>10</value></field><field id=\"price\" type=\"input\"><value>0.90</value></field></complex-value></field></complex-value><fields><field id=\"ladderPrice_0\" type=\"complex\"><complex-value><field id=\"quantity\" type=\"input\"><value/></field><field id=\"price\" type=\"input\"><value/></field></complex-value></field></fields></field></itemSchema>",
+  "multiXml": "<itemSchema version=\"2\"><field id=\"subject\" type=\"input\"><value>Never patch</value></field><field id=\"modelNumber\" type=\"input\" keep=\"model\"><value>SYN-INTEGRITY-A</value></field><field id=\"ladderPrice\" type=\"multiComplex\" keep=\"root\"><complex-values keep=\"tier-0\"><field id=\"quantity\" type=\"input\"><value>1</value></field><field id=\"price\" type=\"input\"><value keep=\"price\">1.00</value></field><unknown keep=\"instance\"/></complex-values><complex-values keep=\"tier-1\"><field id=\"quantity\" type=\"input\"><value>10</value></field><field id=\"price\" type=\"input\"><value>0.90</value></field></complex-values><fields><field id=\"quantity\" type=\"input\"><value/></field><field id=\"price\" type=\"input\"><value/></field></fields></field></itemSchema>"
+}

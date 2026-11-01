@@ -1,5 +1,6 @@
 import type { EntityAuditFields } from './audit';
 import type { ProductOperationContext } from './product-operation-context';
+import type { ProductSchemaPriceGuard } from './product-schema-price';
 
 export type ProductMutationJobOperation =
   'publishProduct' | 'saveProductDraft' | 'updateProduct' | 'updateProductDisplay';
@@ -19,6 +20,7 @@ export type ProductMutationJobStatus =
 export interface ProductMutationFieldExpectation {
   fieldId: string;
   fingerprint: string;
+  priceGuard?: ProductSchemaPriceGuard;
 }
 
 export interface ProductMutationJob extends EntityAuditFields {

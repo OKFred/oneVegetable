@@ -11190,6 +11190,7 @@ export interface components {
         ProductMutationFieldExpectation: {
             fieldId: string;
             fingerprint: string;
+            priceGuard?: components["schemas"]["ProductSchemaPriceGuard"];
         };
         ProductMutationJob: {
             /** @enum {string} */
@@ -11282,6 +11283,31 @@ export interface components {
             language: string;
             market: string;
         };
+        ProductSchemaPriceGuard: {
+            /** @constant */
+            version: 1;
+            draft: {
+                /** @constant */
+                operation: "setPrice";
+                productId: string;
+                /** @constant */
+                mode: "tiered";
+                /** @constant */
+                currency: "USD";
+                tiers: {
+                    quantity: string;
+                    price: string;
+                }[];
+            };
+            baseline: {
+                productId: string;
+                fields: {
+                    [key: string]: string;
+                };
+                fingerprint: string;
+            };
+            schemaFingerprint: string;
+        };
         ProductSchemaRenderRequest: {
             categoryId: number;
             /** @default en_US */
@@ -11302,6 +11328,7 @@ export interface components {
             /** @enum {string} */
             language: "zh_CN" | "en_US";
             schemaPatchXml: string;
+            priceGuard?: components["schemas"]["ProductSchemaPriceGuard"];
         };
         ProductScore: {
             productId: string;

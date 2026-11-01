@@ -49,7 +49,8 @@ export function createProductMutationPayloadFingerprint(schemaPatchXml: string):
 export async function compareProductMutationFingerprints(
   renderedSchemaXml: string,
   expectations: readonly ProductMutationFieldExpectation[],
-  parser?: ProductSchemaXmlParser
+  parser?: ProductSchemaXmlParser,
+  modelPreservedByReference = false
 ): Promise<ProductMutationFingerprintComparison> {
   const model = parseProductSchemaXml(renderedSchemaXml, parser);
   const renderedFields = new Map(model.fields.map((field) => [field.id, field] as const));
@@ -57,6 +58,20 @@ export async function compareProductMutationFingerprints(
   const mismatchedFieldIds: string[] = [];
   for (const expectation of expectations) {
     const field = renderedFields.get(expectation.fieldId);
+    // IOP render omits modelNumber even after an accepted preservation write.
+    // Callers using this exception must still verify its hash independently.
+    // A conflicting nonempty Schema value is never ignored.
+    if (
+      modelPreservedByReference &&
+      expectation.fieldId === 'modelNumber' &&
+      expectations.some((item) => item.fieldId === 'ladderPrice' && item.priceGuard) &&
+      (!field ||
+        (field.type === 'input' &&
+          !field.children.length &&
+          !field.instances.length &&
+          field.values.every((value) => value.text === '')))
+    )
+      continue;
     if (!field) {
       missingFieldIds.push(expectation.fieldId);
       continue;
