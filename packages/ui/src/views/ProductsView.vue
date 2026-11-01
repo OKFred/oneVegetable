@@ -51,6 +51,9 @@ const productReadTool = ref<'translation' | 'shipping' | null>(null);
 const ProductValueMaintenanceDialog = defineAsyncComponent(
   () => import('../components/ProductValueMaintenanceDialog.vue')
 );
+const ProductSchemaPriceDialog = defineAsyncComponent(
+  () => import('../components/ProductSchemaPriceDialog.vue')
+);
 const valueMaintenance = ref<{ kind: 'price' | 'inventory' | 'drafts'; productId?: string } | null>(null);
 const vm = useProductValueMaintenanceI18n();
 const pl = useProductLookupI18n();
@@ -2210,7 +2213,7 @@ const columns = computed<DataColumn<Product>[]>(() => [
           },
           () => it('title')
         ),
-        ...(productMaintenance
+        ...(productMutationJobs
           ? [
               h(
                 Button,
@@ -2222,7 +2225,11 @@ const columns = computed<DataColumn<Product>[]>(() => [
                   }
                 },
                 () => vm('priceTitle')
-              ),
+              )
+            ]
+          : []),
+        ...(productMaintenance
+          ? [
               h(
                 Button,
                 {
@@ -3769,8 +3776,13 @@ onBeforeUnmount(() => {
     @close="productReadTool = null"
   />
   <ProductValueMaintenanceDialog
-    v-if="valueMaintenance && !taskHistoryReadOnly"
+    v-if="valueMaintenance && valueMaintenance.kind !== 'price' && !taskHistoryReadOnly"
     :kind="valueMaintenance.kind"
+    :product-id="valueMaintenance.productId ?? ''"
+    @close="valueMaintenance = null"
+  />
+  <ProductSchemaPriceDialog
+    v-if="valueMaintenance?.kind === 'price' && !taskHistoryReadOnly"
     :product-id="valueMaintenance.productId ?? ''"
     @close="valueMaintenance = null"
   />

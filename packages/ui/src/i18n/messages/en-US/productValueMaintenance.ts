@@ -1,4 +1,39 @@
 export const productValueMaintenance = {
+  schemaAttempted:
+    'No further submission is allowed here. Closing keeps the persisted task in the task center.',
+  schemaPollingStopped:
+    'Automatic checks stopped after five minutes. Check manually or continue in the task center.',
+  schemaRefresh: 'Check result (read-only)',
+  schemaTaskCenter: 'Open task center',
+  schemaConfirmHint:
+    'Submit the prices once while preserving the current model number. Acceptance requires readback verification; no automatic retry or restore.',
+  schemaSubmitted: 'Submitted — awaiting independent verification',
+  schemaAuditing: 'Platform review pending — not yet verified',
+  schemaVerifying: 'Checking prices and protected fields',
+  schemaVerified: 'Price changes and protected fields verified',
+  schemaFailed: 'The result is not verified. Check the task and stable code; do not resend.',
+  schemaRecovery: 'Manual review required. No automatic recovery or restore.',
+  schemaUnknown: 'Submission attempted — result not confirmed',
+  schemaIopRequired:
+    'IOP authorization is required: this flow needs independent get/v2 readback. TOP alone cannot verify protected fields. No fallback or default change.',
+  schemaContextChanged:
+    'The account, configuration or page visibility changed. Scheduling stopped. Reopen to read a fresh baseline; existing tasks are not resent.',
+  schemaBaselineChanged:
+    'The preview is no longer current. Reopen and preview fresh data. Do not resend an attempted task.',
+  schemaUnsupported:
+    'This price Schema cannot be safely edited here. Only existing editable USD tiered amounts are supported.',
+  schemaTitle: 'Schema tiered price maintenance',
+  schemaHint:
+    'Change existing USD amounts only. Submit once; completion requires verified prices and unchanged protected fields.',
+  schemaLoading: 'Reading current prices and Schema…',
+  schemaFixedHint:
+    'Quantities, currency and price type stay fixed. The original model number is carried forward unchanged.',
+  schemaCurrent: 'Current USD',
+  schemaTarget: 'New USD',
+  schemaPreview: 'Preview price changes',
+  schemaDiff: 'Price changes',
+  schemaNoop: 'No price changes. Nothing will be submitted.',
+  schemaInvalid: 'Enter valid non-negative decimal amounts. Keep the existing tiers.',
   modelNumber: 'Model number',
   reviewState: 'Product and review state',
   reviewPendingHint:
