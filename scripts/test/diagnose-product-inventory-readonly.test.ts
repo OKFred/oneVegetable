@@ -50,6 +50,7 @@ async function harness(
     changeAfterRead?: boolean;
     redirect?: boolean;
     nullInventory?: boolean;
+    missingInventory?: boolean;
     pending?: boolean;
     productIds?: readonly string[];
   } = {}
@@ -74,6 +75,7 @@ async function harness(
       if (options.pending) value.product_info.basic_info.audit_status = 'pending';
       Reflect.set(value.product_info.basic_info, 'product_id', Number(productId));
       if (options.nullInventory) Reflect.set(value.product_info.trade_info, 'inventory', null);
+      if (options.missingInventory) Reflect.deleteProperty(value.product_info.trade_info, 'inventory');
       if (options.missingCategory) Reflect.deleteProperty(value.product_info, 'category_info');
       data = value;
     } else if (url.pathname === '/rest' + INVENTORY_DIAGNOSTIC_PATHS.inventory) data = fixture.inventory;
@@ -219,6 +221,17 @@ describe('fixed-product inventory diagnostic, offline only', () => {
     expect(report.complete).toBe(true);
     expect(report.networkRequests).toBe(6);
     expect(report.rows).toHaveLength(6);
+    expect(
+      report.rows.filter((row) => row.route === 'product').map((row) => row.evidence.absoluteInventory)
+    ).toEqual([
+      { scope: 'spu', status: 'available', quantity: '0' },
+      { scope: 'spu', status: 'available', quantity: '0' }
+    ]);
+    expect(
+      report.rows
+        .filter((row) => row.route !== 'product')
+        .every((row) => !Object.hasOwn(row.evidence, 'absoluteInventory'))
+    ).toBe(true);
     expect(report.rows.every((row) => row.status === 'accepted' && row.networkAttempts === 1)).toBe(true);
     expect(report.productIds).toEqual(productIds);
     expect(send).toHaveBeenCalledTimes(6);
@@ -242,11 +255,28 @@ describe('fixed-product inventory diagnostic, offline only', () => {
     expect(send).toHaveBeenCalledTimes(6);
     for (const row of report.rows.filter((row) => row.route === 'product')) {
       expect(row.status).toBe('contract-drift');
+      expect(row.evidence.absoluteInventory).toEqual({
+        scope: 'spu',
+        status: 'unavailable',
+        reason: 'REQUEST_NOT_ACCEPTED'
+      });
       expect(row.evidence.inventory).toEqual({ present: true, type: 'null' });
     }
     expect(
       report.rows.filter((row) => row.route === 'schema').every((row) => row.status === 'accepted')
     ).toBe(true);
+  });
+  it('keeps three accepted reads separate from missing SPU quantity evidence', async () => {
+    const { io, send } = await harness({ productIds: [productIds[0]], missingInventory: true });
+    const report = await runInventoryReadonlyDiagnostic(io);
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(report.networkRequests).toBe(3);
+    expect(report.rows.every((row) => row.status === 'accepted')).toBe(true);
+    expect(report.rows[0]?.evidence.absoluteInventory).toEqual({
+      scope: 'spu',
+      status: 'unavailable',
+      reason: 'QUANTITY_MISSING'
+    });
   });
   it('does not retry failed network reads or guess a category to render Schema', async () => {
     const { io, send } = await harness({ reject: true });
@@ -255,6 +285,15 @@ describe('fixed-product inventory diagnostic, offline only', () => {
     expect(report.networkRequests).toBe(4);
     expect(report.rows.filter((row) => row.status === 'missing-prerequisite')).toHaveLength(2);
     expect(report.rows.every((row) => row.networkAttempts <= 1)).toBe(true);
+    expect(
+      report.rows
+        .filter((row) => row.route === 'product')
+        .every(
+          (row) =>
+            JSON.stringify(row.evidence.absoluteInventory) ===
+            JSON.stringify({ scope: 'spu', status: 'unavailable', reason: 'REQUEST_NOT_ACCEPTED' })
+        )
+    ).toBe(true);
     expect(JSON.stringify(report)).not.toContain(fixture.privateText);
   });
   it('does not infer a schema category from the source or the other product', async () => {

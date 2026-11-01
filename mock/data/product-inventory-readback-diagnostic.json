@@ -2,6 +2,10 @@
   "productIds": ["880901", "880902"],
   "otherProductId": "880903",
   "maximumExactId": "9007199254740991",
+  "absoluteInventorySkus": [
+    { "sku_id": "990901", "inventory": "3" },
+    { "sku_id": "990902", "inventory": "0" }
+  ],
   "invalidProductIds": [
     {
       "name": "empty",
@@ -123,6 +127,46 @@
   },
   "schema": "<itemSchema><field id='inventory' name='Inventory' type='multiInput'><rules><rule name='valueAttributeRule' value='warehouseCode'/><rule name='valueAttributeRule' value='srcValue'/></rules><values><value warehouseCode='SYNTHETIC_WAREHOUSE_NOT_REAL' srcValue='0'>7</value></values></field><field id='sku' type='multiComplex'><fields><field id='skuStock' type='multiInput'><values><value warehouseCode='UNINSTANTIATED_MUST_NOT_BE_SAVED' srcValue='0'>99</value></values></field></fields></field><field id='subject' type='input'><value>SYNTHETIC_BODY_MUST_NOT_BE_SAVED</value></field></itemSchema>",
   "numericCases": [
+    {
+      "name": "negative-string",
+      "value": "-1",
+      "expected": { "present": true, "type": "string" }
+    },
+    {
+      "name": "whitespace",
+      "value": " 0 ",
+      "expected": { "present": true, "type": "string" }
+    },
+    {
+      "name": "leading-zero",
+      "value": "00",
+      "expected": { "present": true, "type": "string" }
+    },
+    {
+      "name": "exponent",
+      "value": "1e3",
+      "expected": { "present": true, "type": "string" }
+    },
+    {
+      "name": "fraction-string",
+      "value": "1.5",
+      "expected": { "present": true, "type": "string" }
+    },
+    {
+      "name": "boolean",
+      "value": false,
+      "expected": { "present": true, "type": "boolean" }
+    },
+    {
+      "name": "safe-number-limit",
+      "value": 9007199254740991,
+      "expected": {
+        "present": true,
+        "type": "number",
+        "safeInteger": true,
+        "integerString": "9007199254740991"
+      }
+    },
     {
       "name": "missing",
       "missing": true,
