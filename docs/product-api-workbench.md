@@ -65,8 +65,9 @@ Permission/prerequisite failures are recorded, never counted as passed.
   not a claimed scan of every template.
 - Price amount change, readback, restoration and final amount readback passed in the opt-in Node
   CLI. Non-target model information was later missing; a separate unmodified control retained its
-  model after approval. This observation is not universal causation proof, and full price integrity
-  acceptance has **not** passed. The standalone price endpoint remains disabled.
+  model after approval. The standalone price endpoint remains disabled. The later guarded Schema
+  flow separately passed Node change and formal MV3 restoration with all protected hashes intact;
+  see schema-price-maintenance.md for its narrower existing-USD-tier scope and two-root exception.
 - Absolute inventory has no usable readback baseline on these samples. Draft deletion has no
   reliable independent absence reader. Both remain disabled; no stock change or draft deletion
   was attempted.

@@ -3,6 +3,50 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.21.0",
+      "releasedAt": "2026-11-02",
+      "title": {
+        "zh-CN": "商品工具与安全改价",
+        "en-US": "Product tools and guarded price maintenance"
+      },
+      "summary": {
+        "zh-CN": "新增按型号或 SKU 编码查询、翻译及国家运费确定性工具；IOP 阶梯改价使用最小 Schema 补丁并核对型号等字段。",
+        "en-US": "Add model/SKU lookup, translation and country freight-determinacy tools, plus guarded IOP tier-price updates with independent protected-field readback."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.21.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.20.2...v2.21.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "按协议提供商品辅助工具", "en-US": "Protocol-aware product tools" },
+          "description": {
+            "zh-CN": "商品列表可主动打开 IOP 型号/SKU 编码查询，以及 TOP 翻译和国家运费确定性工具。翻译需要应用权限；运费确定性不是报价。失败不切换协议重试，不以模拟数据代替真实结果。",
+            "en-US": "Open IOP model/SKU lookup and TOP translation or country freight-determinacy tools explicitly from the product list. Translation requires the app grant; freight determinacy is not a quotation. Errors do not trigger cross-protocol retries or simulated results."
+          }
+        },
+        {
+          "type": "feature",
+          "title": { "zh-CN": "安全维护现有美元阶梯价", "en-US": "Guard existing USD tier prices" },
+          "description": {
+            "zh-CN": "IOP 使用价格与原型号两个根字段的最小 Schema 补丁，只改现有美元阶梯金额。提交前重新检查，写入前保存任务，受理后独立核对价格、型号和其他保护字段。Node 与正式插件已完成测试商品改价、回读和恢复；审核或结果不明不自动重发。",
+            "en-US": "IOP sends a minimal Schema patch containing price and the original model, changing only existing USD tier amounts. Recheck before dispatch, persist the task first and independently verify prices, model and other protected fields after acceptance. Node and formal MV3 completed a controlled change, readback and restoration. Review or unknown outcomes never trigger automatic resubmission."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "明确库存和草稿的核对边界",
+            "en-US": "Make inventory and draft evidence explicit"
+          },
+          "description": {
+            "zh-CN": "缺少库存数量或仓编码不视为零库存，上游错误不视为草稿已删除。原生独立改价、绝对库存写入及草稿删除仍关闭，未扩大已验收写入白名单。保留旧 TOP 用户及双授权设置。",
+            "en-US": "Missing stock quantities or warehouse codes are not zero stock, and upstream errors are not draft-deletion proof. Native standalone price writes, absolute-inventory writes and draft deletion remain disabled. Preserve legacy TOP users and dual-authorization settings without expanding unverified write allowlists."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.20.2",
       "releasedAt": "2026-10-29",
       "title": {
