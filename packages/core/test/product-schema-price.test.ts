@@ -453,6 +453,42 @@ describe('bounded Schema price maintenance with model preservation', () => {
     expect((await readback(guard, { ...pending, auditStatus: 'approved' })).status).not.toBe('matched');
   });
 
+  it('accepts serializer-only empty-element spacing without weakening the generated patch check', async () => {
+    const preview = await prepare(fixture.nestedXml, draft(), reference());
+    const compatible = preview.patchXml.replace(/\s*\/>/gu, ' />');
+    await expect(
+      preflight({ ...request(preview), schemaPatchXml: compatible }, fixture.nestedXml, reference())
+    ).resolves.toEqual(preview.guard);
+    for (const patch of [
+      preview.patchXml + '<extra/>',
+      preview.patchXml + 'not-xml',
+      '<!DOCTYPE itemSchema>' + preview.patchXml,
+      preview.patchXml.replace('keep="root"', 'keep="tampered"')
+    ])
+      await expect(
+        preflight({ ...request(preview), schemaPatchXml: patch }, fixture.nestedXml, reference())
+      ).rejects.toThrow('PRODUCT_SCHEMA_PRICE_PATCH_MISMATCH');
+  });
+
+  it.each([
+    ['<!--keep/>-->', '<!--keep />-->'],
+    ['<![CDATA[keep/>]]>', '<![CDATA[keep />]]>']
+  ])('does not normalize markup-looking text inside %s', async (original, altered) => {
+    const xml = fixture.nestedXml.replace(
+      '<complex-value keep="outer">',
+      original + '<complex-value keep="outer">'
+    );
+    const preview = await prepare(xml, draft(), reference());
+    expect(preview.patchXml).toContain(original);
+    await expect(
+      preflight(
+        { ...request(preview), schemaPatchXml: preview.patchXml.replace(original, altered) },
+        xml,
+        reference()
+      )
+    ).rejects.toThrow('PRODUCT_SCHEMA_PRICE_PATCH_MISMATCH');
+  });
+
   it('rejects conflicting explicit currency/unit/type and invalid price rules', async () => {
     for (const xml of [
       fixture.nestedXml.replace('>USD<', '>EUR<'),

@@ -51,6 +51,10 @@ single minimal price-and-model restoration. Never treat the original price-only
 attempt as successful, and never automatically repair or retry such a task.
 No-op prices send nothing, even when the rendered model root is empty.
 
+Browser and server XML serializers differ in empty-tag spacing. Preflight normalizes
+only whitespace before `/>` outside quoted values, comments and CDATA; every other
+byte must still match the freshly generated safe patch.
+
 HTTP/provider acceptance is pending, not completion. Final verification requires
 approved product state, matching target prices and complete matching protected
 hashes. Errors, omissions and unknown outcomes do not become success. All writes
@@ -82,8 +86,8 @@ replace official ZIPs or enable native price/stock/draft mutations in this turn.
   all protected hashes intact. A fresh formal MV3 task restored 1.00 and also
   reached verified, with the original model and all protected hashes intact.
   Each stage dispatched exactly one write; neither task was rebound across runtimes.
-- Automatic checks: 5,099 unit tests, 31 workerd tests, 28 related browser E2E
+- Automatic checks: 5,102 unit tests, 31 workerd tests, 28 related browser E2E
   and 57 formal MV3 authorization/compatibility E2E;
   format, lint, i18n, contract/type checks and all three builds passed.
-- ZIP measured in memory: 1,509,112 bytes; unpacked: 5,131,396 bytes. Existing
+- ZIP measured in memory: 1,509,372 bytes; unpacked: 5,131,984 bytes. Existing
   package limits and the official ZIP were not changed.

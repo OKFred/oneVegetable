@@ -288,9 +288,48 @@ export async function assertProductSchemaPriceUpdate(
     preview.guard.schemaFingerprint !== guard.schemaFingerprint
   )
     return fail('BASELINE_CHANGED');
-  if (preview.unchanged || !preview.patchXml || schemaPatchXml !== preview.patchXml)
+  const submitted = canonicalPatchXml(schemaPatchXml);
+  if (preview.unchanged || !submitted || submitted !== canonicalPatchXml(preview.patchXml))
     return fail('PATCH_MISMATCH');
   return preview.guard;
+}
+
+function canonicalPatchXml(xml: string): string | null {
+  if (typeof xml !== 'string' || xml.length > 2_000_000 || /<!DOCTYPE\b/iu.test(xml)) return null;
+  // Normalize only empty-tag spacing outside quoted values, comments and CDATA.
+  // Everything else must still exactly match the freshly generated safe patch.
+  let result = '',
+    offset = 0;
+  while (offset < xml.length) {
+    const start = xml.indexOf('<', offset);
+    if (start < 0) return result + xml.slice(offset);
+    result += xml.slice(offset, start);
+    const terminator = xml.startsWith('<!--', start)
+      ? '-->'
+      : xml.startsWith('<![CDATA[', start)
+        ? ']]>'
+        : null;
+    if (terminator) {
+      const end = xml.indexOf(terminator, start + 4);
+      if (end < 0) return null;
+      offset = end + terminator.length;
+      result += xml.slice(start, offset);
+      continue;
+    }
+    let quote: string | null = null,
+      end = start + 1;
+    for (; end < xml.length; end++) {
+      const char = xml[end];
+      if (quote) {
+        if (char === quote) quote = null;
+      } else if (char === '"' || char === "'") quote = char;
+      else if (char === '>') break;
+    }
+    if (end >= xml.length) return null;
+    result += xml.slice(start, end + 1).replace(/[ \t\r\n]+\/>$/u, '/>');
+    offset = end + 1;
+  }
+  return result;
 }
 
 export async function checkProductSchemaPriceReadback(
