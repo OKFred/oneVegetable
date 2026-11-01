@@ -72,9 +72,25 @@ export default defineConfig({
               includeDependenciesRecursively: false
             },
             {
+              name: 'schema-price',
+              test: /(?:core[\\/]src[\\/]product-schema-price|apps[\\/]extension[\\/]lib[\\/]schema-price)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'xml-parser',
+              test: /[\\/]node_modules[\\/]linkedom[\\/]/u,
+              includeDependenciesRecursively: true
+            },
+            {
               // Durable maintenance is shared by MV3 and its lazy workspace, not background registration.
               name: 'product-maintenance-model',
-              test: /core[\\\\/]src[\\\\/]product-maintenance-(?:api|service)\.ts$/u,
+              test: /core[\\\\/]src[\\\\/]product-maintenance-service\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              // Eager receipt validation needs the input model, not the durable executor.
+              name: 'product-maintenance-api',
+              test: /core[\\/]src[\\/]product-maintenance-api\.ts$/u,
               includeDependenciesRecursively: false
             },
             {

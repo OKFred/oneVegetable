@@ -988,7 +988,14 @@ async function mountOptionsApp(): Promise<void> {
           },
           job.productContext ? { productContext: job.productContext } : undefined
         );
-        return compareProductMutationFingerprints(rendered.xml, job.fieldExpectations);
+        // IOP omits the preserved modelNumber value from render; the trusted
+        // worker separately verifies its original hash using get/v2.
+        return compareProductMutationFingerprints(
+          rendered.xml,
+          job.fieldExpectations,
+          undefined,
+          job.fieldExpectations.some((field) => field.priceGuard)
+        );
       }
     }
   );

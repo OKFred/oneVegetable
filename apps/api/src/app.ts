@@ -28,6 +28,7 @@ import {
   selectAlibabaOperationProtocol
 } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { ProductReferenceClient } from '@one-vegetable/core/product-reference';
 import { iopOperationReason } from '@one-vegetable/core/alibaba-iop-business';
 import { getIopOperationSupport } from '@one-vegetable/core/alibaba-iop-registry';
 import {
@@ -195,6 +196,22 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ? new ProductMutationLifecycleService(
           options.productMutationJobs,
           {
+            async readReference(productId, requestId, operationOptions) {
+              const payload = {
+                method: '/alibaba/icbu/product/get/v2',
+                parameters: { product_id: Number(productId) }
+              };
+              const scoped = { ...boundOptions, ...operationOptions, requestId };
+              if ((await dynamicGateway.operationProtocol?.('callCapability', payload, scoped)) !== 'iop')
+                throw new GatewayException({
+                  code: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+                  message: 'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+                  retryable: false
+                });
+              return new ProductReferenceClient({
+                request: (operation, request) => gateway.request(operation, request, scoped)
+              }).getProduct(productId);
+            },
             async displayContext(protocol, actorId) {
               if (!dynamicGateway.operationGatewayContextId && options.gatewayMode === 'real') {
                 if (!dynamicGateway.credentialProtocol)

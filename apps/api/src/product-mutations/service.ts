@@ -5,6 +5,11 @@ import {
 } from '@one-vegetable/core';
 import { DOMParser as ServerDomParser } from 'linkedom';
 import { productUpdateFailureStatus } from '@one-vegetable/core/product-update-outcome';
+import {
+  assertProductSchemaPriceUpdate,
+  checkProductSchemaPriceReadback
+} from '@one-vegetable/core/product-schema-price';
+import type { ProductReference } from '@one-vegetable/core/product-reference';
 import type {
   ProductOperationContext,
   ProductOperationOptions
@@ -42,7 +47,31 @@ const SERVER_XML_PARSER: ProductSchemaXmlParser = {
   }
 };
 
+function ensurePriceXmlDom(): void {
+  if (typeof globalThis.DOMParser === 'undefined')
+    Object.defineProperty(globalThis, 'DOMParser', {
+      configurable: true,
+      writable: true,
+      value: ServerDomParser
+    });
+  if (typeof globalThis.XMLSerializer === 'undefined')
+    Object.defineProperty(globalThis, 'XMLSerializer', {
+      configurable: true,
+      writable: true,
+      value: class {
+        serializeToString(node: Node) {
+          return (node as unknown as { toString(): string }).toString();
+        }
+      }
+    });
+}
+
 export interface ProductMutationGateway {
+  readReference?(
+    productId: string,
+    requestId: string,
+    options: ProductOperationOptions
+  ): Promise<ProductReference>;
   displayContext?(protocol: 'top' | 'iop', actorId: string): Promise<ProductOperationContext>;
   assertProductContext?(context: ProductOperationContext): Promise<void>;
   publish(request: SchemaPublishRequest, requestId: string): Promise<ProductMutationResult>;
@@ -261,7 +290,34 @@ export class ProductMutationLifecycleService {
       input.request.schemaPatchXml,
       SERVER_XML_PARSER
     );
+    if (input.request.priceGuard) {
+      ensurePriceXmlDom();
+      const context = input.options?.productContext;
+      if (context?.identity !== (await opaqueGalleryId(input.actor.actorId)) || !this.#gateway.readReference)
+        throw new Error('PRODUCT_SCHEMA_PRICE_CONTEXT_REQUIRED');
+      const reference = await this.#gateway.readReference(input.request.productId, input.requestId, {
+        productContext: context
+      });
+      const rendered = await this.#gateway.render(input.request, input.requestId, {
+        productContext: context
+      });
+      const guard = await assertProductSchemaPriceUpdate(
+        input.request,
+        rendered.xml,
+        reference,
+        SERVER_XML_PARSER
+      );
+      const guardedPrice = fingerprints.fieldExpectations.find((field) => field.fieldId === 'ladderPrice');
+      if (
+        fingerprints.fieldExpectations.length !== 2 ||
+        !guardedPrice ||
+        !fingerprints.fieldExpectations.some((field) => field.fieldId === 'modelNumber')
+      )
+        throw new Error('PRODUCT_SCHEMA_PRICE_PATCH_INVALID');
+      guardedPrice.priceGuard = guard;
+    }
     let job = await this.#repository.create({
+      ...(input.request.priceGuard ? { protocol: 'iop' as const } : {}),
       ...(input.options?.productContext ? { productContext: input.options.productContext } : {}),
       ...(input.options?.productBatchId ? { batchId: input.options.productBatchId } : {}),
       requestId: input.requestId,
@@ -341,18 +397,51 @@ export class ProductMutationLifecycleService {
         input.requestId,
         current.productContext ? { productContext: current.productContext } : undefined
       );
+      const priceGuard = current.fieldExpectations.find((field) => field.priceGuard)?.priceGuard;
       const comparison = await compareProductMutationFingerprints(
         rendered.xml,
         current.fieldExpectations,
-        SERVER_XML_PARSER
+        SERVER_XML_PARSER,
+        Boolean(priceGuard)
       );
-      const status: ProductMutationJobStatus = comparison.matched ? 'verified' : 'recovery-required';
-      const reasonCode = comparison.matched
-        ? 'PRODUCT_MUTATION_READBACK_MATCHED'
-        : 'PRODUCT_MUTATION_READBACK_MISMATCH';
-      const message = comparison.matched
-        ? '平台回读值与本次更新一致'
-        : summarizeMismatch(comparison.missingFieldIds, comparison.mismatchedFieldIds);
+      let priceReason: string | null = null;
+      if (priceGuard) {
+        if (!current.productContext || !this.#gateway.readReference)
+          throw new Error('PRODUCT_SCHEMA_PRICE_CONTEXT_REQUIRED');
+        const reference = await this.#gateway.readReference(current.productId, input.requestId, {
+          productContext: current.productContext
+        });
+        const integrity = await checkProductSchemaPriceReadback(priceGuard, reference);
+        if (integrity.status !== 'matched') {
+          priceReason = integrity.mismatchedFields.some((field) => field.startsWith('integrity/'))
+            ? 'PRODUCT_SCHEMA_PRICE_INTEGRITY_MISMATCH'
+            : integrity.unavailableFields.some(
+                  (field) => field === 'auditStatus' || field === 'productStatus'
+                )
+              ? 'PRODUCT_SCHEMA_PRICE_REVIEW_PENDING'
+              : 'PRODUCT_SCHEMA_PRICE_READBACK_UNAVAILABLE';
+          comparison.matched = false;
+          if (
+            !comparison.missingFieldIds.includes('ladderPrice') &&
+            !comparison.mismatchedFieldIds.includes('ladderPrice')
+          )
+            comparison.mismatchedFieldIds.push('ladderPrice');
+        }
+      }
+      const status: ProductMutationJobStatus =
+        priceReason === 'PRODUCT_SCHEMA_PRICE_REVIEW_PENDING'
+          ? 'auditing'
+          : comparison.matched
+            ? 'verified'
+            : 'recovery-required';
+      const reasonCode =
+        priceReason ??
+        (comparison.matched ? 'PRODUCT_MUTATION_READBACK_MATCHED' : 'PRODUCT_MUTATION_READBACK_MISMATCH');
+      const message =
+        priceReason ??
+        (comparison.matched
+          ? '平台回读值与本次更新一致'
+          : summarizeMismatch(comparison.missingFieldIds, comparison.mismatchedFieldIds));
       const updated = await this.#repository.transition({
         id: current.id,
         expectedRevision: current.revision,

@@ -28,6 +28,11 @@ import {
 import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from './product-display-mutation-storage';
 import { productUpdateFailureStatus } from '@one-vegetable/core/product-update-outcome';
 import {
+  checkProductSchemaPriceReadback,
+  type ProductSchemaPriceGuard
+} from '@one-vegetable/core/product-schema-price';
+import type { ProductReference } from '@one-vegetable/core/product-reference';
+import {
   requireProductOperationContext,
   type ProductOperationOptions
 } from '@one-vegetable/core/product-operation-context';
@@ -75,6 +80,7 @@ export interface ExtensionProductCreationGateway {
 
 export interface ExtensionProductUpdateGateway {
   update(request: ProductSchemaUpdateRequest): Promise<ProductMutationResult>;
+  pricePreflight?(request: ProductSchemaUpdateRequest): Promise<ProductSchemaPriceGuard>;
 }
 
 type ExtensionProductMutationGateway = ExtensionProductDisplayGateway | ExtensionProductCreationGateway;
@@ -298,6 +304,22 @@ export class ExtensionProductDisplayMutationLifecycle {
       );
       if (blocking) throw mutationInProgress(blocking);
 
+      const expectations = structuredClone(fingerprints.fieldExpectations);
+      if (request.priceGuard) {
+        requireProductOperationContext(options?.productContext);
+        const guardedPrice = expectations.find((field) => field.fieldId === 'ladderPrice');
+        if (
+          !gateway.pricePreflight ||
+          expectations.length !== 2 ||
+          !guardedPrice ||
+          !expectations.some((field) => field.fieldId === 'modelNumber')
+        )
+          throw gatewayError(
+            'PRODUCT_SCHEMA_PRICE_PREFLIGHT_REQUIRED',
+            'PRODUCT_SCHEMA_PRICE_PREFLIGHT_REQUIRED'
+          );
+        guardedPrice.priceGuard = await gateway.pricePreflight(request);
+      }
       const job = createUpdateJob({
         ...options,
         requestId,
@@ -305,7 +327,7 @@ export class ExtensionProductDisplayMutationLifecycle {
         categoryId: request.categoryId,
         language: requireCreationLanguage(request.language),
         payloadFingerprint: fingerprints.payloadFingerprint,
-        fieldExpectations: fingerprints.fieldExpectations,
+        fieldExpectations: expectations,
         now: this.clock()
       });
       await this.#writeJobs([...currentJobs, job]);
@@ -347,7 +369,8 @@ export class ExtensionProductDisplayMutationLifecycle {
   completeUpdateReadback(
     id: string,
     expectedRevision: number,
-    result: ExtensionProductUpdateReadbackResult
+    result: ExtensionProductUpdateReadbackResult,
+    readPriceReference?: () => Promise<ProductReference>
   ): Promise<ProductMutationJob> {
     return this.#exclusive(async () => {
       const current = await this.#requireRevision(id, expectedRevision);
@@ -355,17 +378,51 @@ export class ExtensionProductDisplayMutationLifecycle {
       assertUpdateJob(current);
       if (result.kind === 'comparison') {
         const comparison = validateUpdateReadbackComparison(current, result.comparison);
-        const status: ProductMutationJobStatus = comparison.matched ? 'verified' : 'recovery-required';
+        const priceGuard = current.fieldExpectations.find((field) => field.priceGuard)?.priceGuard;
+        let priceReason: string | null = null;
+        if (priceGuard) {
+          if (!readPriceReference)
+            throw gatewayError(
+              'PRODUCT_SCHEMA_PRICE_READBACK_REQUIRED',
+              'PRODUCT_SCHEMA_PRICE_READBACK_REQUIRED'
+            );
+          const integrity = await checkProductSchemaPriceReadback(priceGuard, await readPriceReference());
+          if (integrity.status !== 'matched') {
+            priceReason = integrity.mismatchedFields.some((field) => field.startsWith('integrity/'))
+              ? 'PRODUCT_SCHEMA_PRICE_INTEGRITY_MISMATCH'
+              : integrity.unavailableFields.some(
+                    (field) => field === 'auditStatus' || field === 'productStatus'
+                  )
+                ? 'PRODUCT_SCHEMA_PRICE_REVIEW_PENDING'
+                : 'PRODUCT_SCHEMA_PRICE_READBACK_UNAVAILABLE';
+            comparison.matched = false;
+            if (
+              !comparison.missingFieldIds.includes('ladderPrice') &&
+              !comparison.mismatchedFieldIds.includes('ladderPrice')
+            )
+              comparison.mismatchedFieldIds.push('ladderPrice');
+          }
+        }
+        const status: ProductMutationJobStatus =
+          priceReason === 'PRODUCT_SCHEMA_PRICE_REVIEW_PENDING'
+            ? 'auditing'
+            : comparison.matched
+              ? 'verified'
+              : 'recovery-required';
         return await this.#transitionOne(
           current,
           status,
           {
-            reasonCode: comparison.matched
-              ? 'PRODUCT_MUTATION_READBACK_MATCHED'
-              : 'PRODUCT_MUTATION_READBACK_MISMATCH',
-            message: comparison.matched
-              ? '平台回读值与本次更新一致'
-              : summarizeMismatch(comparison.missingFieldIds, comparison.mismatchedFieldIds)
+            reasonCode:
+              priceReason ??
+              (comparison.matched
+                ? 'PRODUCT_MUTATION_READBACK_MATCHED'
+                : 'PRODUCT_MUTATION_READBACK_MISMATCH'),
+            message:
+              priceReason ??
+              (comparison.matched
+                ? '平台回读值与本次更新一致'
+                : summarizeMismatch(comparison.missingFieldIds, comparison.mismatchedFieldIds))
           },
           true
         );
@@ -890,6 +947,7 @@ function createUpdateJob(
     language: input.language,
     payloadFingerprint: input.payloadFingerprint,
     fieldExpectations: structuredClone(input.fieldExpectations),
+    ...(input.fieldExpectations.some((field) => field.priceGuard) ? { protocol: 'iop' as const } : {}),
     encryptedProductId: null,
     targetDisplay: null,
     originalDisplay: null,

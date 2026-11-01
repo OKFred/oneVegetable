@@ -1,4 +1,5 @@
 import { createEntityAuditFields, updateEntityAuditFields } from '@one-vegetable/core';
+import { isProductSchemaPriceGuard } from '@one-vegetable/core/product-schema-price';
 
 import { EntityVersionConflictError } from '../db/repository';
 import {
@@ -25,6 +26,7 @@ const BLOCKING_STATUSES: readonly ProductMutationJobStatus[] = [
 ];
 
 export interface ProductMutationJobCreateInput {
+  protocol?: 'top' | 'iop';
   batchId?: string;
   productContext?: ProductOperationContext;
   requestId: string;
@@ -202,9 +204,9 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           trace_id, reason_code, message,
           submitted_time_utc, last_checked_time_utc, completed_time_utc,
           create_time_utc, update_time_utc, creator_id, updater_id, revision, remark,
-          batch_id, product_identity, product_gateway
+          batch_id, product_identity, product_gateway, authorization_protocol
         ) VALUES (?, ?, ?, 'updateProduct', 'submitted', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL,
-          ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           input.requestId,
@@ -222,7 +224,8 @@ export class SqlProductMutationJobRepository implements ProductMutationJobReposi
           audit.remark,
           input.batchId ?? null,
           input.productContext?.identity ?? null,
-          input.productContext?.gateway ?? null
+          input.productContext?.gateway ?? null,
+          input.protocol ?? null
         ]
       );
     } catch (error: unknown) {
@@ -420,7 +423,17 @@ function normalizeExpectations(
     if (!fieldId || fieldId.length > 128 || seen.has(fieldId)) throw new Error('商品写入字段 ID 无效');
     if (!FINGERPRINT_PATTERN.test(value.fingerprint)) throw new Error('商品写入字段指纹无效');
     seen.add(fieldId);
-    return { fieldId, fingerprint: value.fingerprint };
+    if (
+      value.priceGuard !== undefined &&
+      (fieldId !== 'ladderPrice' || !isProductSchemaPriceGuard(value.priceGuard))
+    ) {
+      throw new Error('PRODUCT_SCHEMA_PRICE_GUARD_INVALID');
+    }
+    return {
+      fieldId,
+      fingerprint: value.fingerprint,
+      ...(value.priceGuard ? { priceGuard: structuredClone(value.priceGuard) } : {})
+    };
   });
 }
 
@@ -521,10 +534,16 @@ function parseExpectations(value: string): ProductMutationFieldExpectation[] {
       if (typeof record.fieldId !== 'string' || typeof record.fingerprint !== 'string') {
         throw new Error('数据库字段 field_expectations_json 无效');
       }
-      if (Object.keys(record).some((key) => key !== 'fieldId' && key !== 'fingerprint')) {
+      if (Object.keys(record).some((key) => !['fieldId', 'fingerprint', 'priceGuard'].includes(key))) {
         throw new Error('数据库字段 field_expectations_json 无效');
       }
-      return { fieldId: record.fieldId, fingerprint: record.fingerprint };
+      if (record.priceGuard !== undefined && !isProductSchemaPriceGuard(record.priceGuard))
+        throw new Error('PRODUCT_SCHEMA_PRICE_GUARD_INVALID');
+      return {
+        fieldId: record.fieldId,
+        fingerprint: record.fingerprint,
+        ...(record.priceGuard ? { priceGuard: record.priceGuard } : {})
+      };
     })
   );
 }

@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { preflightSchemaPrice, readSchemaPriceReference } from '../lib/schema-price';
 import { returnFromAuthorizationGuide } from '../lib/authorization-guide-navigation';
 import {
   parseAlibabaCredentialImport,
@@ -473,10 +474,11 @@ async function handleProductMutationJobRequest(
         );
         break;
       }
-      case 'complete-update-readback':
+      case 'complete-update-readback': {
         assertTrustedOptionsPage(trustedOptionsPage);
+        const currentJob = await productMutations.get(requiredString(payload, 'id'));
         {
-          const job = await productMutations.get(requiredString(payload, 'id'));
+          const job = currentJob;
           if (job.productContext)
             assertProductOperationContext(
               job.productContext,
@@ -494,9 +496,30 @@ async function handleProductMutationJobRequest(
         data = await productMutations.completeUpdateReadback(
           requiredString(payload, 'id'),
           requiredNumber(payload, 'revision'),
-          requiredProductUpdateReadbackResult(payload.result)
+          requiredProductUpdateReadbackResult(payload.result),
+          currentJob.fieldExpectations.some((field) => field.priceGuard)
+            ? async () => {
+                const context = requireProductOperationContext(currentJob.productContext);
+                const settings = await resolveAuthorization(
+                  await loadAuthorizationSettings(),
+                  undefined,
+                  undefined,
+                  context.gateway
+                );
+                assertProductOperationContext(
+                  context,
+                  await createProductOperationContext('extension:local-admin', settings)
+                );
+                return readSchemaPriceReference(
+                  AlibabaClient.create(settings, { maxAttempts: 1, shouldRetry: () => false }),
+                  currentJob.productId,
+                  message.requestId
+                );
+              }
+            : undefined
         );
         break;
+      }
       case 'recover': {
         const job = await productMutations.get(requiredString(payload, 'id'));
         data = await productMutations.recover(
@@ -1383,7 +1406,22 @@ async function executeOperation(
         });
       }
       return productMutations.submitUpdate(
-        products,
+        {
+          update: async (input) => {
+            if (input.priceGuard)
+              await loadProductAdapter(requireProductOperationContext(productOptions?.productContext), 'iop');
+            return products.update(input);
+          },
+          pricePreflight: async (input) => {
+            if (settings.protocol !== 'iop')
+              throw gatewayFailure(
+                'ALIBABA_IOP_AUTHORIZATION_REQUIRED',
+                'ALIBABA_IOP_AUTHORIZATION_REQUIRED'
+              );
+            await loadProductAdapter(requireProductOperationContext(productOptions?.productContext), 'iop');
+            return preflightSchemaPrice(products, client, input, requestId);
+          }
+        },
         requestId,
         validation.data,
         requiredProductMutationFingerprint(productMutationFingerprint),
