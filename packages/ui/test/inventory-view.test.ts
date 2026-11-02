@@ -324,4 +324,75 @@ describe('inventory workspace', () => {
     await vi.advanceTimersByTimeAsync(1_000);
     expect(inventoryCalls()).toHaveLength(1);
   });
+  it.each(['no-data', 'ready'] as const)(
+    'distinguishes absolute quantity evidence from warehouse readiness (%s)',
+    async (status) => {
+      const { wrapper, request, button, inventoryCalls } = await mountInventory();
+      const warehouse = await new MockGatewayClient(0).request('getProductInventory', {
+        productId: '10000001',
+        source: 'product',
+        language: 'en_US'
+      });
+      const snapshot: ProductInventorySnapshot = {
+        ...warehouse,
+        source: 'absolute',
+        protocol: 'iop',
+        status,
+        records: [],
+        quantityEvidence: [
+          {
+            scope: 'spu',
+            skuId: null,
+            status: 'unavailable',
+            quantity: null,
+            reasonCode: 'QUANTITY_MISSING'
+          },
+          ...(status === 'ready'
+            ? [
+                {
+                  scope: 'sku' as const,
+                  skuId: '9223372036854775807',
+                  status: 'available' as const,
+                  quantity: '0',
+                  reasonCode: null
+                }
+              ]
+            : [])
+        ]
+      };
+      await wrapper.get('[data-slot="list-toolbar-actions"] select').setValue('absolute');
+      expect(wrapper.text()).toContain('不代表完整、实时或可写基线');
+      await wrapper.get('input[aria-label="选择10000001"]').setValue(true);
+      request.mockResolvedValueOnce(snapshot);
+      await button('查询所选库存 (1)').trigger('click');
+      await vi.waitFor(() => {
+        expect(wrapper.get('tbody tr').text()).toContain(
+          status === 'ready' ? '已返回数量证据（非可写基线）' : '无可核验数量（不是 0）'
+        );
+      });
+      const row = wrapper.get('tbody tr').text();
+      expect(row).toContain(status === 'ready' ? '1/2 项数量证据可核验' : '0/1 项数量证据可核验');
+      expect(row).toContain('IOP');
+      expect(row).not.toContain('已返回库存');
+      expect(wrapper.findAll('thead th').map((cell) => cell.text())).toContain('数量证据');
+      expect(inventoryCalls()[0]?.[1]).toEqual({
+        productId: '10000001',
+        source: 'absolute',
+        language: 'en_US'
+      });
+      await wrapper.get('[data-slot="list-toolbar-actions"] select').setValue('product');
+      await button('查询所选库存 (1)').trigger('click');
+      await vi.waitFor(() => {
+        expect(wrapper.get('tbody tr').text()).toContain('已返回库存');
+      });
+      await wrapper.get('[data-slot="list-toolbar-actions"] select').setValue('absolute');
+      await button('查询所选库存 (1)').trigger('click');
+      await vi.waitFor(() => {
+        expect(wrapper.get('tbody tr').text()).toContain(
+          status === 'ready' ? '1/2 项数量证据可核验' : '0/1 项数量证据可核验'
+        );
+      });
+      expect(inventoryCalls()).toHaveLength(2);
+    }
+  );
 });

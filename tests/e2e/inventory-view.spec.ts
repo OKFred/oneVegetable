@@ -101,3 +101,40 @@ test('inventory search clears selected rows and disables queries on an empty pag
   await expect(toolbar.getByRole('button', { name: '查询本页库存', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: /待查询 · 查询库存/ })).toHaveCount(0);
 });
+for (const english of [false, true]) {
+  test(
+    'absolute quantities keep SPU, SKU, zero and missing distinct: ' + (english ? 'English' : 'Chinese'),
+    async ({ page }) => {
+      if (english) {
+        await page.getByTestId('language-toggle').click();
+        await page.evaluate(() => {
+          document.documentElement.classList.add('dark');
+        });
+        await page.setViewportSize({ width: 390, height: 844 });
+      }
+      const toolbar = page.getByTestId('inventory-toolbar');
+      await toolbar.getByTestId('inventory-source').selectOption('absolute');
+      await page.locator('table tbody tr').first().getByRole('button').first().click();
+      const drawer = page.getByRole('dialog', { name: english ? 'Inventory' : '库存', exact: true });
+      await expect(drawer.getByTestId('inventory-evidence-count')).toHaveText(
+        english ? '2/3 quantity evidence items verifiable' : '2/3 项数量证据可核验'
+      );
+      await expect(drawer.getByRole('cell', { name: '0', exact: true })).toBeVisible();
+      await expect(drawer.getByRole('cell', { name: '9223372036854775807', exact: true })).toBeVisible();
+      const missing = drawer.getByRole('row').filter({ hasText: '990902' });
+      await expect(missing).toContainText(english ? 'Unverifiable' : '不可核验');
+      await expect(missing.getByRole('cell', { name: '0', exact: true })).toHaveCount(0);
+      await expect(missing.locator('[title="QUANTITY_MISSING"]')).toBeVisible();
+      await drawer.getByTestId('inventory-drawer-source').selectOption('sku');
+      await expect(
+        drawer.getByText(english ? 'Inventory returned' : '已返回库存', { exact: true })
+      ).toBeVisible();
+      await expect(drawer.getByTestId('inventory-evidence-count')).toHaveCount(0);
+      await drawer.getByTestId('inventory-drawer-source').selectOption('absolute');
+      await expect(drawer.getByTestId('inventory-evidence-count')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(drawer).toHaveCount(0);
+      await expect(page.locator('table tbody tr').first()).toContainText('2/3');
+    }
+  );
+}

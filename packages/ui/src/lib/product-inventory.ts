@@ -1,7 +1,12 @@
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
-import type { GatewayClient, Product, ProductInventorySnapshot } from '@one-vegetable/core';
+import type {
+  GatewayClient,
+  Product,
+  ProductInventoryRequest,
+  ProductInventorySnapshot
+} from '@one-vegetable/core';
 import { GatewayException } from '@one-vegetable/core/errors';
-import { pageDetailIdentity, requestPageDetail, usePageDetails } from './page-details';
+import { requestPageDetail, usePageDetails } from './page-details';
 
 export function useProductInventory(
   gateway: GatewayClient,
@@ -10,7 +15,7 @@ export function useProductInventory(
   rows: Ref<Product[]>,
   scope: Ref<string>
 ) {
-  const source = ref<'product' | 'sku'>('product');
+  const source = ref<ProductInventoryRequest['source']>('product');
   const selected = shallowRef<Product | null>(null);
   const snapshots = shallowRef<Record<string, ProductInventorySnapshot>>({});
   const boundary = computed(() => JSON.stringify([scope.value, source.value]));
@@ -19,26 +24,27 @@ export function useProductInventory(
     rows,
     boundary,
     (row) => row.id,
-    (row, identity): ReturnType<typeof requestPageDetail> =>
+    (row, identity, control): ReturnType<typeof requestPageDetail> =>
       requestPageDetail(
         gateway,
         mode,
         language.value,
         { kind: 'inventory', id: row.id, source: source.value },
         identity,
-        refresh || row.id in runner.errors.value
+        refresh || row.id in runner.errors.value,
+        control
       ),
     (row, result) => {
       if (!('records' in result)) return;
-      snapshots.value = { ...snapshots.value, [row.id]: result };
+      if (!['failed', 'drift'].includes(result.status) || !snapshots.value[row.id])
+        snapshots.value = { ...snapshots.value, [row.id]: result };
       if (result.status === 'failed' || result.status === 'drift')
         throw new GatewayException({
           code: result.reasonCode ?? 'INVENTORY_RESPONSE_INVALID',
           message: result.reasonCode ?? 'INVENTORY_RESPONSE_INVALID',
           retryable: false
         });
-    },
-    () => pageDetailIdentity(gateway, mode)
+    }
   );
   watch(boundary, () => {
     snapshots.value = {};

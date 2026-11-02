@@ -2,6 +2,7 @@ import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
 import { describeUserVisibleError } from '@one-vegetable/core';
 import type {
   GatewayClient,
+  ProductInventoryRequest,
   ProductInventorySnapshot,
   ProductScore,
   TradeOrderAggregate,
@@ -54,7 +55,7 @@ export async function requestPageDetail(
   request:
     | { kind: 'score'; id: string }
     | { kind: 'order'; order: TradeOrderSummary }
-    | { kind: 'inventory'; id: string; source: 'product' | 'sku' },
+    | { kind: 'inventory'; id: string; source: ProductInventoryRequest['source'] },
   expectedIdentity?: string,
   refresh = false,
   control?: PageDetailReadControl
@@ -77,12 +78,18 @@ export async function requestPageDetail(
       : request.kind === 'score'
         ? { productId: request.id }
         : { order: request.order, language: languageCode };
-  // Independent checks share a round trip, not a credential/profile. The read
-  // context still resolves the actual operation AND payload before dispatch.
-  const [context, readContext] = await Promise.all([
-    gateway.galleryTransferContext?.(),
-    gateway.galleryTransferContext?.(operation, payload)
-  ]);
+  const resolveContexts = async () => {
+    // Inventory has its own source-specific identity, not the photo-upload profile.
+    if (request.kind === 'inventory') {
+      const read = await gateway.galleryTransferContext?.(operation, payload);
+      return [read, read] as const;
+    }
+    return Promise.all([
+      gateway.galleryTransferContext?.(),
+      gateway.galleryTransferContext?.(operation, payload)
+    ]);
+  };
+  const [context, readContext] = await resolveContexts();
   if (!context && mode !== 'mock') throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
   const identity = context ? JSON.stringify([context.identity, context.gateway]) : 'mock';
   if (expectedIdentity !== undefined && expectedIdentity !== identity)
@@ -126,10 +133,7 @@ export async function requestPageDetail(
               { order: request.order, language: language === 'zh_CN' ? 'zh_CN' : 'en_US' },
               options
             );
-    const [latest, latestRead] = await Promise.all([
-      gateway.galleryTransferContext?.(),
-      gateway.galleryTransferContext?.(operation, payload)
-    ]);
+    const [latest, latestRead] = await resolveContexts();
     if (
       JSON.stringify(latest) !== JSON.stringify(context) ||
       JSON.stringify(latestRead) !== JSON.stringify(readContext)

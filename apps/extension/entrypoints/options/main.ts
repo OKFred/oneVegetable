@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { readContextResponse } from '../../lib/context-response';
 import type { GalleryReadContextOperation, GatewayCredentialTestResult } from '@one-vegetable/core';
 import {
   IOP_VAULT_KEY,
@@ -674,17 +675,9 @@ class ExtensionGatewayClient implements GatewayClient {
       kind: 'product-operation-context',
       requestId
     });
-    if (
-      !response ||
-      typeof response !== 'object' ||
-      !('ok' in response) ||
-      response.ok !== true ||
-      !('requestId' in response) ||
-      response.requestId !== requestId ||
-      !('data' in response)
-    )
-      throw new Error('PRODUCT_CONTEXT_UNAVAILABLE');
-    return requireProductOperationContext(response.data);
+    return requireProductOperationContext(
+      readContextResponse(response, requestId, 'PRODUCT_CONTEXT_UNAVAILABLE')
+    );
   }
   async galleryTransferContext(
     operation?: GalleryReadContextOperation,
@@ -698,17 +691,7 @@ class ExtensionGatewayClient implements GatewayClient {
       ...(operation === undefined ? {} : { operation }),
       ...(payload === undefined ? {} : { payload })
     });
-    if (
-      typeof response !== 'object' ||
-      response === null ||
-      !('ok' in response) ||
-      response.ok !== true ||
-      !('requestId' in response) ||
-      response.requestId !== requestId ||
-      !('data' in response)
-    )
-      throw new Error('GALLERY_CONTEXT_UNAVAILABLE');
-    return requireGalleryContext(response.data);
+    return requireGalleryContext(readContextResponse(response, requestId, 'GALLERY_CONTEXT_UNAVAILABLE'));
   }
   async request<K extends OperationId>(
     operation: K,

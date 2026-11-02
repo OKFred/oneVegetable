@@ -80,6 +80,10 @@ function inventoryState(id: string) {
     if (snapshot?.status === 'drift') return 'drift';
     return detailErrorState(inventory.errors.value[id]);
   }
+  if (snapshot?.source === 'absolute')
+    return snapshot.quantityEvidence?.some((item) => item.status === 'available')
+      ? 'evidenceReady'
+      : 'noQuantity';
   return snapshot?.status ?? 'pending';
 }
 function openInventory(product: Product): void {
@@ -133,15 +137,27 @@ const columns = computed<DataColumn<Product>[]>(() => [
   },
   {
     id: 'inventoryRecordCount',
-    header: it('inventoryRecordCount'),
-    cell: ({ row }) => inventory.snapshots.value[row.original.id]?.records.length ?? '—'
+    header: it(inventory.source.value === 'absolute' ? 'quantityEvidence' : 'inventoryRecordCount'),
+    cell: ({ row }) => {
+      const snapshot = inventory.snapshots.value[row.original.id];
+      if (!snapshot) return '—';
+      const evidence = snapshot.quantityEvidence ?? [];
+      return snapshot.source === 'absolute'
+        ? it('evidenceCount', {
+            available: evidence.filter((item) => item.status === 'available').length,
+            total: evidence.length
+          })
+        : snapshot.records.length;
+    }
   },
   {
     id: 'inventoryQueriedAt',
     header: it('inventoryQueriedAt'),
     cell: ({ row }) => {
       const snapshot = inventory.snapshots.value[row.original.id];
-      return snapshot ? formatDateTime(snapshot.queriedAt) : '—';
+      return snapshot
+        ? formatDateTime(snapshot.queriedAt) + ' · ' + (snapshot.protocol?.toUpperCase() ?? '—')
+        : '—';
     }
   },
   {
@@ -166,7 +182,9 @@ const columns = computed<DataColumn<Product>[]>(() => [
 </script>
 <template>
   <PageHeader :title="it('title')" :description="t('products.inventoryWorkspace.description')" />
-  <p class="mb-2 text-xs text-muted-foreground">{{ it('note') }}</p>
+  <p class="mb-2 text-xs text-muted-foreground">
+    {{ it(inventory.source.value === 'absolute' ? 'absoluteNote' : 'note') }}
+  </p>
   <ListToolbar data-testid="inventory-toolbar" @search="search">
     <template #search>
       <Input
@@ -194,11 +212,13 @@ const columns = computed<DataColumn<Product>[]>(() => [
         {{ it('source') }}
         <select
           v-model="inventory.source.value"
+          data-testid="inventory-source"
           :disabled="queryDisabled"
           class="h-9 rounded border bg-background px-2 text-foreground"
         >
           <option value="product">{{ it('product') }}</option>
           <option value="sku">{{ it('sku') }}</option>
+          <option value="absolute">{{ it('absolute') }}</option>
         </select>
       </label>
       <ListActionButton

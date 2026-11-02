@@ -176,7 +176,13 @@ describe('page details', () => {
       const request = vi.spyOn(gateway, 'request');
       const identity = await pageDetailIdentity(gateway, 'extension');
       const inventory = { kind: 'inventory', id: '10000001', source: 'sku' } as const;
-      await requestPageDetail(gateway, 'extension', 'en_US', inventory, identity);
+      await requestPageDetail(
+        gateway,
+        'extension',
+        'en_US',
+        inventory,
+        JSON.stringify([read.identity, read.gateway])
+      );
       expect(context).toHaveBeenCalledWith('getProductInventory', {
         productId: inventory.id,
         source: 'sku',
