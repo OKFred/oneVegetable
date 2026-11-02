@@ -139,6 +139,19 @@ export function buildIopReferenceContracts(
         '*',
         'price'
       ]);
+      if (path.endsWith('/product/get/v2')) {
+        // Scoped real readback also returns these documented String leaves as Number.
+        for (const field of [
+          ['logistics_info', 'weight'],
+          ['logistics_info', 'dimension', 'length'],
+          ['logistics_info', 'dimension', 'width'],
+          ['logistics_info', 'dimension', 'height'],
+          ['trade_info', 'inventory'],
+          ['trade_info', 'sku_info', '*', 'sku_price', 'price'],
+          ['trade_info', 'sku_info', '*', 'inventory']
+        ])
+          allowObservedStringOrNumber(response, [...productPath, ...field]);
+      }
       if (path.endsWith('/product/search/v2')) {
         // Search documents String, while get/v2 documents Number for this same scalar.
         // The search-only safe shape receipt confirms Number; no other field is widened.

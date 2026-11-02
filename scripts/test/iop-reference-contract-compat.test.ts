@@ -5,6 +5,7 @@ import workbenchDocs from '../../docs/alibaba-product-workbench-docs.json';
 import examples from '../../mock/data/product-reference/examples.json';
 import workbenchExamples from '../../mock/data/product-workbench/examples.json';
 import fixture from '../../mock/data/product-search-numeric-fields.json';
+import getFixture from '../../mock/data/product-get-numeric-fields.json';
 import { buildIopReferenceContracts } from '../lib/iop-reference-contract';
 import { ProductLookupClient } from '../../packages/core/src/product-lookup';
 import type { GatewayClient } from '../../packages/core/src/types';
@@ -42,7 +43,48 @@ function observed(data: ReturnType<typeof response>, field: 'lead_time' | 'price
   if (!tier) throw new Error('MISSING_SYNTHETIC_TIER');
   Reflect.set(tier, field, value);
 }
-describe('source IOP response compatibility: only observed search numeric scalars', () => {
+describe('source IOP response compatibility: only observed native numeric scalars', () => {
+  it.each(['number', 'string'] as const)(
+    'accepts the seven observed get/v2 scalar paths as %s without coercion',
+    (type) => {
+      const data = structuredClone(getFixture.response);
+      const product = data.product_info;
+      const owners = [
+        [product.logistics_info, 'weight'],
+        [product.logistics_info.dimension, 'length'],
+        [product.logistics_info.dimension, 'width'],
+        [product.logistics_info.dimension, 'height'],
+        [product.trade_info, 'inventory'],
+        [head(product.trade_info.sku_info), 'inventory'],
+        [head(product.trade_info.sku_info).sku_price, 'price']
+      ] as const;
+      for (const [owner, key] of owners)
+        if (type === 'string') Reflect.set(owner, key, String(Reflect.get(owner, key)));
+      const before = structuredClone(data);
+      expect(get(data), JSON.stringify(get.errors)).toBe(true);
+      expect(data).toEqual(before);
+    }
+  );
+  it.each([
+    ['logistics_info', 'weight'],
+    ['logistics_info', 'dimension', 'length'],
+    ['logistics_info', 'dimension', 'width'],
+    ['logistics_info', 'dimension', 'height'],
+    ['trade_info', 'inventory'],
+    ['trade_info', 'sku_info', 0, 'inventory'],
+    ['trade_info', 'sku_info', 0, 'sku_price', 'price']
+  ])('does not accept non-scalar get/v2 values at %j', (...path) => {
+    for (const bad of [null, true, false, {}, []]) {
+      const data = structuredClone(getFixture.response);
+      let owner: object = data.product_info;
+      for (const key of path.slice(0, -1)) owner = Reflect.get(owner, key) as object;
+      const key = path.at(-1);
+      if (key === undefined) throw new Error('Missing fixture path');
+      Reflect.set(owner, key, bad);
+      expect(get(data)).toBe(false);
+    }
+  });
+
   it.each([
     ['number', 'number'],
     ['number', 'string'],

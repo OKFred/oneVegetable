@@ -15627,7 +15627,7 @@
                     "description": "The unique logistics shipping template Id associated with the product."
                   },
                   "weight": {
-                    "type": "string",
+                    "type": ["string", "number"],
                     "description": "The total weight(in kilogram) of the product. This includes the weight of the product itself and all inner packaging materials (such as fillers, bubble bags). "
                   },
                   "desi": { "type": "string", "description": "Dimensional weight (Turkiye Only)." },
@@ -15635,9 +15635,18 @@
                     "type": "object",
                     "additionalProperties": true,
                     "properties": {
-                      "length": { "type": "string", "description": "Length of package, in centimeter." },
-                      "width": { "type": "string", "description": "Width of package, in centimeter." },
-                      "height": { "type": "string", "description": "Height of package, in centimeter." }
+                      "length": {
+                        "type": ["string", "number"],
+                        "description": "Length of package, in centimeter."
+                      },
+                      "width": {
+                        "type": ["string", "number"],
+                        "description": "Width of package, in centimeter."
+                      },
+                      "height": {
+                        "type": ["string", "number"],
+                        "description": "Height of package, in centimeter."
+                      }
                     },
                     "description": "The external dimensions of the product."
                   },
@@ -15713,7 +15722,10 @@
                     },
                     "description": "We support 3 types: tiered pricing, range pricing, and sku pricing. Here is for tiered pricing and range pricing. "
                   },
-                  "inventory": { "type": "string", "description": "The inventory of product(SPU) level." },
+                  "inventory": {
+                    "type": ["string", "number"],
+                    "description": "The inventory of product(SPU) level."
+                  },
                   "sku_info": {
                     "type": "array",
                     "items": {
@@ -15735,7 +15747,7 @@
                           "type": "object",
                           "additionalProperties": true,
                           "properties": {
-                            "price": { "type": "string", "description": "SKU price." },
+                            "price": { "type": ["string", "number"], "description": "SKU price." },
                             "currency": {
                               "type": "string",
                               "description": "ISO 4217 code of the product transaction currency."
@@ -15744,7 +15756,7 @@
                           "description": "It is for sku pricing."
                         },
                         "inventory": {
-                          "type": "string",
+                          "type": ["string", "number"],
                           "description": "Here is the inventory of sku level."
                         },
                         "sale_attributes": {

@@ -1,0 +1,36 @@
+{
+  "method": "/alibaba/icbu/product/get/v2",
+  "response": {
+    "code": "0",
+    "success": true,
+    "product_info": {
+      "basic_info": {
+        "product_id": 10000001,
+        "title": "Synthetic inventory fixture",
+        "status": "offline",
+        "audit_status": "approved"
+      },
+      "logistics_info": {
+        "weight": 1.25,
+        "dimension": {
+          "length": 12,
+          "width": 8.5,
+          "height": 4
+        }
+      },
+      "trade_info": {
+        "inventory": 0,
+        "sku_info": [
+          {
+            "sku_id": 990901,
+            "inventory": 9,
+            "sku_price": {
+              "price": 12.5,
+              "currency": "USD"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

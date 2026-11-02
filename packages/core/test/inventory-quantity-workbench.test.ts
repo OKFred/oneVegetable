@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import fixture from '../../../mock/data/product-inventory-readback-diagnostic.json';
+import numericFixture from '../../../mock/data/product-get-numeric-fields.json';
 import {
   adaptAbsoluteProductInventory,
   adaptProductInventory,
@@ -20,6 +21,48 @@ function data() {
 const adapt = (raw: unknown, issues: string[] = []) =>
   adaptAbsoluteProductInventory(request, raw, issues, 'inventory-read-fixture', 123);
 describe('workbench scoped quantity evidence', () => {
+  it('accepts observed numeric get/v2 leaves while keeping SPU zero separate from SKU stock', async () => {
+    const raw = structuredClone(numericFixture.response);
+    const input = { ...request, productId: String(raw.product_info.basic_info.product_id) };
+    const call = vi.fn().mockResolvedValue({ data: raw });
+    const adapter = new ProductInventoryAdapter(
+      { call, protocol: 'iop' },
+      validateCapabilityRequest,
+      validateCapabilityResponse
+    );
+    const result = await adapter.get(input);
+    expect(result.status).toBe('ready');
+    expect(result.issues).toEqual([]);
+    expect(result.quantityEvidence).toEqual([
+      { scope: 'spu', skuId: null, status: 'available', quantity: '0', reasonCode: null },
+      { scope: 'sku', skuId: '990901', status: 'available', quantity: '9', reasonCode: null }
+    ]);
+    expect(validateProductInventorySnapshot(result)).toBe(true);
+  });
+  it.each([1.5, -1, Number.MAX_SAFE_INTEGER + 1])(
+    'never treats invalid numeric get/v2 quantity %s as available evidence',
+    async (quantity) => {
+      const raw = structuredClone(numericFixture.response);
+      raw.product_info.trade_info.inventory = quantity;
+      const sku = raw.product_info.trade_info.sku_info[0];
+      if (!sku) throw new Error('Missing fixture SKU');
+      sku.inventory = quantity;
+      const adapter = new ProductInventoryAdapter(
+        { call: vi.fn().mockResolvedValue({ data: raw }), protocol: 'iop' },
+        validateCapabilityRequest,
+        validateCapabilityResponse
+      );
+      const result = await adapter.get({
+        ...request,
+        productId: String(raw.product_info.basic_info.product_id)
+      });
+      expect(result.quantityEvidence?.map((row) => [row.status, row.quantity])).toEqual([
+        ['unavailable', null],
+        ['unavailable', null]
+      ]);
+    }
+  );
+
   it('retains exact SPU and SKU quantities without warehouse totals or precision loss', () => {
     const raw = data();
     Reflect.set(raw.product_info.trade_info, 'inventory', '9223372036854775807');
