@@ -179,3 +179,17 @@ resubmission was sent. Fresh TOP and same-protocol IOP reads confirmed the origi
 quantity unchanged. This is a platform-blocked write acceptance, not a successful
 modify/restore cycle. Native permission consent and the official inventory-page
 cross-check were not established by the isolated-profile UI tests.
+
+### Official-page cross-check (2026-11-02)
+
+The retained remote Windows Chrome session found the exact candidate by product
+ID in the official product list. Its editor displayed the same explicit variant
+inventory quantity as the prior API readbacks. No field was edited and neither
+Save nor Submit was used. The editor did not display a warehouse code or native
+SKU identifier, so visual agreement is not independent evidence for those scopes.
+
+The official list labeled the product RTS while the editor labeled it
+Customization. Both observations are retained separately; no product-type switch
+was attempted. A cropped screenshot and minimal read-only receipt remain in the
+ignored acceptance directory. This cross-check does not change the platform
+call-limit refusal or turn it into a successful modify/restore acceptance.
