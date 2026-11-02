@@ -3,6 +3,56 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.22.0",
+      "releasedAt": "2026-11-02",
+      "title": {
+        "zh-CN": "分范围库存回读",
+        "en-US": "Scoped inventory readback"
+      },
+      "summary": {
+        "zh-CN": "在库存页和商品抽屉分别查看商品、SKU 及仓库数量，兼容 IOP 实际数值响应，明确缺失、零值与核对范围。",
+        "en-US": "Read product, SKU and warehouse quantities separately in the inventory workspace and product drawer, with observed IOP numeric-response compatibility and explicit missing-value, zero and scope handling."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.22.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.21.0...v2.22.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": {
+            "zh-CN": "新增商品与 SKU 数量只读来源",
+            "en-US": "Add a read-only product and SKU quantity source"
+          },
+          "description": {
+            "zh-CN": "IOP 原生数量按商品和单个 SKU 分别展示，原有商品及 SKU 仓库记录保持独立。库存页与共享抽屉显示实际协议、查询时间和不可用原因；缺失不是零，不合计不同来源或范围。",
+            "en-US": "Display native IOP quantities separately for the product and each SKU, while keeping existing product and SKU warehouse records independent. The workspace and shared drawer show the actual protocol, read time and unavailable reasons. Missing data is not zero, and different sources or scopes are never summed."
+          }
+        },
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "兼容 IOP 实际返回的数值字段",
+            "en-US": "Accept observed numeric IOP fields"
+          },
+          "description": {
+            "zh-CN": "仅兼容商品 get/v2 已观察到的重量、尺寸、库存及 SKU 价格字符串或数值类型，不转换原值。库存仍拒绝负数、小数和不安全数值，保留合法长整数文本。保留 TOP 单授权、IOP 单授权、双授权和历史 TOP 设置。",
+            "en-US": "Accept strings or numbers only at observed product get/v2 weight, dimension, inventory and SKU-price fields, without coercing their values. Inventory still rejects negative, fractional and unsafe numbers while preserving valid long-integer text. Keep TOP-only, IOP-only, dual-authorization and legacy TOP settings compatible."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": {
+            "zh-CN": "明确查询结果和写入验收边界",
+            "en-US": "Keep read evidence separate from write acceptance"
+          },
+          "description": {
+            "zh-CN": "来源切换隔离缓存及账号上下文，刷新失败时保留带时间的旧快照并显示错误。失败不切换协议重试，不新增库存写入口或放宽写白名单；平台额度拒绝不算修改、回读和恢复通过。",
+            "en-US": "Isolate caches and account contexts by source, and keep the dated previous snapshot separate from a refresh error. Failures never trigger cross-protocol retries. No inventory write entry or broader write allowlist is added, and provider call-limit refusals are not a passed change/readback/restore cycle."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.21.0",
       "releasedAt": "2026-11-02",
       "title": {
