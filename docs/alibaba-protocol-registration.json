@@ -113,7 +113,10 @@
         "adapted": true,
         "accountVerified": true,
         "authorizationRequired": true,
-        "constraints": [],
+        "constraints": [
+          "getProductInventory:absolute-quantity-iop-only",
+          "getProductInventory:warehouse-sku-top-only"
+        ],
         "notes": []
       }
     },
@@ -1119,7 +1122,10 @@
         "adapted": true,
         "accountVerified": true,
         "authorizationRequired": true,
-        "constraints": ["getProductInventory:product-inventory-only"],
+        "constraints": [
+          "getProductInventory:absolute-quantity-iop-only",
+          "getProductInventory:warehouse-sku-top-only"
+        ],
         "notes": []
       }
     },

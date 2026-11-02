@@ -322,8 +322,8 @@
     {
       "operation": "getProductInventory",
       "state": "supported",
-      "methods": ["alibaba.icbu.product.inventory.get"],
-      "constraints": ["product-inventory-only"],
+      "methods": ["alibaba.icbu.product.inventory.get", "/alibaba/icbu/product/get/v2"],
+      "constraints": ["warehouse-sku-top-only", "absolute-quantity-iop-only"],
       "verification": "account-verified",
       "fallbackProtocol": "top"
     },

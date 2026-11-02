@@ -6,6 +6,8 @@ import {
 } from './capability-registry';
 import { listCapabilitiesWithAccountVerification } from './account-verification';
 import productReferenceFixtures from '../../../mock/data/product-reference/products.json' with { type: 'json' };
+import inventoryQuantityFixture from '../../../mock/data/product-inventory-quantity.json' with { type: 'json' };
+import { validateProductInventorySnapshot } from './generated/validators-inventory';
 import {
   INSIGHTS_MOCK_DATA,
   VIDEO_MOCK_DATA,
@@ -197,6 +199,20 @@ export class MockGatewayClient implements GatewayClient {
     if (operation === 'getProductShowcase') return structuredClone(this.showcase);
     if (operation === 'getProductInventory') {
       const input = _request as RequestOf<'getProductInventory'>;
+      if (input.source === 'absolute') {
+        const result = {
+          ...structuredClone(PRODUCT_MOCK_DATA.responses.getProductInventory),
+          productId: input.productId,
+          source: 'absolute',
+          protocol: 'iop',
+          status: 'ready',
+          records: [],
+          queriedAt: Date.now(),
+          quantityEvidence: structuredClone(inventoryQuantityFixture)
+        };
+        if (!validateProductInventorySnapshot(result)) throw new Error('Invalid mock inventory fixture');
+        return result as ResponseOf<'getProductInventory'>;
+      }
       return {
         ...structuredClone(PRODUCT_MOCK_DATA.responses.getProductInventory),
         productId: input.productId,

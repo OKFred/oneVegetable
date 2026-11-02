@@ -11152,19 +11152,40 @@ export interface components {
         ProductInventoryRequest: {
             productId: string;
             /** @enum {string} */
-            source: "product" | "sku";
+            source: "product" | "sku" | "absolute";
             /** @enum {string} */
             language: "zh_CN" | "en_US";
         };
         ProductInventorySnapshot: {
             productId: string;
             /** @enum {string} */
-            source: "product" | "sku";
+            source: "product" | "sku" | "absolute";
             queriedAt: number;
             traceId: string;
             /** @enum {string} */
             status: "ready" | "no-data" | "drift" | "failed";
             reasonCode: string | null;
+            /** @enum {string} */
+            protocol?: "top" | "iop";
+            quantityEvidence?: ({
+                /** @enum {string} */
+                scope: "spu" | "sku";
+                skuId: string | null;
+                /** @enum {string} */
+                status: "available" | "unavailable";
+                quantity: string | null;
+                reasonCode: string | null;
+            } & ({
+                /** @constant */
+                status?: "available";
+                quantity?: string;
+                reasonCode?: null;
+            } | {
+                /** @constant */
+                status?: "unavailable";
+                quantity?: null;
+                reasonCode?: string;
+            }))[];
             issues: string[];
             records: {
                 skuId: string | null;

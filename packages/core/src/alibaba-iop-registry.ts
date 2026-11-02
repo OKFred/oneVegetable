@@ -124,8 +124,8 @@ const OPERATIONS: Partial<Record<OperationId, OperationDefinition>> = {
   mapProductCategory: { methods: ['alibaba.icbu.category.id.mapping'] },
   getProductScore: { methods: ['alibaba.icbu.product.score.get'] },
   getProductInventory: {
-    methods: ['alibaba.icbu.product.inventory.get'],
-    constraints: ['product-inventory-only']
+    methods: ['alibaba.icbu.product.inventory.get', IOP_REFERENCE_METHODS.getProduct],
+    constraints: ['warehouse-sku-top-only', 'absolute-quantity-iop-only']
   },
   listPhotoGroups: { methods: ['alibaba.icbu.photobank.group.list'] },
   listPhotos: {

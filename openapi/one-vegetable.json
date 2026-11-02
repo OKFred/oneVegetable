@@ -20559,7 +20559,7 @@
         "required": ["productId", "source", "language"],
         "properties": {
           "productId": { "type": "string", "pattern": "^[1-9][0-9]*$", "maxLength": 32 },
-          "source": { "type": "string", "enum": ["product", "sku"] },
+          "source": { "type": "string", "enum": ["product", "sku", "absolute"] },
           "language": { "type": "string", "enum": ["zh_CN", "en_US"] }
         }
       },
@@ -20578,11 +20578,44 @@
         ],
         "properties": {
           "productId": { "type": "string" },
-          "source": { "type": "string", "enum": ["product", "sku"] },
+          "source": { "type": "string", "enum": ["product", "sku", "absolute"] },
           "queriedAt": { "type": "integer", "minimum": 0 },
           "traceId": { "type": "string" },
           "status": { "type": "string", "enum": ["ready", "no-data", "drift", "failed"] },
           "reasonCode": { "type": ["string", "null"] },
+          "protocol": { "type": "string", "enum": ["top", "iop"] },
+          "quantityEvidence": {
+            "type": "array",
+            "maxItems": 501,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["scope", "skuId", "status", "quantity", "reasonCode"],
+              "oneOf": [
+                {
+                  "properties": {
+                    "status": { "const": "available" },
+                    "quantity": { "type": "string" },
+                    "reasonCode": { "type": "null" }
+                  }
+                },
+                {
+                  "properties": {
+                    "status": { "const": "unavailable" },
+                    "quantity": { "type": "null" },
+                    "reasonCode": { "type": "string", "minLength": 1 }
+                  }
+                }
+              ],
+              "properties": {
+                "scope": { "type": "string", "enum": ["spu", "sku"] },
+                "skuId": { "type": ["string", "null"] },
+                "status": { "type": "string", "enum": ["available", "unavailable"] },
+                "quantity": { "type": ["string", "null"], "pattern": "^(0|[1-9][0-9]{0,18})$" },
+                "reasonCode": { "type": ["string", "null"] }
+              }
+            }
+          },
           "issues": { "type": "array", "items": { "type": "string" } },
           "records": {
             "type": "array",
@@ -20594,7 +20627,7 @@
                 "skuId": { "type": ["string", "null"] },
                 "skuOuterId": { "type": ["string", "null"] },
                 "inventoryCode": { "type": ["string", "null"] },
-                "inventory": { "type": ["number", "null"] }
+                "inventory": { "type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991 }
               }
             }
           }

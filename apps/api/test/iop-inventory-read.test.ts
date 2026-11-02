@@ -3,6 +3,7 @@ import { getCapabilityDefinition } from '@one-vegetable/core';
 import { IOP_BUSINESS_ENDPOINT } from '@one-vegetable/core/alibaba-iop';
 import type { GatewayCredentials, NetworkTransport } from '@one-vegetable/core';
 import fixture from '../../../mock/data/alibaba-auth/iop-business-responses.json';
+import quantityFixture from '../../../mock/data/product-inventory-readback-diagnostic.json';
 import credentialsFixture from '../../../mock/data/node-gateway-credentials.json';
 import { AlibabaReadGatewayClient } from '../src/gateway/alibaba-read-gateway';
 
@@ -39,6 +40,24 @@ describe('IOP inventory and product identity gateway integration', () => {
     expect(result.records.length).toBeGreaterThan(0);
     expect(parameters(h.send).get('product_id')).toBe(request.productId);
     expect(target(h.send)).toBe(`${IOP_BUSINESS_ENDPOINT}/icbu/product/inventory/get`);
+    expect(h.send).toHaveBeenCalledOnce();
+  });
+
+  it('reads absolute quantities through the exact IOP path once', async () => {
+    const raw = structuredClone(quantityFixture.product);
+    Reflect.set(raw.product_info.basic_info, 'product_id', request.productId);
+    Reflect.set(raw.product_info.trade_info, 'inventory', '0');
+    const h = gateway(raw);
+    const result = await h.client.request('getProductInventory', { ...request, source: 'absolute' });
+    expect(result).toMatchObject({
+      protocol: 'iop',
+      source: 'absolute',
+      status: 'ready',
+      quantityEvidence: [expect.objectContaining({ scope: 'spu', quantity: '0', status: 'available' })]
+    });
+    expect(target(h.send)).toBe(IOP_BUSINESS_ENDPOINT + '/alibaba/icbu/product/get/v2');
+    expect(parameters(h.send).get('product_id')).toBe(request.productId);
+    expect(parameters(h.send).has('language')).toBe(false);
     expect(h.send).toHaveBeenCalledOnce();
   });
 

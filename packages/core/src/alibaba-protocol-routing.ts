@@ -23,10 +23,11 @@ export function selectAlibabaOperationProtocol(
   const input = record(payload);
   // These native paths have no TOP counterpart, regardless of the configured default.
   if (
-    operation === 'callCapability' &&
-    (isProductReferenceMethod(input.method) ||
-      (typeof input.method === 'string' &&
-        (Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(input.method)))
+    (operation === 'getProductInventory' && input.source === 'absolute') ||
+    (operation === 'callCapability' &&
+      (isProductReferenceMethod(input.method) ||
+        (typeof input.method === 'string' &&
+          (Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(input.method))))
   ) {
     if (!available.iop)
       throw new GatewayException({

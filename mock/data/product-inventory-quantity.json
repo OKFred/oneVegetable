@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "spu",
+    "skuId": null,
+    "status": "available",
+    "quantity": "0",
+    "reasonCode": null
+  },
+  {
+    "scope": "sku",
+    "skuId": "990901",
+    "status": "available",
+    "quantity": "9223372036854775807",
+    "reasonCode": null
+  },
+  {
+    "scope": "sku",
+    "skuId": "990902",
+    "status": "unavailable",
+    "quantity": null,
+    "reasonCode": "QUANTITY_MISSING"
+  }
+]
