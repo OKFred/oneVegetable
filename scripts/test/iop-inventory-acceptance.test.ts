@@ -31,6 +31,14 @@ describe('isolated IOP inventory acceptance safety', () => {
       input.write.mock.invocationCallOrder[0] ?? 0
     );
   });
+  it('does not retry or subtract after an explicit platform call-limit refusal', async () => {
+    const input = setup([before, before]);
+    input.write.mockResolvedValueOnce({ status: 'provider-error', reason: fixture.apiCallLimit.reason });
+    expect(await verifyIopInventoryCycle(input)).toEqual(fixture.apiCallLimit);
+    expect(input.read).toHaveBeenCalledTimes(2);
+    expect(input.write.mock.calls.map(([operate]) => operate)).toEqual(['plus']);
+    expect(input.wait).not.toHaveBeenCalled();
+  });
   it('stops before dispatch if persistence fails', async () => {
     const input = setup([before]);
     input.record.mockRejectedValueOnce(new Error('DISK_FULL'));

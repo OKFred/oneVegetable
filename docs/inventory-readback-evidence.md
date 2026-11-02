@@ -144,6 +144,38 @@ Web E2E additionally checks explicit zero, long quantities, missing values,
 source switching, English/dark/narrow layouts and the shared product drawer.
 
 No inventory write whitelist, mutation flag, absolute set operation, automatic
-retry or UI write action is enabled by this integration. Modify/readback/restore
-acceptance remains unexecuted because neither real sample supplied a reliable
-current inventory baseline.
+retry or UI write action is enabled by this integration. The first two samples
+did not permit a modify/readback/restore experiment because neither returned a
+reliable current baseline.
+
+### Nonempty follow-up and native numeric compatibility
+
+A bounded first-page search and focused inventory/stock title searches found an
+existing offline RTS candidate. TOP product and SKU warehouse reads, IOP product
+warehouse reads and Schema each exposed the same explicit SKU/warehouse record.
+Only returned identifiers were used; the shop was not scanned in full. All
+account identifiers, quantities and raw receipts remain in the ignored directory.
+
+The native get/v2 response failed validation solely at seven documented String
+leaves that the platform actually returned as Number: weight, dimension
+length/width/height, SPU inventory, SKU inventory and SKU price. The source
+contract generator now allows String or Number only at these explicit get/v2
+paths, retaining values without coercion. Search/v2 and unrelated fields are not
+widened. The quantity assessor still rejects unsafe, fractional and negative
+numeric quantities. Synthetic tests live in
+`mock/data/product-get-numeric-fields.json`; no real account response is a fixture.
+
+After regenerating contracts, Node BFF and formal MV3 completed all four
+authorization configurations with nonempty data. Supported warehouse sources
+returned one record; native IOP quantities returned two independently assessed
+scopes. This sample explicitly had SPU zero and a positive SKU quantity: neither
+was substituted for or summed into the other. The page and shared drawer passed
+all twelve source display checks without script errors or profile changes.
+
+The separately authorized IOP warehouse-delta experiment persisted and reread its
+exact baseline before sending one plus-one request. The platform explicitly
+rejected it with `ApiCallLimit`. No subtraction, write retry or cross-protocol
+resubmission was sent. Fresh TOP and same-protocol IOP reads confirmed the original
+quantity unchanged. This is a platform-blocked write acceptance, not a successful
+modify/restore cycle. Native permission consent and the official inventory-page
+cross-check were not established by the isolated-profile UI tests.

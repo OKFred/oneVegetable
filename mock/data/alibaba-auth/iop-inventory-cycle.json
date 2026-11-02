@@ -7,6 +7,7 @@
     { "skuId": 101, "code": "FIXTURE_WH", "quantity": 20 },
     { "skuId": 102, "code": "FIXTURE_WH", "quantity": 31 }
   ],
+  "apiCallLimit": { "status": "provider-error", "reason": "ApiCallLimit" },
   "concurrentChange": [
     { "skuId": 101, "code": "FIXTURE_WH", "quantity": 19 },
     { "skuId": 102, "code": "FIXTURE_WH", "quantity": 31 }
