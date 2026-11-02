@@ -1,6 +1,6 @@
-# Absolute inventory quantity evidence (diagnostic only)
+# Scoped inventory quantity evidence (read-only)
 
-`assessAbsoluteInventoryEvidence(target, row)` consumes diagnostic metadata only.
+`assessAbsoluteInventoryEvidence(target, row)` consumes validated read metadata only.
 Target is `{ productId, scope: 'spu' }` or `{ productId, scope: 'sku', skuId }`;
 IDs are canonical positive decimal strings: productId keeps the existing
 `freezeInventoryProductIds` MAX_SAFE_INTEGER limit; SKU IDs may reach Java Long.
@@ -71,3 +71,79 @@ Reasons are checked in this order: `TARGET_INVALID`, `SOURCE_NOT_APPLICABLE`,
 `SKU_LIST_INVALID`, `SKU_LIST_INCOMPLETE`, `SKU_ID_INVALID`, `SKU_ID_DUPLICATE`,
 `SKU_NOT_FOUND`, and finally `QUANTITY_MISSING` / `QUANTITY_INVALID`.
 They are local evidence diagnostics, not upstream business errors or permissions.
+
+## Workbench quantity readback (2026-11-02)
+
+The same pure assessor now lives in
+`packages/core/src/inventory-quantity-evidence.ts`. The diagnostic module
+re-exports it for existing callers. It remains read-only evidence, never a write
+permit or an automatic recovery baseline.
+
+The existing `getProductInventory` operation adds an explicit
+`source: "absolute"` option. It makes one native IOP get/v2 request for the
+requested product. It does not silently augment warehouse reads, scan products,
+or retry with TOP. TOP-only is rejected before network access with
+`ALIBABA_IOP_AUTHORIZATION_REQUIRED`. In dual authorization, this source binds
+the actual IOP context regardless of the saved default. Existing `product` and
+`sku` sources retain their warehouse semantics; SKU warehouse reads require TOP.
+
+The optional snapshot `quantityEvidence` separates SPU and individual SKU
+quantities. Available rows contain an exact decimal string; unavailable rows
+contain null plus a reason. The contract rejects contradictory states. Explicit
+zero is retained, missing is never zero, long quantities are never coerced to JS
+numbers, and SKU/warehouse quantities are never used as SPU substitutes. Existing
+warehouse responses now reject fractional and unsafe numeric quantities.
+
+The inventory page and the shared product inventory drawer expose the new source,
+scope, actual protocol, dated result, evidence count and unavailable reasons.
+Source-specific contexts, in-flight work and five-minute memory caches are
+isolated; pause/account changes prevent queued dispatch. Refresh failure keeps
+the dated previous snapshot visibly separate from the failure.
+
+A locally generated correlation ID associates the assessed quantity with the
+current adapter read; it is not advertised as an upstream trace ID or proof of
+authentication. The public `traceId` still comes only from the platform response.
+
+### Current remote acceptance
+
+Isolated Node BFF profiles confirmed TOP-only, IOP-only, dual TOP-default and
+dual IOP-default routing with unchanged user configurations. The current controlled
+product returned no warehouse records and no SPU quantity in all supported reads.
+That is a valid unavailable result, not zero or a successful write baseline.
+An older explicitly named inventory sample was no longer found by TOP; IOP did
+not return a usable exact-product result. Neither sample was written.
+
+Raw receipts, temporary encrypted profiles and screenshots remain under the
+ignored `artifacts/inventory-ui-20261102/` directory. No secrets, complete product
+responses or account-specific quantity baselines are committed. UI/formal MV3
+results and automated check counts are recorded there independently; Node API
+success alone is not browser or extension acceptance.
+
+Formal MV3 page acceptance also completed in all four isolated configurations:
+TOP-only, IOP-only, dual TOP-default and dual IOP-default. Each exercised the
+inventory page and shared drawer with all three sources (12 display checks).
+Supported requests returned legal empty results, not zero; unsupported sources
+were refused with zero provider requests. No script errors or credential/default
+changes were observed.
+
+| Source                    | TOP-only                       | IOP-only                     | Either dual default |
+| ------------------------- | ------------------------------ | ---------------------------- | ------------------- |
+| Product warehouse records | TOP                            | IOP                          | IOP                 |
+| SKU warehouse records     | TOP                            | Not mapped; no provider call | TOP                 |
+| Scoped SPU/SKU quantities | Requires IOP; no provider call | IOP                          | IOP                 |
+
+This acceptance exposed and fixed the extension options client's swallowed
+context errors: a correlated gateway denial now preserves its reason and request
+ID instead of becoming a generic context-unavailable error. Malformed or
+mismatched responses still fail closed. A successful context lookup is metadata,
+not proof that a subsequent business method is supported.
+
+The temporary test profile pre-granted the exact IOP API origin; this is not a
+new native permission-consent acceptance. The production manifest is unchanged.
+Web E2E additionally checks explicit zero, long quantities, missing values,
+source switching, English/dark/narrow layouts and the shared product drawer.
+
+No inventory write whitelist, mutation flag, absolute set operation, automatic
+retry or UI write action is enabled by this integration. Modify/readback/restore
+acceptance remains unexecuted because neither real sample supplied a reliable
+current inventory baseline.

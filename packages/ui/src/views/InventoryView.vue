@@ -156,7 +156,11 @@ const columns = computed<DataColumn<Product>[]>(() => [
     cell: ({ row }) => {
       const snapshot = inventory.snapshots.value[row.original.id];
       return snapshot
-        ? formatDateTime(snapshot.queriedAt) + ' · ' + (snapshot.protocol?.toUpperCase() ?? '—')
+        ? h(
+            'span',
+            { class: 'whitespace-nowrap tabular-nums' },
+            formatDateTime(snapshot.queriedAt) + ' · ' + (snapshot.protocol?.toUpperCase() ?? '—')
+          )
         : '—';
     }
   },

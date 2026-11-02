@@ -373,6 +373,7 @@ describe('inventory workspace', () => {
       const row = wrapper.get('tbody tr').text();
       expect(row).toContain(status === 'ready' ? '1/2 项数量证据可核验' : '0/1 项数量证据可核验');
       expect(row).toContain('IOP');
+      expect(wrapper.get('tbody tr span.whitespace-nowrap.tabular-nums').text()).toContain('IOP');
       expect(row).not.toContain('已返回库存');
       expect(wrapper.findAll('thead th').map((cell) => cell.text())).toContain('数量证据');
       expect(inventoryCalls()[0]?.[1]).toEqual({

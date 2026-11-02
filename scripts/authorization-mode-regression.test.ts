@@ -35,6 +35,21 @@ describe('authorization-mode regression safety', () => {
     expect(classify(error('unsupported'), false).status).toBe('unsupported');
     expect(classify(error('unsupported'), true).status).toBe('failed');
   });
+  it('keeps absolute quantity reads IOP-only before dispatch', () => {
+    const payload = { source: 'absolute' };
+    expect(readRule('getProductInventory', payload)).toMatchObject({
+      top: [],
+      iop: ['/rest/alibaba/icbu/product/get/v2'],
+      limit: 1
+    });
+    expect(expectation('top-only', 'getProductInventory', payload).supported).toBe(false);
+    for (const mode of ['iop-only', 'dual-top', 'dual-iop'] as const) {
+      expect(expectation(mode, 'getProductInventory', payload)).toMatchObject({
+        protocol: 'iop',
+        supported: true
+      });
+    }
+  });
   it('denies writes and unknown generic calls before network access', () => {
     expect(() => readRule('publishProduct', {})).toThrow('READ_ONLY_OPERATION_DENIED');
     expect(() => readRule('callCapability', { method: 'alibaba.icbu.product.inventory.update' })).toThrow(

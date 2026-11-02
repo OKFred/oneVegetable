@@ -18,7 +18,18 @@ import {
   type Observation
 } from './lib/authorization-mode-regression';
 import { ReadWireGuard } from './lib/authorization-mode-wire';
-import { exerciseModeMenus } from './lib/authorization-mode-ui';
+import { exerciseModeMenus, modeFailureLine } from './lib/authorization-mode-ui';
+import { assertIgnoredFile } from './smoke-product-reference-real';
+import { productReadScopedRoot } from './smoke-product-read-tools-real';
+
+let diagnosticSecrets: string[] = [];
+async function saveModeScreenshot(page: Page, output: string, mode: string, phase: 'success' | 'failure') {
+  const path = resolve(dirname(output), 'inventory-' + mode + '-' + phase + '-' + randomUUID() + '.png');
+  const root = resolve(import.meta.dirname, '..');
+  await assertIgnoredFile(productReadScopedRoot(root, path), path);
+  await page.screenshot({ path, fullPage: true, timeout: 10_000 });
+  return path;
+}
 
 async function send(page: Page, message: Row) {
   const result: unknown = await page.evaluate(
@@ -48,6 +59,9 @@ async function send(page: Page, message: Row) {
 async function main() {
   const options = parseModeOptions(process.argv.slice(2)),
     bundles = await readModeBundles(options);
+  diagnosticSecrets = Object.values(bundles)
+    .flatMap((bundle) => [bundle.application.appKey, bundle.application.appSecret, bundle.oauth.accessToken])
+    .filter(Boolean);
   const source = resolve('apps/extension/.output/chrome-mv3'),
     digest = await buildDigest(source);
   await mkdir(dirname(resolve(options.output)), { recursive: true });
@@ -66,8 +80,20 @@ async function main() {
     ])
   ];
   await atomicWriteJson(resolve(extension, 'manifest.json'), manifest);
-  const results = [];
-  const uiOnly = process.argv.includes('--ui-only');
+  const results: ({ observations: Observation[] } & Record<string, unknown>)[] = [];
+  const persist = (complete = true, unchanged = true) =>
+    atomicWriteJson(resolve(options.output), {
+      schemaVersion: 1,
+      runtime: 'formal-mv3',
+      capturedAtUtc: new Date().toISOString(),
+      readOnly: true,
+      nativePermissionConsentTested: false,
+      productionManifestUnchanged: unchanged,
+      complete,
+      results
+    });
+  const inventoryUi = process.argv.includes('--inventory-ui');
+  const uiOnly = process.argv.includes('--ui-only') || inventoryUi;
   for (const mode of options.modes) {
     const guard = new ReadWireGuard(),
       observations: Observation[] = [];
@@ -80,6 +106,8 @@ async function main() {
       locale: 'zh-CN',
       args: ['--disable-extensions-except=' + extension, '--load-extension=' + extension]
     });
+    let stage = 'setup';
+    let menus: Awaited<ReturnType<typeof exerciseModeMenus>> | null = null;
     try {
       await context.addInitScript({ content: 'globalThis.__name = (value) => value;' });
       await context.addInitScript(
@@ -136,6 +164,7 @@ async function main() {
         { key: ONBOARDING_STORAGE_KEY, value: completeOnboarding() }
       );
       const page = await context.newPage();
+      stage = 'credential-import';
       await page.goto('chrome-extension://' + new URL(worker.url()).host + '/options.html#/releases');
       const protocols = profiles(mode);
       for (const [index, protocol] of protocols.entries()) {
@@ -191,8 +220,17 @@ async function main() {
           })) as ResponseOf<typeof operation>;
         }
       };
+      stage = inventoryUi ? 'inventory-ui' : uiOnly ? 'menus-ui' : 'read-plan';
       if (!uiOnly) await runReadPlan(mode, gateway, guard, observations, options);
-      const menus = uiOnly ? await exerciseModeMenus(page, mode, uiGuards, observations) : null;
+      menus = uiOnly
+        ? await exerciseModeMenus(
+            page,
+            mode,
+            uiGuards,
+            observations,
+            inventoryUi ? options.productId : undefined
+          )
+        : null;
       if (menus) {
         assert(
           observations.length > 0,
@@ -202,27 +240,63 @@ async function main() {
         assert.equal(menus.scriptErrors.length, 0);
       }
       assert.deepEqual(await summary(), before, 'Read acceptance must preserve both slots and default.');
+      let inventoryScreenshot: string | null = null;
+      if (inventoryUi) {
+        assert.equal(menus?.inventoryChecks.length, 3);
+        inventoryScreenshot = await saveModeScreenshot(page, options.output, mode, 'success');
+      }
       results.push({
         menus,
+        ...(inventoryUi ? { inventoryScreenshot } : {}),
         mode,
         runtime: 'formal-mv3',
         profilesPreserved: true,
         observations,
         network: guard.snapshot()
       });
+    } catch (error) {
+      const failure = {
+        kind: error instanceof Error ? error.name : 'unknown',
+        stage,
+        message: modeFailureLine(error, diagnosticSecrets)
+      };
+      let failureScreenshot: string | null = null;
+      let screenshotError: string | null = null;
+      const page = context.pages().at(-1);
+      if (page) {
+        try {
+          failureScreenshot = await saveModeScreenshot(page, options.output, mode, 'failure');
+        } catch (captureError) {
+          screenshotError = modeFailureLine(captureError, diagnosticSecrets);
+        }
+      }
+      results.push({
+        menus,
+        mode,
+        runtime: 'formal-mv3',
+        profilesPreserved: null,
+        observations,
+        network: guard.snapshot(),
+        failure,
+        failureScreenshot,
+        screenshotError
+      });
+      await persist(false, (await buildDigest(source).catch(() => '')) === digest);
+      console.error(
+        JSON.stringify({
+          mode,
+          ...failure,
+          report: resolve(options.output),
+          failureScreenshot,
+          screenshotError
+        })
+      );
+      throw error;
     } finally {
       await context.close();
     }
     assert.equal(await buildDigest(source), digest, 'Production build must remain unchanged.');
-    await atomicWriteJson(resolve(options.output), {
-      schemaVersion: 1,
-      runtime: 'formal-mv3',
-      capturedAtUtc: new Date().toISOString(),
-      readOnly: true,
-      nativePermissionConsentTested: false,
-      productionManifestUnchanged: true,
-      results
-    });
+    await persist();
     const result = results.at(-1);
     assert(result);
     console.log(
@@ -248,6 +322,7 @@ await main().catch((error: unknown) => {
     JSON.stringify({
       failure: 'MV3_AUTHORIZATION_MODE_REGRESSION_FAILED',
       kind: error instanceof Error ? error.name : 'unknown',
+      message: modeFailureLine(error, diagnosticSecrets),
       detail:
         error instanceof Error && /^UI_MENU_[A-Z0-9_:]+$/iu.test(error.message) ? error.message : undefined,
       location:
@@ -255,7 +330,7 @@ await main().catch((error: unknown) => {
           ? error.stack
               ?.split('\n')
               .slice(1, 4)
-              .filter((line) => line.includes('authorization-mode'))
+              .filter((line) => /^\s*at\s/u.test(line) && line.includes('authorization-mode'))
           : []
     })
   );

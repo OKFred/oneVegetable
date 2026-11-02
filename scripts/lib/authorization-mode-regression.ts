@@ -20,6 +20,7 @@ export const READ_PROBE_IDS = [
   'product-score',
   'inventory-product',
   'inventory-sku',
+  'inventory-absolute',
   'photo-groups',
   'photos-all',
   'photos-group',
@@ -133,6 +134,8 @@ export function profiles(mode: AuthorizationMode): Protocol[] {
         : ['iop', 'top'];
 }
 export function readRule(operation: OperationId, payload: unknown): ReadRule {
+  if (operation === 'getProductInventory' && isRow(payload) && payload.source === 'absolute')
+    return rule([], ['/rest/alibaba/icbu/product/get/v2']);
   if (operation === 'callCapability') {
     const method = isRow(payload) ? payload.method : null;
     if (method === 'alibaba.icbu.video.query') return rule([method], ['/rest/alibaba/icbu/video/query']);
@@ -184,6 +187,13 @@ export interface Observation {
   diagnosticHint?: string;
   wireDenials?: { protocol: Protocol; method: string; reason: string }[];
   requests: number;
+  inventoryEvidence?: {
+    protocol: string | null;
+    source: string;
+    availableQuantities: number;
+    unavailableReasons: string[];
+    warehouseRows: number;
+  };
 }
 export interface ReadWireEvent {
   protocol: Protocol;
@@ -271,6 +281,23 @@ export function makeRunner(
       const count = inspect(value);
       if (!Number.isSafeInteger(count) || count < 0) throw new Error('READ_RESULT_INVALID');
       record = { ...record, status: count ? 'passed' : 'empty', count };
+      const inventoryValue: unknown = value;
+      if (operation === 'getProductInventory' && isRow(inventoryValue)) {
+        const evidenceRows: unknown = inventoryValue.quantityEvidence;
+        const entries: Row[] = Array.isArray(evidenceRows) ? (evidenceRows as unknown[]).filter(isRow) : [];
+        const warehouseRows: unknown = inventoryValue.records;
+        record.inventoryEvidence = {
+          protocol: typeof inventoryValue.protocol === 'string' ? inventoryValue.protocol : null,
+          source: typeof inventoryValue.source === 'string' ? inventoryValue.source : '',
+          availableQuantities: entries.filter((item) => item.status === 'available').length,
+          unavailableReasons: [
+            ...new Set(
+              entries.flatMap((item) => (typeof item.reasonCode === 'string' ? [item.reasonCode] : []))
+            )
+          ],
+          warehouseRows: Array.isArray(warehouseRows) ? warehouseRows.length : 0
+        };
+      }
     } catch (error: unknown) {
       record = { ...record, ...classify(error, expected.supported) };
       if (record.status === 'failed')
@@ -350,7 +377,7 @@ export async function runReadPlan(
       );
     }
     await run('product-score', 'getProductScore', { productId: product.id }, () => 1);
-    for (const source of ['product', 'sku'] as const)
+    for (const source of ['product', 'sku', 'absolute'] as const)
       await run(
         'inventory-' + source,
         'getProductInventory',
@@ -358,7 +385,9 @@ export async function runReadPlan(
         (value) => {
           if (!['ready', 'no-data'].includes(value.status) || value.issues.length)
             throw new Error('INVENTORY_READ_INCOMPLETE');
-          return value.records.length;
+          return source === 'absolute'
+            ? (value.quantityEvidence?.filter((item) => item.status === 'available').length ?? 0)
+            : value.records.length;
         }
       );
   }
