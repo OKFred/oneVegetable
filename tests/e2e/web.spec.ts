@@ -396,7 +396,7 @@ test('web mock exports a product JSON and imports it into the local review queue
   expect(transfer.products[0]?.schemaXml).toBeUndefined();
   await expect(exportDialog).toBeHidden();
 
-  await page.getByRole('button', { name: '导出', exact: true }).click();
+  await productToolbar.getByRole('button', { name: '导出', exact: true }).click();
   const xmlExportDialog = page.getByRole('dialog', { name: '导出商品' });
   await expect(xmlExportDialog).toBeVisible();
   await xmlExportDialog.locator('summary').click();
