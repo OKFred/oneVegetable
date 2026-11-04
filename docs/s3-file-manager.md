@@ -86,8 +86,8 @@ https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html .
 
 ## Remote acceptance, 2026-11-05
 
-- Windows full unit regression passed 413 files / 5,367 tests before the three
-  additional R2 cases; the targeted R2/file-manager suite passed 52 tests.
+- Windows full unit regression passed 413 files / 5,370 tests, including the three
+  R2 cases; the targeted R2/file-manager suite passed 52 tests.
 - Workerd passed 32 tests, including D1 configuration pinning and signed empty
   folder PUT/GetObject/conditional conflict handling. Worker dry-run passed.
 - Real VueFinder browser tests passed all five cases, including actual grid/list
