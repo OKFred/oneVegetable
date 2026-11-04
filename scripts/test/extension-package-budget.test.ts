@@ -10,7 +10,7 @@ import {
 describe('Store package preflight', () => {
   it('pins the approved decimal-byte package budgets', () => {
     expect(EXTENSION_ZIP_MAX_BYTES).toBe(2_000_000);
-    expect(EXTENSION_UNPACKED_MAX_BYTES).toBe(5_470_000);
+    expect(EXTENSION_UNPACKED_MAX_BYTES).toBe(7_000_000);
   });
   describe.each([
     { name: 'Store ZIP', assertBudget: assertExtensionZipBudget, maxBytes: EXTENSION_ZIP_MAX_BYTES },

@@ -183,6 +183,9 @@ async function clearConfiguration(): Promise<void> {
       <label class="text-sm font-medium sm:col-span-2">
         {{ t('settings.s3.endpoint') }}
         <Input v-model="model.endpoint" class="mt-2" placeholder="https://account.r2.cloudflarestorage.com" />
+        <span class="mt-2 block text-xs font-normal text-muted-foreground">{{
+          t('settings.s3.r2Hint')
+        }}</span>
       </label>
       <label class="text-sm font-medium">
         {{ t('settings.s3.region') }}

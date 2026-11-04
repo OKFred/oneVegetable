@@ -3,10 +3,10 @@
 Current authorized repository policy (decimal bytes, not MiB or a Store platform limit):
 
 - Final Store ZIP: at most **2,000,000 bytes (2 MB)**.
-- Unpacked extension: at most **5,470,000 bytes (5.47 MB)**.
+- Unpacked extension: at most **7,000,000 bytes (7 MB)**.
 - Shared bilingual i18n chunk: at most **350,000 bytes (350 KB)**, explicitly increased from 310,000 bytes on 2026-10-21.
 
-The unpacked budget follows the ZIP increase from 1,500,000 to 2,000,000 bytes proportionally, rounded upward from the previous 4,100,000-byte budget to the authorized 5,470,000 bytes.
+On 2026-11-05 the user allowed a modest package-budget increase for the S3 file manager. The unpacked cap is raised from 5,470,000 to 7,000,000 bytes to accommodate the bundled VueFinder component. The final ZIP cap remains 2,000,000 bytes; no runtime, security or startup-JavaScript limit is relaxed.
 
 `scripts/lib/extension-package-budget.ts` exports both limits and assertions. Exactly the limit is accepted; one byte more, negative or fractional counts, non-finite values and unsafe integers are rejected. The packager checks the final ZIP before writing release files; the bundle checker applies the shared unpacked assertion and retains aggregated diagnostics.
 

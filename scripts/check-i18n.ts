@@ -17,6 +17,8 @@ import { insights as insightsZh } from '../packages/ui/src/i18n/messages/zh-CN/i
 import { insights as insightsEn } from '../packages/ui/src/i18n/messages/en-US/insights';
 import { inventory as inventoryZh } from '../packages/ui/src/i18n/messages/zh-CN/inventory';
 import { inventory as inventoryEn } from '../packages/ui/src/i18n/messages/en-US/inventory';
+import { files as filesZh } from '../packages/ui/src/i18n/messages/zh-CN/files';
+import { files as filesEn } from '../packages/ui/src/i18n/messages/en-US/files';
 import { zhCN } from '../packages/ui/src/i18n/messages/zh-CN/index';
 import { productMaintenance as maintenanceZh } from '../packages/ui/src/i18n/messages/zh-CN/productMaintenance';
 import { productMaintenance as maintenanceEn } from '../packages/ui/src/i18n/messages/en-US/productMaintenance';
@@ -66,6 +68,7 @@ const errors = [
   ...compareCatalogs(insightsZh, insightsEn),
   ...compareCatalogs(zhCN, enUS),
   ...compareCatalogs(inventoryZh, inventoryEn),
+  ...compareCatalogs(filesZh, filesEn),
   ...compareCatalogs(showcaseZh, showcaseEn),
   ...compareCatalogs(postingZh, postingEn),
   ...compareCatalogs(credentialsZh, credentialsEn),

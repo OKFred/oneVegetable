@@ -2,7 +2,7 @@
 export const EXTENSION_ZIP_MAX_BYTES = 2_000_000;
 
 /** Total unpacked file bytes, independent of per-chunk and security gates. */
-export const EXTENSION_UNPACKED_MAX_BYTES = 5_470_000;
+export const EXTENSION_UNPACKED_MAX_BYTES = 7_000_000;
 
 export function assertExtensionZipBudget(byteLength: number): void {
   if (!Number.isSafeInteger(byteLength) || byteLength < 0 || byteLength > EXTENSION_ZIP_MAX_BYTES) {
@@ -12,9 +12,7 @@ export function assertExtensionZipBudget(byteLength: number): void {
 
 export function assertExtensionUnpackedBudget(byteLength: number): void {
   if (!Number.isSafeInteger(byteLength) || byteLength < 0 || byteLength > EXTENSION_UNPACKED_MAX_BYTES) {
-    throw new Error(
-      `Unpacked extension exceeds 5.47 MB (${EXTENSION_UNPACKED_MAX_BYTES} bytes): ${byteLength}`
-    );
+    throw new Error(`Unpacked extension exceeds 7 MB (${EXTENSION_UNPACKED_MAX_BYTES} bytes): ${byteLength}`);
   }
 }
 

@@ -172,6 +172,8 @@ export const settings = {
   },
   ...{
     s3: {
+      r2Hint:
+        'Cloudflare R2: use the S3 API endpoint from its dashboard, not a public domain. Set Region to auto, enable path-style, and enter your R2 Access Key ID and Secret Access Key.',
       localHttp:
         'HTTP is unencrypted: trusted LAN, private IPv4 and path-style only. Local Node requires opt-in; cloud Workers do not support it.',
       title: 'S3 asset storage',

@@ -3,6 +3,7 @@ export const PAGE_IDS = [
   'products',
   'templates',
   'photos',
+  'files',
   'rfqs',
   'orders',
   'inventory',

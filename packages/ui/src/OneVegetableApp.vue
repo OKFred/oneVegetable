@@ -15,6 +15,7 @@ import {
   Boxes,
   Handshake,
   History,
+  FolderOpen,
   ListChecks,
   LayoutTemplate,
   ScrollText,
@@ -235,6 +236,7 @@ const baseItems: NavigationItem[] = [
   { id: 'products', labelKey: 'shell.navigation.products', icon: Boxes },
   { id: 'templates', labelKey: 'shell.navigation.templates', icon: LayoutTemplate },
   { id: 'photos', labelKey: 'shell.navigation.photos', icon: Image },
+  { id: 'files', labelKey: 'shell.navigation.files', icon: FolderOpen },
   { id: 'rfqs', labelKey: 'shell.navigation.rfqs', icon: Handshake },
   { id: 'orders', labelKey: 'shell.navigation.orders', icon: ShoppingCart },
   { id: 'inventory', labelKey: 'shell.navigation.inventory', icon: PackageSearch },
@@ -276,8 +278,10 @@ const { theme: themePreference } = useAppPreferences();
 const darkTheme = ref(applyAppTheme(themePreference.value) === 'dark');
 const authLoading = ref(props.mode === 'bff' && props.control !== undefined);
 const items = computed(() =>
-  baseItems.filter(
-    (item) => item.id !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin'
+  baseItems.filter((item) =>
+    item.id === 'files'
+      ? props.mode !== 'bff' || session.value?.principal.role === 'admin'
+      : item.id !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin'
   )
 );
 const page = ref<PageId>(parsePageHash(globalThis.location.hash) ?? 'dashboard');
@@ -335,6 +339,7 @@ const views: Record<PageId, Component> = {
   inventory: defineAsyncContent(() => import('./views/InventoryView.vue'), 'page'),
   tasks: defineAsyncContent(() => import('./views/TasksView.vue'), 'page'),
   photos: defineAsyncContent(() => import('./views/GalleryView.vue'), 'page'),
+  files: defineAsyncContent(() => import('./views/FilesView.vue'), 'page'),
   rfqs: defineAsyncContent(() => import('./views/RfqsView.vue'), 'page'),
   orders: defineAsyncContent(() => import('./views/OrdersView.vue'), 'page'),
   logistics: defineAsyncContent(() => import('./views/LogisticsView.vue'), 'page'),
@@ -402,6 +407,7 @@ function handleGlobalKeydown(event: KeyboardEvent): void {
 }
 
 function isPageAllowed(nextPage: PageId): boolean {
+  if (nextPage === 'files') return props.mode !== 'bff' || session.value?.principal.role === 'admin';
   return nextPage !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin';
 }
 

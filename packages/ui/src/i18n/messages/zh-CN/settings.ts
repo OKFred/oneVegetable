@@ -164,6 +164,8 @@ export const settings = {
   },
   ...{
     s3: {
+      r2Hint:
+        'Cloudflare R2：使用控制台提供的 S3 API Endpoint（不是公开域名），Region 填 auto，并启用 Path-style。填写 R2 的 Access Key ID 和 Secret Access Key。',
       localHttp:
         'HTTP 未加密，仅限可信局域网私有 IPv4、path-style。本地 Node 需显式开启，云端 Worker 不支持。',
       title: 'S3 素材存储',

@@ -38,6 +38,7 @@ export const shell = {
     inventory: '库存',
     tasks: '任务中心',
     photos: '素材',
+    files: 'S3 文件',
     rfqs: 'RFQ',
     orders: '订单',
     logistics: '国际物流',
