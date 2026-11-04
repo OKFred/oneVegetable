@@ -1,0 +1,29 @@
+{
+  "auth": {
+    "username": "files-e2e-admin",
+    "password": "files-e2e-password",
+    "bootstrapToken": "files-e2e-bootstrap-not-a-real-secret"
+  },
+  "configuration": {
+    "endpoint": "https://s3-files.example.invalid",
+    "region": "us-east-1",
+    "bucket": "fixture-files",
+    "accessKeyId": "fixture-access",
+    "secretAccessKey": "fixture-secret",
+    "sessionToken": null,
+    "pathStyle": true,
+    "rootPrefix": "workspace"
+  },
+  "modified": "2026-11-05T00:00:00Z",
+  "objects": [
+    { "key": "readme.txt", "text": "Private S3 file fixture.\n", "contentType": "text/plain" },
+    {
+      "key": "unsafe.html",
+      "text": "<svg onload=\"globalThis.__filesInjected=true\"><script>globalThis.__filesInjected=true</script></svg>",
+      "contentType": "text/html"
+    },
+    { "key": "docs/guide.txt", "text": "A nested private document.\n", "contentType": "text/plain" }
+  ],
+  "generated": { "prefix": "many/", "count": 105 },
+  "upload": { "name": "uploaded.txt", "text": "Verified browser upload.\n", "contentType": "text/plain" }
+}

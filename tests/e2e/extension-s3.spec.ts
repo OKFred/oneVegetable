@@ -24,6 +24,10 @@ test('MV3 stores S3 encrypted, restores after worker shutdown and rejects non-op
     const onboarding = page.getByRole('dialog', { name: '四步连接 Alibaba 开放平台' });
     await onboarding.getByRole('checkbox').check();
     await onboarding.getByRole('button', { name: '稍后，仅浏览' }).click();
+    await page.goto('chrome-extension://' + id + '/options.html#/files');
+    await expect(page.getByTestId('files-view')).toBeVisible();
+    await expect(page.getByRole('link', { name: '配置 S3 存储', exact: true })).toBeVisible();
+    await expect(page.getByTestId('files-upload')).toHaveCount(0);
     await page.goto(`chrome-extension://${id}/options.html#/settings`);
     await page.getByRole('button', { name: 'S3 素材存储', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'S3 素材存储', exact: true })).toBeVisible();
