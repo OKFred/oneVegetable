@@ -1,4 +1,3 @@
-import type { GalleryRequestOptions } from './gallery-transfer-context';
 import type { ProductMaintenanceControl } from './product-maintenance-control';
 import type { ProductMaintenanceServiceResult } from './product-maintenance-service';
 import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
@@ -15,7 +14,8 @@ import type {
   S3ObjectContent,
   S3ObjectPage,
   S3StorageConfiguration,
-  S3StorageConfigurationSummary
+  S3StorageConfigurationSummary,
+  S3RequestOptions
 } from './s3-storage';
 import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 import type { AlibabaProtocol } from './alibaba-protocol-routing';
@@ -296,17 +296,20 @@ export interface ControlClient {
       prefix?: string;
       continuationToken?: string;
       maximum?: number;
+      delimiter?: '/';
     },
-    options?: GalleryRequestOptions
+    options?: S3RequestOptions
   ): Promise<S3ObjectPage>;
-  getS3Object?(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent>;
+  getS3Object?(key: string, options?: S3RequestOptions): Promise<S3ObjectContent>;
   putS3Object?(
     input: {
       key: string;
       bytes: Uint8Array;
       contentType: string;
+      createOnly?: boolean;
+      directory?: boolean;
     },
-    options?: GalleryRequestOptions
+    options?: S3RequestOptions
   ): Promise<{ key: string; etag: string | null }>;
   startAlibabaCredentialAcquisition?(input: {
     account: string;
@@ -760,13 +763,13 @@ export class BffControlClient implements ControlClient {
   }
 
   listS3Objects(
-    input: { prefix?: string; continuationToken?: string; maximum?: number } = {},
-    options?: GalleryRequestOptions
+    input: { prefix?: string; continuationToken?: string; maximum?: number; delimiter?: '/' } = {},
+    options?: S3RequestOptions
   ): Promise<S3ObjectPage> {
     return this.#call('/admin/storage/s3/objects/list', { ...input, ...options });
   }
 
-  async getS3Object(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent> {
+  async getS3Object(key: string, options?: S3RequestOptions): Promise<S3ObjectContent> {
     const result = await this.#call<{
       key: string;
       contentBase64: string;
@@ -784,13 +787,17 @@ export class BffControlClient implements ControlClient {
       key: string;
       bytes: Uint8Array;
       contentType: string;
+      createOnly?: boolean;
+      directory?: boolean;
     },
-    options?: GalleryRequestOptions
+    options?: S3RequestOptions
   ): Promise<{ key: string; etag: string | null }> {
     return this.#call('/admin/storage/s3/objects/put', {
       key: input.key,
       contentBase64: encodeBase64(input.bytes),
       contentType: input.contentType,
+      ...(input.createOnly === undefined ? {} : { createOnly: input.createOnly }),
+      ...(input.directory === undefined ? {} : { directory: input.directory }),
       ...options
     });
   }

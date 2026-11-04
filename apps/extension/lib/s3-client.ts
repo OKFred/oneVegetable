@@ -1,14 +1,17 @@
 import { browser } from 'wxt/browser';
-import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import { decodeBase64, encodeBase64, GatewayException } from '@one-vegetable/core/runtime';
-import { s3PermissionOrigins, type S3StorageControl } from '@one-vegetable/core/s3-storage';
+import {
+  s3PermissionOrigins,
+  type S3StorageControl,
+  type S3RequestOptions
+} from '@one-vegetable/core/s3-storage';
 import { validS3Output, type S3MessageMap, type S3Operation } from './s3-protocol';
 import { requestVideoUpload } from './video-upload-client';
 
 export async function requestS3<T extends S3Operation>(
   operation: T,
   payload: S3MessageMap[T]['input'],
-  options?: GalleryRequestOptions
+  options?: S3RequestOptions
 ): Promise<S3MessageMap[T]['output']> {
   const requestId = options?.requestId ?? crypto.randomUUID();
   const response: unknown = await browser.runtime.sendMessage({
@@ -16,6 +19,7 @@ export async function requestS3<T extends S3Operation>(
     requestId,
     operation,
     ...(options?.galleryContext ? { galleryContext: options.galleryContext } : {}),
+    ...(options?.storageContext ? { storageContext: options.storageContext } : {}),
     payload
   });
   if (
@@ -80,6 +84,16 @@ export const extensionS3Storage: S3StorageControl = {
       });
     return { key: result.key, bytes, contentType: result.contentType, etag: result.etag };
   },
-  putS3Object: ({ key, bytes, contentType }, options) =>
-    requestS3('put', { key, contentBase64: encodeBase64(bytes), contentType }, options)
+  putS3Object: ({ key, bytes, contentType, createOnly, directory }, options) =>
+    requestS3(
+      'put',
+      {
+        key,
+        contentBase64: encodeBase64(bytes),
+        contentType,
+        ...(createOnly === undefined ? {} : { createOnly }),
+        ...(directory === undefined ? {} : { directory })
+      },
+      options
+    )
 };

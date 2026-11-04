@@ -5,8 +5,11 @@ export interface MultipartXmlNode {
   children: MultipartXmlNode[];
 }
 
-export function parseMultipartXml(xml: string): MultipartXmlNode {
-  if (xml.length > 65_536) invalid();
+export function parseMultipartXml(
+  xml: string,
+  limits = { maximumLength: 65_536, maximumNodes: 200 }
+): MultipartXmlNode {
+  if (xml.length > limits.maximumLength) invalid();
   const source = xml.replace(/^\uFEFF/u, '').replace(/^\s*<\?xml\s[^?]*\?>/u, '');
   const tokens = source.match(/<!--[\s\S]*?-->|<[^>]*>|[^<]+/gu) ?? [];
   if (tokens.join('') !== source) invalid();
@@ -30,7 +33,7 @@ export function parseMultipartXml(xml: string): MultipartXmlNode {
       /^<([A-Za-z_][A-Za-z0-9_.-]*)(?:\s+xmlns=(?:"https?:\/\/s3\.amazonaws\.com\/doc\/2006-03-01\/"|'https?:\/\/s3\.amazonaws\.com\/doc\/2006-03-01\/'))?\s*(\/?)>$/u.exec(
         token
       );
-    if (!opening?.[1] || stack.length >= 8 || ++count > 200) invalid();
+    if (!opening?.[1] || stack.length >= 8 || ++count > limits.maximumNodes) invalid();
     const node: MultipartXmlNode = { name: opening[1], text: '', children: [] };
     const parent = stack.at(-1);
     if (parent) parent.children.push(node);

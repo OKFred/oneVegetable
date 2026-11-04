@@ -25,6 +25,130 @@ afterEach(() => {
 });
 
 describe('S3 storage admin routes', () => {
+  it('browses S3 with its own context and no Alibaba gateway credentials', async () => {
+    const { app, authService, service, send } = await fixture('disabled');
+    const session = await bootstrap(authService);
+    await service.save({
+      configuration: configuration(),
+      actorId: session.user.id,
+      expectedRevision: null,
+      remark: null
+    });
+    const summary = await service.summary();
+    expect(summary.configurationId).toMatch(/^[a-f0-9]{64}$/u);
+    const call = (storageContext: string | undefined) =>
+      app.request('/api/v1/admin/storage/s3/objects/list', {
+        method: 'POST',
+        headers: authHeaders(session.sessionToken),
+        body: JSON.stringify({
+          requestId: createRequestId(),
+          prefix: '',
+          delimiter: '/',
+          maximum: 100,
+          storageContext
+        })
+      });
+    const invalid = await call('invalid');
+    expect(invalid.status).toBe(400);
+    const stale = await call('f'.repeat(64));
+    expect(stale.status).toBe(409);
+    expect(send).not.toHaveBeenCalled();
+    const result = await call(summary.configurationId ?? undefined);
+    expect(result.status).toBe(200);
+    await expect(result.json()).resolves.toMatchObject({
+      ok: true,
+      data: { items: [{ key: 'a.jpg', size: 12 }], prefixes: [], nextContinuationToken: null }
+    });
+    expect(send).toHaveBeenCalledOnce();
+    const captured = send.mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(captured[0] instanceof Request ? captured[0].url : captured[0].toString()).toContain(
+      'delimiter=%2F'
+    );
+  });
+  it('creates empty folders without overwriting and requires CSRF before any PUT', async () => {
+    const { app, authService, service, send } = await fixture('disabled');
+    const session = await bootstrap(authService);
+    const summary = await service.save({
+      configuration: configuration(),
+      actorId: session.user.id,
+      expectedRevision: null,
+      remark: null
+    });
+    const input = {
+      requestId: createRequestId(),
+      key: 'new-folder/',
+      contentBase64: '',
+      contentType: 'application/x-directory',
+      directory: true,
+      createOnly: true,
+      storageContext: summary.configurationId
+    };
+    const denied = await app.request('/api/v1/admin/storage/s3/objects/put', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken),
+      body: JSON.stringify(input)
+    });
+    expect(denied.status).toBe(403);
+    expect(send).not.toHaveBeenCalled();
+    send.mockImplementation(() => Promise.resolve(new Response('', { headers: { etag: '"folder"' } })));
+    const created = await app.request('/api/v1/admin/storage/s3/objects/put', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken, session.session.csrfToken),
+      body: JSON.stringify(input)
+    });
+    expect(created.status).toBe(200);
+    await expect(created.json()).resolves.toMatchObject({
+      ok: true,
+      data: { key: 'new-folder/', etag: 'folder' }
+    });
+    const captured = send.mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(captured[0] instanceof Request ? captured[0].url : captured[0].toString()).toContain(
+      '/gallery/new-folder/'
+    );
+    expect(new Headers(captured[1].headers).get('if-none-match')).toBe('*');
+    send.mockClear();
+    send.mockImplementation(() =>
+      Promise.resolve(new Response('<Error><Code>PreconditionFailed</Code></Error>', { status: 412 }))
+    );
+    const exists = await app.request('/api/v1/admin/storage/s3/objects/put', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken, session.session.csrfToken),
+      body: JSON.stringify(input)
+    });
+    expect(exists.status).toBe(409);
+    await expect(exists.json()).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'S3_OBJECT_EXISTS', retryable: false }
+    });
+    expect(send).toHaveBeenCalledOnce();
+  });
+  it('blocks storage configuration changes before a file request leaves the server', async () => {
+    const { app, authService, service, send } = await fixture('disabled');
+    const session = await bootstrap(authService);
+    const original = await service.save({
+      configuration: configuration(),
+      actorId: session.user.id,
+      expectedRevision: null,
+      remark: null
+    });
+    await service.save({
+      configuration: { ...configuration(), rootPrefix: 'new-root' },
+      actorId: session.user.id,
+      expectedRevision: original.revision,
+      remark: null
+    });
+    const result = await app.request('/api/v1/admin/storage/s3/objects/get', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken),
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        key: 'a.jpg',
+        storageContext: original.configurationId
+      })
+    });
+    expect(result.status).toBe(409);
+    expect(send).not.toHaveBeenCalled();
+  });
   it('returns opaque context and rejects stale configuration before network', async () => {
     const { app, authService, service, send } = await fixture();
     const session = await bootstrap(authService);
@@ -116,7 +240,7 @@ describe('S3 storage admin routes', () => {
   });
 });
 
-async function fixture() {
+async function fixture(gatewayMode: 'mock' | 'disabled' = 'mock') {
   database = openNodeDatabase(':memory:');
   applyNodeMigrations(database);
   const authRepository = new SqlAuthRepository(database.executor);
@@ -144,7 +268,7 @@ async function fixture() {
     runtime: 'node',
     database: 'sqlite',
     environment: 'test',
-    gatewayMode: 'mock',
+    gatewayMode,
     authService,
     adminService: new AdminService(authRepository),
     s3Storage: service

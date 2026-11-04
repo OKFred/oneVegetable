@@ -11673,6 +11673,10 @@ export interface components {
             prefix?: string;
             continuationToken?: string;
             maximum?: number;
+            /** @enum {string} */
+            delimiter?: "/";
+            /** @description Opaque S3 configuration identity; independent of Alibaba authorization. */
+            storageContext?: string;
         };
         S3ObjectPutRequest: {
             requestId: components["schemas"]["RequestId"];
@@ -11680,11 +11684,19 @@ export interface components {
             key: string;
             contentBase64: string;
             contentType: string;
-        };
+            /** @description Opaque S3 configuration identity; independent of Alibaba authorization. */
+            storageContext?: string;
+            /** @description Set If-None-Match: *; never overwrite an existing object. */
+            createOnly?: boolean;
+            /** @description Zero-byte, trailing-slash folder marker; requires createOnly. */
+            directory?: boolean;
+        } & unknown;
         S3ObjectTargetRequest: {
             requestId: components["schemas"]["RequestId"];
             galleryContext?: components["schemas"]["GalleryTransferContext"];
             key: string;
+            /** @description Opaque S3 configuration identity; independent of Alibaba authorization. */
+            storageContext?: string;
         };
         S3StorageConfiguration: {
             /** Format: uri */

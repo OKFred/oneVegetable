@@ -85,15 +85,24 @@ export class ExtensionS3Service {
         clear: ['revision'],
         reset: [],
         test: [],
-        list: ['prefix', 'continuationToken', 'maximum'],
+        list: ['prefix', 'continuationToken', 'maximum', 'delimiter'],
         get: ['key'],
-        put: ['key', 'contentBase64', 'contentType']
+        put: ['key', 'contentBase64', 'contentType', 'createOnly', 'directory']
       };
       const keys = allowed[value.operation];
       if (!keys || Object.keys(value.payload).some((key) => !keys.includes(key)))
         fail('INVALID_REQUEST_BODY');
-      const expectedStorage =
+      let expectedStorage =
         value.galleryContext === undefined ? undefined : requireGalleryContext(value.galleryContext).storage;
+      if (value.storageContext !== undefined) {
+        if (
+          typeof value.storageContext !== 'string' ||
+          !/^[a-f0-9]{64}$/u.test(value.storageContext) ||
+          (expectedStorage !== undefined && expectedStorage !== value.storageContext)
+        )
+          fail('INVALID_REQUEST_BODY');
+        expectedStorage = value.storageContext;
+      }
       const data = await this.#execute(value.operation, value.payload, requestId, expectedStorage);
       return { requestId, ok: true, data };
     } catch (cause: unknown) {
@@ -101,9 +110,11 @@ export class ExtensionS3Service {
       const code =
         cause instanceof S3LocalError
           ? cause.code
-          : cause instanceof GatewayException && cause.gatewayError.code.startsWith('GALLERY_CONTEXT_')
-            ? cause.gatewayError.code
-            : 'S3_STORAGE_FAILED';
+          : cause instanceof GatewayException && cause.gatewayError.subCode?.startsWith('HTTP_412:')
+            ? 'S3_OBJECT_EXISTS'
+            : cause instanceof GatewayException && cause.gatewayError.code.startsWith('GALLERY_CONTEXT_')
+              ? cause.gatewayError.code
+              : 'S3_STORAGE_FAILED';
       return { requestId, ok: false, error: { code, message: code, retryable: false } };
     }
   }
@@ -163,11 +174,12 @@ export class ExtensionS3Service {
     return new TextEncoder().encode(`${EXTENSION_S3_STORAGE_KEY}:${revision}`);
   }
 
-  #summary(
+  async #summary(
     saved: { stored: EncryptedRecord; value: SavedConfiguration } | null
-  ): S3StorageConfigurationSummary {
+  ): Promise<S3StorageConfigurationSummary> {
     const configuration = saved?.value.configuration;
     return {
+      configurationId: configuration ? await galleryStorageId(configuration) : null,
       configured: !!saved,
       endpoint: configuration?.endpoint ?? null,
       region: configuration?.region ?? null,
@@ -251,6 +263,7 @@ export class ExtensionS3Service {
     if (operation === 'list') {
       if (
         (payload.prefix !== undefined && typeof payload.prefix !== 'string') ||
+        (payload.delimiter !== undefined && payload.delimiter !== '/') ||
         (payload.continuationToken !== undefined && typeof payload.continuationToken !== 'string') ||
         (payload.maximum !== undefined &&
           (typeof payload.maximum !== 'number' ||
@@ -265,6 +278,7 @@ export class ExtensionS3Service {
           ? { continuationToken: payload.continuationToken }
           : {}),
         ...(typeof payload.maximum === 'number' ? { maximum: payload.maximum } : {}),
+        ...(payload.delimiter === '/' ? { delimiter: '/' } : {}),
         requestId
       });
     }
@@ -285,9 +299,13 @@ export class ExtensionS3Service {
         payload.contentBase64.length > 7_000_000 ||
         !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(payload.contentBase64) ||
         typeof payload.contentType !== 'string' ||
-        !['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/json'].includes(
-          payload.contentType
-        )
+        (payload.createOnly !== undefined && typeof payload.createOnly !== 'boolean') ||
+        (payload.directory !== undefined && typeof payload.directory !== 'boolean') ||
+        (payload.createOnly === true
+          ? !/^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/u.test(payload.contentType)
+          : !['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/json'].includes(
+              payload.contentType
+            ))
       )
         fail('INVALID_REQUEST_BODY');
       const bytes = decodeBase64(payload.contentBase64);
@@ -296,6 +314,8 @@ export class ExtensionS3Service {
         key: payload.key,
         bytes,
         contentType: payload.contentType,
+        ...(typeof payload.createOnly === 'boolean' ? { createOnly: payload.createOnly } : {}),
+        ...(typeof payload.directory === 'boolean' ? { directory: payload.directory } : {}),
         requestId
       });
       return { key: payload.key, etag: result.etag };

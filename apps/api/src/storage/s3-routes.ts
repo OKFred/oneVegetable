@@ -101,21 +101,21 @@ export function registerS3StorageRoutes(
       context,
       options,
       async (body) => {
-        const client = await options.service.createClient(
-          undefined,
-          body.galleryContext === undefined ? undefined : requireGalleryContext(body.galleryContext).storage
-        );
+        const client = await options.service.createClient(undefined, expectedStorageContext(body));
         const prefix = readOptionalString(body.prefix);
         const continuationToken = readOptionalString(body.continuationToken);
         const maximum = readOptionalPositiveInteger(body.maximum, 1000);
+        if (body.delimiter !== undefined && body.delimiter !== '/')
+          throw new AuthError('INVALID_REQUEST_BODY', 'INVALID_REQUEST_BODY', 400);
         return client.listObjects({
           ...(prefix ? { prefix } : {}),
           ...(continuationToken ? { continuationToken } : {}),
           ...(maximum ? { maximum } : {}),
+          ...(body.delimiter === '/' ? { delimiter: '/' } : {}),
           requestId: readRequestId(body)
         });
       },
-      ['requestId', 'prefix', 'continuationToken', 'maximum']
+      ['requestId', 'prefix', 'continuationToken', 'maximum', 'delimiter', 'storageContext']
     )
   );
   api.post('/admin/storage/s3/objects/get', (context) =>
@@ -123,10 +123,7 @@ export function registerS3StorageRoutes(
       context,
       options,
       async (body) => {
-        const client = await options.service.createClient(
-          undefined,
-          body.galleryContext === undefined ? undefined : requireGalleryContext(body.galleryContext).storage
-        );
+        const client = await options.service.createClient(undefined, expectedStorageContext(body));
         const object = await client.getObject(readRequiredString(body.key, 1024), readRequestId(body));
         if (object.bytes.byteLength > MAX_OBJECT_BYTES)
           throw new AuthError('S3_OBJECT_TOO_LARGE', 'S3 对象过大', 400);
@@ -138,7 +135,7 @@ export function registerS3StorageRoutes(
           etag: object.etag
         };
       },
-      ['requestId', 'key']
+      ['requestId', 'key', 'storageContext']
     )
   );
   api.post('/admin/storage/s3/objects/put', (context) =>
@@ -146,18 +143,24 @@ export function registerS3StorageRoutes(
       context,
       options,
       async (body, actorId) => {
-        const bytes = decodeBase64(readRequiredString(body.contentBase64, 8 * 1024 * 1024));
+        if (
+          typeof body.contentBase64 !== 'string' ||
+          body.contentBase64.length > 8 * 1024 * 1024 ||
+          (body.createOnly !== undefined && typeof body.createOnly !== 'boolean') ||
+          (body.directory !== undefined && typeof body.directory !== 'boolean')
+        )
+          throw new AuthError('INVALID_REQUEST_BODY', 'INVALID_REQUEST_BODY', 400);
+        const bytes = decodeBase64(body.contentBase64);
         if (bytes.byteLength > MAX_OBJECT_BYTES)
           throw new AuthError('S3_OBJECT_TOO_LARGE', 'S3 对象过大', 400);
         const key = readRequiredString(body.key, 1024);
-        const client = await options.service.createClient(
-          undefined,
-          body.galleryContext === undefined ? undefined : requireGalleryContext(body.galleryContext).storage
-        );
+        const client = await options.service.createClient(undefined, expectedStorageContext(body));
         const result = await client.putObject({
           key,
           bytes,
           contentType: readRequiredString(body.contentType, 128),
+          ...(typeof body.createOnly === 'boolean' ? { createOnly: body.createOnly } : {}),
+          ...(typeof body.directory === 'boolean' ? { directory: body.directory } : {}),
           requestId: readRequestId(body)
         });
         await options.authService.audit({
@@ -171,9 +174,20 @@ export function registerS3StorageRoutes(
         });
         return { key, etag: result.etag };
       },
-      ['requestId', 'key', 'contentBase64', 'contentType']
+      ['requestId', 'key', 'contentBase64', 'contentType', 'createOnly', 'directory', 'storageContext']
     )
   );
+}
+
+function expectedStorageContext(body: Record<string, unknown>): string | null | undefined {
+  const provided = body.storageContext;
+  if (provided !== undefined && (typeof provided !== 'string' || !/^[a-f0-9]{64}$/u.test(provided)))
+    throw new AuthError('INVALID_REQUEST_BODY', 'INVALID_REQUEST_BODY', 400);
+  const gallery =
+    body.galleryContext === undefined ? undefined : requireGalleryContext(body.galleryContext).storage;
+  if (provided !== undefined && gallery !== undefined && provided !== gallery)
+    throw new AuthError('INVALID_REQUEST_BODY', 'INVALID_REQUEST_BODY', 400);
+  return provided ?? gallery;
 }
 
 async function adminRead(
@@ -259,7 +273,13 @@ async function handle(context: Context, action: () => Promise<Response>): Promis
       return failure(context, requestId, 409, 'ENTITY_VERSION_CONFLICT', error.message);
     }
     if (error instanceof GatewayException)
-      return failure(context, requestId, 409, error.gatewayError.code, error.gatewayError.message);
+      return failure(
+        context,
+        requestId,
+        409,
+        error.gatewayError.subCode?.startsWith('HTTP_412:') ? 'S3_OBJECT_EXISTS' : error.gatewayError.code,
+        error.gatewayError.message
+      );
     return failure(
       context,
       requestId,

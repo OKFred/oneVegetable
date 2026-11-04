@@ -1,0 +1,12 @@
+{
+  "directory": "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><IsTruncated>true</IsTruncated><Contents><Key>root/assets/</Key><Size>0</Size></Contents><Contents><Key>root/assets/hello.txt</Key><Size>5</Size><ETag>&quot;one&quot;</ETag><LastModified>2026-11-05T00:00:00Z</LastModified></Contents><CommonPrefixes><Prefix>root/assets/images/</Prefix></CommonPrefixes><NextContinuationToken>second-page</NextContinuationToken></ListBucketResult>",
+  "empty": "<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>",
+  "wrongScope": "<ListBucketResult><IsTruncated>false</IsTruncated><CommonPrefixes><Prefix>root/assets-other/</Prefix></CommonPrefixes></ListBucketResult>",
+  "deepFile": "<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>root/assets/a/b.txt</Key><Size>1</Size></Contents></ListBucketResult>",
+  "missingToken": "<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>",
+  "missingStatus": "<ListBucketResult></ListBucketResult>",
+  "duplicate": "<ListBucketResult><IsTruncated>false</IsTruncated><CommonPrefixes><Prefix>root/assets/a/</Prefix></CommonPrefixes><CommonPrefixes><Prefix>root/assets/a/</Prefix></CommonPrefixes></ListBucketResult>",
+  "malformed": "<ListBucketResult><IsTruncated>false</IsTruncated>",
+  "unsafeXml": "<!DOCTYPE root [<!ENTITY x SYSTEM 'file:///private'>]><ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>",
+  "collision": "<Error><Code>PreconditionFailed</Code><Message>Private provider information</Message></Error>"
+}

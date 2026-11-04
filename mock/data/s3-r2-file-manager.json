@@ -1,0 +1,13 @@
+{
+  "fixtureKind": "synthetic-s3-compatible-not-live",
+  "configuration": {
+    "endpoint": "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com",
+    "region": "auto",
+    "bucket": "file-manager-test",
+    "accessKeyId": "fixture-r2-key",
+    "secretAccessKey": "fixture-r2-secret-never-log",
+    "sessionToken": null,
+    "pathStyle": true,
+    "rootPrefix": "root"
+  }
+}

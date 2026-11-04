@@ -62,6 +62,72 @@ function setup() {
   };
 }
 describe('extension S3 isolated service', () => {
+  it('uses an S3-only context for directory listing and refuses untrusted or stale reads', async () => {
+    const s = setup();
+    await s.save();
+    const summary = await s.call('summary');
+    expect(summary.data).toMatchObject({ configurationId: await s.service.contextId() });
+    const message = {
+      requestId: crypto.randomUUID(),
+      operation: 'list',
+      storageContext: await s.service.contextId(),
+      payload: { prefix: 'assets/', delimiter: '/', maximum: 100 }
+    };
+    expect((await s.service.handle(message, false)).error?.code).toBe('S3_UNTRUSTED_SENDER');
+    expect((await s.service.handle({ ...message, storageContext: 'f'.repeat(64) }, true)).error?.code).toBe(
+      'GALLERY_CONTEXT_CHANGED'
+    );
+    expect(s.send).not.toHaveBeenCalled();
+    const result = await s.service.handle(message, true);
+    expect(result.ok).toBe(true);
+    expect(s.send).toHaveBeenCalledOnce();
+  });
+  it('allows create-only text and empty directories, preserves signatures and reports collisions', async () => {
+    const s = setup();
+    await s.save();
+    const storageContext = await s.service.contextId();
+    const create = (payload: unknown) =>
+      s.service.handle(
+        {
+          requestId: crypto.randomUUID(),
+          operation: 'put',
+          storageContext,
+          payload
+        },
+        true
+      );
+    s.send.mockImplementation(() => Promise.resolve(new Response('', { headers: { etag: '"new"' } })));
+    const result = await create({
+      key: 'notes.txt',
+      contentBase64: 'aGk=',
+      contentType: 'text/plain',
+      createOnly: true
+    });
+    expect(result.ok).toBe(true);
+    const folder = await create({
+      key: 'folder/',
+      contentBase64: '',
+      contentType: 'application/x-directory',
+      directory: true,
+      createOnly: true
+    });
+    expect(folder.ok).toBe(true);
+    expect(s.send).toHaveBeenCalledTimes(2);
+    const first = s.send.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    expect(new Headers(first[1].headers).get('if-none-match')).toBe('*');
+    s.send.mockClear();
+    s.send.mockImplementation(() =>
+      Promise.resolve(new Response('<Error><Code>PreconditionFailed</Code></Error>', { status: 412 }))
+    );
+    const exists = await create({
+      key: 'notes.txt',
+      contentBase64: 'aGk=',
+      contentType: 'text/plain',
+      createOnly: true
+    });
+    expect(exists.error?.code).toBe('S3_OBJECT_EXISTS');
+    expect(s.send).toHaveBeenCalledOnce();
+  });
   it('rejects stale task context before using the storage client', async () => {
     const s = setup();
     await s.save();

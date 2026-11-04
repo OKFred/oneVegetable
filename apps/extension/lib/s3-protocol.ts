@@ -14,7 +14,10 @@ export interface S3MessageMap {
   clear: { input: { revision: number }; output: null };
   reset: { input: Record<string, never>; output: null };
   test: { input: Record<string, never>; output: { connected: boolean; visibleObjectCount: number } };
-  list: { input: { prefix?: string; continuationToken?: string; maximum?: number }; output: S3ObjectPage };
+  list: {
+    input: { prefix?: string; continuationToken?: string; maximum?: number; delimiter?: '/' };
+    output: S3ObjectPage;
+  };
   get: {
     input: { key: string };
     output: {
@@ -26,7 +29,13 @@ export interface S3MessageMap {
     };
   };
   put: {
-    input: { key: string; contentBase64: string; contentType: string };
+    input: {
+      key: string;
+      contentBase64: string;
+      contentType: string;
+      createOnly?: boolean;
+      directory?: boolean;
+    };
     output: { key: string; etag: string | null };
   };
 }
@@ -41,6 +50,9 @@ export function validS3Output(operation: S3Operation, value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (operation === 'summary' || operation === 'save')
     return (
+      (value.configurationId === undefined ||
+        value.configurationId === null ||
+        (typeof value.configurationId === 'string' && /^[a-f0-9]{64}$/u.test(value.configurationId))) &&
       typeof value.configured === 'boolean' &&
       ['endpoint', 'region', 'bucket', 'accessKeyIdSuffix', 'rootPrefix', 'updaterId', 'remark'].every(
         (key) => nullableString(value[key])
@@ -59,6 +71,9 @@ export function validS3Output(operation: S3Operation, value: unknown): boolean {
     );
   if (operation === 'list')
     return (
+      (value.prefixes === undefined ||
+        (Array.isArray(value.prefixes) &&
+          value.prefixes.every((prefix: unknown) => typeof prefix === 'string' && prefix.endsWith('/')))) &&
       Array.isArray(value.items) &&
       value.items.every(
         (item: unknown) =>

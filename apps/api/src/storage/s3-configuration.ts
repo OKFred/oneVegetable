@@ -226,11 +226,13 @@ export class S3StorageConfigurationService {
   }
 }
 
-function summarize(
+async function summarize(
   configuration: S3StorageConfiguration,
   record: S3StorageConfigurationRecord
-): S3StorageConfigurationSummary {
+): Promise<S3StorageConfigurationSummary> {
+  const { galleryStorageId } = await import('@one-vegetable/core/gallery-transfer-context');
   return {
+    configurationId: await galleryStorageId(configuration),
     configured: true,
     endpoint: configuration.endpoint,
     region: configuration.region,

@@ -24,6 +24,7 @@ export interface S3StorageConfiguration {
 }
 
 export interface S3StorageConfigurationSummary {
+  configurationId?: string | null;
   configured: boolean;
   endpoint: string | null;
   region: string | null;
@@ -48,6 +49,12 @@ export interface S3ObjectSummary {
 export interface S3ObjectPage {
   items: S3ObjectSummary[];
   nextContinuationToken: string | null;
+  prefixes?: string[];
+}
+
+/** S3-only context; local file operations must not depend on Alibaba credentials. */
+export interface S3RequestOptions extends GalleryRequestOptions {
+  storageContext?: string;
 }
 
 export interface S3ObjectContent {
@@ -80,17 +87,20 @@ export interface S3StorageControl {
       prefix?: string;
       continuationToken?: string;
       maximum?: number;
+      delimiter?: '/';
     },
-    options?: GalleryRequestOptions
+    options?: S3RequestOptions
   ): Promise<S3ObjectPage>;
-  getS3Object(key: string, options?: GalleryRequestOptions): Promise<S3ObjectContent>;
+  getS3Object(key: string, options?: S3RequestOptions): Promise<S3ObjectContent>;
   putS3Object(
     input: {
       key: string;
       bytes: Uint8Array;
       contentType: string;
+      createOnly?: boolean;
+      directory?: boolean;
     },
-    options?: GalleryRequestOptions
+    options?: S3RequestOptions
   ): Promise<{ key: string; etag: string | null }>;
 }
 
@@ -144,6 +154,7 @@ export class S3ObjectStorageClient {
     continuationToken?: string;
     maximum?: number;
     requestId?: string;
+    delimiter?: '/';
   }): Promise<S3ObjectPage> {
     const url = this.#bucketUrl();
     url.searchParams.set('list-type', '2');
@@ -152,21 +163,45 @@ export class S3ObjectStorageClient {
     // A configured root is a directory, not a string prefix for sibling keys.
     const prefix = input.prefix ? joinS3Key(rootPrefix, input.prefix) : rootPrefix ? rootPrefix + '/' : '';
     if (prefix) url.searchParams.set('prefix', prefix);
+    if (input.delimiter !== undefined) {
+      if (input.prefix && !validS3FileKey(input.prefix, true)) throw new Error('S3_FILE_PATH_INVALID');
+      url.searchParams.set('delimiter', '/');
+    }
     if (input.continuationToken) url.searchParams.set('continuation-token', input.continuationToken);
     const response = await this.#signedRequest(url, 'GET', undefined, undefined, input.requestId, 'text');
     if (!response.ok || typeof response.data !== 'string') throw s3HttpError(response);
-    const page = parseListObjectsV2(response.data);
+    const page = parseListObjectsV2(response.data, input.delimiter);
+    if (
+      input.delimiter &&
+      ((input.continuationToken && page.nextContinuationToken === input.continuationToken) ||
+        page.items.some(
+          (item) => !item.key.startsWith(prefix) || item.key.slice(prefix.length).includes('/')
+        ) ||
+        page.prefixes?.some(
+          (key) =>
+            !key.startsWith(prefix) ||
+            !key.slice(prefix.length, -1) ||
+            key.slice(prefix.length, -1).includes('/')
+        ))
+    )
+      throw new Error('S3_RESPONSE_INVALID');
     return {
       ...page,
-      items: page.items.map((item) => ({
-        ...item,
-        key: stripRootPrefix(item.key, rootPrefix)
-      }))
+      items: page.items
+        .filter((item) => !input.delimiter || item.key !== prefix || item.size !== 0)
+        .map((item) => ({
+          ...item,
+          key: stripRootPrefix(item.key, rootPrefix)
+        })),
+      ...(page.prefixes ? { prefixes: page.prefixes.map((key) => stripRootPrefix(key, rootPrefix)) } : {})
     };
   }
 
   async getObject(key: string, requestId?: string): Promise<S3ObjectContent> {
-    const normalizedKey = joinS3Key(this.#configuration.rootPrefix, normalizeS3Key(key, false));
+    const normalizedKey = joinS3Key(
+      this.#configuration.rootPrefix,
+      validS3FileKey(key, true) ? key : normalizeS3Key(key, false)
+    );
     const response = await this.#signedRequest(
       this.#objectUrl(normalizedKey),
       'GET',
@@ -189,14 +224,28 @@ export class S3ObjectStorageClient {
     bytes: Uint8Array;
     contentType: string;
     requestId?: string;
+    createOnly?: boolean;
+    directory?: boolean;
   }): Promise<{ etag: string | null }> {
     if (input.bytes.byteLength > MAX_GALLERY_OBJECT_BYTES) throw new Error('S3 图库对象不能超过 5 MiB');
-    const normalizedKey = joinS3Key(this.#configuration.rootPrefix, normalizeS3Key(input.key, false));
+    if (
+      (input.createOnly !== undefined && typeof input.createOnly !== 'boolean') ||
+      (input.directory !== undefined && typeof input.directory !== 'boolean') ||
+      (input.directory && (!input.createOnly || input.bytes.length !== 0)) ||
+      (input.createOnly &&
+        (!validS3FileKey(input.key, !!input.directory) ||
+          !/^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/u.test(input.contentType)))
+    )
+      throw new Error('S3_FILE_PATH_INVALID');
+    const key = input.createOnly ? input.key : normalizeS3Key(input.key, false);
+    const normalizedKey = joinS3Key(this.#configuration.rootPrefix, key);
+    if (input.createOnly && new TextEncoder().encode(normalizedKey).length > 1024)
+      throw new Error('S3_FILE_PATH_INVALID');
     const body = Uint8Array.from(input.bytes);
     const response = await this.#signedRequest(
       this.#objectUrl(normalizedKey),
       'PUT',
-      { 'Content-Type': input.contentType },
+      { 'Content-Type': input.contentType, ...(input.createOnly ? { 'If-None-Match': '*' } : {}) },
       body,
       input.requestId,
       'text'
@@ -606,7 +655,8 @@ export function parseS3StorageConfiguration(value: unknown): S3StorageConfigurat
   });
 }
 
-function parseListObjectsV2(xml: string): S3ObjectPage {
+function parseListObjectsV2(xml: string, delimiter?: '/'): S3ObjectPage {
+  if (delimiter) return parseDirectoryListing(xml);
   const items = [...xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/gu)].map((match) => {
     const block = match[1] ?? '';
     const key = xmlText(block, 'Key');
@@ -624,6 +674,69 @@ function parseListObjectsV2(xml: string): S3ObjectPage {
   const token = xmlText(xml, 'NextContinuationToken');
   if (truncated && !token) throw new Error('S3_PAGINATION_INCOMPLETE');
   return { items, nextContinuationToken: truncated && token ? token : null };
+}
+
+function parseDirectoryListing(xml: string): S3ObjectPage {
+  const root = parseMultipartXml(xml, { maximumLength: MAX_LIST_RESPONSE_BYTES, maximumNodes: 20_000 });
+  assertMultipartContainer(root, 'ListBucketResult');
+  const scalar = (node: typeof root, name: string, optional = false) => {
+    const matches = node.children.filter((child) => child.name === name);
+    const item = matches[0];
+    if (!matches.length && optional) return null;
+    if (matches.length !== 1 || !item || item.children.length) throw new Error('S3_RESPONSE_INVALID');
+    return item.text;
+  };
+  const truncated = scalar(root, 'IsTruncated');
+  if (truncated !== 'true' && truncated !== 'false') throw new Error('S3_RESPONSE_INVALID');
+  const next = scalar(root, 'NextContinuationToken', true);
+  if (truncated === 'true' && !next) throw new Error('S3_PAGINATION_INCOMPLETE');
+  const items = root.children
+    .filter((child) => child.name === 'Contents')
+    .map((child) => {
+      assertMultipartContainer(child, 'Contents');
+      const key = scalar(child, 'Key');
+      const sizeText = scalar(child, 'Size');
+      const size = Number(sizeText);
+      if (!key || !sizeText || !/^\d+$/u.test(sizeText) || !Number.isSafeInteger(size) || size < 0)
+        throw new Error('S3_RESPONSE_INVALID');
+      const modified = Date.parse(scalar(child, 'LastModified', true) ?? '');
+      return {
+        key,
+        size,
+        etag: normalizeEtag(scalar(child, 'ETag', true)),
+        lastModifiedTimeUtc: Number.isFinite(modified) ? modified : null
+      };
+    });
+  const prefixes = root.children
+    .filter((child) => child.name === 'CommonPrefixes')
+    .map((child) => {
+      assertMultipartContainer(child, 'CommonPrefixes');
+      const value = scalar(child, 'Prefix');
+      if (!value?.endsWith('/')) throw new Error('S3_RESPONSE_INVALID');
+      return value;
+    });
+  if (
+    new Set(items.map((item) => item.key)).size !== items.length ||
+    new Set(prefixes).size !== prefixes.length ||
+    items.length + prefixes.length > 1000
+  )
+    throw new Error('S3_RESPONSE_INVALID');
+  return { items, prefixes, nextContinuationToken: truncated === 'true' ? next : null };
+}
+
+export function validS3FileKey(key: string, directory = false): boolean {
+  if (
+    typeof key !== 'string' ||
+    key.length === 0 ||
+    key !== key.trim() ||
+    key.startsWith('/') ||
+    /[\\\p{Cc}]/u.test(key) ||
+    new TextEncoder().encode(key).length > 1024 ||
+    key.endsWith('/') !== directory
+  )
+    return false;
+  const parts = (directory ? key.slice(0, -1) : key).split('/');
+  return parts.every((part) => !!part && part !== '.' && part !== '..' && part === part.trim());
 }
 
 export function isPrivateS3Host(host: string): boolean {
@@ -728,7 +841,8 @@ function s3HttpError(response: { status: number; data: unknown }): S3StorageErro
     'ExpiredToken',
     'InternalError',
     'SlowDown',
-    'MethodNotAllowed'
+    'MethodNotAllowed',
+    'PreconditionFailed'
   ];
   return new S3StorageError(response.status, code && allowed.includes(code) ? code : 'UnknownProviderError');
 }

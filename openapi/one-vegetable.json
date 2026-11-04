@@ -21624,7 +21624,15 @@
           "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "prefix": { "type": "string", "maxLength": 2048 },
           "continuationToken": { "type": "string", "maxLength": 2048 },
-          "maximum": { "type": "integer", "minimum": 1, "maximum": 1000 }
+          "maximum": { "type": "integer", "minimum": 1, "maximum": 1000 },
+          "delimiter": { "type": "string", "enum": ["/"] },
+          "storageContext": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "Opaque S3 configuration identity; independent of Alibaba authorization."
+          }
         }
       },
       "S3ObjectPutRequest": {
@@ -21636,8 +21644,32 @@
           "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
           "key": { "type": "string", "minLength": 1, "maxLength": 1024 },
           "contentBase64": { "type": "string", "contentEncoding": "base64", "maxLength": 6990508 },
-          "contentType": { "type": "string", "minLength": 1, "maxLength": 128 }
-        }
+          "contentType": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "storageContext": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "Opaque S3 configuration identity; independent of Alibaba authorization."
+          },
+          "createOnly": {
+            "type": "boolean",
+            "description": "Set If-None-Match: *; never overwrite an existing object."
+          },
+          "directory": {
+            "type": "boolean",
+            "description": "Zero-byte, trailing-slash folder marker; requires createOnly."
+          }
+        },
+        "allOf": [
+          {
+            "if": { "required": ["directory"], "properties": { "directory": { "const": true } } },
+            "then": {
+              "required": ["createOnly"],
+              "properties": { "createOnly": { "const": true }, "contentBase64": { "const": "" } }
+            }
+          }
+        ]
       },
       "S3ObjectTargetRequest": {
         "type": "object",
@@ -21646,7 +21678,14 @@
         "properties": {
           "requestId": { "$ref": "#/components/schemas/RequestId" },
           "galleryContext": { "$ref": "#/components/schemas/GalleryTransferContext" },
-          "key": { "type": "string", "minLength": 1, "maxLength": 1024 }
+          "key": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "storageContext": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "Opaque S3 configuration identity; independent of Alibaba authorization."
+          }
         }
       },
       "S3StorageConfiguration": {
