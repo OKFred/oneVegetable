@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Buffer } from 'node:buffer';
 import fixture from '../../../mock/data/extension-s3.json';
 import { ExtensionS3Service, type S3LocalStore } from '../lib/s3-service';
 import {
@@ -62,6 +63,84 @@ function setup() {
   };
 }
 describe('extension S3 isolated service', () => {
+  it('round-trips exactly 5 MB through the service worker without Base64 regex recursion', async () => {
+    const s = setup();
+    await s.save();
+    const size = 5_000_000;
+    const storageContext = await s.service.contextId();
+    const message = { requestId: crypto.randomUUID(), storageContext };
+    s.send.mockImplementation(() => Promise.resolve(new Response('', { headers: { etag: '"stored"' } })));
+    const put = await s.service.handle(
+      {
+        ...message,
+        operation: 'put',
+        payload: {
+          key: 'large.bin',
+          contentBase64: Buffer.alloc(size).toString('base64'),
+          contentType: 'application/octet-stream',
+          createOnly: true
+        }
+      },
+      true
+    );
+    expect(put).toMatchObject({ ok: true, data: { key: 'large.bin', etag: 'stored' } });
+    s.send.mockImplementation(() => Promise.resolve(new Response(new Uint8Array(size))));
+    const get = await s.service.handle(
+      { ...message, requestId: crypto.randomUUID(), operation: 'get', payload: { key: 'large.bin' } },
+      true
+    );
+    expect(get).toMatchObject({ ok: true, data: { key: 'large.bin', byteLength: size } });
+    expect(s.send).toHaveBeenCalledTimes(2);
+  });
+  it.each([
+    { size: 5_000_000, accepted: true },
+    { size: 5_000_001, accepted: false },
+    { size: 5 * 1024 * 1024, accepted: false }
+  ])('enforces the uniform decimal 5 MB request limit: %j', async ({ size, accepted }) => {
+    const s = setup();
+    await s.save();
+    s.send.mockImplementation(() => Promise.resolve(new Response('')));
+    const response = await s.service.handle(
+      {
+        requestId: crypto.randomUUID(),
+        operation: 'put',
+        payload: {
+          key: 'large.bin',
+          contentBase64: Buffer.alloc(size).toString('base64'),
+          contentType: 'application/octet-stream',
+          createOnly: true
+        }
+      },
+      true
+    );
+    expect(response.ok).toBe(accepted);
+    expect(s.send).toHaveBeenCalledTimes(accepted ? 1 : 0);
+  });
+  it.each([5_000_001, 5 * 1024 * 1024])('bounds %i-byte responses without retry', async (size) => {
+    const s = setup();
+    await s.save();
+    s.send.mockImplementation(() => Promise.resolve(new Response(new Uint8Array(size))));
+    const result = await s.service.handle(
+      { requestId: crypto.randomUUID(), operation: 'get', payload: { key: 'large.bin' } },
+      true
+    );
+    expect(result.ok).toBe(false);
+    expect(s.send).toHaveBeenCalledTimes(1);
+  });
+  it.each(['purpose', 'maxBytes'])('rejects removed or unknown envelope field %s', async (field) => {
+    const s = setup();
+    const result = await s.service.handle(
+      {
+        requestId: crypto.randomUUID(),
+        operation: 'get',
+        payload: { key: 'a.png' },
+        [field]: 'ignored'
+      },
+      true
+    );
+    expect(result.error?.code).toBe('INVALID_REQUEST_BODY');
+    expect(s.send).not.toHaveBeenCalled();
+  });
   it('uses an S3-only context for directory listing and refuses untrusted or stale reads', async () => {
     const s = setup();
     await s.save();

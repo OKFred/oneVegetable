@@ -1,7 +1,8 @@
-import type {
-  S3StorageConfiguration,
-  S3StorageConfigurationSummary,
-  S3ObjectPage
+import {
+  S3_MAX_OBJECT_BYTES,
+  type S3StorageConfiguration,
+  type S3StorageConfigurationSummary,
+  type S3ObjectPage
 } from '@one-vegetable/core/s3-storage';
 
 export const EXTENSION_S3_STORAGE_KEY = 'one-vegetable.s3.v1';
@@ -91,12 +92,12 @@ export function validS3Output(operation: S3Operation, value: unknown): boolean {
   if (operation === 'put') return true;
   return (
     typeof value.contentBase64 === 'string' &&
-    value.contentBase64.length <= 7_000_000 &&
+    value.contentBase64.length <= 4 * Math.ceil(S3_MAX_OBJECT_BYTES / 3) &&
     nullableString(value.contentType) &&
     typeof value.byteLength === 'number' &&
     Number.isSafeInteger(value.byteLength) &&
     value.byteLength >= 0 &&
-    value.byteLength <= 5 * 1024 * 1024
+    value.byteLength <= S3_MAX_OBJECT_BYTES
   );
 }
 export interface S3Response<T> {

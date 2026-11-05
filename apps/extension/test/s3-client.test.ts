@@ -13,6 +13,77 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 describe('extension S3 client', () => {
+  it('carries exactly 5 MB through runtime messages without a purpose option', async () => {
+    const bytes = new Uint8Array(5_000_000);
+    let base64 = '';
+    mocks.send.mockImplementation(
+      (message: { requestId: string; operation: string; payload: { contentBase64?: string } }) => {
+        expect(message).not.toHaveProperty('purpose');
+        if (message.operation === 'put') {
+          base64 = message.payload.contentBase64 ?? '';
+          return Promise.resolve({
+            requestId: message.requestId,
+            ok: true,
+            data: { key: 'large.bin', etag: null }
+          });
+        }
+        return Promise.resolve({
+          requestId: message.requestId,
+          ok: true,
+          data: {
+            key: 'large.bin',
+            etag: null,
+            contentType: 'application/octet-stream',
+            byteLength: bytes.length,
+            contentBase64: base64
+          }
+        });
+      }
+    );
+    await extensionS3Storage.putS3Object({
+      key: 'large.bin',
+      bytes,
+      contentType: 'application/octet-stream',
+      createOnly: true
+    });
+    expect(base64.length).toBe(4 * Math.ceil(bytes.length / 3));
+    expect((await extensionS3Storage.getS3Object('large.bin')).bytes).toHaveLength(bytes.length);
+    expect(mocks.send).toHaveBeenCalledTimes(2);
+  });
+  it.each([5_000_001, 5 * 1024 * 1024])(
+    'blocks %i-byte PUT before serialization or messaging',
+    async (size) => {
+      await expect(
+        extensionS3Storage.putS3Object({
+          key: 'large.bin',
+          bytes: new Uint8Array(size),
+          contentType: 'application/octet-stream',
+          createOnly: true
+        })
+      ).rejects.toMatchObject({ gatewayError: { code: 'S3_OBJECT_TOO_LARGE' } });
+      expect(mocks.send).not.toHaveBeenCalled();
+    }
+  );
+  it('bounds responses to decimal 5 MB, including lying lengths', async () => {
+    const size = 5_000_000;
+    const result = { key: 'large.bin', contentBase64: '', byteLength: size, contentType: null, etag: null };
+    expect(validS3Output('get', result)).toBe(true);
+    expect(validS3Output('get', { ...result, byteLength: size + 1 })).toBe(false);
+    expect(validS3Output('get', { ...result, byteLength: 5 * 1024 * 1024 })).toBe(false);
+    const raw = new Uint8Array(size + 1);
+    const { encodeBase64 } = await import('@one-vegetable/core/encoded-file');
+    mocks.send.mockImplementation((message: { requestId: string }) =>
+      Promise.resolve({
+        requestId: message.requestId,
+        ok: true,
+        data: { ...result, contentBase64: encodeBase64(raw) }
+      })
+    );
+    await expect(extensionS3Storage.getS3Object('large.bin')).rejects.toMatchObject({
+      gatewayError: { code: 'S3_RESPONSE_INVALID' }
+    });
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+  });
   it('requests only the exact host during save and sends no credentials if denied', async () => {
     mocks.permission.mockResolvedValue(false);
     await expect(extensionS3Storage.updateS3StorageConfiguration(configuration, null)).rejects.toMatchObject({

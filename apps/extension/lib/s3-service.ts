@@ -7,6 +7,7 @@ import {
 import {
   parseS3StorageConfiguration,
   s3PermissionOrigins,
+  S3_MAX_OBJECT_BYTES,
   S3ObjectStorageClient,
   type S3StorageConfiguration,
   type S3StorageConfigurationSummary
@@ -91,6 +92,13 @@ export class ExtensionS3Service {
       };
       const keys = allowed[value.operation];
       if (!keys || Object.keys(value.payload).some((key) => !keys.includes(key)))
+        fail('INVALID_REQUEST_BODY');
+      if (
+        Object.keys(value).some(
+          (key) =>
+            !['kind', 'requestId', 'operation', 'payload', 'galleryContext', 'storageContext'].includes(key)
+        )
+      )
         fail('INVALID_REQUEST_BODY');
       let expectedStorage =
         value.galleryContext === undefined ? undefined : requireGalleryContext(value.galleryContext).storage;
@@ -285,6 +293,7 @@ export class ExtensionS3Service {
     if (typeof payload.key !== 'string' || payload.key.length > 1024) fail('INVALID_REQUEST_BODY');
     if (operation === 'get') {
       const result = await client.getObject(payload.key, requestId);
+      if (result.bytes.byteLength > S3_MAX_OBJECT_BYTES) fail('S3_OBJECT_TOO_LARGE');
       return {
         key: result.key,
         contentBase64: encodeBase64(result.bytes),
@@ -296,8 +305,9 @@ export class ExtensionS3Service {
     if (operation === 'put') {
       if (
         typeof payload.contentBase64 !== 'string' ||
-        payload.contentBase64.length > 7_000_000 ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(payload.contentBase64) ||
+        payload.contentBase64.length > 4 * Math.ceil(S3_MAX_OBJECT_BYTES / 3) ||
+        payload.contentBase64.length % 4 !== 0 ||
+        !/^[A-Za-z0-9+/]*={0,2}$/u.test(payload.contentBase64) ||
         typeof payload.contentType !== 'string' ||
         (payload.createOnly !== undefined && typeof payload.createOnly !== 'boolean') ||
         (payload.directory !== undefined && typeof payload.directory !== 'boolean') ||
@@ -309,7 +319,7 @@ export class ExtensionS3Service {
       )
         fail('INVALID_REQUEST_BODY');
       const bytes = decodeBase64(payload.contentBase64);
-      if (bytes.byteLength > 5 * 1024 * 1024) fail('S3_OBJECT_TOO_LARGE');
+      if (bytes.byteLength > S3_MAX_OBJECT_BYTES) fail('S3_OBJECT_TOO_LARGE');
       const result = await client.putObject({
         key: payload.key,
         bytes,

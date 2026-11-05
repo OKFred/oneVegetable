@@ -1,10 +1,10 @@
-import { isRequestId, GatewayException } from '@one-vegetable/core';
+import { isRequestId, GatewayException, encodeBase64 } from '@one-vegetable/core';
 import {
   opaqueGalleryId,
   requireGalleryContext,
   assertGalleryContextId
 } from '@one-vegetable/core/gallery-transfer-context';
-import { parseS3StorageConfiguration } from '@one-vegetable/core/s3-storage';
+import { parseS3StorageConfiguration, S3_MAX_OBJECT_BYTES } from '@one-vegetable/core/s3-storage';
 
 import { authorizeAdmin } from '../abac';
 import { authenticateMutation, authenticateRequest } from '../auth/routes';
@@ -17,7 +17,6 @@ import type { AuthService } from '../auth/service';
 import type { S3StorageConfigurationService } from './s3-configuration';
 
 const REQUEST_IDS = new WeakMap<Request, string>();
-const MAX_OBJECT_BYTES = 5 * 1024 * 1024;
 
 export function registerS3StorageRoutes(
   api: Hono,
@@ -125,7 +124,7 @@ export function registerS3StorageRoutes(
       async (body) => {
         const client = await options.service.createClient(undefined, expectedStorageContext(body));
         const object = await client.getObject(readRequiredString(body.key, 1024), readRequestId(body));
-        if (object.bytes.byteLength > MAX_OBJECT_BYTES)
+        if (object.bytes.byteLength > S3_MAX_OBJECT_BYTES)
           throw new AuthError('S3_OBJECT_TOO_LARGE', 'S3 对象过大', 400);
         return {
           key: object.key,
@@ -145,13 +144,13 @@ export function registerS3StorageRoutes(
       async (body, actorId) => {
         if (
           typeof body.contentBase64 !== 'string' ||
-          body.contentBase64.length > 8 * 1024 * 1024 ||
+          body.contentBase64.length > 4 * Math.ceil(S3_MAX_OBJECT_BYTES / 3) ||
           (body.createOnly !== undefined && typeof body.createOnly !== 'boolean') ||
           (body.directory !== undefined && typeof body.directory !== 'boolean')
         )
           throw new AuthError('INVALID_REQUEST_BODY', 'INVALID_REQUEST_BODY', 400);
         const bytes = decodeBase64(body.contentBase64);
-        if (bytes.byteLength > MAX_OBJECT_BYTES)
+        if (bytes.byteLength > S3_MAX_OBJECT_BYTES)
           throw new AuthError('S3_OBJECT_TOO_LARGE', 'S3 对象过大', 400);
         const key = readRequiredString(body.key, 1024);
         const client = await options.service.createClient(undefined, expectedStorageContext(body));
@@ -332,12 +331,6 @@ function readOptionalPositiveInteger(value: unknown, maximum: number): number | 
     throw new AuthError('INVALID_REQUEST_BODY', '整数参数无效', 400);
   }
   return value as number;
-}
-
-function encodeBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
 }
 
 function decodeBase64(value: string): Uint8Array {

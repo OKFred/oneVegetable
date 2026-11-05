@@ -111,6 +111,8 @@ import { ExtensionS3Service } from '../lib/s3-service';
 import { s3LocalStore } from '../lib/s3-local-store';
 import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
 import { handleVideoUpload } from '../lib/video-upload-service';
+import { handleOrderAttachment } from '../lib/order-attachment-service';
+import { ExtensionOrderAttachmentRepository } from '../lib/order-attachment-repository';
 import { handleProductMaintenance } from '../lib/product-maintenance-service';
 import { ExtensionProductMaintenanceRepository } from '../lib/product-maintenance-repository';
 import {
@@ -231,6 +233,7 @@ export default defineBackground({
           await vaultSession.lock('manual');
           await resetIopAuthorization();
           await new ExtensionVideoUploadRepository().clearAll();
+          await new ExtensionOrderAttachmentRepository().clearAll();
           await browser.storage.local.clear();
           await browser.storage.session.clear();
         })
@@ -249,6 +252,23 @@ export default defineBackground({
         return storageAccessReady.then(() => handleAuthorization(value, sender));
       }
       const trustedOptionsPage = isTrustedOptionsPageSender(sender);
+      if (isRecord(value) && value.kind === 'order-attachment-request') {
+        return storageAccessReady.then(() =>
+          serializeVaultOperation(() =>
+            handleOrderAttachment(value, trustedOptionsPage, {
+              loadSettings: async (selection, expected) =>
+                resolveAuthorization(
+                  await loadAuthorizationSettings(),
+                  selection.operation,
+                  selection.payload,
+                  expected.gateway,
+                  'GALLERY_CONTEXT_CHANGED'
+                ),
+              contextId: () => s3.contextId()
+            })
+          )
+        );
+      }
       if (
         value &&
         typeof value === 'object' &&

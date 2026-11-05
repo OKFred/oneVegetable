@@ -46,6 +46,8 @@ import { registerProductMutationRoutes } from './product-mutations/routes';
 import { registerMetaSocialRoutes } from './social-meta/routes';
 import { registerS3StorageRoutes } from './storage/s3-routes';
 import { registerVideoUploadRoutes } from './video-uploads/routes';
+import { registerOrderAttachmentRoutes } from './order-attachments/routes';
+import type { OrderAttachmentRepository } from '@one-vegetable/core/order-attachments';
 import { registerProductMaintenanceRoutes } from './product-maintenance/routes';
 import type { ProductMaintenanceRepository } from '@one-vegetable/core/product-maintenance-service';
 import type { VideoUploadRepository } from '@one-vegetable/core/video-upload-service';
@@ -133,6 +135,7 @@ export interface ApiAppOptions {
   extensionSocialDevices?: ExtensionSocialDeviceService;
   s3Storage?: S3StorageConfigurationService;
   videoUploads?: { repository: VideoUploadRepository; credentials: AsyncAlibabaCredentialProvider };
+  orderAttachments?: { repository: OrderAttachmentRepository; credentials: AsyncAlibabaCredentialProvider };
   productMaintenance?: {
     repository: ProductMaintenanceRepository;
     credentials: AsyncAlibabaCredentialProvider;
@@ -481,6 +484,16 @@ export function createApiApp(options: ApiAppOptions): Hono {
       ...(options.socialMediaAssets ? { mediaAssets: options.socialMediaAssets } : {}),
       ...(options.socialPublishing ? { publishing: options.socialPublishing } : {}),
       ...(options.extensionSocialDevices ? { extensionDevices: options.extensionSocialDevices } : {}),
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && options.orderAttachments) {
+    registerOrderAttachmentRoutes(api, {
+      ...options.orderAttachments,
+      auth: options.authService,
+      ...(options.s3Storage ? { storage: options.s3Storage } : {}),
+      flags: featureFlags,
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Buffer } from 'node:buffer';
 
 import { createRequestId } from '@one-vegetable/core';
 import { requireGalleryContext } from '@one-vegetable/core/gallery-transfer-context';
@@ -25,6 +26,115 @@ afterEach(() => {
 });
 
 describe('S3 storage admin routes', () => {
+  it('round-trips exactly 5 MB through real JSON envelopes', async () => {
+    const { app, authService, service, send } = await fixture('disabled');
+    const session = await bootstrap(authService);
+    const summary = await service.save({
+      configuration: configuration(),
+      actorId: session.user.id,
+      expectedRevision: null,
+      remark: null
+    });
+    const bytes = new Uint8Array(5_000_000).fill(37);
+    send.mockImplementation((_input: RequestInfo | URL, init: RequestInit) =>
+      Promise.resolve(
+        init.method === 'PUT' ? new Response('', { headers: { etag: '"stored"' } }) : new Response(bytes)
+      )
+    );
+    const base = { key: 'large.bin', storageContext: summary.configurationId };
+    const put = await app.request('/api/v1/admin/storage/s3/objects/put', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken, session.session.csrfToken),
+      body: JSON.stringify({
+        ...base,
+        requestId: createRequestId(),
+        contentBase64: Buffer.from(bytes).toString('base64'),
+        contentType: 'application/octet-stream',
+        createOnly: true
+      })
+    });
+    expect(put.status).toBe(200);
+    const get = await app.request('/api/v1/admin/storage/s3/objects/get', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken),
+      body: JSON.stringify({ ...base, requestId: createRequestId() })
+    });
+    expect(get.status).toBe(200);
+    const result: unknown = await get.json();
+    expect(result).toMatchObject({ ok: true, data: { key: base.key, byteLength: bytes.length, etag: null } });
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      !('data' in result) ||
+      !result.data ||
+      typeof result.data !== 'object' ||
+      !('contentBase64' in result.data) ||
+      typeof result.data.contentBase64 !== 'string'
+    )
+      throw new Error('Missing bounded file response');
+    expect(result.data.contentBase64.length).toBe(4 * Math.ceil(bytes.length / 3));
+    expect(send).toHaveBeenCalledTimes(2);
+    const first = send.mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(new Headers(first[1].headers).get('if-none-match')).toBe('*');
+    expect((first[1].body as Uint8Array).byteLength).toBe(bytes.length);
+  });
+  it.each([
+    { size: 5_000_000, accepted: true },
+    { size: 5_000_001, accepted: false },
+    { size: 5 * 1024 * 1024, accepted: false }
+  ])('enforces the decimal 5 MB request limit: %j', async ({ size, accepted }) => {
+    const { app, authService, service, send } = await fixture('disabled');
+    const session = await bootstrap(authService);
+    await service.save({
+      configuration: configuration(),
+      actorId: session.user.id,
+      expectedRevision: null,
+      remark: null
+    });
+    send.mockImplementation(() => Promise.resolve(new Response('')));
+    const result = await app.request('/api/v1/admin/storage/s3/objects/put', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken, session.session.csrfToken),
+      body: JSON.stringify({
+        requestId: createRequestId(),
+        key: 'large.bin',
+        createOnly: true,
+        contentBase64: Buffer.alloc(size).toString('base64'),
+        contentType: 'application/octet-stream'
+      })
+    });
+    expect(result.status).toBe(accepted ? 200 : 400);
+    expect(send).toHaveBeenCalledTimes(accepted ? 1 : 0);
+  });
+  it.each(['purpose', 'maxBytes'])('rejects removed or unknown request field %s', async (field) => {
+    const { app, authService, send } = await fixture('disabled');
+    const session = await bootstrap(authService);
+    const result = await app.request('/api/v1/admin/storage/s3/objects/get', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken),
+      body: JSON.stringify({ requestId: createRequestId(), key: 'large.bin', [field]: 'ignored' })
+    });
+    expect(result.status).toBe(400);
+    expect(send).not.toHaveBeenCalled();
+  });
+  it.each([5_000_001, 5 * 1024 * 1024])('bounds %i-byte responses without retry', async (size) => {
+    const { app, authService, service, send } = await fixture('disabled');
+    const session = await bootstrap(authService);
+    await service.save({
+      configuration: configuration(),
+      actorId: session.user.id,
+      expectedRevision: null,
+      remark: null
+    });
+    send.mockImplementation(() => Promise.resolve(new Response(new Uint8Array(size))));
+    const result = await app.request('/api/v1/admin/storage/s3/objects/get', {
+      method: 'POST',
+      headers: authHeaders(session.sessionToken),
+      body: JSON.stringify({ requestId: createRequestId(), key: 'large.bin' })
+    });
+    expect(result.status).not.toBe(200);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
   it('browses S3 with its own context and no Alibaba gateway credentials', async () => {
     const { app, authService, service, send } = await fixture('disabled');
     const session = await bootstrap(authService);

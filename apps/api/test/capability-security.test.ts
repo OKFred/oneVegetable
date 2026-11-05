@@ -24,6 +24,7 @@ import { AuthService } from '../src/auth/service';
 import { AdminService } from '../src/auth/admin-service';
 import { SqlAuthRepository } from '../src/auth/repository';
 import { isProductReferenceMethod } from '../../../packages/core/src/product-reference-methods';
+import { isFulfillmentReadMethod } from '../../../packages/core/src/order-fulfillment-methods';
 import { applyNodeMigrations, openNodeDatabase, type NodeDatabaseHandle } from '../src/db/node-database';
 
 const credentials = {
@@ -146,7 +147,8 @@ describe('BFF / extension generic security parity', () => {
       const payload = { method: capability.method, parameters: definition.requestExample };
       if (!resolveExtensionOperationAvailability('callCapability', payload).allowed) continue;
       const requestId = createRequestId();
-      const native = isProductReferenceMethod(capability.method);
+      const native =
+        isProductReferenceMethod(capability.method) || isFulfillmentReadMethod(capability.method);
       const responseExample =
         capability.method === lookupFixture.method
           ? lookupFixture.nativeResponse

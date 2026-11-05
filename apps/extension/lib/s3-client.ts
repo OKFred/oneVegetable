@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import { decodeBase64, encodeBase64, GatewayException } from '@one-vegetable/core/runtime';
 import {
   s3PermissionOrigins,
+  S3_MAX_OBJECT_BYTES,
   type S3StorageControl,
   type S3RequestOptions
 } from '@one-vegetable/core/s3-storage';
@@ -76,7 +77,11 @@ export const extensionS3Storage: S3StorageControl = {
   async getS3Object(key, options) {
     const result = await requestS3('get', { key }, options);
     const bytes = decodeBase64(result.contentBase64);
-    if (bytes.byteLength !== result.byteLength || bytes.byteLength > 5 * 1024 * 1024)
+    if (
+      result.key !== key ||
+      bytes.byteLength !== result.byteLength ||
+      bytes.byteLength > S3_MAX_OBJECT_BYTES
+    )
       throw new GatewayException({
         code: 'S3_RESPONSE_INVALID',
         message: 'S3_RESPONSE_INVALID',
@@ -84,8 +89,14 @@ export const extensionS3Storage: S3StorageControl = {
       });
     return { key: result.key, bytes, contentType: result.contentType, etag: result.etag };
   },
-  putS3Object: ({ key, bytes, contentType, createOnly, directory }, options) =>
-    requestS3(
+  async putS3Object({ key, bytes, contentType, createOnly, directory }, options) {
+    if (bytes.byteLength > S3_MAX_OBJECT_BYTES)
+      throw new GatewayException({
+        code: 'S3_OBJECT_TOO_LARGE',
+        message: 'S3_OBJECT_TOO_LARGE',
+        retryable: false
+      });
+    return requestS3(
       'put',
       {
         key,
@@ -95,5 +106,6 @@ export const extensionS3Storage: S3StorageControl = {
         ...(directory === undefined ? {} : { directory })
       },
       options
-    )
+    );
+  }
 };
