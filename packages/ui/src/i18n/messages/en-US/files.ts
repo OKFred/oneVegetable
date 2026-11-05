@@ -23,8 +23,9 @@ export const files = {
   root: 'Root',
   up: 'Up one folder',
   select: 'Select one file',
-  limit: 'Uploads, previews and downloads are limited to 5 MiB. Larger files remain visible.',
-  tooLarge: 'This file exceeds 5 MiB. Upload, preview and download are not supported in this batch.',
+  limit:
+    'S3 file uploads, previews and downloads are limited to 5 MB (5,000,000 bytes). Larger files remain visible.',
+  tooLarge: 'This file exceeds 5 MB (5,000,000 bytes). Upload, preview and download are not supported.',
   confirmUpload: 'Confirm new file',
   confirmFolder: 'Confirm new folder',
   confirmHint:

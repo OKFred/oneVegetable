@@ -195,7 +195,9 @@ describe('S3 file driver', () => {
       { ...plan, createOnly: true },
       { storageContext: context }
     );
-    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('folder/a.txt', { storageContext: context });
+    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('folder/a.txt', {
+      storageContext: context
+    });
     const folder = prepareFileCreate('', 'empty', new Uint8Array(), '', true);
     s3.getS3Object.mockResolvedValue({
       key: 'empty/',
@@ -277,7 +279,9 @@ describe('S3 file driver', () => {
       etag: null
     });
     await expect(driver.read(small)).rejects.toThrow('S3_FILE_RESPONSE_INVALID');
-    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('small', { storageContext: context });
+    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('small', {
+      storageContext: context
+    });
     expect(() => prepareFileCreate('', 'x', new Uint8Array(S3_FILE_LIMIT + 1), '')).toThrow(
       'S3_FILE_TOO_LARGE'
     );
@@ -290,6 +294,38 @@ describe('S3 file driver', () => {
     expect(safeFilePreview(new Uint8Array([0, 1, 2]))).toBeNull();
     expect(safeFilePreview(new Uint8Array(256 * 1024 + 1).fill(65))).toBeNull();
     expect(() => safeFilePreview(new Uint8Array(S3_FILE_LIMIT + 1))).toThrow('S3_FILE_TOO_LARGE');
+  });
+  it('keeps ordinary file reads, writes and byte readback within decimal 5 MB', async () => {
+    expect(S3_FILE_LIMIT).toBe(5_000_000);
+    const s3 = storage();
+    const bytes = new Uint8Array(S3_FILE_LIMIT);
+    bytes.set([137, 80, 78, 71, 13, 10, 26, 10]);
+    const plan = prepareFileCreate('', 'large.png', bytes, 'image/png');
+    const content = { key: plan.key, bytes, contentType: 'image/png', etag: null };
+    s3.getS3Object.mockResolvedValue(content);
+    s3.listS3Objects.mockResolvedValue({
+      items: [object(plan.key, bytes.length)],
+      nextContinuationToken: null
+    });
+    const driver = new S3FileDriver(s3, context, () => true);
+    await driver.create(plan);
+    expect(s3.putS3Object).toHaveBeenCalledTimes(1);
+    const upload = s3.putS3Object.mock.calls[0];
+    if (!upload) throw new Error('Missing file-manager upload');
+    expect(upload[0].key).toBe(plan.key);
+    expect(upload[0].bytes.byteLength).toBe(S3_FILE_LIMIT);
+    expect(upload[0].createOnly).toBe(true);
+    expect(upload[1]).toEqual({ storageContext: context });
+    const selected = firstFile(await driver.list());
+    expect((await driver.read(selected)).bytes).toHaveLength(S3_FILE_LIMIT);
+    expect(s3.getS3Object).toHaveBeenCalledTimes(2);
+    for (const [, options] of s3.getS3Object.mock.calls) expect(options).toEqual({ storageContext: context });
+    expect(safeFilePreview(bytes)?.kind).toBe('image');
+    const oversized = new Uint8Array(S3_FILE_LIMIT + 1);
+    expect(() => prepareFileCreate('', 'too-large', oversized, '')).toThrow('S3_FILE_TOO_LARGE');
+    s3.getS3Object.mockResolvedValue({ ...content, bytes: oversized });
+    await expect(driver.read(selected)).rejects.toThrow('S3_FILE_RESPONSE_INVALID');
+    expect(s3.putS3Object).toHaveBeenCalledTimes(1);
   });
   it('disables every out-of-scope driver operation, including public URLs', async () => {
     const s3 = storage(),

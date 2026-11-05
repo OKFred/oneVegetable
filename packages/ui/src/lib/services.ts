@@ -22,6 +22,7 @@ import type { DashboardTodoRepository } from './todo-repository';
 import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
 import type { ProductMaintenanceControl } from '@one-vegetable/core/product-maintenance-control';
+import type { OrderAttachmentControl } from '@one-vegetable/core/order-attachments';
 
 export interface AppRuntimeState {
   backendMeta: BackendMeta | null;
@@ -42,6 +43,7 @@ export interface AppServices {
   s3Storage?: S3StorageControl;
   videoUploads?: VideoUploadControl;
   productMaintenance?: ProductMaintenanceControl;
+  orderAttachments?: OrderAttachmentControl;
   socialPublishing?: SocialPublishingClient;
   extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;

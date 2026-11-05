@@ -3,6 +3,30 @@ const authorizationChanged =
 
 export const errors = {
   codes: {
+    FULFILLMENT_CONTEXT_CHANGED: 'The account or authorization changed. Run the query again.',
+    FULFILLMENT_READ_RESPONSE_INVALID:
+      'The platform returned incomplete fulfillment data. Try checking again later.',
+    FULFILLMENT_READ_BUSINESS_FAILED:
+      'The platform rejected this fulfillment query. Check permissions and business prerequisites.',
+    ORDER_ATTACHMENT_FILE_INVALID:
+      'Choose a JPG, PNG, PDF or DOC with a matching file header and extension, at most 5 MB.',
+    ORDER_ATTACHMENT_CONTEXT_INVALID:
+      'The account or storage configuration could not be verified. Reopen the attachment window.',
+    ORDER_ATTACHMENT_UPLOAD_DISABLED: 'IOP attachment upload is not enabled in this environment.',
+    ORDER_ATTACHMENT_UPLOAD_PENDING:
+      'This file has an unresolved upload. Check its existing receipt instead of uploading again.',
+    ORDER_ATTACHMENT_RESPONSE_INVALID:
+      'The attachment receipt is unconfirmed. Keep the request ID and check it; do not upload again.',
+    ORDER_ATTACHMENT_RESULT_INVALID: 'The platform attachment result is unconfirmed. Do not upload again.',
+    ORDER_ATTACHMENT_REQUEST_CONFLICT:
+      'This request has different content or an unresolved upload. Check the existing receipt.',
+    ORDER_ATTACHMENT_NOT_FOUND: 'No attachment receipt was found for this account. Check the request ID.',
+    ORDER_ATTACHMENT_RECORD_CORRUPT:
+      'Attachment record validation failed. The operation stopped; keep the diagnostics.',
+    ORDER_ATTACHMENT_UNTRUSTED_SENDER: 'Use attachments from the extension workspace.',
+    ORDER_ATTACHMENT_READ_ONLY: 'This action only reads the receipt; it never resends the attachment.',
+    ORDER_ATTACHMENT_FAILED:
+      'The attachment operation did not complete. Check authorization or the original receipt.',
     INSIGHTS_RESPONSE_INVALID:
       'The platform did not return complete, explicitly successful supplier data. The count is unavailable, not zero.',
     INSIGHTS_PROVIDER_REJECTED:
@@ -72,7 +96,7 @@ export const errors = {
       'Local S3 credentials cannot be decrypted. Clear local data and configure S3 again.',
     S3_UNTRUSTED_SENDER: 'Only the extension workbench can access S3.',
     S3_RESPONSE_INVALID: 'Invalid S3 background response. Reopen the workbench.',
-    S3_OBJECT_TOO_LARGE: 'An S3 asset must not exceed 5 MiB.',
+    S3_OBJECT_TOO_LARGE: 'An S3 file must not exceed 5 MB.',
     S3_STORAGE_FAILED:
       'S3 operation failed. Check host permissions, credentials and connectivity. After an upload error, check storage before retrying.',
     UNKNOWN_ERROR: 'An unknown error occurred.',

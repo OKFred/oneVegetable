@@ -381,7 +381,9 @@ describe('FilesView', () => {
       },
       { storageContext: context }
     );
-    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('upload.txt', { storageContext: context });
+    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('upload.txt', {
+      storageContext: context
+    });
     expect(toast.success).toHaveBeenCalledOnce();
   });
   it('creates zero-byte directory markers only after confirmation', async () => {
@@ -448,7 +450,7 @@ describe('FilesView', () => {
     const input = wrapper.get<HTMLInputElement>('[data-testid="files-input"]');
     Object.defineProperty(input.element, 'files', { configurable: true, value: [huge] });
     await input.trigger('change');
-    expect(wrapper.get('[role="alert"]').text()).toContain('超过 5 MiB');
+    expect(wrapper.get('[role="alert"]').text()).toContain('超过 5 MB');
     expect(read).not.toHaveBeenCalled();
     expect(s3.putS3Object).toHaveBeenCalledOnce();
   });
@@ -465,7 +467,7 @@ describe('FilesView', () => {
     await ready(wrapper);
     await wrapper.get('[data-entry="large.bin"]').trigger('click');
     expect(wrapper.get('[data-testid="files-preview"]').attributes('disabled')).toBeDefined();
-    expect(wrapper.text()).toContain('超过 5 MiB');
+    expect(wrapper.text()).toContain('超过 5 MB');
     expect(s3.getS3Object).not.toHaveBeenCalled();
     const text = '<svg onload="bad()"><script>bad()</script></svg>';
     s3.getS3Object.mockResolvedValue({
@@ -596,7 +598,9 @@ describe('FilesView', () => {
     await wrapper.get('[data-entry="hello.txt"]').trigger('click');
     await target.trigger('keydown', { code: 'Space' });
     await flushPromises();
-    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('hello.txt', { storageContext: context });
+    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('hello.txt', {
+      storageContext: context
+    });
     expect(document.body.querySelector('[data-testid="files-text-preview"]')?.textContent).toBe('abc');
   });
   it('provides keyboard-focusable safe folder and preview actions', async () => {
@@ -612,36 +616,114 @@ describe('FilesView', () => {
     );
     expect(s3.getS3Object).not.toHaveBeenCalled();
   });
-  it('downloads only via the bounded control and revokes temporary object URLs on unmount', async () => {
-    const s3 = storage(),
-      { wrapper } = mountView(s3);
-    const create = vi.fn(() => 'blob:files-test'),
-      revoke = vi.fn();
-    const OriginalURL = URL;
-    vi.stubGlobal(
-      'URL',
-      class extends OriginalURL {
-        static override createObjectURL = create;
-        static override revokeObjectURL = revoke;
-      }
-    );
-    const downloads: { href: string; name: string }[] = [];
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
-      this: HTMLAnchorElement
-    ) {
-      downloads.push({ href: this.href, name: this.download });
+  it.each([3, 5_000_000])(
+    'downloads %i bytes via the scoped control and revokes temporary object URLs on unmount',
+    async (size) => {
+      const s3 = storage();
+      s3.listS3Objects.mockResolvedValue({
+        items: [{ key: 'hello.txt', size, etag: null, lastModifiedTimeUtc: null }],
+        nextContinuationToken: null
+      });
+      s3.getS3Object.mockResolvedValue({
+        key: 'hello.txt',
+        bytes: new Uint8Array(size),
+        contentType: 'application/octet-stream',
+        etag: null
+      });
+      const { wrapper } = mountView(s3);
+      const create = vi.fn(() => 'blob:files-test'),
+        revoke = vi.fn();
+      const OriginalURL = URL;
+      vi.stubGlobal(
+        'URL',
+        class extends OriginalURL {
+          static override createObjectURL = create;
+          static override revokeObjectURL = revoke;
+        }
+      );
+      const downloads: { href: string; name: string }[] = [];
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+        this: HTMLAnchorElement
+      ) {
+        downloads.push({ href: this.href, name: this.download });
+      });
+      await ready(wrapper);
+      await wrapper.get('[data-entry="hello.txt"]').trigger('click');
+      await wrapper.get('[data-testid="files-download"]').trigger('click');
+      await flushPromises();
+      expect(downloads).toEqual([{ href: 'blob:files-test', name: 'hello.txt' }]);
+      expect(create).toHaveBeenCalledOnce();
+      expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('hello.txt', {
+        storageContext: context
+      });
+      wrapper.unmount();
+      expect(revoke).toHaveBeenCalledWith('blob:files-test');
+      click.mockRestore();
+    }
+  );
+  it('uploads exactly 5 MB only after confirmation and verifies byte readback', async () => {
+    expect(S3_FILE_LIMIT).toBe(5_000_000);
+    const s3 = storage();
+    const bytes = new Uint8Array(S3_FILE_LIMIT).fill(37);
+    s3.getS3Object.mockResolvedValue({
+      key: 'limit.bin',
+      bytes,
+      contentType: 'application/octet-stream',
+      etag: null
     });
+    const { wrapper, request, load } = mountView(s3);
     await ready(wrapper);
-    await wrapper.get('[data-entry="hello.txt"]').trigger('click');
-    await wrapper.get('[data-testid="files-download"]').trigger('click');
+    await choose(wrapper, 'limit.bin', bytes);
+    expect(document.body.textContent).toContain('目标：limit.bin');
+    expect(s3.putS3Object).not.toHaveBeenCalled();
+    expect(s3.getS3Object).not.toHaveBeenCalled();
+    bodyButton('确认创建').click();
     await flushPromises();
-    expect(downloads).toEqual([{ href: 'blob:files-test', name: 'hello.txt' }]);
-    expect(create).toHaveBeenCalledOnce();
-    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('hello.txt', { storageContext: context });
-    wrapper.unmount();
-    expect(revoke).toHaveBeenCalledWith('blob:files-test');
-    click.mockRestore();
+    expect(s3.putS3Object).toHaveBeenCalledTimes(1);
+    const upload = s3.putS3Object.mock.calls[0];
+    if (!upload) throw new Error('Missing confirmed file upload');
+    expect(upload[0].key).toBe('limit.bin');
+    expect(upload[0].bytes.byteLength).toBe(S3_FILE_LIMIT);
+    expect(upload[0].createOnly).toBe(true);
+    expect(upload[0].directory).toBe(false);
+    expect(upload[1]).toEqual({ storageContext: context });
+    expect(s3.getS3Object).toHaveBeenCalledExactlyOnceWith('limit.bin', {
+      storageContext: context
+    });
+    expect(toast.success).toHaveBeenCalledOnce();
+    expect(request).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
   });
+  it.each([
+    { size: 5_000_000, fileEnabled: true, attachmentEnabled: true },
+    { size: 5_000_001, fileEnabled: false, attachmentEnabled: false },
+    { size: 5 * 1024 * 1024, fileEnabled: false, attachmentEnabled: false },
+    { size: 5 * 1024 * 1024 + 1, fileEnabled: false, attachmentEnabled: false }
+  ])(
+    'uses the same decimal 5 MB limit for files and Alibaba attachments: %j',
+    async ({ size, fileEnabled, attachmentEnabled }) => {
+      const s3 = storage();
+      s3.listS3Objects.mockResolvedValue({
+        items: [{ key: 'boundary.pdf', size, etag: null, lastModifiedTimeUtc: null }],
+        nextContinuationToken: null
+      });
+      const { wrapper, request, load } = mountView(s3);
+      await ready(wrapper);
+      expect(wrapper.get('[data-testid="files-order-attachment"]').attributes('disabled')).toBeDefined();
+      await wrapper.get('[data-entry="boundary.pdf"]').trigger('click');
+      const attachment = wrapper.get('[data-testid="files-order-attachment"]');
+      expect(attachment.attributes('disabled') === undefined).toBe(attachmentEnabled);
+      for (const action of ['files-preview', 'files-download'])
+        expect(wrapper.get('[data-testid="' + action + '"]').attributes('disabled') === undefined).toBe(
+          fileEnabled
+        );
+      if (!attachmentEnabled) await attachment.trigger('click');
+      expect(s3.getS3Object).not.toHaveBeenCalled();
+      expect(s3.putS3Object).not.toHaveBeenCalled();
+      expect(request).not.toHaveBeenCalled();
+      expect(load).not.toHaveBeenCalled();
+    }
+  );
   it('ignores a late preview read after unmount without scheduling more work', async () => {
     const s3 = storage(),
       { wrapper } = mountView(s3);

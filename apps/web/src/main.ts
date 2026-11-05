@@ -126,6 +126,7 @@ const app = createApp(OneVegetableApp, {
   ...(control ? { control } : {}),
   ...(control ? { videoUploads: control } : {}),
   ...(control ? { productMaintenance: control } : {}),
+  ...(control?.orderAttachments ? { orderAttachments: control.orderAttachments } : {}),
   ...(authenticationEvents ? { authenticationEvents } : {}),
   ...(control ? { socialPublishing: control } : {}),
   ...(onboarding ? { onboarding } : {}),

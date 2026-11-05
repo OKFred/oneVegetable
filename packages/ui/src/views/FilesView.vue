@@ -10,7 +10,7 @@ import {
   shallowRef,
   watch
 } from 'vue';
-import { Download, Eye, File, Folder, FolderPlus, RefreshCw, Upload } from '@lucide/vue';
+import { Download, Eye, File, FileUp, Folder, FolderPlus, RefreshCw, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import {
   useMenuItems,
@@ -28,11 +28,18 @@ import ConfirmActionDialog from '../components/ConfirmActionDialog.vue';
 import Button from '../components/ui/Button.vue';
 import Input from '../components/ui/Input.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
+import Tooltip from '../components/ui/Tooltip.vue';
 import { useFilesI18n } from '../i18n/files';
 import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import { useListIdentityScope } from '../lib/list-identity-scope';
 import { formatDateTime } from '../lib/date-time';
+import {
+  createOrderAttachmentFile,
+  ORDER_ATTACHMENT_LIMIT
+} from '@one-vegetable/core/order-attachment-platform';
+import type { EncodedFilePayload } from '@one-vegetable/core/encoded-file';
+import { useOrderAttachmentsI18n } from '../i18n/order-attachments';
 import {
   fileStorage,
   prepareFileCreate,
@@ -46,6 +53,9 @@ import {
 } from '../lib/s3-file-driver';
 
 const VueFinder = defineAsyncComponent(async () => (await import('vuefinder')).VueFinder);
+const OrderAttachmentDialog = defineAsyncComponent(() => import('../components/OrderAttachmentDialog.vue'));
+const attachmentText = useOrderAttachmentsI18n();
+const attachmentSource = shallowRef<{ name: string; load: () => Promise<EncodedFilePayload> } | null>(null);
 const localeModules = (
   import.meta as ImportMeta & {
     glob<T>(pattern: string): Record<string, () => Promise<T>>;
@@ -172,6 +182,7 @@ function report(value: unknown): void {
     S3_FILE_CONTEXT_CHANGED: 'contextChanged',
     S3_FILE_PATH_INVALID: 'pathInvalid',
     S3_FILE_TOO_LARGE: 'tooLarge',
+    S3_OBJECT_TOO_LARGE: 'tooLarge',
     S3_FILE_COLLISION: 'collision',
     S3_FILE_WRITE_UNKNOWN: 'writeUnknown'
   };
@@ -302,6 +313,21 @@ function filterPage(): void {
 function select(items: DirEntry[]): void {
   clearPreview();
   selected.value = items.length === 1 ? (items[0] ?? null) : null;
+}
+function useAsAttachment(): void {
+  const current = driver.value;
+  const row = selected.value ? { ...selected.value } : null;
+  if (!current || row?.type !== 'file' || blocked.value || reading.value) return;
+  attachmentSource.value = {
+    name: row.basename,
+    load: async () => {
+      const active = () => !disposed && driver.value === current;
+      if (!active()) throw new Error('S3_FILE_CONTEXT_CHANGED');
+      const content = await current.read(row);
+      if (!active() || content.bytes.length !== row.file_size) throw new Error('S3_FILE_CONTEXT_CHANGED');
+      return createOrderAttachmentFile(row.basename, content.bytes);
+    }
+  };
 }
 function openFolder(event: ItemDclickEvent): void {
   event.preventDefault();
@@ -529,6 +555,22 @@ onUnmounted(() => {
           @click="readSelected('preview')"
           >{{ ft('preview') }}</ListActionButton
         >
+        <Tooltip :text="attachmentText('limits')">
+          <ListActionButton
+            :icon="FileUp"
+            :disabled="
+              blocked ||
+              reading ||
+              !selected ||
+              tooLarge ||
+              selected.type !== 'file' ||
+              (selected.file_size ?? 0) > ORDER_ATTACHMENT_LIMIT
+            "
+            data-testid="files-order-attachment"
+            @click="useAsAttachment"
+            >{{ attachmentText('entry') }}</ListActionButton
+          >
+        </Tooltip>
         <ListViewToggle
           v-model="view"
           :label="ft('display')"
@@ -693,6 +735,11 @@ onUnmounted(() => {
         >{{ preview.text }}</pre>
       <p v-else>{{ ft('unsupportedPreview') }}</p>
     </ModalDialog>
+    <OrderAttachmentDialog
+      v-if="attachmentSource"
+      :source="attachmentSource"
+      @close="attachmentSource = null"
+    />
   </section>
 </template>
 

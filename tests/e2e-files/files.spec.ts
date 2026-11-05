@@ -191,6 +191,55 @@ test('upload requires confirmation and readback; collision never overwrites; dow
   expect(await readFile(path, 'utf8')).toBe(fixture.upload.text);
 });
 
+test('exactly 5 MB uploads through the real BFF, verifies stored hash and downloads identical bytes', async ({
+  page
+}) => {
+  await openFiles(page);
+  const http = page.context().request;
+  const name = 'exact-5mb.bin';
+  const key = fixture.configuration.rootPrefix + '/' + name;
+  const bytes = Buffer.alloc(5_000_000, 0x5a);
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  await page.getByTestId('files-input').setInputFiles({
+    name,
+    mimeType: 'application/octet-stream',
+    buffer: bytes
+  });
+  const confirmation = page.getByRole('dialog', { name: 'Confirm new file', exact: true });
+  await expect(confirmation).toBeVisible();
+  expect(putRequests(await stats(http))).toHaveLength(0);
+  await confirmation.getByRole('button', { name: 'Confirm creation', exact: true }).click();
+  await expect(confirmation).toBeHidden();
+  await expect(page.locator('.vuefinder')).toContainText(name);
+  const uploaded = await stats(http);
+  expect(putRequests(uploaded)).toEqual([expect.objectContaining({ key, conditional: true })]);
+  expect(uploaded.objects.find((object) => object.key === key)).toEqual({
+    key,
+    size: bytes.length,
+    sha256
+  });
+  expect(uploaded.requests.filter((request) => request.method === 'GET' && request.key === key)).toHaveLength(
+    1
+  );
+  await page.locator('.vuefinder').getByText(name, { exact: true }).first().click();
+  await expect(page.getByTestId('files-download')).toBeEnabled();
+  await expect(page.getByTestId('files-order-attachment')).toBeEnabled();
+  const download = page.waitForEvent('download');
+  await page.getByTestId('files-download').click();
+  const received = await download;
+  expect(received.suggestedFilename()).toBe(name);
+  const path = await received.path();
+  if (!path) throw new Error('Downloaded boundary file is missing');
+  const downloaded = await readFile(path);
+  expect(downloaded.byteLength).toBe(bytes.length);
+  expect(createHash('sha256').update(downloaded).digest('hex')).toBe(sha256);
+  const completed = await stats(http);
+  expect(putRequests(completed)).toHaveLength(1);
+  expect(
+    completed.requests.filter((request) => request.method === 'GET' && request.key === key)
+  ).toHaveLength(2);
+});
+
 for (const locale of ['zh-CN', 'en-US'] as const) {
   test(
     locale + ': folder confirmation and escaped HTML preview work in the narrow dark layout',
@@ -242,7 +291,7 @@ for (const locale of ['zh-CN', 'en-US'] as const) {
   );
 }
 
-test('cancelling creation and over-limit uploads do not send mutations', async ({ page }) => {
+test('cancelling creation and 5 MB + 1 uploads never send an object request', async ({ page }) => {
   await openFiles(page);
   const http = page.context().request;
   await page.getByTestId('files-input').setInputFiles({
@@ -254,13 +303,24 @@ test('cancelling creation and over-limit uploads do not send mutations', async (
     .getByRole('dialog', { name: 'Confirm new file', exact: true })
     .getByRole('button', { name: 'Cancel', exact: true })
     .click();
-  expect(putRequests(await stats(http))).toHaveLength(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const before = await stats(http);
+  expect(putRequests(before)).toHaveLength(0);
+  const objectRequests: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith('/api/v1/admin/storage/s3/objects/'))
+      objectRequests.push(request.method() + ' ' + url.pathname);
+  });
   await page.getByTestId('files-input').setInputFiles({
     name: 'oversized.bin',
     mimeType: 'application/octet-stream',
-    buffer: Buffer.alloc(5 * 1024 * 1024 + 1)
+    buffer: Buffer.alloc(5_000_001)
   });
-  await expect(page.getByRole('alert')).toContainText('exceeds 5 MiB');
+  await expect(page.getByRole('alert')).toContainText('exceeds 5 MB');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  expect(putRequests(await stats(http))).toHaveLength(0);
+  expect(objectRequests).toEqual([]);
+  const after = await stats(http);
+  expect(after.requests).toEqual(before.requests);
+  expect(after.objects).toEqual(before.objects);
 });

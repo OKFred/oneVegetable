@@ -10,6 +10,7 @@ import {
   type PhotoGroup
 } from '@one-vegetable/core';
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
+import { S3_MAX_OBJECT_BYTES } from '@one-vegetable/core/s3-storage';
 import type { GalleryTransferDriver } from '@one-vegetable/core/gallery-transfer-runner';
 import { safeCode } from '@one-vegetable/core/gallery-transfer-runner';
 import {
@@ -210,7 +211,7 @@ export class BrowserGalleryTransferDriver implements GalleryTransferDriver {
         data = object.bytes;
       }
     }
-    if (task.storage === 's3' && data.length > 5 * 1024 * 1024)
+    if (task.storage === 's3' && data.length > S3_MAX_OBJECT_BYTES)
       throw new GalleryTaskError('S3_OBJECT_TOO_LARGE');
     checkGalleryZipSize(task, item.id, data.length);
     const sha256 = await galleryAssetSha256(data);

@@ -95,6 +95,7 @@ import { EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY } from '../../lib/product-d
 import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
 import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
 import { requestVideoUpload } from '../../lib/video-upload-client';
+import { extensionOrderAttachments } from '../../lib/order-attachment-client';
 import { requestProductMaintenance } from '../../lib/product-maintenance-client';
 import { extensionTemplates, inspectLocalTemplates, resetLocalTemplates } from '../../lib/template-client';
 
@@ -987,6 +988,7 @@ async function mountOptionsApp(): Promise<void> {
     settings,
     s3Storage: extensionS3Storage,
     videoUploads: { videoUpload: requestVideoUpload },
+    orderAttachments: extensionOrderAttachments,
     productMaintenance: { productMaintenance: requestProductMaintenance },
     permissions,
     localData,

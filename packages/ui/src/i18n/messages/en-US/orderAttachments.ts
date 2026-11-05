@@ -1,0 +1,27 @@
+export const orderAttachments = {
+  title: 'Platform attachments',
+  entry: 'Upload as platform attachment',
+  tools: 'Warehouses, freight and tracking',
+  description:
+    'Upload a local or S3 file to Alibaba IOP. No automatic order association, order placement, payment or shipment.',
+  select: 'Choose file',
+  read: 'Read selected S3 file',
+  limits: 'JPG, PNG, PDF or DOC; at most 5 MB.',
+  preparing: 'Validating file…',
+  confirm: 'Confirm upload',
+  upload: 'Upload attachment',
+  confirmation: 'Upload this file to Alibaba? It will leave local/S3 storage. No order will be modified.',
+  busy: 'Uploading. Do not submit again…',
+  accepted: 'Attachment received by platform',
+  acceptedNote: 'Upload accepted only; this does not mean it is associated with an order.',
+  unknown: 'Outcome needs checking. Do not upload again. Querying this receipt never resends the file.',
+  failed: 'Upload failed',
+  query: 'Check receipt',
+  close: 'Close',
+  unavailable: 'Attachment upload is unavailable. Check IOP authorization and availability.',
+  fileName: 'File name',
+  size: 'Size',
+  fingerprint: 'SHA-256',
+  reference: 'Platform attachment reference',
+  requestId: 'Request ID'
+};

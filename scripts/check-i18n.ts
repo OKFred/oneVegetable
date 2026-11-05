@@ -19,6 +19,10 @@ import { inventory as inventoryZh } from '../packages/ui/src/i18n/messages/zh-CN
 import { inventory as inventoryEn } from '../packages/ui/src/i18n/messages/en-US/inventory';
 import { files as filesZh } from '../packages/ui/src/i18n/messages/zh-CN/files';
 import { files as filesEn } from '../packages/ui/src/i18n/messages/en-US/files';
+import { orderAttachments as attachmentsZh } from '../packages/ui/src/i18n/messages/zh-CN/orderAttachments';
+import { orderAttachments as attachmentsEn } from '../packages/ui/src/i18n/messages/en-US/orderAttachments';
+import { orderFulfillment as fulfillmentZh } from '../packages/ui/src/i18n/messages/zh-CN/orderFulfillment';
+import { orderFulfillment as fulfillmentEn } from '../packages/ui/src/i18n/messages/en-US/orderFulfillment';
 import { zhCN } from '../packages/ui/src/i18n/messages/zh-CN/index';
 import { productMaintenance as maintenanceZh } from '../packages/ui/src/i18n/messages/zh-CN/productMaintenance';
 import { productMaintenance as maintenanceEn } from '../packages/ui/src/i18n/messages/en-US/productMaintenance';
@@ -69,6 +73,8 @@ const errors = [
   ...compareCatalogs(zhCN, enUS),
   ...compareCatalogs(inventoryZh, inventoryEn),
   ...compareCatalogs(filesZh, filesEn),
+  ...compareCatalogs(attachmentsZh, attachmentsEn),
+  ...compareCatalogs(fulfillmentZh, fulfillmentEn),
   ...compareCatalogs(showcaseZh, showcaseEn),
   ...compareCatalogs(postingZh, postingEn),
   ...compareCatalogs(credentialsZh, credentialsEn),

@@ -2,6 +2,21 @@ const authorizationChanged = '授权已变化，请重新读取两份配置并�
 
 export const errors = {
   codes: {
+    FULFILLMENT_CONTEXT_CHANGED: '账号或授权已变化，请重新查询。',
+    FULFILLMENT_READ_RESPONSE_INVALID: '平台返回的履约数据不完整，无法可靠展示，请稍后再试。',
+    FULFILLMENT_READ_BUSINESS_FAILED: '平台未接受本次履约查询，请检查权限和业务条件。',
+    ORDER_ATTACHMENT_FILE_INVALID: '请选择文件头与扩展名一致的 JPG、PNG、PDF 或 DOC，且不超过 5 MB。',
+    ORDER_ATTACHMENT_CONTEXT_INVALID: '无法确认当前账号或存储配置，请重新打开附件窗口。',
+    ORDER_ATTACHMENT_UPLOAD_DISABLED: '当前环境尚未开放 IOP 附件上传。',
+    ORDER_ATTACHMENT_UPLOAD_PENDING: '同一文件有待核实的上传，请查询已有回执，不要重复上传。',
+    ORDER_ATTACHMENT_RESPONSE_INVALID: '附件回执无法确认，请保留请求标识并查询，勿重复上传。',
+    ORDER_ATTACHMENT_RESULT_INVALID: '平台附件结果无法确认，请勿重复上传。',
+    ORDER_ATTACHMENT_REQUEST_CONFLICT: '此请求已有不同内容或未决上传，请检查已有回执。',
+    ORDER_ATTACHMENT_NOT_FOUND: '未找到当前账号的附件回执，请检查请求标识。',
+    ORDER_ATTACHMENT_RECORD_CORRUPT: '附件记录校验失败，已停止操作，请保留诊断信息。',
+    ORDER_ATTACHMENT_UNTRUSTED_SENDER: '请从插件工作台操作附件。',
+    ORDER_ATTACHMENT_READ_ONLY: '此操作仅查询回执，不会重新发送附件。',
+    ORDER_ATTACHMENT_FAILED: '附件操作未完成，请检查授权或查询原请求回执。',
     INSIGHTS_RESPONSE_INVALID: '平台未返回完整、明确成功的供应商数据，结果不可用，不代表数量为零。',
     INSIGHTS_PROVIDER_REJECTED: '平台未受理供应商查询。请查看平台返回的原因，不会改用另一协议重试。',
     PRODUCT_SCORE_IDENTIFIER_UNAVAILABLE:
@@ -51,7 +66,7 @@ export const errors = {
     S3_CONFIGURATION_CORRUPT: '本机 S3 凭据无法解密，请清除本地数据后重新配置。',
     S3_UNTRUSTED_SENDER: '只有插件工作台可以访问 S3。',
     S3_RESPONSE_INVALID: 'S3 后台响应无效，请重新打开工作台。',
-    S3_OBJECT_TOO_LARGE: '单个 S3 素材不能超过 5 MiB。',
+    S3_OBJECT_TOO_LARGE: '单个 S3 文件不能超过 5 MB。',
     S3_STORAGE_FAILED:
       'S3 操作失败。请检查域名权限、密钥和网络；上传失败时请先核对存储中的结果，不要直接重复上传。',
     UNKNOWN_ERROR: '发生未知错误。',

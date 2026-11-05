@@ -1,7 +1,12 @@
 import { BaseAdapter, type DirEntry, type FsData, type ListParams } from 'vuefinder';
-import { validS3FileKey, type S3StorageControl, type S3ObjectContent } from '@one-vegetable/core/s3-storage';
+import {
+  validS3FileKey,
+  S3_MAX_OBJECT_BYTES,
+  type S3StorageControl,
+  type S3ObjectContent
+} from '@one-vegetable/core/s3-storage';
 
-export const S3_FILE_LIMIT = 5 * 1024 * 1024;
+export const S3_FILE_LIMIT = S3_MAX_OBJECT_BYTES;
 export const S3_PAGE_SIZE = 100;
 export type FileStorage = Pick<
   S3StorageControl,
@@ -329,7 +334,9 @@ export class S3FileDriver extends BaseAdapter {
     const key = row.path.startsWith('s3://') ? row.path.slice(5) : '';
     if (!validFileKey(key)) fail('S3_FILE_PATH_INVALID');
     await this.#check();
-    const value: unknown = await this.storage.getS3Object(key, { storageContext: this.context });
+    const value: unknown = await this.storage.getS3Object(key, {
+      storageContext: this.context
+    });
     this.#active();
     await this.#check();
     return parseContent(value, key);
@@ -365,7 +372,9 @@ export class S3FileDriver extends BaseAdapter {
       fail('S3_FILE_WRITE_UNKNOWN');
     try {
       await this.#check();
-      const value: unknown = await this.storage.getS3Object(plan.key, { storageContext: this.context });
+      const value: unknown = await this.storage.getS3Object(plan.key, {
+        storageContext: this.context
+      });
       this.#active();
       await this.#check();
       const readback = parseContent(value, plan.key);

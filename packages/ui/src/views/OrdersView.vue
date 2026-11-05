@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, h, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import {
   Banknote,
@@ -44,6 +44,7 @@ import Card from '../components/ui/Card.vue';
 import Input from '../components/ui/Input.vue';
 import Sheet from '../components/ui/Sheet.vue';
 import { useUiI18n } from '../i18n';
+import { useOrderAttachmentsI18n } from '../i18n/order-attachments';
 import {
   operationAvailabilityMessage,
   useOperationAvailability
@@ -66,6 +67,13 @@ type OrderRole = 'seller' | 'buyer';
 type OrderListFiltersValue = Omit<TradeOrderListQuery, 'role' | 'page' | 'pageSize' | 'buyerLoginId'>;
 
 const { gateway, mode } = useServices();
+const OrderFulfillmentToolsDialog = defineAsyncComponent(
+  () => import('../components/OrderFulfillmentToolsDialog.vue')
+);
+const OrderAttachmentDialog = defineAsyncComponent(() => import('../components/OrderAttachmentDialog.vue'));
+const fulfillmentOpen = ref(false);
+const attachmentOpen = ref(false);
+const attachmentText = useOrderAttachmentsI18n();
 const { t } = useUiI18n();
 const { alibabaLanguage: preferredLanguage } = useAppPreferences();
 const workspace = ref<Workspace>('orders');
@@ -604,6 +612,12 @@ onBeforeUnmount(() => {
         }}</ListActionButton>
       </template>
       <template #actions>
+        <ListActionButton :icon="Truck" @click="fulfillmentOpen = true">{{
+          attachmentText('tools')
+        }}</ListActionButton>
+        <ListActionButton :icon="FileSignature" @click="attachmentOpen = true">{{
+          attachmentText('title')
+        }}</ListActionButton>
         <OrderListFilters :model-value="orderFilters" @update:model-value="applyOrderFilters" />
       </template>
     </ListToolbar>
@@ -1142,4 +1156,11 @@ onBeforeUnmount(() => {
       </section>
     </template>
   </Sheet>
+  <OrderFulfillmentToolsDialog
+    v-if="fulfillmentOpen"
+    :order-id="selectedOrderId"
+    :product-id="publicDetail?.products?.[0]?.productId ?? ''"
+    @close="fulfillmentOpen = false"
+  />
+  <OrderAttachmentDialog v-if="attachmentOpen" @close="attachmentOpen = false" />
 </template>
