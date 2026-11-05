@@ -40,7 +40,7 @@ export const shell = {
     inventory: 'Inventory',
     tasks: 'Task center',
     photos: 'Assets',
-    files: 'S3 files',
+    files: 'Files',
     rfqs: 'RFQs',
     orders: 'Orders',
     logistics: 'International logistics',
