@@ -95,13 +95,28 @@ https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html .
   escaped HTML, Chinese/English and a 390px dark layout.
 - The formal MV3 encrypted configuration/restart/trusted-sender test passed,
   including opening the unconfigured file workspace without Alibaba credentials.
-  Live S3 file I/O was checked through the shared client and isolated Node BFF UI,
-  not a live MV3 storage-host permission grant.
+  Initial S3 file I/O was checked through the shared client and isolated Node BFF
+  UI; configured live-workspace acceptance is recorded below.
 - RustFS acceptance used 18 signed requests across the shared client and Web UI.
   Four new test objects were retained under a unique test directory: two empty
   directory markers and two text files. All writes were followed by byte readback;
   a conditional duplicate PUT was rejected and original bytes were unchanged.
   Existing bucket policies, credentials and objects were not changed or deleted.
 - R2 acceptance is document-backed signing/response regression, not a live R2
-  account test. No published ZIP, mainline, deployed Worker or Store listing was
-  replaced by this development work.
+  account test. Initial development did not replace published ZIPs or deploy;
+  mainline integration and website deployment were subsequently authorized.
+
+## Configured live-workspace acceptance, 2026-11-05
+
+- The existing Cloudflare website and formal unpacked MV3 workspace were configured
+  with the approved seven-day test credential, restricted to the test prefix.
+- Both runtimes listed the same directory, created one uniquely named 2,635-byte
+  PNG, visibly previewed it, and downloaded it through the actual browser. Provider
+  readback and both downloads matched the original SHA-256. No objects were deleted,
+  overwritten or moved; bucket policies were unchanged.
+- Extension refresh exposed an idle startup identity-hydration warning. Idle
+  reconnects are now silent; actual interrupted operations still stop. Unknown-write
+  warnings survive later hydration, and late writes are never replayed or reported
+  as successful.
+- Private receipts remain in ignored artifacts. R2 live acceptance is still not
+  claimed. Replace the test credential when its seven-day term ends.
