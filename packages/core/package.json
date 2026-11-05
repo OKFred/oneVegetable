@@ -18,6 +18,7 @@
     "./order-fulfillment-read": "./src/order-fulfillment-read.ts",
     "./order-attachment-platform": "./src/order-attachment-platform.ts",
     "./order-attachments": "./src/order-attachments.ts",
+    "./order-attachment-receipt": "./src/order-attachment-receipt.ts",
     "./preferences": "./src/preferences.ts",
     "./alibaba-developer-page-inspection": "./src/alibaba-developer-page-inspection.ts",
     "./credential-vault": "./src/credential-vault.ts",

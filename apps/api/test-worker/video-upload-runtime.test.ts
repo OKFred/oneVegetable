@@ -478,7 +478,7 @@ describe('workerd-local video service with D1 and real S3 signing', () => {
     ).rejects.toThrow('VIDEO_PART_INVALID');
     await expect(
       h.storage.putObject({ key: 'photo.jpg', bytes: tooLarge, contentType: 'image/jpeg' })
-    ).rejects.toThrow(/5 MiB/u);
+    ).rejects.toThrow('S3_OBJECT_TOO_LARGE');
     const current = await h.read(task);
     expect(current.task.parts[0]?.status).toBe('pending');
     expect(h.transport.calls.map((call) => call.method)).toEqual(['POST']);

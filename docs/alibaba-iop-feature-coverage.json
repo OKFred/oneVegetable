@@ -42,7 +42,7 @@
       "path": "/alibaba/order/attachment/upload",
       "risk": "mutation",
       "adapted": true,
-      "accountVerified": false,
+      "accountVerified": true,
       "authorizationRequired": true
     },
     "/alibaba/icbu/category/predict/v2": {

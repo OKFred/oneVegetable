@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["../smoke-order-attachment-real.ts", "./order-attachment-real.test.ts"]
+}

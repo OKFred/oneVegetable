@@ -231,11 +231,15 @@ targets.set(
   compileValidators(
     {
       validateOrderAttachmentUploadRequest: schemas.OrderAttachmentUploadRequest,
-      validateOrderAttachmentGetRequest: schemas.OrderAttachmentGetRequest,
-      validateOrderAttachmentReceipt: schemas.OrderAttachmentReceipt
+      validateOrderAttachmentGetRequest: schemas.OrderAttachmentGetRequest
     },
     'fast'
   )
+);
+
+targets.set(
+  'validators-order-attachment-receipt.ts',
+  compileValidators({ validateOrderAttachmentReceipt: schemas.OrderAttachmentReceipt }, 'fast')
 );
 
 for (const [fileName, output] of targets) {

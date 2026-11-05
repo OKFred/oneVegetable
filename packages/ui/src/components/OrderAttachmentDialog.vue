@@ -22,9 +22,9 @@ import ErrorNotice from './ErrorNotice.vue';
 const props = withDefaults(
   defineProps<{
     open?: boolean;
-    source?: { name: string; load: () => Promise<EncodedFilePayload> };
+    source?: { name: string; load: () => Promise<EncodedFilePayload> } | null;
   }>(),
-  { open: true, source: undefined }
+  { open: true, source: null }
 );
 const emit = defineEmits<{ close: [] }>();
 const at = useOrderAttachmentsI18n();

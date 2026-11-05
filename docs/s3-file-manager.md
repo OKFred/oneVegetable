@@ -36,7 +36,7 @@ tracked separately. This feature must work with no Alibaba credential configured
   Changing configuration stops old operations and discards late responses.
 - Create-only uploads: refuse collisions, never silently overwrite. No automatic
   retry on PUT timeout. Verify new bytes by GET before reporting confirmed success.
-- Initially preserve the existing 5 MiB object limit, including previews/downloads.
+- Ordinary files, previews and downloads are limited to 5 MB (5,000,000 bytes), matching platform attachments.
   Larger objects remain visible with an explicit limit; generic multipart support
   is a separate change, not a global relaxation of image/ZIP limits.
 - A folder is an S3 key prefix. Empty folders use zero-byte trailing-slash marker
@@ -61,7 +61,7 @@ replacement for those S3 credentials and endpoint. Keep the bucket private.
 R2 ListObjectsV2 supports delimiter, prefix and opaque continuation tokens.
 PutObject supports atomic If-None-Match: * and returns 412 for a collision, matching
 the manager's create-only policy. We do not send unsupported ACL or bucket-owner
-headers. Configuration/context protection and the 5 MiB limit are unchanged.
+headers. Configuration/context protection remains unchanged; the current file limit is 5 MB.
 Synthetic R2 signing/response tests are not a live R2 account acceptance result;
 the current live provider acceptance is RustFS. No R2 resources are created here.
 

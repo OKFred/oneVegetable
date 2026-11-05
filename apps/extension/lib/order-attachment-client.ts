@@ -1,13 +1,13 @@
 import { browser } from 'wxt/browser';
 import { GatewayException } from '@one-vegetable/core/errors';
 import type { OrderAttachmentControl } from '@one-vegetable/core/order-attachments';
+import { isOrderAttachmentReceipt } from '@one-vegetable/core/order-attachment-receipt';
 
 export const extensionOrderAttachments: OrderAttachmentControl = {
   upload: (input) => call('upload', input, input.requestId),
   get: (input) => call('get', input, input.jobId)
 };
 async function call(action: 'upload' | 'get', input: { requestId: string }, jobId: string) {
-  const { isOrderAttachmentReceipt } = await import('@one-vegetable/core/order-attachments');
   const response: unknown = await browser.runtime.sendMessage({
     kind: 'order-attachment-request',
     action,

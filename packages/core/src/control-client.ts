@@ -1,5 +1,6 @@
 import type { ProductMaintenanceControl } from './product-maintenance-control';
 import type { OrderAttachmentControl } from './order-attachments';
+import { isOrderAttachmentReceipt } from './order-attachment-receipt';
 import type { ProductMaintenanceServiceResult } from './product-maintenance-service';
 import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
@@ -374,7 +375,6 @@ export interface BffControlClientOptions {
 export class BffControlClient implements ControlClient {
   readonly orderAttachments: OrderAttachmentControl = {
     upload: async (input) => {
-      const { isOrderAttachmentReceipt } = await import('./order-attachments');
       const result = await this.#call('/order-attachments/upload', input);
       if (!isOrderAttachmentReceipt(result) || result.jobId !== input.requestId)
         throw new GatewayException({
@@ -385,7 +385,6 @@ export class BffControlClient implements ControlClient {
       return result;
     },
     get: async (input) => {
-      const { isOrderAttachmentReceipt } = await import('./order-attachments');
       const result = await this.#call('/order-attachments/get', input);
       if (!isOrderAttachmentReceipt(result) || result.jobId !== input.jobId)
         throw new GatewayException({

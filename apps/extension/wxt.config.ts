@@ -110,6 +110,11 @@ export default defineConfig({
               includeDependenciesRecursively: false
             },
             {
+              name: 'order-attachment-backend',
+              test: /(?:apps[\\/]extension[\\/]lib[\\/]order-attachment-(?:service|repository)|core[\\/]src[\\/]order-attachments)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
               name: 'product-maintenance-control',
               test: /core[\\\\/]src[\\\\/]product-maintenance-control\.ts$/u,
               includeDependenciesRecursively: false
@@ -119,7 +124,7 @@ export default defineConfig({
               name(id) {
                 const path = id.replaceAll('\\', '/');
                 if (path.endsWith('/packages/core/src/validation-equal.ts')) return 'validation-equal';
-                return /\/generated\/(validators-(?:product|product-workbench|product-maintenance(?:-parameters)?|rfq|trade|logistics|insights|photo|platform|free-api|video-upload))\.ts$/.exec(
+                return /\/generated\/(validators-(?:product|product-workbench|product-maintenance(?:-parameters)?|rfq|trade|logistics|insights|photo|platform|free-api|video-upload|order-attachments|order-attachment-receipt))\.ts$/.exec(
                   path
                 )?.[1];
               }
