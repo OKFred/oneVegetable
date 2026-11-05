@@ -499,6 +499,69 @@ describe('FilesView', () => {
     await flushPromises();
     expect(s3.listS3Objects).toHaveBeenCalledOnce();
   });
+  it('reconnects without a warning when identity initialization interrupts no file operation', async () => {
+    const s3 = storage(),
+      { wrapper, identity, request, load } = mountView(s3);
+    await ready(wrapper);
+    identity.value = 'identity-a-hydrated';
+    await flushPromises();
+    await ready(wrapper);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('hello.txt');
+    expect(s3.listS3Objects).toHaveBeenCalledTimes(2);
+    expect(s3.getS3Object).not.toHaveBeenCalled();
+    expect(s3.putS3Object).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+  });
+  it('keeps the interruption warning and never replays a late write after an identity change', async () => {
+    const s3 = storage(),
+      { wrapper, identity } = mountView(s3);
+    let finishWrite: (value: Awaited<ReturnType<S3StorageControl['putS3Object']>>) => void = () => {
+      throw new Error('Deferred write not initialized');
+    };
+    s3.putS3Object.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishWrite = resolve;
+      })
+    );
+    await ready(wrapper);
+    await choose(wrapper);
+    bodyButton('确认创建').click();
+    await flushPromises();
+    expect(s3.putS3Object).toHaveBeenCalledOnce();
+    s3.s3StorageConfiguration.mockResolvedValue(summary('b'.repeat(64)));
+    identity.value = 'identity-b';
+    await flushPromises();
+    await ready(wrapper);
+    expect(wrapper.get('[role="alert"]').text()).toContain('账户或存储配置已变化');
+    identity.value = 'identity-b-hydrated';
+    await flushPromises();
+    await ready(wrapper);
+    expect(wrapper.get('[role="alert"]').text()).toContain('账户或存储配置已变化');
+    finishWrite({ key: 'upload.txt', etag: null });
+    await flushPromises();
+    expect(s3.putS3Object).toHaveBeenCalledOnce();
+    expect(s3.getS3Object).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+  it('retains an unknown-write warning across later idle identity initialization', async () => {
+    const s3 = storage(),
+      { wrapper, identity } = mountView(s3);
+    s3.putS3Object.mockRejectedValueOnce(new Error('timeout'));
+    await ready(wrapper);
+    await choose(wrapper);
+    bodyButton('确认创建').click();
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain('写入结果未知');
+    identity.value = 'identity-a-hydrated';
+    await flushPromises();
+    await ready(wrapper);
+    expect(wrapper.get('[role="alert"]').text()).toContain('写入结果未知');
+    expect(s3.putS3Object).toHaveBeenCalledOnce();
+    expect(s3.getS3Object).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
   it('drops a pending confirmation on identity changes', async () => {
     const s3 = storage(),
       { wrapper, identity } = mountView(s3);

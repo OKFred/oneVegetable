@@ -203,6 +203,14 @@ function cleanupFinderStorage(): void {
 }
 async function connect(): Promise<void> {
   const previous = driver.value;
+  // Startup identity hydration is not an interrupted user operation.
+  const interrupted =
+    writing.value ||
+    preparing.value ||
+    reading.value ||
+    plan.value !== null ||
+    folderOpen.value ||
+    previewOpen.value;
   previous?.stop();
   driver.value = null;
   const version = ++generation;
@@ -212,7 +220,8 @@ async function connect(): Promise<void> {
   writing.value = false;
   preparing.value = false;
   connecting.value = true;
-  error.value = previous ? 'contextChanged' : null;
+  if (previous && interrupted) error.value = 'contextChanged';
+  else if (error.value !== 'contextChanged' && error.value !== 'writeUnknown') error.value = null;
   page.value = initialPage();
   path.value = '';
   search.value = '';
