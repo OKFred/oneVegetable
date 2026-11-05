@@ -13,7 +13,13 @@ export type IopTokenPath = '/auth/token/create' | '/auth/token/refresh';
 
 /** GOP signs the API path, sorted parameter names and values; it is not TOP signing. */
 export async function signIopRequest(
-  path: IopTokenPath | `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`,
+  path:
+    | IopTokenPath
+    | `/alibaba/${string}`
+    | `/icbu/${string}`
+    | `/order/${string}`
+    | `/warehouse/${string}`
+    | `/shipping/${string}`,
   parameters: Readonly<Record<string, string>>,
   secret: string
 ): Promise<string> {

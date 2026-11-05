@@ -8,6 +8,7 @@ import type { VideoUploadControl } from './video-upload';
 import { NativeFetchTransport, NetworkManager, type NetworkTransport } from './network';
 
 const MAX_GALLERY_OBJECT_BYTES = 5 * 1024 * 1024;
+export const S3_MAX_OBJECT_BYTES = 5_000_000;
 const MAX_LIST_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_VIDEO_METADATA_RESPONSE_BYTES = 65_536;
 
@@ -115,6 +116,7 @@ export class S3ObjectStorageClient {
   readonly #configuration: S3StorageConfiguration;
   readonly #signer: AwsClient;
   readonly #network: NetworkManager;
+  readonly #objectNetwork: NetworkManager;
   readonly #videoMetadataNetwork: NetworkManager;
 
   constructor(configuration: S3StorageConfiguration, transport?: NetworkTransport) {
@@ -129,14 +131,14 @@ export class S3ObjectStorageClient {
     });
     const endpointOrigin = new URL(this.#configuration.endpoint).origin;
     const actualTransport = transport ?? new NativeFetchTransport();
-    const createNetwork = (maxResponseBytes: number) =>
+    const createNetwork = (maxResponseBytes: number, maxRequestBytes = MAX_GALLERY_OBJECT_BYTES) =>
       new NetworkManager({
         transport: actualTransport,
         policies: {
           s3: {
             allowedOrigins: [endpointOrigin, this.#bucketOrigin()],
             timeoutMilliseconds: 30_000,
-            maxRequestBytes: MAX_GALLERY_OBJECT_BYTES,
+            maxRequestBytes,
             maxResponseBytes,
             credentials: 'omit',
             redirect: 'error',
@@ -145,6 +147,8 @@ export class S3ObjectStorageClient {
         }
       });
     this.#network = createNetwork(Math.max(MAX_GALLERY_OBJECT_BYTES, MAX_LIST_RESPONSE_BYTES));
+    // Ordinary decimal MB limits must not shrink video multipart/range's separate 5 MiB budget.
+    this.#objectNetwork = createNetwork(S3_MAX_OBJECT_BYTES, S3_MAX_OBJECT_BYTES);
     // Small bounded error XML is still needed for safe HTTP diagnostics; success must be one byte.
     this.#videoMetadataNetwork = createNetwork(MAX_VIDEO_METADATA_RESPONSE_BYTES);
   }
@@ -208,7 +212,8 @@ export class S3ObjectStorageClient {
       undefined,
       undefined,
       requestId,
-      'bytes'
+      'bytes',
+      this.#objectNetwork
     );
     if (!response.ok || !(response.data instanceof Uint8Array)) throw s3HttpError(response);
     return {
@@ -227,7 +232,7 @@ export class S3ObjectStorageClient {
     createOnly?: boolean;
     directory?: boolean;
   }): Promise<{ etag: string | null }> {
-    if (input.bytes.byteLength > MAX_GALLERY_OBJECT_BYTES) throw new Error('S3 图库对象不能超过 5 MiB');
+    if (input.bytes.byteLength > S3_MAX_OBJECT_BYTES) throw new Error('S3_OBJECT_TOO_LARGE');
     if (
       (input.createOnly !== undefined && typeof input.createOnly !== 'boolean') ||
       (input.directory !== undefined && typeof input.directory !== 'boolean') ||
@@ -248,13 +253,14 @@ export class S3ObjectStorageClient {
       { 'Content-Type': input.contentType, ...(input.createOnly ? { 'If-None-Match': '*' } : {}) },
       body,
       input.requestId,
-      'text'
+      'text',
+      this.#objectNetwork
     );
     if (!response.ok) throw s3HttpError(response);
     return { etag: normalizeEtag(response.headers.get('etag')) };
   }
 
-  /** Video-only caller owns the task/key. The ordinary gallery object limit remains 5 MiB. */
+  /** Video-only caller owns the task/key. Multipart parts keep their separate 5 MiB limit. */
   async createMultipart(key: string, requestId: string): Promise<string> {
     const url = this.#multipartUrl(key);
     url.searchParams.set('uploads', '');

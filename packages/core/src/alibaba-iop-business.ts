@@ -11,6 +11,12 @@ import { serializeAlibabaParameters } from './signing';
 import { assertAlibabaBusinessParameters } from './transport-security';
 import type { GatewayCredentials } from './types';
 import { getIopMethod } from './alibaba-iop-registry';
+import {
+  isFulfillmentMethod,
+  isFulfillmentReadMethod,
+  ORDER_ATTACHMENT_METHOD
+} from './order-fulfillment-methods';
+import { validateFulfillmentReadParameters } from './order-fulfillment-read';
 import { iopMethodReason } from './alibaba-iop-availability';
 export {
   iopOperationReason,
@@ -44,7 +50,19 @@ export async function createIopBusinessRequest(
   if (!path) throw failure('ALIBABA_IOP_METHOD_UNSUPPORTED');
   if (!definition.adapted) throw failure(iopMethodReason(method) ?? 'ALIBABA_IOP_METHOD_UNSUPPORTED');
   let business: Readonly<Record<string, unknown>> = input;
-  if ((Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(method)) {
+  if (isFulfillmentReadMethod(method)) {
+    business = validateFulfillmentReadParameters(method, input);
+  } else if (method === ORDER_ATTACHMENT_METHOD) {
+    if (
+      Object.keys(input).some((key) => key !== 'file_name') ||
+      typeof input.file_name !== 'string' ||
+      !input.file_name ||
+      input.file_name.length > 255 ||
+      /[\p{Cc}\\/]/u.test(input.file_name)
+    )
+      throw failure('REQUEST_CONTRACT_INVALID');
+    business = { file_name: input.file_name };
+  } else if ((Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(method)) {
     const valid =
       method === PRODUCT_MAINTENANCE_METHODS.setPrice
         ? validateIopMaintenancePriceRequest(input)
@@ -308,20 +326,29 @@ export function normalizeIopBusinessResponse(
     if (
       typeof value.message !== 'string' ||
       !value.message.trim() ||
-      ['code', 'result', 'success', 'data'].some((key) => Object.hasOwn(value, key))
+      ['result', 'success', 'data'].some((key) => Object.hasOwn(value, key))
     )
       throw failure();
-    throw providerFailure(
-      'ISP',
-      'ALIBABA_IOP_UPSTREAM_ERROR',
-      value.request_id ?? value._trace_id_,
-      credentials,
-      'ALIBABA_IOP_UPSTREAM_ERROR'
-    );
+    if (!Object.hasOwn(value, 'code'))
+      throw providerFailure(
+        'ISP',
+        'ALIBABA_IOP_UPSTREAM_ERROR',
+        value.request_id ?? value._trace_id_,
+        credentials,
+        'ALIBABA_IOP_UPSTREAM_ERROR'
+      );
+    if (value.code === '0' || value.code === 0) throw failure();
   }
   if (!isRecord(value) || (typeof value.code !== 'number' && typeof value.code !== 'string')) throw failure();
   if (value.code !== '0' && value.code !== 0)
-    throw providerFailure(value.code, value.message, value.request_id, credentials);
+    throw providerFailure(
+      value.code,
+      value.type === 'ISP' ? 'ALIBABA_IOP_UPSTREAM_ERROR' : value.message,
+      value.request_id ?? value._trace_id_,
+      credentials
+    );
+  // Native payloads retain their own business-success evidence, never a fabricated TOP root.
+  if (isFulfillmentMethod(method)) return value;
   // Keep native business evidence intact for the durable maintenance classifier.
   // Missing success fields are ambiguous, never silently manufactured.
   if ((Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(method)) return value;

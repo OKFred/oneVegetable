@@ -3,6 +3,48 @@
   "catalogCheckedAt": "2026-10-25T21:21:02.957Z",
   "note": "Protocol coverage is not application permission, business qualification or runtime write authorization.",
   "methods": {
+    "/warehouse/list": {
+      "path": "/warehouse/list",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/alibaba/ggs/warehouse/list": {
+      "path": "/alibaba/ggs/warehouse/list",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/shipping/freight/calculate": {
+      "path": "/shipping/freight/calculate",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/order/freight/calculate": {
+      "path": "/order/freight/calculate",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/order/logistics/tracking/get": {
+      "path": "/order/logistics/tracking/get",
+      "risk": "read",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
+    "/alibaba/order/attachment/upload": {
+      "path": "/alibaba/order/attachment/upload",
+      "risk": "mutation",
+      "adapted": true,
+      "accountVerified": false,
+      "authorizationRequired": true
+    },
     "/alibaba/icbu/category/predict/v2": {
       "path": "/alibaba/icbu/category/predict/v2",
       "risk": "read",

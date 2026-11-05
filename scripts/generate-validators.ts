@@ -226,6 +226,18 @@ targets.set(
   )
 );
 
+targets.set(
+  'validators-order-attachments.ts',
+  compileValidators(
+    {
+      validateOrderAttachmentUploadRequest: schemas.OrderAttachmentUploadRequest,
+      validateOrderAttachmentGetRequest: schemas.OrderAttachmentGetRequest,
+      validateOrderAttachmentReceipt: schemas.OrderAttachmentReceipt
+    },
+    'fast'
+  )
+);
+
 for (const [fileName, output] of targets) {
   const target = resolve(generatedDirectory, fileName);
   if (process.argv.includes('--check')) {

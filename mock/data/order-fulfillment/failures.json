@@ -1,0 +1,45 @@
+{
+  "outer": {
+    "code": "isv.permission-api-package-limit",
+    "message": "Synthetic permission denial",
+    "request_id": "denied-trace"
+  },
+  "ggs": {
+    "code": "0",
+    "request_id": "ggs-denied",
+    "result": { "success": false, "code": "403", "message": "Synthetic permission denial" }
+  },
+  "malformedGgsPublicExample": {
+    "result": {
+      "total": "1",
+      "code": "200",
+      "data": [
+        {
+          "gmt_create": "1758100804000",
+          "warehouse_province": "sdsd",
+          "warehouse_type": "Private warehouse",
+          "warehouse_address": "sdsdsd",
+          "warehouse_code": "WH_1123_3688636448716134",
+          "warehouse_country": "xini",
+          "warehouse_city": "shanghai",
+          "gmt_modified": "1758100804000",
+          "zip_code": "123456",
+          "warehouse_status": "active",
+          "warehouse_name": "sdasd",
+          "deleted": "0",
+          "warehouse_contact": "thf",
+          "warehouse_phone_number": "12334521",
+          "ali_member_id": "1234522",
+          "id": "11141"
+        }
+      ],
+      "success": "success",
+      "total_page": "1",
+      "message": "success",
+      "current_page": "1",
+      "page_size": "10"
+    },
+    "code": "0",
+    "request_id": "0ba2887315178178017221014"
+  }
+}

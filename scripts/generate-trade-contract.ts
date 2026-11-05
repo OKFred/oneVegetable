@@ -1,4 +1,11 @@
 import { readFile } from 'node:fs/promises';
+import { buildIopOrderFulfillmentContracts } from './lib/iop-order-fulfillment-contract';
+import fulfillmentSnapshot from '../docs/alibaba-order-fulfillment-docs.json' with { type: 'json' };
+import fulfillmentExamples from '../mock/data/order-fulfillment/examples.json' with { type: 'json' };
+import {
+  orderAttachmentTransportPaths,
+  orderAttachmentTransportSchemas
+} from './lib/order-attachment-transport';
 import { sharedJsonSource } from './lib/shared-json-codegen';
 import { resolve } from 'node:path';
 
@@ -233,6 +240,11 @@ for (const definition of snapshot.definitions) {
     docUrl: `https://developer.alibaba.com/docs/api.htm?apiId=${definition.docId}`
   };
 }
+const fulfillment = buildIopOrderFulfillmentContracts(fulfillmentSnapshot, fulfillmentExamples.methods);
+Object.assign(document.components.schemas, fulfillment.schemas);
+Object.assign(document.components.schemas, orderAttachmentTransportSchemas());
+Object.assign(document.paths, orderAttachmentTransportPaths());
+Object.assign(capabilityMap, fulfillment.definitions);
 document['x-trade-capabilities'] = capabilityMap;
 
 const decimalString = { type: 'string', pattern: '^-?\\d+(?:\\.\\d+)?$' };

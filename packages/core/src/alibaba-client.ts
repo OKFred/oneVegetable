@@ -182,7 +182,13 @@ export async function createAlibabaFileRequest(
   file: AlibabaFilePart
 ): Promise<{ url: string; body: ArrayBuffer; contentType: string }> {
   const iop = credentials.protocol === 'iop';
-  if (iop && (method !== 'alibaba.icbu.photobank.upload' || file.fieldName !== 'image_bytes'))
+  if (
+    iop &&
+    !(
+      (method === 'alibaba.icbu.photobank.upload' && file.fieldName === 'image_bytes') ||
+      (method === '/alibaba/order/attachment/upload' && file.fieldName === 'data')
+    )
+  )
     throw new GatewayException({
       code: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED',
       message: 'ALIBABA_IOP_PARAMETER_UNSUPPORTED',

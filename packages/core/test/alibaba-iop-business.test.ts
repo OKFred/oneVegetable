@@ -48,6 +48,56 @@ const inventoryAdapter = (response: unknown) => {
   };
 };
 describe('explicit IOP business compatibility', () => {
+  it.each(['403', '4015', '408'])('preserves coded ISP rejection %s without exposing its message', (code) => {
+    expect(() =>
+      normalizeIopBusinessResponse(
+        {
+          code,
+          type: 'ISP',
+          message: `provider ${credentials.accessToken}`,
+          request_id: 'fixture-trace'
+        },
+        '/warehouse/list',
+        credentials
+      )
+    ).toThrow(
+      expect.objectContaining({
+        gatewayError: {
+          code: 'ALIBABA_IOP_API_REJECTED',
+          subCode: code,
+          message: 'ALIBABA_IOP_UPSTREAM_ERROR',
+          traceId: 'fixture-trace',
+          retryable: false
+        }
+      })
+    );
+  });
+  it.each([
+    { code: '0' },
+    { code: 0 },
+    { code: null },
+    { code: {} },
+    { code: '403', data: {} },
+    { code: '403', result: [] },
+    { code: '403', success: true },
+    { code: '403', message: '' }
+  ])('rejects contradictory or malformed ISP evidence %#', (fields) => {
+    expect(() =>
+      normalizeIopBusinessResponse(
+        { type: 'ISP', message: 'fixture', ...fields },
+        '/warehouse/list',
+        credentials
+      )
+    ).toThrow(
+      expect.objectContaining({
+        gatewayError: {
+          code: 'ALIBABA_IOP_RESPONSE_INVALID',
+          message: 'ALIBABA_IOP_RESPONSE_INVALID',
+          retryable: false
+        }
+      })
+    );
+  });
   it('keeps IOP live acceptance separate from TOP and never mutates shared metadata', () => {
     const top = { method: encryptMethod, realCallEnabled: true, verification: 'account-verified' };
     expect(applyIopCapabilityProtocol(top)).toEqual({ ...top, verification: 'documented' });

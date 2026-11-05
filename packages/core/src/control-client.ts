@@ -1,9 +1,11 @@
 import type { ProductMaintenanceControl } from './product-maintenance-control';
+import type { OrderAttachmentControl } from './order-attachments';
 import type { ProductMaintenanceServiceResult } from './product-maintenance-service';
 import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
+import { decodeBase64, encodeBase64 } from './encoded-file';
 import { createRequestId, NetworkManager } from './network';
 
 import type { ApiResponse, BackendMeta } from './api-contract';
@@ -17,6 +19,7 @@ import type {
   S3StorageConfigurationSummary,
   S3RequestOptions
 } from './s3-storage';
+import { S3_MAX_OBJECT_BYTES } from './s3-storage';
 import type { AlibabaOpenApiCredentialBundle } from './alibaba-credential-bundle';
 import type { AlibabaProtocol } from './alibaba-protocol-routing';
 import type { AlibabaAuthorizationsSummary } from './gateway-credential-management';
@@ -167,6 +170,7 @@ export interface PageResult<T> {
 }
 
 export interface ControlClient {
+  orderAttachments?: OrderAttachmentControl;
   backendMeta(): Promise<BackendMeta>;
   session(): Promise<ControlSession>;
   bootstrapStatus(): Promise<ControlBootstrapStatus>;
@@ -368,10 +372,35 @@ export interface BffControlClientOptions {
 }
 
 export class BffControlClient implements ControlClient {
+  readonly orderAttachments: OrderAttachmentControl = {
+    upload: async (input) => {
+      const { isOrderAttachmentReceipt } = await import('./order-attachments');
+      const result = await this.#call('/order-attachments/upload', input);
+      if (!isOrderAttachmentReceipt(result) || result.jobId !== input.requestId)
+        throw new GatewayException({
+          code: 'ORDER_ATTACHMENT_RESPONSE_INVALID',
+          message: 'ORDER_ATTACHMENT_RESPONSE_INVALID',
+          retryable: false
+        });
+      return result;
+    },
+    get: async (input) => {
+      const { isOrderAttachmentReceipt } = await import('./order-attachments');
+      const result = await this.#call('/order-attachments/get', input);
+      if (!isOrderAttachmentReceipt(result) || result.jobId !== input.jobId)
+        throw new GatewayException({
+          code: 'ORDER_ATTACHMENT_RESPONSE_INVALID',
+          message: 'ORDER_ATTACHMENT_RESPONSE_INVALID',
+          retryable: false
+        });
+      return result;
+    }
+  };
   readonly #baseUrl: URL;
   readonly #apiPrefix: string;
   readonly #network: NetworkManager;
   readonly #videoNetwork: NetworkManager;
+  readonly #s3ObjectNetwork: NetworkManager;
   readonly #externalCsrfToken: (() => string | null) | undefined;
   readonly #bearerToken: (() => string | null) | undefined;
   readonly #extensionId: string | undefined;
@@ -403,6 +432,21 @@ export class BffControlClient implements ControlClient {
           redirect: 'error'
         },
         'external-photo': { allowedOrigins: [] }
+      }
+    });
+    // A 5 MB file expands in JSON/Base64; keep this budget out of normal control calls.
+    this.#s3ObjectNetwork = new NetworkManager({
+      ...(options.transport ? { transport: options.transport } : {}),
+      policies: {
+        bff: {
+          allowedOrigins: [this.#baseUrl.origin],
+          timeoutMilliseconds: 60_000,
+          maxRequestBytes: 8 * 1024 * 1024,
+          maxResponseBytes: 8 * 1024 * 1024,
+          credentials: 'include',
+          redirect: 'error',
+          cache: 'no-store'
+        }
       }
     });
     // A completed 50 MiB video is verified in bounded read-only ranges. Keep this
@@ -776,7 +820,19 @@ export class BffControlClient implements ControlClient {
       contentType: string | null;
       byteLength: number;
       etag: string | null;
-    }>('/admin/storage/s3/objects/get', { key, ...options });
+    }>('/admin/storage/s3/objects/get', { key, ...options }, this.#s3ObjectNetwork);
+    if (
+      !Number.isSafeInteger(result.byteLength) ||
+      result.byteLength < 0 ||
+      result.byteLength > S3_MAX_OBJECT_BYTES ||
+      typeof result.contentBase64 !== 'string' ||
+      result.contentBase64.length > Math.ceil(S3_MAX_OBJECT_BYTES / 3) * 4
+    )
+      throw new GatewayException({
+        code: 'S3_OBJECT_TOO_LARGE',
+        message: 'S3_OBJECT_TOO_LARGE',
+        retryable: false
+      });
     const bytes = decodeBase64(result.contentBase64);
     if (bytes.byteLength !== result.byteLength) throw new Error('S3 对象长度校验失败');
     return { key: result.key, bytes, contentType: result.contentType, etag: result.etag };
@@ -792,14 +848,26 @@ export class BffControlClient implements ControlClient {
     },
     options?: S3RequestOptions
   ): Promise<{ key: string; etag: string | null }> {
-    return this.#call('/admin/storage/s3/objects/put', {
-      key: input.key,
-      contentBase64: encodeBase64(input.bytes),
-      contentType: input.contentType,
-      ...(input.createOnly === undefined ? {} : { createOnly: input.createOnly }),
-      ...(input.directory === undefined ? {} : { directory: input.directory }),
-      ...options
-    });
+    if (input.bytes.byteLength > S3_MAX_OBJECT_BYTES)
+      return Promise.reject(
+        new GatewayException({
+          code: 'S3_OBJECT_TOO_LARGE',
+          message: 'S3_OBJECT_TOO_LARGE',
+          retryable: false
+        })
+      );
+    return this.#call(
+      '/admin/storage/s3/objects/put',
+      {
+        key: input.key,
+        contentBase64: encodeBase64(input.bytes),
+        contentType: input.contentType,
+        ...(input.createOnly === undefined ? {} : { createOnly: input.createOnly }),
+        ...(input.directory === undefined ? {} : { directory: input.directory }),
+        ...options
+      },
+      this.#s3ObjectNetwork
+    );
   }
 
   startAlibabaCredentialAcquisition(input: {
@@ -1001,14 +1069,4 @@ function isApiResponse(value: unknown): value is ApiResponse<unknown> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function encodeBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-function decodeBase64(value: string): Uint8Array {
-  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 }

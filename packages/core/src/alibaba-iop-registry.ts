@@ -1,9 +1,15 @@
 import { OPERATION_IDS } from './operation-id';
 import { IOP_REFERENCE_METHODS } from './product-reference-methods';
 import { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
+import { FULFILLMENT_READ_METHODS, ORDER_ATTACHMENT_METHOD } from './order-fulfillment-methods';
 import type { OperationId } from './types';
 
-export type IopBusinessPath = `/alibaba/${string}` | `/icbu/${string}` | `/order/${string}`;
+export type IopBusinessPath =
+  | `/alibaba/${string}`
+  | `/icbu/${string}`
+  | `/order/${string}`
+  | `/warehouse/${string}`
+  | `/shipping/${string}`;
 export type IopSupportState =
   'supported' | 'partial' | 'local' | 'not-adapted' | 'not-public' | 'unverified-write';
 export interface IopMethodDefinition {
@@ -37,6 +43,9 @@ const write = (path: IopBusinessPath, accountVerified = false): IopMethodDefinit
 
 /** Explicit public paths and separate IOP acceptance. Never infer paths or inherit TOP verification. */
 export const IOP_METHODS: Readonly<Record<string, Readonly<IopMethodDefinition>>> = Object.freeze({
+  ...Object.fromEntries(Object.values(FULFILLMENT_READ_METHODS).map((path) => [path, read(path)])),
+  // Remote single-upload acceptance, 2026-11-06: filepath returned; no order association or content readback.
+  [ORDER_ATTACHMENT_METHOD]: write(ORDER_ATTACHMENT_METHOD, true),
   // Remote Node BFF and formal MV3 read acceptance, 2026-10-26; not an application-permission guarantee.
   [IOP_REFERENCE_METHODS.predictCategory]: read(IOP_REFERENCE_METHODS.predictCategory, true),
   [IOP_REFERENCE_METHODS.listCategories]: read(IOP_REFERENCE_METHODS.listCategories, true),

@@ -1,0 +1,14 @@
+{
+  "file": {
+    "fileName": "fixture.pdf",
+    "contentType": "application/pdf",
+    "byteLength": 9,
+    "contentBase64": "JVBERi0xLjcK"
+  },
+  "context": {
+    "identity": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "gateway": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "storage": null
+  },
+  "reference": "attachments/fixture.pdf"
+}

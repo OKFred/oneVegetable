@@ -5,7 +5,8 @@ export type EncodedFilePayload = components['schemas']['EncodedFilePayload'];
 export const MAX_ENCODED_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_PHOTOBANK_IMAGE_BYTES = 5 * 1024 * 1024;
 
-const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+// Separate quartet length from the flat character scan: nested repeats overflow on valid 5 MiB files.
+const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
 const IMAGE_SIGNATURES: Readonly<Record<string, (bytes: Uint8Array) => boolean>> = {
   'image/jpeg': (bytes) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff,
   'image/png': (bytes) =>
@@ -41,7 +42,7 @@ export function validateEncodedFile(
   if (!fileName || fileName.length > 255 || /[\0\\/]/.test(fileName)) {
     throw new Error('文件名无效');
   }
-  if (payload.contentBase64.startsWith('data:') || !BASE64_PATTERN.test(payload.contentBase64)) {
+  if (payload.contentBase64.length % 4 !== 0 || !BASE64_PATTERN.test(payload.contentBase64)) {
     throw new Error('contentBase64 必须是纯 Base64 内容');
   }
   const contentType = payload.contentType.trim().toLocaleLowerCase();

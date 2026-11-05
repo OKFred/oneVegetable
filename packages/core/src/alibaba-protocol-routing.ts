@@ -1,6 +1,7 @@
 import { GatewayException } from './errors';
 import { isProductReferenceMethod } from './product-reference-methods';
 import { PRODUCT_MAINTENANCE_METHODS } from './product-workbench-methods';
+import { isFulfillmentMethod } from './order-fulfillment-methods';
 import { iopMethodReason, isAccountVerifiedIopMethod } from './alibaba-iop-availability';
 import { getIopOperationSupport, iopOperationMethods } from './alibaba-iop-registry';
 import type { GatewayCredentials, OperationId } from './types';
@@ -26,6 +27,7 @@ export function selectAlibabaOperationProtocol(
     (operation === 'getProductInventory' && input.source === 'absolute') ||
     (operation === 'callCapability' &&
       (isProductReferenceMethod(input.method) ||
+        isFulfillmentMethod(input.method) ||
         (typeof input.method === 'string' &&
           (Object.values(PRODUCT_MAINTENANCE_METHODS) as string[]).includes(input.method))))
   ) {

@@ -8,6 +8,28 @@
   },
   "entries": [
     {
+      "method": "/alibaba/ggs/warehouse/list",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/ggs/warehouse/list",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Fggs%2Fwarehouse%2Flist&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
       "method": "/alibaba/icbu/category/attribute/get/v2",
       "documentedProtocols": "iop",
       "top": {
@@ -187,6 +209,28 @@
       }
     },
     {
+      "method": "/alibaba/order/attachment/upload",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/alibaba/order/attachment/upload",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Fattachment%2Fupload&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": true,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
       "method": "/alibaba/order/get",
       "documentedProtocols": "iop",
       "top": {
@@ -249,6 +293,94 @@
         "accountVerified": false,
         "authorizationRequired": true,
         "constraints": ["mutation-unverified"],
+        "notes": []
+      }
+    },
+    {
+      "method": "/order/freight/calculate",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/order/freight/calculate",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Ffreight%2Fcalculate&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "/order/logistics/tracking/get",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/order/logistics/tracking/get",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Flogistics%2Ftracking%2Fget&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "/shipping/freight/calculate",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/shipping/freight/calculate",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Fshipping%2Ffreight%2Fcalculate&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
+        "notes": []
+      }
+    },
+    {
+      "method": "/warehouse/list",
+      "documentedProtocols": "iop",
+      "top": {
+        "documentation": "unconfirmed",
+        "method": null,
+        "source": null,
+        "adapted": false,
+        "accountVerified": false,
+        "constraints": ["native-iop-only"]
+      },
+      "iop": {
+        "documentation": "confirmed",
+        "path": "/warehouse/list",
+        "source": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Fwarehouse%2Flist&methodType=GET%2FPOST",
+        "adapted": true,
+        "accountVerified": false,
+        "authorizationRequired": true,
+        "constraints": [],
         "notes": []
       }
     },

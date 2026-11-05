@@ -1,0 +1,743 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-05T15:11:21.490Z",
+  "source": "anonymous-public-documentation",
+  "catalogUrl": "https://openapi.alibaba.com/handler/share/apidoc/getApiCategoryMixed.json",
+  "catalog": [
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "path": "/order/freight/calculate",
+      "title": "Advanced Freight Cost Calculation",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "path": "/alibaba/ggs/warehouse/list",
+      "title": "alibaba ggs seller warehouse list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "path": "/alibaba/order/attachment/upload",
+      "title": "alibaba order attachment upload",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "path": "/warehouse/list",
+      "title": "alibaba seller warehouse  list",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "path": "/shipping/freight/calculate",
+      "title": "Basic Freight Cost Estimation",
+      "httpMethods": "GET/POST"
+    },
+    {
+      "categoryId": 8,
+      "category": "Buyer - Transaction & Fulfillment",
+      "path": "/order/logistics/tracking/get",
+      "title": "Logistics Tracking",
+      "httpMethods": "GET/POST"
+    }
+  ],
+  "coverage": [
+    {
+      "iop": "/warehouse/list",
+      "top": "not-applicable: native IOP path; no TOP equivalent inferred",
+      "risk": "read",
+      "documented": true,
+      "adapted": false,
+      "accountPermission": "unknown",
+      "accepted": false,
+      "readbackVerified": false
+    },
+    {
+      "iop": "/alibaba/ggs/warehouse/list",
+      "top": "not-applicable: native IOP path; no TOP equivalent inferred",
+      "risk": "read",
+      "documented": true,
+      "adapted": false,
+      "accountPermission": "unknown",
+      "accepted": false,
+      "readbackVerified": false
+    },
+    {
+      "iop": "/shipping/freight/calculate",
+      "top": "not-applicable: native IOP path; no TOP equivalent inferred",
+      "risk": "read",
+      "documented": true,
+      "adapted": false,
+      "accountPermission": "unknown",
+      "accepted": false,
+      "readbackVerified": false
+    },
+    {
+      "iop": "/order/freight/calculate",
+      "top": "not-applicable: native IOP path; no TOP equivalent inferred",
+      "risk": "read",
+      "documented": true,
+      "adapted": false,
+      "accountPermission": "unknown",
+      "accepted": false,
+      "readbackVerified": false
+    },
+    {
+      "iop": "/order/logistics/tracking/get",
+      "top": "not-applicable: native IOP path; no TOP equivalent inferred",
+      "risk": "read",
+      "documented": true,
+      "adapted": false,
+      "accountPermission": "unknown",
+      "accepted": false,
+      "readbackVerified": false
+    },
+    {
+      "iop": "/alibaba/order/attachment/upload",
+      "top": "not-applicable: native IOP path; no TOP equivalent inferred",
+      "risk": "mutation",
+      "documented": true,
+      "adapted": false,
+      "accountPermission": "unknown",
+      "accepted": false,
+      "readbackVerified": false
+    }
+  ],
+  "limitations": [
+    "Public documentation only; no credentials, account permission, business calls, upload, order binding or readback acceptance.",
+    "Local conservative validation permits only positive integer quantities/pages and canonical decimal ID strings or safe integer IDs. Public Number declarations do not publish exhaustive bounds or decimal-quantity semantics.",
+    "GGS runtime admits only Boolean true plus the public example code 200; the document does not publish an exhaustive business-code table. Other codes remain failures until separately evidenced.",
+    "Attachment byte-array schema is a synthetic unsigned-byte offline representation, not proof of signedness or JSON/base64/multipart wire acceptance. No file-size byte cap is inferred from the ambiguous 5M wording.",
+    "GGS response declares Boolean result.success but its public example is the invalid string success. Offline successful fixtures use true; runtime rejects the example string. Result.code 200 is an example, not a published exhaustive code table.",
+    "Number fields in public examples are often strings. Preserve decimal ID strings; reject unsafe JavaScript integers. No unit or currency conversion.",
+    "Warehouse list has no page_size request parameter; GGS has mandatory page_size/current_page. No maximum or pagination end semantics published.",
+    "Advanced freight requires e_company_id from /eco/buyer/product/description (cid=7); sku_id is conditionally required when product has a SKU. This feature does not discover those dependencies.",
+    "Attachment output is top-level value:String (filepath), plus code and request_id in the complete public example; no attachment ID, URL, order ID, binding or readback contract is documented.",
+    "Attachment filename description says must end with .jpg and supports jpg/png/pdf/doc; 5M has no byte-base definition. SDK examples use a file parameter, not a documented base64 string.",
+    "All six error-code tables are empty; HTTP acceptance and code 0 alone do not prove business success."
+  ],
+  "documents": [
+    {
+      "path": "/warehouse/list",
+      "title": "alibaba seller warehouse  list",
+      "description": "alibaba seller warehouse  list",
+      "documentUrl": "https://openapi.alibaba.com/handler/share/apidoc/getApi.json?cid=8&path=%2Fwarehouse%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2025-04-09 16:10:29",
+      "chargeable": false,
+      "authorizationType": 1,
+      "request": [
+        { "name": "product_id", "type": "Number", "required": true, "description": "product id" },
+        { "name": "country_code", "type": "String", "required": false, "description": "country code" },
+        { "name": "current_page", "type": "Number", "required": false, "description": "current page" }
+      ],
+      "response": [
+        {
+          "name": "response",
+          "type": "Object",
+          "required": true,
+          "description": "response",
+          "children": [
+            { "name": "total", "type": "Number", "required": true, "description": "total count" },
+            {
+              "name": "records",
+              "type": "Object[]",
+              "required": true,
+              "description": "{}",
+              "children": [
+                { "name": "zip_code", "type": "String", "required": true, "description": "zip code" },
+                { "name": "country", "type": "String", "required": true, "description": "country name" },
+                { "name": "address", "type": "String", "required": true, "description": "address" },
+                { "name": "warehouse_id", "type": "Number", "required": true, "description": "warehouseId" },
+                { "name": "city", "type": "String", "required": true, "description": "city" },
+                { "name": "country_code", "type": "String", "required": true, "description": "countryCode" },
+                { "name": "name", "type": "String", "required": true, "description": "name" },
+                { "name": "state", "type": "String", "required": true, "description": "state" }
+              ]
+            },
+            { "name": "page_size", "type": "Number", "required": true, "description": "pageSize" },
+            { "name": "current_page", "type": "Number", "required": true, "description": "currentPage" }
+          ]
+        }
+      ],
+      "errors": [],
+      "publicExamples": [
+        {
+          "request": [
+            { "name": "product_id", "type": "Number", "value": "12343213" },
+            { "name": "country_code", "type": "String", "value": "US" },
+            { "name": "current_page", "type": "Number", "value": "1" }
+          ],
+          "response": {
+            "code": "0",
+            "response": {
+              "total": "26",
+              "records": [
+                {
+                  "country": "United States of America",
+                  "country_code": "US",
+                  "address": "asdffdsadfsa",
+                  "city": "Abernant",
+                  "name": "null",
+                  "state": "Alabama",
+                  "zip_code": "22222",
+                  "warehouse_id": "37507"
+                }
+              ],
+              "current_page": "1",
+              "page_size": "20"
+            },
+            "request_id": "0ba2887315178178017221014"
+          }
+        }
+      ]
+    },
+    {
+      "path": "/alibaba/ggs/warehouse/list",
+      "title": "alibaba ggs seller warehouse list",
+      "description": "alibaba ggs seller warehouse list",
+      "documentUrl": "https://openapi.alibaba.com/handler/share/apidoc/getApi.json?cid=8&path=%2Falibaba%2Fggs%2Fwarehouse%2Flist&methodType=GET%2FPOST",
+      "updatedAt": "2025-11-12 17:01:15",
+      "chargeable": false,
+      "authorizationType": 0,
+      "request": [
+        { "name": "product_id", "type": "Number", "required": true, "description": "product_id" },
+        { "name": "page_size", "type": "Number", "required": true, "description": "10" },
+        { "name": "current_page", "type": "Number", "required": true, "description": "1" }
+      ],
+      "response": [
+        {
+          "name": "result",
+          "type": "Object",
+          "required": true,
+          "description": "result",
+          "children": [
+            { "name": "total", "type": "Number", "required": true, "description": "total" },
+            { "name": "code", "type": "String", "required": true, "description": "code" },
+            {
+              "name": "data",
+              "type": "Object[]",
+              "required": true,
+              "description": "data",
+              "children": [
+                { "name": "id", "type": "String", "required": false, "description": "id" },
+                { "name": "gmt_create", "type": "String", "required": false, "description": "createTime" },
+                { "name": "gmt_modified", "type": "String", "required": false, "description": "updateTime" },
+                {
+                  "name": "warehouse_code",
+                  "type": "String",
+                  "required": false,
+                  "description": "warehouseCode"
+                },
+                {
+                  "name": "warehouse_name",
+                  "type": "String",
+                  "required": false,
+                  "description": "warehouseName"
+                },
+                {
+                  "name": "warehouse_type",
+                  "type": "String",
+                  "required": false,
+                  "description": "Private warehouse or other"
+                },
+                {
+                  "name": "warehouse_status",
+                  "type": "String",
+                  "required": false,
+                  "description": "active or inactive"
+                },
+                { "name": "deleted", "type": "String", "required": false, "description": "1 is deleted" },
+                {
+                  "name": "warehouse_address",
+                  "type": "String",
+                  "required": false,
+                  "description": "address"
+                },
+                {
+                  "name": "warehouse_province",
+                  "type": "String",
+                  "required": false,
+                  "description": "province"
+                },
+                { "name": "warehouse_city", "type": "String", "required": false, "description": "city" },
+                {
+                  "name": "warehouse_country",
+                  "type": "String",
+                  "required": false,
+                  "description": "country"
+                },
+                { "name": "zip_code", "type": "String", "required": false, "description": "zipCode" },
+                {
+                  "name": "warehouse_contact",
+                  "type": "String",
+                  "required": false,
+                  "description": "contact"
+                },
+                {
+                  "name": "warehouse_phone_number",
+                  "type": "String",
+                  "required": false,
+                  "description": "phone"
+                },
+                { "name": "ali_member_id", "type": "String", "required": false, "description": "aliMemberId" }
+              ]
+            },
+            { "name": "total_page", "type": "Number", "required": true, "description": "total_page" },
+            {
+              "name": "success",
+              "type": "Boolean",
+              "required": true,
+              "description": "true is success false is fail"
+            },
+            { "name": "page_size", "type": "Number", "required": true, "description": "page_size" },
+            { "name": "current_page", "type": "Number", "required": true, "description": "current_page" },
+            { "name": "message", "type": "String", "required": true, "description": "message" }
+          ]
+        }
+      ],
+      "errors": [],
+      "publicExamples": [
+        {
+          "request": [
+            { "name": "product_id", "type": "Number", "value": "12134343" },
+            { "name": "page_size", "type": "Number", "value": "page_size" },
+            { "name": "current_page", "type": "Number", "value": "current_page" }
+          ],
+          "response": {
+            "result": {
+              "total": "1",
+              "code": "200",
+              "data": [
+                {
+                  "gmt_create": "1758100804000",
+                  "warehouse_province": "sdsd",
+                  "warehouse_type": "Private warehouse",
+                  "warehouse_address": "sdsdsd",
+                  "warehouse_code": "WH_1123_3688636448716134",
+                  "warehouse_country": "xini",
+                  "warehouse_city": "shanghai",
+                  "gmt_modified": "1758100804000",
+                  "zip_code": "123456",
+                  "warehouse_status": "active",
+                  "warehouse_name": "sdasd",
+                  "deleted": "0",
+                  "warehouse_contact": "thf",
+                  "warehouse_phone_number": "12334521",
+                  "ali_member_id": "1234522",
+                  "id": "11141"
+                }
+              ],
+              "success": "success",
+              "total_page": "1",
+              "message": "success",
+              "current_page": "1",
+              "page_size": "10"
+            },
+            "code": "0",
+            "request_id": "0ba2887315178178017221014"
+          }
+        }
+      ]
+    },
+    {
+      "path": "/shipping/freight/calculate",
+      "title": "Basic Freight Cost Estimation",
+      "description": "Estimates basic freight costs for a product based on its details.\n",
+      "documentUrl": "https://openapi.alibaba.com/handler/share/apidoc/getApi.json?cid=8&path=%2Fshipping%2Ffreight%2Fcalculate&methodType=GET%2FPOST",
+      "updatedAt": "2024-08-10 21:07:55",
+      "chargeable": false,
+      "authorizationType": 1,
+      "request": [
+        {
+          "name": "destination_country",
+          "type": "String",
+          "required": true,
+          "description": "destination country  ISO 3166-2"
+        },
+        { "name": "product_id", "type": "Number", "required": true, "description": "product id" },
+        { "name": "quantity", "type": "Number", "required": true, "description": "quantity" },
+        { "name": "zip_code", "type": "String", "required": false, "description": "destination zip code" },
+        {
+          "name": "dispatch_location",
+          "type": "String",
+          "required": false,
+          "description": "product dispatch location, default as CN"
+        },
+        {
+          "name": "enable_distribution_waybill",
+          "type": "Boolean",
+          "required": false,
+          "description": "true means using the distribution pick-up list, and the default is false."
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object[]",
+          "required": true,
+          "description": "[]",
+          "children": [
+            { "name": "shipping_type", "type": "String", "required": false, "description": "shipping type" },
+            { "name": "trade_term", "type": "String", "required": false, "description": "trade term" },
+            {
+              "name": "dispatch_country",
+              "type": "String",
+              "required": false,
+              "description": "dispatch country"
+            },
+            {
+              "name": "destination_country",
+              "type": "String",
+              "required": false,
+              "description": "destination country"
+            },
+            { "name": "vendor_code", "type": "String", "required": false, "description": "vendor code" },
+            { "name": "vendor_name", "type": "String", "required": false, "description": "vendor name" },
+            {
+              "name": "fee",
+              "type": "Object",
+              "required": false,
+              "description": "fee",
+              "children": [
+                { "name": "currency", "type": "String", "required": false, "description": "currency" },
+                { "name": "amount", "type": "String", "required": false, "description": "amount" }
+              ]
+            },
+            {
+              "name": "delivery_time",
+              "type": "String",
+              "required": false,
+              "description": "delivery time (days)"
+            },
+            {
+              "name": "solution_biz_type",
+              "type": "String",
+              "required": false,
+              "description": "\"distributionWaybill\" represents the self-pickup route for distribution waybills; \"common\" or blank represents the regular route."
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "publicExamples": [
+        {
+          "request": [
+            { "name": "destination_country", "type": "String", "value": "US" },
+            { "name": "product_id", "type": "Number", "value": "213421" },
+            { "name": "quantity", "type": "Number", "value": "3" },
+            { "name": "zip_code", "type": "String", "value": "90001" },
+            { "name": "dispatch_location", "type": "String", "value": "CN" },
+            { "name": "enable_distribution_waybill", "type": "Boolean", "value": "false" }
+          ],
+          "response": {
+            "code": "0",
+            "value": [
+              {
+                "destination_country": "US",
+                "vendor_code": "EX_ASP_Economy_Express_3C",
+                "fee": { "amount": "19.1", "currency": "USD" },
+                "shipping_type": "EXPRESS",
+                "dispatch_country": "CN",
+                "vendor_name": "Alibaba.com Economy Express (3C)",
+                "solution_biz_type": "distributionWaybill",
+                "trade_term": "DAP",
+                "delivery_time": "10~15"
+              }
+            ],
+            "request_id": "0ba2887315178178017221014"
+          }
+        }
+      ]
+    },
+    {
+      "path": "/order/freight/calculate",
+      "title": "Advanced Freight Cost Calculation",
+      "description": "Provides a more accurate freight cost estimation using the shipping destination and product metrics.\n",
+      "documentUrl": "https://openapi.alibaba.com/handler/share/apidoc/getApi.json?cid=8&path=%2Forder%2Ffreight%2Fcalculate&methodType=GET%2FPOST",
+      "updatedAt": "2024-08-12 15:09:32",
+      "chargeable": false,
+      "authorizationType": 1,
+      "request": [
+        {
+          "name": "e_company_id",
+          "type": "String",
+          "required": true,
+          "description": "Get from https://openapi.alibaba.com/doc/api.htm?spm=a2o9m.11193531.0.0.1dd7f453B15glv#/api?cid=7&path=/eco/buyer/product/description&methodType=GET"
+        },
+        {
+          "name": "address",
+          "type": "Object",
+          "required": false,
+          "description": "Shipping address",
+          "children": [
+            { "name": "address", "type": "String", "required": false, "description": "Shipping address" },
+            {
+              "name": "city",
+              "type": "Object",
+              "required": false,
+              "description": "City",
+              "children": [
+                { "name": "code", "type": "String", "required": false, "description": "City Code" },
+                { "name": "name", "type": "String", "required": false, "description": "City Name" }
+              ]
+            },
+            {
+              "name": "country",
+              "type": "Object",
+              "required": false,
+              "description": "Country",
+              "children": [
+                { "name": "code", "type": "String", "required": false, "description": "Country Code" },
+                { "name": "name", "type": "String", "required": false, "description": "Country Name" }
+              ]
+            },
+            {
+              "name": "province",
+              "type": "Object",
+              "required": false,
+              "description": "Province",
+              "children": [
+                { "name": "code", "type": "String", "required": false, "description": "Province code" },
+                { "name": "name", "type": "String", "required": false, "description": "Province name" }
+              ]
+            },
+            {
+              "name": "zip",
+              "type": "String",
+              "required": false,
+              "description": "If any, please send it to us to make the freight more accurate."
+            }
+          ]
+        },
+        {
+          "name": "destination_country",
+          "type": "String",
+          "required": true,
+          "description": "Destination Country,like US"
+        },
+        {
+          "name": "logistics_product_list",
+          "type": "Object[]",
+          "required": true,
+          "description": "Product List",
+          "children": [
+            { "name": "product_id", "type": "Number", "required": true, "description": "Product Id" },
+            { "name": "quantity", "type": "Number", "required": true, "description": "quantity" },
+            {
+              "name": "sku_id",
+              "type": "Number",
+              "required": false,
+              "description": "If the product has a SKU ID, this field is required; otherwise, it is not necessary to enter it."
+            }
+          ]
+        },
+        {
+          "name": "dispatch_location",
+          "type": "String",
+          "required": false,
+          "description": "Product dispatch location, default as CN"
+        },
+        {
+          "name": "enable_distribution_waybill",
+          "type": "Boolean",
+          "required": false,
+          "description": "true means using the distribution pick-up list, and the default is false."
+        }
+      ],
+      "response": [
+        {
+          "name": "value",
+          "type": "Object[]",
+          "required": true,
+          "description": "[]",
+          "children": [
+            { "name": "trade_term", "type": "String", "required": true, "description": "trade term" },
+            {
+              "name": "delivery_time",
+              "type": "String",
+              "required": true,
+              "description": "delivery time (days)"
+            },
+            {
+              "name": "fee",
+              "type": "Object",
+              "required": true,
+              "description": "shipping fee",
+              "children": [
+                { "name": "amount", "type": "String", "required": true, "description": "amount" },
+                { "name": "currency", "type": "String", "required": true, "description": "currency" }
+              ]
+            },
+            { "name": "shipping_type", "type": "String", "required": true, "description": "shipping type" },
+            { "name": "vendor_name", "type": "String", "required": true, "description": "vendor name" },
+            {
+              "name": "destination_country",
+              "type": "String",
+              "required": true,
+              "description": "destination country"
+            },
+            {
+              "name": "dispatch_country",
+              "type": "String",
+              "required": true,
+              "description": "dispatchCountry"
+            },
+            { "name": "vendor_code", "type": "String", "required": true, "description": "vendor code" },
+            {
+              "name": "solution_biz_type",
+              "type": "String",
+              "required": false,
+              "description": "\"distributionWaybill\" represents the self-pickup route for distribution waybills; \"common\" or blank represents the regular route."
+            },
+            { "name": "store_type", "type": "String", "required": false, "description": "store type" }
+          ]
+        }
+      ],
+      "errors": [],
+      "publicExamples": [
+        {
+          "request": [
+            { "name": "e_company_id", "type": "String", "value": "cVmhg7/xG8q3UQgcH/5Fag==" },
+            { "name": "address", "type": "Object", "value": "{}" },
+            { "name": "destination_country", "type": "String", "value": "US" },
+            { "name": "logistics_product_list", "type": "Object[]", "value": "{}" },
+            { "name": "dispatch_location", "type": "String", "value": "CN" },
+            { "name": "enable_distribution_waybill", "type": "Boolean", "value": "false" }
+          ],
+          "response": {
+            "code": "0",
+            "value": [
+              {
+                "destination_country": "US",
+                "vendor_code": "seller_oversea_distributor_sellers_shipping_method_1",
+                "fee": { "amount": "3.0", "currency": "USD" },
+                "shipping_type": "EXPRESS/MULTIMODAL_TRANSPORT",
+                "dispatch_country": "US",
+                "vendor_name": "Seller's Shipping Method 1",
+                "solution_biz_type": "distributionWaybill",
+                "trade_term": "DAP",
+                "delivery_time": "3-9",
+                "store_type": "CERTIFIED"
+              }
+            ],
+            "request_id": "0ba2887315178178017221014"
+          }
+        }
+      ]
+    },
+    {
+      "path": "/order/logistics/tracking/get",
+      "title": "Logistics Tracking",
+      "description": "Allows partners to track shipment and logistics updates for placed orders.",
+      "documentUrl": "https://openapi.alibaba.com/handler/share/apidoc/getApi.json?cid=8&path=%2Forder%2Flogistics%2Ftracking%2Fget&methodType=GET%2FPOST",
+      "updatedAt": "2024-08-12 15:09:31",
+      "chargeable": false,
+      "authorizationType": 1,
+      "request": [{ "name": "trade_id", "type": "Number", "required": true, "description": "order id" }],
+      "response": [
+        {
+          "name": "tracking_list",
+          "type": "Object[]",
+          "required": true,
+          "description": "logistics tracking list",
+          "children": [
+            { "name": "carrier", "type": "String", "required": true, "description": "carrier" },
+            {
+              "name": "event_list",
+              "type": "Object[]",
+              "required": true,
+              "description": "{}",
+              "children": [
+                { "name": "event_code", "type": "String", "required": true, "description": "event Code" },
+                {
+                  "name": "event_location",
+                  "type": "String",
+                  "required": true,
+                  "description": "event Location"
+                },
+                { "name": "event_time", "type": "String", "required": true, "description": "time" },
+                { "name": "event_name", "type": "String", "required": true, "description": "name" }
+              ]
+            },
+            { "name": "tracking_url", "type": "String", "required": true, "description": "url" },
+            {
+              "name": "current_event_code",
+              "type": "String",
+              "required": true,
+              "description": "The latest logistics event code"
+            },
+            {
+              "name": "tracking_number",
+              "type": "String",
+              "required": true,
+              "description": "tracking Number"
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "publicExamples": [
+        {
+          "request": [{ "name": "trade_id", "type": "Number", "value": "2345323432" }],
+          "response": {
+            "code": "0",
+            "tracking_list": [
+              {
+                "carrier": "FEDEX",
+                "tracking_number": "776705370628",
+                "event_list": [
+                  {
+                    "event_code": "DELIVERED",
+                    "event_location": "US, TN, HENDERSONVILLE",
+                    "event_name": "Delivered",
+                    "event_time": "2024-06-11 15:53:00"
+                  }
+                ],
+                "tracking_url": "https://sale.alibaba.com/p/dwlfbxdr4/index.html?wx_screen_direc=portrait&wx_navbar_transparent=true&path=/p/dwlfbxdr4/index.html&ncms_spm=a27aq.23858521&buyerAliId=QEnHicXHVOhWsDJo1rcNhg%3D%3D&sourceOrderId=Mven3kO0O%2BG%2BZUUUsCfiNoHQcmfctcdM",
+                "current_event_code": "DELIVERED"
+              }
+            ],
+            "request_id": "0ba2887315178178017221014"
+          }
+        }
+      ]
+    },
+    {
+      "path": "/alibaba/order/attachment/upload",
+      "title": "alibaba order attachment upload",
+      "description": "alibaba order attachment upload",
+      "documentUrl": "https://openapi.alibaba.com/handler/share/apidoc/getApi.json?cid=8&path=%2Falibaba%2Forder%2Fattachment%2Fupload&methodType=GET%2FPOST",
+      "updatedAt": "2025-07-09 21:19:09",
+      "chargeable": false,
+      "authorizationType": 1,
+      "request": [
+        { "name": "data", "type": "byte[]", "required": true, "description": "File byte array" },
+        {
+          "name": "file_name",
+          "type": "String",
+          "required": true,
+          "description": "The file name must end with .jpg (supports jpg, png, pdf, doc), and the file size should not exceed 5M"
+        }
+      ],
+      "response": [
+        { "name": "value", "type": "String", "required": true, "description": "生成的附件的filepath值" }
+      ],
+      "errors": [],
+      "publicExamples": [
+        {
+          "request": [
+            { "name": "data", "type": "byte[]", "value": "[0,1,2]" },
+            { "name": "file_name", "type": "String", "value": "xxxx.jpg" }
+          ],
+          "response": { "code": "0", "value": "xxxxxxxxxxx", "request_id": "0ba2887315178178017221014" }
+        }
+      ]
+    }
+  ]
+}

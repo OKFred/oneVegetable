@@ -1,0 +1,145 @@
+{
+  "synthetic": true,
+  "source": "Official public examples; invalid GGS Boolean and advanced request placeholders corrected as described in snapshot.",
+  "methods": {
+    "/warehouse/list": {
+      "request": { "product_id": "12343213", "country_code": "US", "current_page": "1" },
+      "response": {
+        "code": "0",
+        "response": {
+          "total": "26",
+          "records": [
+            {
+              "country": "United States of America",
+              "country_code": "US",
+              "address": "asdffdsadfsa",
+              "city": "Abernant",
+              "name": "null",
+              "state": "Alabama",
+              "zip_code": "22222",
+              "warehouse_id": "37507"
+            }
+          ],
+          "current_page": "1",
+          "page_size": "20"
+        },
+        "request_id": "0ba2887315178178017221014"
+      }
+    },
+    "/alibaba/ggs/warehouse/list": {
+      "request": { "product_id": "12134343", "page_size": 10, "current_page": 1 },
+      "response": {
+        "result": {
+          "total": "1",
+          "code": "200",
+          "data": [
+            {
+              "gmt_create": "1758100804000",
+              "warehouse_province": "sdsd",
+              "warehouse_type": "Private warehouse",
+              "warehouse_address": "sdsdsd",
+              "warehouse_code": "WH_1123_3688636448716134",
+              "warehouse_country": "xini",
+              "warehouse_city": "shanghai",
+              "gmt_modified": "1758100804000",
+              "zip_code": "123456",
+              "warehouse_status": "active",
+              "warehouse_name": "sdasd",
+              "deleted": "0",
+              "warehouse_contact": "thf",
+              "warehouse_phone_number": "12334521",
+              "ali_member_id": "1234522",
+              "id": "11141"
+            }
+          ],
+          "success": true,
+          "total_page": "1",
+          "message": "success",
+          "current_page": "1",
+          "page_size": "10"
+        },
+        "code": "0",
+        "request_id": "0ba2887315178178017221014"
+      }
+    },
+    "/shipping/freight/calculate": {
+      "request": {
+        "destination_country": "US",
+        "product_id": "213421",
+        "quantity": "3",
+        "zip_code": "90001",
+        "dispatch_location": "CN",
+        "enable_distribution_waybill": false
+      },
+      "response": {
+        "code": "0",
+        "value": [
+          {
+            "destination_country": "US",
+            "vendor_code": "EX_ASP_Economy_Express_3C",
+            "fee": { "amount": "19.1", "currency": "USD" },
+            "shipping_type": "EXPRESS",
+            "dispatch_country": "CN",
+            "vendor_name": "Alibaba.com Economy Express (3C)",
+            "solution_biz_type": "distributionWaybill",
+            "trade_term": "DAP",
+            "delivery_time": "10~15"
+          }
+        ],
+        "request_id": "0ba2887315178178017221014"
+      }
+    },
+    "/order/freight/calculate": {
+      "request": {
+        "e_company_id": "synthetic-company-id-not-for-real-calls",
+        "destination_country": "US",
+        "logistics_product_list": [{ "product_id": "213421", "quantity": 3 }]
+      },
+      "response": {
+        "code": "0",
+        "value": [
+          {
+            "destination_country": "US",
+            "vendor_code": "seller_oversea_distributor_sellers_shipping_method_1",
+            "fee": { "amount": "3.0", "currency": "USD" },
+            "shipping_type": "EXPRESS/MULTIMODAL_TRANSPORT",
+            "dispatch_country": "US",
+            "vendor_name": "Seller's Shipping Method 1",
+            "solution_biz_type": "distributionWaybill",
+            "trade_term": "DAP",
+            "delivery_time": "3-9",
+            "store_type": "CERTIFIED"
+          }
+        ],
+        "request_id": "0ba2887315178178017221014"
+      }
+    },
+    "/order/logistics/tracking/get": {
+      "request": { "trade_id": "2345323432" },
+      "response": {
+        "code": "0",
+        "tracking_list": [
+          {
+            "carrier": "FEDEX",
+            "tracking_number": "776705370628",
+            "event_list": [
+              {
+                "event_code": "DELIVERED",
+                "event_location": "US, TN, HENDERSONVILLE",
+                "event_name": "Delivered",
+                "event_time": "2024-06-11 15:53:00"
+              }
+            ],
+            "tracking_url": "https://sale.alibaba.com/p/dwlfbxdr4/index.html?wx_screen_direc=portrait&wx_navbar_transparent=true&path=/p/dwlfbxdr4/index.html&ncms_spm=a27aq.23858521&buyerAliId=QEnHicXHVOhWsDJo1rcNhg%3D%3D&sourceOrderId=Mven3kO0O%2BG%2BZUUUsCfiNoHQcmfctcdM",
+            "current_event_code": "DELIVERED"
+          }
+        ],
+        "request_id": "0ba2887315178178017221014"
+      }
+    },
+    "/alibaba/order/attachment/upload": {
+      "request": { "data": [0, 1, 2], "file_name": "xxxx.jpg" },
+      "response": { "code": "0", "value": "xxxxxxxxxxx", "request_id": "0ba2887315178178017221014" }
+    }
+  }
+}

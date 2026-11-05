@@ -635,6 +635,6 @@ describe('video bounds and S3 multipart transport', () => {
         bytes: new Uint8Array(VIDEO_UPLOAD_PART_BYTES + 1),
         contentType: 'image/jpeg'
       })
-    ).rejects.toThrow(/5 MiB/u);
+    ).rejects.toThrow('S3_OBJECT_TOO_LARGE');
   });
 });

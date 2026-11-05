@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { S3ObjectStorageClient, type S3StorageConfiguration } from '../src/s3-storage';
+import { S3ObjectStorageClient, S3_MAX_OBJECT_BYTES, type S3StorageConfiguration } from '../src/s3-storage';
 import type { NetworkTransport } from '../src/network';
 import errors from '../../../mock/data/video/s3-errors.json';
 import listings from '../../../mock/data/s3-list-prefix.json';
@@ -22,6 +22,78 @@ function requestUrl(input: RequestInfo | URL | undefined): URL {
 }
 
 describe('S3ObjectStorageClient', () => {
+  it('uses decimal 5 MB for every ordinary object', () => {
+    expect(S3_MAX_OBJECT_BYTES).toBe(5_000_000);
+  });
+  it('accepts exactly 5 MB for ordinary PUT and GET', async () => {
+    const bytes = new Uint8Array(S3_MAX_OBJECT_BYTES).fill(37);
+    const send = vi
+      .fn<NetworkTransport['send']>()
+      .mockResolvedValueOnce(new Response('', { headers: { etag: '"stored"' } }))
+      .mockResolvedValueOnce(new Response(bytes));
+    const client = new S3ObjectStorageClient(configuration, { send });
+    await expect(
+      client.putObject({
+        key: 'large.bin',
+        bytes,
+        contentType: 'application/octet-stream',
+        createOnly: true
+      })
+    ).resolves.toEqual({ etag: 'stored' });
+    expect((await client.getObject('large.bin')).bytes).toHaveLength(S3_MAX_OBJECT_BYTES);
+    expect(send).toHaveBeenCalledTimes(2);
+    const put = send.mock.calls[0];
+    if (!put) throw new Error('Missing PUT');
+    expect(new Headers(put[1].headers).get('if-none-match')).toBe('*');
+    expect((put[1].body as Uint8Array).byteLength).toBe(S3_MAX_OBJECT_BYTES);
+  });
+  it.each([5_000_001, 5 * 1024 * 1024])(
+    'rejects ordinary %i-byte objects without a PUT or GET retry',
+    async (size) => {
+      const bytes = new Uint8Array(size);
+      const send = vi
+        .fn<NetworkTransport['send']>()
+        .mockImplementation(() => Promise.resolve(new Response(bytes)));
+      const client = new S3ObjectStorageClient(configuration, { send });
+      await expect(
+        client.putObject({
+          key: 'large.bin',
+          bytes,
+          contentType: 'application/octet-stream',
+          createOnly: true
+        })
+      ).rejects.toThrow('S3_OBJECT_TOO_LARGE');
+      expect(send).not.toHaveBeenCalled();
+      await expect(client.getObject('large.bin')).rejects.toThrow();
+      expect(send).toHaveBeenCalledTimes(1);
+    }
+  );
+  it('retains the independent 5 MiB video multipart and range budget', async () => {
+    const bytes = new Uint8Array(5 * 1024 * 1024);
+    const send = vi
+      .fn<NetworkTransport['send']>()
+      .mockResolvedValueOnce(new Response('', { headers: { etag: '"part"' } }))
+      .mockResolvedValueOnce(new Response(bytes, { status: 206 }));
+    const client = new S3ObjectStorageClient(configuration, { send });
+    await expect(client.putObject({ key: 'photo.png', bytes, contentType: 'image/png' })).rejects.toThrow(
+      'S3_OBJECT_TOO_LARGE'
+    );
+    expect(send).not.toHaveBeenCalled();
+    expect((await client.uploadPart('x.mp4', 'upload-fixture', 1, bytes, crypto.randomUUID())).size).toBe(
+      bytes.length
+    );
+    expect((await client.getVideoRange('x.mp4', 0, bytes.length - 1, crypto.randomUUID())).byteLength).toBe(
+      bytes.length
+    );
+    const oversized = new Uint8Array(bytes.length + 1);
+    await expect(
+      client.uploadPart('x.mp4', 'upload-fixture', 2, oversized, crypto.randomUUID())
+    ).rejects.toThrow('VIDEO_PART_INVALID');
+    await expect(client.getVideoRange('x.mp4', 0, oversized.length - 1, crypto.randomUUID())).rejects.toThrow(
+      'VIDEO_PART_INVALID'
+    );
+    expect(send).toHaveBeenCalledTimes(2);
+  });
   it.each(['imports/gallery', 'imports/gallery/'])(
     'preserves the directory boundary when listing configured root %s',
     async (rootPrefix) => {

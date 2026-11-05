@@ -18539,6 +18539,629 @@
         },
         "title": "alibaba.trade.service.charge.get response"
       },
+      "AlibabaTradeIopFulfillment0Request": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "product id"
+          },
+          "country_code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "country code"
+          },
+          "current_page": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "current page"
+          }
+        },
+        "required": ["product_id"],
+        "additionalProperties": false,
+        "title": "/warehouse/list request"
+      },
+      "AlibabaTradeIopFulfillment0Response": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" }
+                ],
+                "description": "total count"
+              },
+              "records": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "zip_code": { "type": "string", "description": "zip code" },
+                    "country": { "type": "string", "description": "country name" },
+                    "address": { "type": "string", "description": "address" },
+                    "warehouse_id": {
+                      "anyOf": [
+                        { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                        { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                      ],
+                      "description": "warehouseId"
+                    },
+                    "city": { "type": "string", "description": "city" },
+                    "country_code": { "type": "string", "description": "countryCode" },
+                    "name": { "type": "string", "description": "name" },
+                    "state": { "type": "string", "description": "state" }
+                  },
+                  "required": [
+                    "zip_code",
+                    "country",
+                    "address",
+                    "warehouse_id",
+                    "city",
+                    "country_code",
+                    "name",
+                    "state"
+                  ],
+                  "additionalProperties": true
+                },
+                "description": "{}"
+              },
+              "page_size": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                ],
+                "description": "pageSize"
+              },
+              "current_page": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                ],
+                "description": "currentPage"
+              }
+            },
+            "required": ["total", "records", "page_size", "current_page"],
+            "additionalProperties": true,
+            "description": "response"
+          },
+          "code": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "integer", "maximum": 9007199254740991 }
+            ],
+            "description": "IOP transport/business envelope code; only 0 is transport success, not proof of payload success."
+          },
+          "request_id": { "type": "string" }
+        },
+        "required": ["response", "code"],
+        "additionalProperties": true,
+        "title": "/warehouse/list response"
+      },
+      "AlibabaTradeIopFulfillment1Request": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "product_id"
+          },
+          "page_size": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "10"
+          },
+          "current_page": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "1"
+          }
+        },
+        "required": ["product_id", "page_size", "current_page"],
+        "additionalProperties": false,
+        "title": "/alibaba/ggs/warehouse/list request"
+      },
+      "AlibabaTradeIopFulfillment1Response": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" }
+                ],
+                "description": "total"
+              },
+              "code": { "type": "string", "description": "code" },
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "description": "id" },
+                    "gmt_create": { "type": "string", "description": "createTime" },
+                    "gmt_modified": { "type": "string", "description": "updateTime" },
+                    "warehouse_code": { "type": "string", "description": "warehouseCode" },
+                    "warehouse_name": { "type": "string", "description": "warehouseName" },
+                    "warehouse_type": { "type": "string", "description": "Private warehouse or other" },
+                    "warehouse_status": { "type": "string", "description": "active or inactive" },
+                    "deleted": { "type": "string", "description": "1 is deleted" },
+                    "warehouse_address": { "type": "string", "description": "address" },
+                    "warehouse_province": { "type": "string", "description": "province" },
+                    "warehouse_city": { "type": "string", "description": "city" },
+                    "warehouse_country": { "type": "string", "description": "country" },
+                    "zip_code": { "type": "string", "description": "zipCode" },
+                    "warehouse_contact": { "type": "string", "description": "contact" },
+                    "warehouse_phone_number": { "type": "string", "description": "phone" },
+                    "ali_member_id": { "type": "string", "description": "aliMemberId" }
+                  },
+                  "required": [],
+                  "additionalProperties": true
+                },
+                "description": "data"
+              },
+              "total_page": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" }
+                ],
+                "description": "total_page"
+              },
+              "success": { "type": "boolean", "description": "true is success false is fail" },
+              "page_size": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                ],
+                "description": "page_size"
+              },
+              "current_page": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                ],
+                "description": "current_page"
+              },
+              "message": { "type": "string", "description": "message" }
+            },
+            "required": [
+              "total",
+              "code",
+              "data",
+              "total_page",
+              "success",
+              "page_size",
+              "current_page",
+              "message"
+            ],
+            "additionalProperties": true,
+            "description": "result"
+          },
+          "code": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "integer", "maximum": 9007199254740991 }
+            ],
+            "description": "IOP transport/business envelope code; only 0 is transport success, not proof of payload success."
+          },
+          "request_id": { "type": "string" }
+        },
+        "required": ["result", "code"],
+        "additionalProperties": true,
+        "title": "/alibaba/ggs/warehouse/list response"
+      },
+      "AlibabaTradeIopFulfillment2Request": {
+        "type": "object",
+        "properties": {
+          "destination_country": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "destination country  ISO 3166-2"
+          },
+          "product_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "product id"
+          },
+          "quantity": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "quantity"
+          },
+          "zip_code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "destination zip code"
+          },
+          "dispatch_location": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "product dispatch location, default as CN"
+          },
+          "enable_distribution_waybill": {
+            "type": "boolean",
+            "description": "true means using the distribution pick-up list, and the default is false."
+          }
+        },
+        "required": ["destination_country", "product_id", "quantity"],
+        "additionalProperties": false,
+        "title": "/shipping/freight/calculate request"
+      },
+      "AlibabaTradeIopFulfillment2Response": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "shipping_type": { "type": "string", "description": "shipping type" },
+                "trade_term": { "type": "string", "description": "trade term" },
+                "dispatch_country": { "type": "string", "description": "dispatch country" },
+                "destination_country": { "type": "string", "description": "destination country" },
+                "vendor_code": { "type": "string", "description": "vendor code" },
+                "vendor_name": { "type": "string", "description": "vendor name" },
+                "fee": {
+                  "type": "object",
+                  "properties": {
+                    "currency": { "type": "string", "description": "currency" },
+                    "amount": { "type": "string", "description": "amount" }
+                  },
+                  "required": [],
+                  "additionalProperties": true,
+                  "description": "fee"
+                },
+                "delivery_time": { "type": "string", "description": "delivery time (days)" },
+                "solution_biz_type": {
+                  "type": "string",
+                  "description": "\"distributionWaybill\" represents the self-pickup route for distribution waybills; \"common\" or blank represents the regular route."
+                }
+              },
+              "required": [],
+              "additionalProperties": true
+            },
+            "description": "[]"
+          },
+          "code": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "integer", "maximum": 9007199254740991 }
+            ],
+            "description": "IOP transport/business envelope code; only 0 is transport success, not proof of payload success."
+          },
+          "request_id": { "type": "string" }
+        },
+        "required": ["value", "code"],
+        "additionalProperties": true,
+        "title": "/shipping/freight/calculate response"
+      },
+      "AlibabaTradeIopFulfillment3Request": {
+        "type": "object",
+        "properties": {
+          "e_company_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "Get from https://openapi.alibaba.com/doc/api.htm?spm=a2o9m.11193531.0.0.1dd7f453B15glv#/api?cid=7&path=/eco/buyer/product/description&methodType=GET"
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                "description": "Shipping address"
+              },
+              "city": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                    "description": "City Code"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                    "description": "City Name"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false,
+                "description": "City"
+              },
+              "country": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                    "description": "Country Code"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                    "description": "Country Name"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false,
+                "description": "Country"
+              },
+              "province": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                    "description": "Province code"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                    "description": "Province name"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false,
+                "description": "Province"
+              },
+              "zip": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+                "description": "If any, please send it to us to make the freight more accurate."
+              }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "Shipping address"
+          },
+          "destination_country": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "Destination Country,like US"
+          },
+          "logistics_product_list": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                  ],
+                  "description": "Product Id"
+                },
+                "quantity": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                  ],
+                  "description": "quantity"
+                },
+                "sku_id": {
+                  "anyOf": [
+                    { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                    { "type": "string", "pattern": "^[1-9][0-9]*$" }
+                  ],
+                  "description": "If the product has a SKU ID, this field is required; otherwise, it is not necessary to enter it."
+                }
+              },
+              "required": ["product_id", "quantity"],
+              "additionalProperties": false
+            },
+            "description": "Product List"
+          },
+          "dispatch_location": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "Product dispatch location, default as CN"
+          },
+          "enable_distribution_waybill": {
+            "type": "boolean",
+            "description": "true means using the distribution pick-up list, and the default is false."
+          }
+        },
+        "required": ["e_company_id", "destination_country", "logistics_product_list"],
+        "additionalProperties": false,
+        "title": "/order/freight/calculate request"
+      },
+      "AlibabaTradeIopFulfillment3Response": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "trade_term": { "type": "string", "description": "trade term" },
+                "delivery_time": { "type": "string", "description": "delivery time (days)" },
+                "fee": {
+                  "type": "object",
+                  "properties": {
+                    "amount": { "type": "string", "description": "amount" },
+                    "currency": { "type": "string", "description": "currency" }
+                  },
+                  "required": ["amount", "currency"],
+                  "additionalProperties": true,
+                  "description": "shipping fee"
+                },
+                "shipping_type": { "type": "string", "description": "shipping type" },
+                "vendor_name": { "type": "string", "description": "vendor name" },
+                "destination_country": { "type": "string", "description": "destination country" },
+                "dispatch_country": { "type": "string", "description": "dispatchCountry" },
+                "vendor_code": { "type": "string", "description": "vendor code" },
+                "solution_biz_type": {
+                  "type": "string",
+                  "description": "\"distributionWaybill\" represents the self-pickup route for distribution waybills; \"common\" or blank represents the regular route."
+                },
+                "store_type": { "type": "string", "description": "store type" }
+              },
+              "required": [
+                "trade_term",
+                "delivery_time",
+                "fee",
+                "shipping_type",
+                "vendor_name",
+                "destination_country",
+                "dispatch_country",
+                "vendor_code"
+              ],
+              "additionalProperties": true
+            },
+            "description": "[]"
+          },
+          "code": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "integer", "maximum": 9007199254740991 }
+            ],
+            "description": "IOP transport/business envelope code; only 0 is transport success, not proof of payload success."
+          },
+          "request_id": { "type": "string" }
+        },
+        "required": ["value", "code"],
+        "additionalProperties": true,
+        "title": "/order/freight/calculate response"
+      },
+      "AlibabaTradeIopFulfillment4Request": {
+        "type": "object",
+        "properties": {
+          "trade_id": {
+            "anyOf": [
+              { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              { "type": "string", "pattern": "^[1-9][0-9]*$" }
+            ],
+            "description": "order id"
+          }
+        },
+        "required": ["trade_id"],
+        "additionalProperties": false,
+        "title": "/order/logistics/tracking/get request"
+      },
+      "AlibabaTradeIopFulfillment4Response": {
+        "type": "object",
+        "properties": {
+          "tracking_list": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "carrier": { "type": "string", "description": "carrier" },
+                "event_list": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "event_code": { "type": "string", "description": "event Code" },
+                      "event_location": { "type": "string", "description": "event Location" },
+                      "event_time": { "type": "string", "description": "time" },
+                      "event_name": { "type": "string", "description": "name" }
+                    },
+                    "required": ["event_code", "event_location", "event_time", "event_name"],
+                    "additionalProperties": true
+                  },
+                  "description": "{}"
+                },
+                "tracking_url": { "type": "string", "description": "url" },
+                "current_event_code": { "type": "string", "description": "The latest logistics event code" },
+                "tracking_number": { "type": "string", "description": "tracking Number" }
+              },
+              "required": ["carrier", "event_list", "tracking_url", "current_event_code", "tracking_number"],
+              "additionalProperties": true
+            },
+            "description": "logistics tracking list"
+          },
+          "code": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "integer", "maximum": 9007199254740991 }
+            ],
+            "description": "IOP transport/business envelope code; only 0 is transport success, not proof of payload success."
+          },
+          "request_id": { "type": "string" }
+        },
+        "required": ["tracking_list", "code"],
+        "additionalProperties": true,
+        "title": "/order/logistics/tracking/get response"
+      },
+      "AlibabaTradeIopFulfillment5Request": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "integer", "minimum": 0, "maximum": 255 },
+            "description": "File byte array"
+          },
+          "file_name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f]+$",
+            "description": "The file name must end with .jpg (supports jpg, png, pdf, doc), and the file size should not exceed 5M"
+          }
+        },
+        "required": ["data", "file_name"],
+        "additionalProperties": false,
+        "title": "/alibaba/order/attachment/upload request"
+      },
+      "AlibabaTradeIopFulfillment5Response": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "description": "Top-level generated attachment filepath, not a URL, attachment ID or order binding receipt."
+          },
+          "code": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "integer", "maximum": 9007199254740991 }
+            ],
+            "description": "IOP transport/business envelope code; only 0 is transport success, not proof of payload success."
+          },
+          "request_id": { "type": "string" }
+        },
+        "required": ["value", "code"],
+        "additionalProperties": true,
+        "title": "/alibaba/order/attachment/upload response"
+      },
       "ApiCapability": {
         "type": "object",
         "additionalProperties": false,
@@ -18855,6 +19478,12 @@
               { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressFormSaveResponse" },
               { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressListQueryResponse" },
               { "$ref": "#/components/schemas/AlibabaTradeAlibabaTradeAddressDeleteResponse" },
+              { "$ref": "#/components/schemas/AlibabaTradeIopFulfillment0Response" },
+              { "$ref": "#/components/schemas/AlibabaTradeIopFulfillment1Response" },
+              { "$ref": "#/components/schemas/AlibabaTradeIopFulfillment2Response" },
+              { "$ref": "#/components/schemas/AlibabaTradeIopFulfillment3Response" },
+              { "$ref": "#/components/schemas/AlibabaTradeIopFulfillment4Response" },
+              { "$ref": "#/components/schemas/AlibabaTradeIopFulfillment5Response" },
               { "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsBuyerInfoGetResponse" },
               {
                 "$ref": "#/components/schemas/AlibabaLogisticsAlibabaOnetouchLogisticsExpressSpecialProductTypeListResponse"
@@ -19964,6 +20593,92 @@
             "description": "seller.order.get is not callable outside Jushita."
           }
         }
+      },
+      "OrderAttachmentFile": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^[^\\\\/\\u0000-\\u001f]+$"
+          },
+          "contentType": { "enum": ["image/jpeg", "image/png", "application/pdf", "application/msword"] },
+          "byteLength": { "type": "integer", "minimum": 1, "maximum": 5000000 },
+          "contentBase64": {
+            "type": "string",
+            "minLength": 4,
+            "contentEncoding": "base64",
+            "maxLength": 6666668,
+            "writeOnly": true,
+            "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+          }
+        },
+        "required": ["fileName", "contentType", "byteLength", "contentBase64"],
+        "additionalProperties": false
+      },
+      "OrderAttachmentGetRequest": {
+        "type": "object",
+        "properties": {
+          "requestId": { "type": "string", "format": "uuid" },
+          "jobId": { "type": "string", "format": "uuid" }
+        },
+        "required": ["requestId", "jobId"],
+        "additionalProperties": false
+      },
+      "OrderAttachmentReceipt": {
+        "type": "object",
+        "properties": {
+          "jobId": { "type": "string", "format": "uuid" },
+          "requestId": { "type": "string", "format": "uuid" },
+          "status": { "enum": ["sending", "accepted", "failed", "unknown"] },
+          "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "size": { "type": "integer", "minimum": 1, "maximum": 5000000 },
+          "createdTimeUtc": { "type": "integer", "minimum": 0 },
+          "updatedTimeUtc": { "type": "integer", "minimum": 0 },
+          "gatewayId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "protocol": { "const": "iop" },
+          "platformReference": { "type": ["string", "null"], "maxLength": 2048 },
+          "errorCode": { "type": ["string", "null"], "maxLength": 160, "pattern": "^[A-Za-z0-9_.;:-]+$" },
+          "traceId": { "type": ["string", "null"], "maxLength": 160, "pattern": "^[A-Za-z0-9_-]+$" }
+        },
+        "required": [
+          "jobId",
+          "requestId",
+          "status",
+          "fileName",
+          "sha256",
+          "size",
+          "createdTimeUtc",
+          "updatedTimeUtc",
+          "gatewayId",
+          "protocol",
+          "platformReference",
+          "errorCode",
+          "traceId"
+        ],
+        "additionalProperties": false
+      },
+      "OrderAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "requestId": { "type": "string", "format": "uuid" },
+          "ok": { "const": true },
+          "data": { "$ref": "#/components/schemas/OrderAttachmentReceipt" }
+        },
+        "required": ["requestId", "ok", "data"],
+        "additionalProperties": false
+      },
+      "OrderAttachmentUploadRequest": {
+        "type": "object",
+        "properties": {
+          "requestId": { "type": "string", "format": "uuid" },
+          "file": { "$ref": "#/components/schemas/OrderAttachmentFile" },
+          "context": { "$ref": "#/components/schemas/GalleryTransferContext" }
+        },
+        "required": ["requestId", "file", "context"],
+        "additionalProperties": false
       },
       "OrderFund": {
         "type": "object",
@@ -26101,6 +26816,241 @@
       "requestExample": { "address_id": 1232222 },
       "responseExample": {},
       "docUrl": "https://developer.alibaba.com/docs/api.htm?apiId=70728"
+    },
+    "/warehouse/list": {
+      "requestSchema": "AlibabaTradeIopFulfillment0Request",
+      "responseSchema": "AlibabaTradeIopFulfillment0Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "restricted": false,
+      "restrictionReason": null,
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-11-05",
+      "updatedAt": "2025-04-09",
+      "title": "alibaba seller warehouse  list",
+      "description": "alibaba seller warehouse  list",
+      "errorCodes": [],
+      "requestExample": { "product_id": "12343213", "country_code": "US", "current_page": "1" },
+      "responseExample": {
+        "code": "0",
+        "response": {
+          "total": "26",
+          "records": [
+            {
+              "country": "United States of America",
+              "country_code": "US",
+              "address": "asdffdsadfsa",
+              "city": "Abernant",
+              "name": "null",
+              "state": "Alabama",
+              "zip_code": "22222",
+              "warehouse_id": "37507"
+            }
+          ],
+          "current_page": "1",
+          "page_size": "20"
+        },
+        "request_id": "0ba2887315178178017221014"
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Fwarehouse%2Flist&methodType=GET%2FPOST"
+    },
+    "/alibaba/ggs/warehouse/list": {
+      "requestSchema": "AlibabaTradeIopFulfillment1Request",
+      "responseSchema": "AlibabaTradeIopFulfillment1Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "restricted": false,
+      "restrictionReason": null,
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-11-05",
+      "updatedAt": "2025-11-12",
+      "title": "alibaba ggs seller warehouse list",
+      "description": "alibaba ggs seller warehouse list",
+      "errorCodes": [],
+      "requestExample": { "product_id": "12134343", "page_size": 10, "current_page": 1 },
+      "responseExample": {
+        "result": {
+          "total": "1",
+          "code": "200",
+          "data": [
+            {
+              "gmt_create": "1758100804000",
+              "warehouse_province": "sdsd",
+              "warehouse_type": "Private warehouse",
+              "warehouse_address": "sdsdsd",
+              "warehouse_code": "WH_1123_3688636448716134",
+              "warehouse_country": "xini",
+              "warehouse_city": "shanghai",
+              "gmt_modified": "1758100804000",
+              "zip_code": "123456",
+              "warehouse_status": "active",
+              "warehouse_name": "sdasd",
+              "deleted": "0",
+              "warehouse_contact": "thf",
+              "warehouse_phone_number": "12334521",
+              "ali_member_id": "1234522",
+              "id": "11141"
+            }
+          ],
+          "success": true,
+          "total_page": "1",
+          "message": "success",
+          "current_page": "1",
+          "page_size": "10"
+        },
+        "code": "0",
+        "request_id": "0ba2887315178178017221014"
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Fggs%2Fwarehouse%2Flist&methodType=GET%2FPOST"
+    },
+    "/shipping/freight/calculate": {
+      "requestSchema": "AlibabaTradeIopFulfillment2Request",
+      "responseSchema": "AlibabaTradeIopFulfillment2Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "restricted": false,
+      "restrictionReason": null,
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-11-05",
+      "updatedAt": "2024-08-10",
+      "title": "Basic Freight Cost Estimation",
+      "description": "Estimates basic freight costs for a product based on its details.\n",
+      "errorCodes": [],
+      "requestExample": {
+        "destination_country": "US",
+        "product_id": "213421",
+        "quantity": "3",
+        "zip_code": "90001",
+        "dispatch_location": "CN",
+        "enable_distribution_waybill": false
+      },
+      "responseExample": {
+        "code": "0",
+        "value": [
+          {
+            "destination_country": "US",
+            "vendor_code": "EX_ASP_Economy_Express_3C",
+            "fee": { "amount": "19.1", "currency": "USD" },
+            "shipping_type": "EXPRESS",
+            "dispatch_country": "CN",
+            "vendor_name": "Alibaba.com Economy Express (3C)",
+            "solution_biz_type": "distributionWaybill",
+            "trade_term": "DAP",
+            "delivery_time": "10~15"
+          }
+        ],
+        "request_id": "0ba2887315178178017221014"
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Fshipping%2Ffreight%2Fcalculate&methodType=GET%2FPOST"
+    },
+    "/order/freight/calculate": {
+      "requestSchema": "AlibabaTradeIopFulfillment3Request",
+      "responseSchema": "AlibabaTradeIopFulfillment3Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "restricted": false,
+      "restrictionReason": null,
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-11-05",
+      "updatedAt": "2024-08-12",
+      "title": "Advanced Freight Cost Calculation",
+      "description": "Provides a more accurate freight cost estimation using the shipping destination and product metrics.\n",
+      "errorCodes": [],
+      "requestExample": {
+        "e_company_id": "synthetic-company-id-not-for-real-calls",
+        "destination_country": "US",
+        "logistics_product_list": [{ "product_id": "213421", "quantity": 3 }]
+      },
+      "responseExample": {
+        "code": "0",
+        "value": [
+          {
+            "destination_country": "US",
+            "vendor_code": "seller_oversea_distributor_sellers_shipping_method_1",
+            "fee": { "amount": "3.0", "currency": "USD" },
+            "shipping_type": "EXPRESS/MULTIMODAL_TRANSPORT",
+            "dispatch_country": "US",
+            "vendor_name": "Seller's Shipping Method 1",
+            "solution_biz_type": "distributionWaybill",
+            "trade_term": "DAP",
+            "delivery_time": "3-9",
+            "store_type": "CERTIFIED"
+          }
+        ],
+        "request_id": "0ba2887315178178017221014"
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Ffreight%2Fcalculate&methodType=GET%2FPOST"
+    },
+    "/order/logistics/tracking/get": {
+      "requestSchema": "AlibabaTradeIopFulfillment4Request",
+      "responseSchema": "AlibabaTradeIopFulfillment4Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "read",
+      "featureArea": "fulfillment",
+      "restricted": false,
+      "restrictionReason": null,
+      "verification": "documented",
+      "realCallEnabled": true,
+      "checkedAt": "2026-11-05",
+      "updatedAt": "2024-08-12",
+      "title": "Logistics Tracking",
+      "description": "Allows partners to track shipment and logistics updates for placed orders.",
+      "errorCodes": [],
+      "requestExample": { "trade_id": "2345323432" },
+      "responseExample": {
+        "code": "0",
+        "tracking_list": [
+          {
+            "carrier": "FEDEX",
+            "tracking_number": "776705370628",
+            "event_list": [
+              {
+                "event_code": "DELIVERED",
+                "event_location": "US, TN, HENDERSONVILLE",
+                "event_name": "Delivered",
+                "event_time": "2024-06-11 15:53:00"
+              }
+            ],
+            "tracking_url": "https://sale.alibaba.com/p/dwlfbxdr4/index.html?wx_screen_direc=portrait&wx_navbar_transparent=true&path=/p/dwlfbxdr4/index.html&ncms_spm=a27aq.23858521&buyerAliId=QEnHicXHVOhWsDJo1rcNhg%3D%3D&sourceOrderId=Mven3kO0O%2BG%2BZUUUsCfiNoHQcmfctcdM",
+            "current_event_code": "DELIVERED"
+          }
+        ],
+        "request_id": "0ba2887315178178017221014"
+      },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Forder%2Flogistics%2Ftracking%2Fget&methodType=GET%2FPOST"
+    },
+    "/alibaba/order/attachment/upload": {
+      "requestSchema": "AlibabaTradeIopFulfillment5Request",
+      "responseSchema": "AlibabaTradeIopFulfillment5Response",
+      "source": "catalog",
+      "lifecycle": "active",
+      "risk": "mutation",
+      "featureArea": "fulfillment",
+      "restricted": false,
+      "restrictionReason": null,
+      "verification": "documented",
+      "realCallEnabled": false,
+      "checkedAt": "2026-11-05",
+      "updatedAt": "2025-07-09",
+      "title": "alibaba order attachment upload",
+      "description": "alibaba order attachment upload",
+      "errorCodes": [],
+      "requestExample": { "data": [0, 1, 2], "file_name": "xxxx.jpg" },
+      "responseExample": { "code": "0", "value": "xxxxxxxxxxx", "request_id": "0ba2887315178178017221014" },
+      "docUrl": "https://openapi.alibaba.com/doc/api.htm#/api?cid=8&path=%2Falibaba%2Forder%2Fattachment%2Fupload&methodType=GET%2FPOST"
     }
   },
   "x-logistics-capabilities": {
