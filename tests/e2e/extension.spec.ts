@@ -25,6 +25,7 @@ import videoAssociationFixture from '../../mock/data/video/association-core.json
 import type { AlibabaAuthorizationsSummary } from '../../packages/core/src/gateway-credential-management';
 import { MockGatewayClient } from '../../packages/core/src/mock-client';
 import { isProductReferenceMethod } from '../../packages/core/src/product-reference-methods';
+import { isFulfillmentReadMethod } from '../../packages/core/src/order-fulfillment-methods';
 import {
   getCapabilityDefinition,
   listCapabilities,
@@ -376,6 +377,8 @@ test('formal MV3 dual profiles persist automatic routing without merchant confir
 
 test('formal MV3 catalog validates domain reads before and after worker restart', async () => {
   if (!context) throw new Error('Missing extension context');
+  const isNativeRead = (method: string) =>
+    isProductReferenceMethod(method) || isFulfillmentReadMethod(method);
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const calls: string[] = [];
   let drift = false;
@@ -437,7 +440,7 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
     const requestIssues = await validateCapabilityRequest(candidate.method, definition.requestExample);
     const before = calls.length;
     const response = await invoke(candidate.method, definition.requestExample);
-    if (isProductReferenceMethod(candidate.method)) {
+    if (isNativeRead(candidate.method)) {
       // This profile currently contains TOP only. A native IOP read must not be signed by TOP.
       expect(response, candidate.method).toMatchObject({
         ok: false,
@@ -489,7 +492,7 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
     permissions.contains = (query) => (iopOnly(query) ? Promise.resolve(true) : nativeContains(query));
     permissions.request = (query) => Promise.resolve(iopOnly(query));
   });
-  await context.route('https://openapi-api.alibaba.com/rest/alibaba/icbu/**', async (route) => {
+  await context.route('https://openapi-api.alibaba.com/rest/**', async (route) => {
     const headers = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -500,7 +503,7 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
     const definition = getCapabilityDefinition(method);
     const form = new URLSearchParams(route.request().postData() ?? '');
     if (
-      !isProductReferenceMethod(method) ||
+      !isNativeRead(method) ||
       !definition ||
       route.request().method() !== 'POST' ||
       form.has('method') ||
@@ -513,13 +516,13 @@ test('formal MV3 catalog validates domain reads before and after worker restart'
     await route.fulfill({
       headers,
       json: {
-        ...(definition.responseExample as Record<string, unknown>),
-        request_id: capabilityWorkerFixture.traceId
+        request_id: capabilityWorkerFixture.traceId,
+        ...(definition.responseExample as Record<string, unknown>)
       }
     });
   });
   await importExtensionAuthorization(page, iopBundle, 'e2e-vault-password');
-  for (const candidate of candidates.filter((entry) => isProductReferenceMethod(entry.method))) {
+  for (const candidate of candidates.filter((entry) => isNativeRead(entry.method))) {
     const definition = getCapabilityDefinition(candidate.method);
     if (!definition) throw new Error(candidate.method);
     const before = calls.length;
