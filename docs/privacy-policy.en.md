@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: 2026-10-22
-Applicable version: 2.17.0
+Effective date: 2026-11-06
+Applicable version: 2.23.0
 
 ## Independent third-party notice
 
@@ -17,7 +17,13 @@ You may configure an S3 endpoint, bucket, region, root prefix and access credent
 
 Transfers start only after your confirmation. Signing and credentials stay in the extension background. Images, manifests and object paths go to your selected storage; imported images also go to the Alibaba gallery. Import rules remain local and do not run scheduled synchronization. Clearing S3 configuration or all local data removes local ciphertext and its device key, not remote objects or gallery images. An interrupted upload may have reached the provider; verify its result before retrying. Uploads are never automatically retried.
 
-The S3 file manager reads names, paths, sizes and modification times when you open a directory. Preview, download and upload handle only files you select. The extension signs requests in its background and connects to your storage directly; Web uses the configured backend. File contents remain in page memory without a persistent cache. It does not recursively scan storage, expose objects publicly or send these files to Alibaba. Uploads and new directories require confirmation, refuse existing object names and never automatically retry uncertain writes.
+The S3 file manager reads names, paths, sizes and modification times when you open a directory. Preview, download and upload handle only files you select. The extension signs requests in its background and connects to your storage directly; Web uses the configured backend. File contents remain in page memory without a persistent cache. Ordinary file browsing does not recursively scan storage, expose objects publicly or send files to Alibaba. Uploads and new directories require confirmation, refuse existing object names and never automatically retry uncertain writes.
+
+### Platform attachments
+
+Only after you select a local file or S3 object as a platform attachment and confirm again are its name and contents sent to Alibaba. Validated JPG, PNG, PDF and DOC attachments are limited to 5,000,000 bytes. The extension sends from its trusted background; Web uses the configured backend. S3 objects are not made public for uploading. Do not select information you cannot share or unnecessary personal data.
+
+Before dispatch, extension IndexedDB or backend SQLite/D1 stores the filename, size, SHA-256, configuration identifier, protocol, request and platform trace identifiers, timestamps, state and any non-public platform reference, not file bytes, Base64, secrets or full provider responses. Unknown outcomes are not automatically retried. Acceptance does not prove content readback or order association. Clearing local receipts does not delete platform attachments.
 
 ### Local transfer records
 

@@ -20,8 +20,8 @@ An explicit read-only set now routes them to the synthetic IOP transport.
 All 62 documented replay examples pass, with dedicated Node and workerd tests
 covering protocol/context isolation, no real fetch and attachment-write rejection.
 
-Fresh isolated Node BFF reads on 2026-11-06 preserved authorization slots and
-defaults in TOP-only, IOP-only, dual TOP-default and dual IOP-default modes.
+Fresh isolated Node BFF and formal-MV3 reads on 2026-11-06 preserved authorization
+slots and defaults in TOP-only, IOP-only, dual TOP-default and dual IOP-default modes.
 Each mode tested 17 probes, with an independent read-only wire guard and no
 blocked or duplicate outbound requests. TOP and both dual modes had 13 nonempty
 successes, 3 valid empty results and 1 RFQ permission refusal.
@@ -30,7 +30,9 @@ IOP-only had 10 successes, 1 empty result, 4 explicit unsupported operations,
 1 photo-scope protection and 1 existing video business rejection
 (`ALIBABA_IOP_BUSINESS_REJECTED`, illegal param error).
 That full live matrix exits nonzero because the video sample failed; it is not
-reported as entirely passed. Photo-group scope and video platform failures match
+reported as entirely passed in either runtime. The disposable MV3 copy pregrants
+the exact IOP host; this is not native permission-consent acceptance.
+Photo-group scope and video platform failures match
 the documented pre-existing limits. No failed request fell back to TOP or Mock.
 Private evidence is under `artifacts/order-fulfillment-acceptance/`, never in CI uploads.
 
