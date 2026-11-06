@@ -4,7 +4,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
-Version 2.22.0 adds a read-only IOP product/SKU quantity source to the inventory workspace and shared product drawer, separate from product and SKU warehouse records, with the actual protocol and read time. Missing data is not zero and different sources are not summed. Accept observed numeric response fields while rejecting unsafe inventory numbers. TOP-only, IOP-only and dual-authorization settings remain compatible. No inventory write entry, permission or write allowlist is added; a provider call-limit refusal is not passed change-and-restore acceptance.
+Version 2.23.0 adds explicit IOP warehouse, freight and tracking tools, plus confirmed attachment upload from local files or private S3 storage. Ordinary S3 files and attachments share a 5 MB (5,000,000-byte) limit with type, header, size and SHA-256 validation. Save context-bound receipts before upload; unknown outcomes never trigger automatic retries. Platform acceptance does not prove content readback or association with an order. No order placement, payment or shipment is added; TOP-only, IOP-only and dual authorization remain compatible.
 
 Known limitations: the checked authorizations still encounter IOP photo-group scope errors, video business rejections and TOP supplier upstream errors. Restrictions stay explicit and real failures never fall back to simulated results.
 

@@ -4,6 +4,64 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.23.0',
+      releasedAt: '2026-11-06',
+      title: {
+        'zh-CN': '履约工具与 S3 附件',
+        'en-US': 'Fulfillment tools and S3 attachments'
+      },
+      summary: {
+        'zh-CN':
+          '新增 IOP 仓库、运费与轨迹工具，支持从本地或 S3 选择附件；普通文件与附件统一限制为 5 MB。',
+        'en-US':
+          'Add IOP warehouse, freight and tracking tools, plus local or S3 attachment selection, with a shared 5 MB limit for ordinary files and attachments.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.23.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.22.0...v2.23.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '主动查询仓库、运费与轨迹',
+            'en-US': 'Query warehouses, freight and tracking explicitly'
+          },
+          description: {
+            'zh-CN':
+              '订单页提供 IOP 只读履约工具，按实际方法选择授权。平台权限、资格、参数及响应不完整分别展示，不将失败视为空结果，不跨协议重试。',
+            'en-US':
+              'Open read-only IOP fulfillment tools from orders, routing by the actual method. Distinguish permissions, eligibility, parameter rejection and incomplete responses. Failed calls are not empty results and never trigger cross-protocol retries.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '从 S3 或本地上传平台附件',
+            'en-US': 'Upload platform attachments from S3 or local files'
+          },
+          description: {
+            'zh-CN':
+              '支持校验 JPG、PNG、PDF 和 DOC 后二次确认上传，发送前保存回执并绑定配置；结果不明不自动重发。平台受理不代表附件内容已回读或已关联订单，不新增下单、付款或发货。',
+            'en-US':
+              'Validate JPG, PNG, PDF and DOC before explicit upload confirmation, persist context-bound receipts before dispatch and never resend an unknown outcome automatically. Platform acceptance does not prove content readback or order association. No order placement, payment or shipment is added.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '统一 5 MB 限制并补齐双协议回放',
+            'en-US': 'Unify the 5 MB limit and native replay routing'
+          },
+          description: {
+            'zh-CN':
+              '普通 S3 文件与平台附件统一为 5,000,000 字节，校验边界与 SHA-256；ZIP 和视频专用限制不变。修复五项原生 IOP 履约方法误走 TOP 回放端点，保留 TOP 单授权、IOP 单授权及双授权兼容。',
+            'en-US':
+              'Cap ordinary S3 files and platform attachments at 5,000,000 bytes with boundary and SHA-256 checks; specialized ZIP and video limits stay unchanged. Fix five native IOP fulfillment methods incorrectly using the TOP replay endpoint, preserving TOP-only, IOP-only and dual authorization.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.22.0',
       releasedAt: '2026-11-02',
       title: {
