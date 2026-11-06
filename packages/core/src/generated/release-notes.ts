@@ -54,9 +54,9 @@ export const RELEASE_NOTES_DOCUMENT = {
           },
           description: {
             'zh-CN':
-              '普通 S3 文件与平台附件统一为 5,000,000 字节，校验边界与 SHA-256；ZIP 和视频专用限制不变。修复五项原生 IOP 履约方法误走 TOP 回放端点，保留 TOP 单授权、IOP 单授权及双授权兼容。',
+              '文件并入素材的第三个页签，移除独立菜单，保留原链接及权限。普通 S3 文件与平台附件统一为 5,000,000 字节，校验边界与 SHA-256；ZIP 和视频专用限制不变。修复五项原生 IOP 履约方法误走 TOP 回放端点，保留 TOP 单授权、IOP 单授权及双授权兼容。',
             'en-US':
-              'Cap ordinary S3 files and platform attachments at 5,000,000 bytes with boundary and SHA-256 checks; specialized ZIP and video limits stay unchanged. Fix five native IOP fulfillment methods incorrectly using the TOP replay endpoint, preserving TOP-only, IOP-only and dual authorization.'
+              'Move Files into the third Assets tab, removing its separate menu while preserving links and permissions. Cap ordinary S3 files and platform attachments at 5,000,000 bytes with boundary and SHA-256 checks; specialized ZIP and video limits stay unchanged. Fix five native IOP fulfillment methods incorrectly using the TOP replay endpoint, preserving TOP-only, IOP-only and dual authorization.'
           }
         }
       ]

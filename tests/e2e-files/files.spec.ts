@@ -80,6 +80,14 @@ async function openFiles(
     location.hash = '/files';
   });
   await expect(page.getByTestId('files-view')).toBeVisible();
+  const tabs = page.getByTestId('assets-tabs');
+  await expect(tabs.getByRole('link')).toHaveText(
+    locale === 'en-US' ? ['Images', 'Videos', 'Files'] : ['图片', '视频', '文件']
+  );
+  await expect(tabs.locator('a[href="#/files"]')).toHaveAttribute('aria-current', 'page');
+  const navigation = page.locator('aside nav');
+  await expect(navigation.locator('a[href="#/files"]')).toHaveCount(0);
+  await expect(navigation.locator('a[href="#/photos"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.vuefinder')).toBeVisible();
   expect(
     await themeToggle.evaluate((button) => {

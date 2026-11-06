@@ -237,7 +237,7 @@ describe('OneVegetableApp hash navigation', () => {
     );
     const links = wrapper.findAll('nav a');
     expect(links.map((link) => link.attributes('href'))).toEqual(
-      PAGE_IDS.filter((page) => page !== 'admin').map(pageHash)
+      PAGE_IDS.filter((page) => page !== 'admin' && page !== 'files').map(pageHash)
     );
     expect(wrapper.get('nav a[href="#/products"]').attributes('aria-current')).toBe('page');
     expect(globalThis.location.hash).toBe('#/products/publisher/guided/details/product-1');
@@ -258,6 +258,46 @@ describe('OneVegetableApp hash navigation', () => {
       page: 'orders',
       segments: ['orders', 'order/with spaces', 'payment']
     });
+  });
+
+  it.each(['mock', 'extension', 'bff'] as const)(
+    '%s opens the legacy files route inside Assets without a separate menu',
+    async (mode) => {
+      globalThis.history.replaceState(null, '', '#/files');
+      const wrapper = shallowMount(OneVegetableApp, {
+        props: {
+          gateway: new MockGatewayClient(0),
+          settings,
+          mode,
+          ...(mode === 'bff' ? { control: adminControl() } : {})
+        }
+      });
+      await flushPromises();
+      expect(wrapper.find('nav a[href="#/files"]').exists()).toBe(false);
+      expect(wrapper.get('nav a[href="#/photos"]').attributes('aria-current')).toBe('page');
+      expect(wrapper.get('gallery-stub').attributes('filesallowed')).toBe('true');
+      expect(globalThis.location.hash).toBe('#/files');
+      wrapper.unmount();
+    }
+  );
+
+  it('keeps files hidden and rejects direct entry for a regular BFF user', async () => {
+    globalThis.history.replaceState(null, '', '#/photos');
+    const wrapper = shallowMount(OneVegetableApp, {
+      props: {
+        gateway: new MockGatewayClient(0),
+        settings,
+        mode: 'bff',
+        control: regularUserControl()
+      }
+    });
+    await flushPromises();
+    expect(wrapper.get('gallery-stub').attributes('filesallowed')).toBe('false');
+    globalThis.history.replaceState(null, '', '#/files');
+    globalThis.dispatchEvent(new HashChangeEvent('hashchange'));
+    await flushPromises();
+    expect(globalThis.location.hash).toBe('#/dashboard');
+    wrapper.unmount();
   });
 
   it('canonicalizes an unknown path to the dashboard', async () => {

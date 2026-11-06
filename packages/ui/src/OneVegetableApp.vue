@@ -15,7 +15,6 @@ import {
   Boxes,
   Handshake,
   History,
-  FolderOpen,
   ListChecks,
   LayoutTemplate,
   ScrollText,
@@ -239,7 +238,6 @@ const baseItems: NavigationItem[] = [
   { id: 'products', labelKey: 'shell.navigation.products', icon: Boxes },
   { id: 'templates', labelKey: 'shell.navigation.templates', icon: LayoutTemplate },
   { id: 'photos', labelKey: 'shell.navigation.photos', icon: Image },
-  { id: 'files', labelKey: 'shell.navigation.files', icon: FolderOpen },
   { id: 'rfqs', labelKey: 'shell.navigation.rfqs', icon: Handshake },
   { id: 'orders', labelKey: 'shell.navigation.orders', icon: ShoppingCart },
   { id: 'inventory', labelKey: 'shell.navigation.inventory', icon: PackageSearch },
@@ -281,10 +279,8 @@ const { theme: themePreference } = useAppPreferences();
 const darkTheme = ref(applyAppTheme(themePreference.value) === 'dark');
 const authLoading = ref(props.mode === 'bff' && props.control !== undefined);
 const items = computed(() =>
-  baseItems.filter((item) =>
-    item.id === 'files'
-      ? props.mode !== 'bff' || session.value?.principal.role === 'admin'
-      : item.id !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin'
+  baseItems.filter(
+    (item) => item.id !== 'admin' || props.mode === 'extension' || session.value?.principal.role === 'admin'
   )
 );
 const page = ref<PageId>(parsePageHash(globalThis.location.hash) ?? 'dashboard');
@@ -335,14 +331,15 @@ function selectAcquisitionProtocol(protocol: 'top' | 'iop'): void {
 }
 const authenticationRequired = ref<BffAuthenticationRequiredEvent | null>(null);
 let unsubscribeAuthenticationEvents: (() => void) | null = null;
+const Gallery = defineAsyncContent(() => import('./views/GalleryView.vue'), 'page');
 const views: Record<PageId, Component> = {
   dashboard: defineAsyncContent(() => import('./views/DashboardView.vue'), 'page'),
   products: defineAsyncContent(() => import('./views/ProductsView.vue'), 'page'),
   templates: defineAsyncContent(() => import('./views/TemplatesView.vue'), 'page'),
   inventory: defineAsyncContent(() => import('./views/InventoryView.vue'), 'page'),
   tasks: defineAsyncContent(() => import('./views/TasksView.vue'), 'page'),
-  photos: defineAsyncContent(() => import('./views/GalleryView.vue'), 'page'),
-  files: defineAsyncContent(() => import('./views/FilesView.vue'), 'page'),
+  photos: Gallery,
+  files: Gallery,
   rfqs: defineAsyncContent(() => import('./views/RfqsView.vue'), 'page'),
   orders: defineAsyncContent(() => import('./views/OrdersView.vue'), 'page'),
   logistics: defineAsyncContent(() => import('./views/LogisticsView.vue'), 'page'),
@@ -357,6 +354,7 @@ const AlibabaCredentialAcquisitionDialog = defineAsyncComponent(
   () => import('./components/AlibabaCredentialAcquisitionDialog.vue')
 );
 const activeView = computed(() => views[page.value]);
+const navigationPage = computed(() => (page.value === 'files' ? 'photos' : page.value));
 const onboardingActive = computed(
   () =>
     props.onboarding !== undefined &&
@@ -635,10 +633,10 @@ function avatarInitials(name: string): string {
             v-for="item in items"
             :key="item.id"
             :href="pageHash(item.id)"
-            :aria-current="page === item.id ? 'page' : undefined"
+            :aria-current="navigationPage === item.id ? 'page' : undefined"
             class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors"
             :class="
-              page === item.id
+              navigationPage === item.id
                 ? 'bg-emerald-500 text-slate-950'
                 : 'text-slate-300 hover:bg-slate-900 hover:text-white'
             "
@@ -676,7 +674,11 @@ function avatarInitials(name: string): string {
           </div>
         </header>
         <main class="p-4 lg:p-7">
-          <component :is="activeView" :key="page === 'settings' ? 'settings' : credentialEpoch" />
+          <component
+            :is="activeView"
+            :key="page === 'settings' ? 'settings' : credentialEpoch"
+            v-bind="page === 'photos' || page === 'files' ? { filesAllowed: isPageAllowed('files') } : {}"
+          />
         </main>
         <GalleryTransferTaskCenter />
       </div>

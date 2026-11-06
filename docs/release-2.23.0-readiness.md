@@ -7,6 +7,11 @@ from local files or private S3. Ordinary S3 files and platform attachments are
 limited to 5,000,000 bytes; specialized ZIP and video limits stay unchanged.
 See [protocol preflight and account evidence](order-fulfillment-s3-attachments.md).
 
+Files is the third Assets tab, after Images and Videos, rather than a separate
+navigation item. Existing `#/files` links remain valid. This navigation-only change
+adds no TOP/IOP dependency; S3 loads only when Files opens, and the existing BFF
+administrator restriction is preserved.
+
 No order placement, payment, shipment, product or inventory mutation is included.
 Attachment acceptance is not content readback or association with an order.
 Upload receipts must be persisted before dispatch; unknown outcomes are not resent.

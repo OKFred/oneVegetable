@@ -26,6 +26,14 @@ test('MV3 stores S3 encrypted, restores after worker shutdown and rejects non-op
     await onboarding.getByRole('button', { name: '稍后，仅浏览' }).click();
     await page.goto('chrome-extension://' + id + '/options.html#/files');
     await expect(page.getByTestId('files-view')).toBeVisible();
+    await expect(page.getByTestId('assets-tabs').getByRole('link')).toHaveText(['图片', '视频', '文件']);
+    await expect(page.getByTestId('assets-tabs').locator('a[href="#/files"]')).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+    const navigation = page.locator('aside nav');
+    await expect(navigation.locator('a[href="#/files"]')).toHaveCount(0);
+    await expect(navigation.locator('a[href="#/photos"]')).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('link', { name: '配置 S3 存储', exact: true })).toBeVisible();
     await expect(page.getByTestId('files-upload')).toHaveCount(0);
     await page.goto(`chrome-extension://${id}/options.html#/settings`);
