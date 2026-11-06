@@ -1,5 +1,6 @@
 import { getCapabilityDefinition } from '@one-vegetable/core';
 import { IOP_REFERENCE_METHODS } from '@one-vegetable/core/product-reference';
+import { FULFILLMENT_READ_METHODS } from '@one-vegetable/core/order-fulfillment-methods';
 import { IOP_BUSINESS_ENDPOINT, IOP_API_ORIGIN } from '@one-vegetable/core/alibaba-iop';
 import type { GalleryRequestOptions } from '@one-vegetable/core/gallery-transfer-context';
 import type { OperationId, RequestOf, ResponseOf } from '@one-vegetable/core';
@@ -101,7 +102,10 @@ export function createDocumentationReplayGateway(
   });
 }
 
-const nativeReferenceMethods = new Set<string>(Object.values(IOP_REFERENCE_METHODS));
+const nativeReplayReadMethods = new Set<string>([
+  ...Object.values(IOP_REFERENCE_METHODS),
+  ...Object.values(FULFILLMENT_READ_METHODS)
+]);
 
 /** This transport only returns checked-in synthetic examples. It never calls fetch. */
 class NativeReferenceReplayTransport implements NetworkTransport {
@@ -110,7 +114,7 @@ class NativeReferenceReplayTransport implements NetworkTransport {
     const method = url.pathname.replace(/^\/rest/u, '');
     if (
       url.origin !== IOP_API_ORIGIN ||
-      !nativeReferenceMethods.has(method) ||
+      !nativeReplayReadMethods.has(method) ||
       url.search ||
       init.method !== 'POST' ||
       !(init.body instanceof URLSearchParams)
@@ -142,7 +146,7 @@ class NativeReferenceReplayGateway extends AlibabaReadGatewayClient {
       payload !== null &&
       'method' in payload &&
       typeof payload.method === 'string' &&
-      nativeReferenceMethods.has(payload.method)
+      nativeReplayReadMethods.has(payload.method)
     );
   }
   override async operationProtocol(
@@ -166,7 +170,7 @@ class NativeReferenceReplayGateway extends AlibabaReadGatewayClient {
     const result = await super.request(operation, request, context);
     if (operation === 'listCapabilities')
       return (result as ResponseOf<'listCapabilities'>).map((entry) =>
-        nativeReferenceMethods.has(entry.method) ? { ...entry, realCallEnabled: true } : entry
+        nativeReplayReadMethods.has(entry.method) ? { ...entry, realCallEnabled: true } : entry
       );
     return result;
   }
