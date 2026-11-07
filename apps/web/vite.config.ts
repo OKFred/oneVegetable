@@ -16,6 +16,11 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              name: 'packing-three',
+              test: /node_modules[\\/]three[\\/]/u,
+              includeDependenciesRecursively: false
+            },
+            {
               // Keep each bilingual catalog independently bounded without duplicating the runtime.
               name: 'i18n-messages-zh-CN',
               test: /ui[\\\\/]src[\\\\/]i18n[\\\\/]messages[\\\\/]zh-CN[\\\\/]/u,

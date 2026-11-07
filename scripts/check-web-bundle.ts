@@ -1,5 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { assertPackingThreeBudget, assertPackingWorkerBudget } from './lib/extension-package-budget';
+import { inspectExtensionWorkerGraph } from './lib/extension-worker-graph';
 
 const MAX_JAVASCRIPT_CHUNK_BYTES = 500_000;
 const LOCAL_ENDPOINT_PATTERN = /https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/giu;
@@ -11,18 +13,32 @@ const assetNames = await readdir(assetsDirectory);
 const javascriptChunks = await Promise.all(
   assetNames
     .filter((name) => name.endsWith('.js'))
-    .map(async (name) => ({ name, size: (await stat(resolve(assetsDirectory, name))).size }))
+    .map(async (file) => ({ file, size: (await stat(resolve(assetsDirectory, file))).size }))
 );
+const indexHtml = await readFile(resolve(distributionDirectory, 'index.html'), 'utf8');
+const eagerFiles = new Set<string>();
+for (const match of indexHtml.matchAll(/(?:src|href)="\/?(assets\/[^"?]+\.js)"/gu)) {
+  if (!match[1]) continue;
+  // Web permits dynamic imports; only reuse the static dependency file list.
+  const graph = await inspectExtensionWorkerGraph(match[1], (file) =>
+    readFile(resolve(distributionDirectory, file), 'utf8')
+  );
+  for (const file of graph.files) eagerFiles.add(file.replace(/^assets\//u, ''));
+}
+const packingThreeChunk = assertPackingThreeBudget(javascriptChunks, [...eagerFiles]);
+assertPackingWorkerBudget(javascriptChunks);
 const largest = javascriptChunks.toSorted((left, right) => right.size - left.size).slice(0, 10);
-const oversized = javascriptChunks.filter(({ size }) => size > MAX_JAVASCRIPT_CHUNK_BYTES);
+const oversized = javascriptChunks.filter(
+  ({ file, size }) => file !== packingThreeChunk && size > MAX_JAVASCRIPT_CHUNK_BYTES
+);
 
 process.stdout.write(
-  `${largest.map(({ name, size }) => `${name}\t${size}`).join('\n')}\n${javascriptChunks.length} web JavaScript chunks checked\n`
+  `${largest.map(({ file, size }) => `${file}\t${size}`).join('\n')}\n${javascriptChunks.length} web JavaScript chunks checked\n`
 );
 if (oversized.length > 0) {
   throw new Error(
     oversized
-      .map(({ name, size }) => `${name} exceeds the 500 KB JavaScript chunk budget: ${size}`)
+      .map(({ file, size }) => `${file} exceeds the 500 KB JavaScript chunk budget: ${size}`)
       .join('\n')
   );
 }

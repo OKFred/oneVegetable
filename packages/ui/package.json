@@ -41,12 +41,14 @@
     "modern-screenshot": "4.7.0",
     "reka-ui": "2.10.3",
     "tailwind-merge": "3.6.0",
+    "three": "0.187.0",
     "vue": "3.5.41",
     "vue-i18n": "11.4.10",
     "vue-sonner": "2.0.9",
     "vuefinder": "4.7.6"
   },
   "devDependencies": {
+    "@types/three": "0.187.0",
     "fake-indexeddb": "6.2.5",
     "typescript": "5.9.3",
     "vue-tsc": "3.2.5"

@@ -27,25 +27,31 @@ import {
   useOperationAvailability
 } from '../composables/use-operation-availability';
 import { formatDateTime } from '../lib/date-time';
+import { defineAsyncContent } from '../lib/async-content';
 import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 import { useUnsavedEditing } from '../lib/unsaved-editing';
 
-type Workspace = 'quote' | 'orders' | 'addresses' | 'draft';
+type Workspace = 'quote' | 'orders' | 'addresses' | 'draft' | 'packing';
+const PackingWorkspace = defineAsyncContent(() => import('../components/PackingWorkspace.vue'));
 
 const { gateway } = useServices();
 const { t } = useUiI18n();
 const workspace = ref<Workspace>('quote');
-const logisticsOperations = useOperationAvailability([
-  'listLogisticsAddressNodes',
-  'listLogisticsSpecialProductTypes',
-  'listLogisticsProducts',
-  'calculateLogisticsQuote',
-  'listLogisticsOrders',
-  'getLogisticsOrder',
-  'listShippingTemplates',
-  'createLogisticsOrder'
-]);
+const packingVisited = ref(false);
+const logisticsOperations = useOperationAvailability(
+  [
+    'listLogisticsAddressNodes',
+    'listLogisticsSpecialProductTypes',
+    'listLogisticsProducts',
+    'calculateLogisticsQuote',
+    'listLogisticsOrders',
+    'getLogisticsOrder',
+    'listShippingTemplates',
+    'createLogisticsOrder'
+  ],
+  { enabled: computed(() => workspace.value !== 'packing') }
+);
 const quoteBlocked = computed(() => !logisticsOperations.isAllowed('calculateLogisticsQuote'));
 const ordersBlocked = computed(() => !logisticsOperations.isAllowed('listLogisticsOrders'));
 const addressNodesBlocked = computed(() => !logisticsOperations.isAllowed('listLogisticsAddressNodes'));
@@ -167,6 +173,7 @@ async function setWorkspace(value: Workspace): Promise<void> {
     editing.markClean();
   }
   workspace.value = value;
+  if (value === 'packing') packingVisited.value = true;
 }
 
 const logisticsProducts = useQuery({
@@ -212,7 +219,11 @@ const orders = useQuery({
 const orderDetail = useQuery({
   queryKey: computed(() => ['logistics-order-detail', selectedOrderNumber.value]),
   enabled: computed(
-    () => logisticsOperations.isAllowed('getLogisticsOrder') && selectedOrderNumber.value !== ''
+    () =>
+      workspace.value === 'orders' &&
+      logisticsOrderSheetOpen.value &&
+      logisticsOperations.isAllowed('getLogisticsOrder') &&
+      selectedOrderNumber.value !== ''
   ),
   queryFn: () => gateway.request('getLogisticsOrder', { orderNumber: selectedOrderNumber.value })
 });
@@ -398,13 +409,14 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
   { id: 'quote', label: t('logistics.workspaces.quote') },
   { id: 'orders', label: t('logistics.workspaces.orders') },
   { id: 'addresses', label: t('logistics.workspaces.addresses') },
-  { id: 'draft', label: t('logistics.workspaces.draft') }
+  { id: 'draft', label: t('logistics.workspaces.draft') },
+  { id: 'packing', label: t('logistics.workspaces.packing') }
 ]);
 </script>
 
 <template>
   <PageHeader :title="t('logistics.title')" :description="t('logistics.description')" />
-  <ProductReferenceTools kind="shipping" class="mb-4" />
+  <ProductReferenceTools v-if="workspace !== 'packing'" kind="shipping" class="mb-4" />
 
   <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('logistics.workspaceLabel')">
     <Button
@@ -418,6 +430,12 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
       {{ item.label }}
     </Button>
   </div>
+
+  <PackingWorkspace
+    v-if="packingVisited"
+    v-show="workspace === 'packing'"
+    :active="workspace === 'packing'"
+  />
 
   <template v-if="workspace === 'quote'">
     <div class="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
@@ -763,7 +781,7 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
     </div>
   </template>
 
-  <template v-else>
+  <template v-else-if="workspace === 'draft'">
     <div class="grid gap-4 xl:grid-cols-[1fr_0.8fr]">
       <Card class="p-5">
         <div class="mb-4 flex items-center gap-2">

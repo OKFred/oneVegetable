@@ -1,6 +1,10 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { assertExtensionUnpackedBudget } from './lib/extension-package-budget';
+import {
+  assertExtensionUnpackedBudget,
+  assertPackingThreeBudget,
+  assertPackingWorkerBudget
+} from './lib/extension-package-budget';
 import { inspectExtensionWorkerGraph } from './lib/extension-worker-graph';
 
 interface Manifest {
@@ -49,6 +53,18 @@ const workerGraph = await inspectExtensionWorkerGraph('background.js', (file) =>
   readFile(resolve(output, file), 'utf8')
 );
 errors.push(...workerGraph.errors);
+const eagerOptionGraph = new Set<string>();
+for (const entry of eagerOptionFiles) {
+  // Options permits dynamic imports; reuse only the static dependency file list.
+  const graph = await inspectExtensionWorkerGraph(entry, (file) => readFile(resolve(output, file), 'utf8'));
+  for (const file of graph.files) eagerOptionGraph.add(file);
+}
+try {
+  assertPackingThreeBudget(sizes, [...workerGraph.files, ...eagerOptionGraph]);
+  assertPackingWorkerBudget(sizes);
+} catch (error) {
+  errors.push(error instanceof Error ? error.message : String(error));
+}
 if (!background || background.size > 100_000) {
   errors.push(`background.js exceeds 100 KB: ${background?.size ?? 'missing'}`);
 }

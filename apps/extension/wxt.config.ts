@@ -41,6 +41,11 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              name: 'packing-three',
+              test: /node_modules[\\/]three[\\/]/u,
+              includeDependenciesRecursively: false
+            },
+            {
               name: 'release-notes',
               test: /core[\\/]src[\\/](?:generated[\\/])?release-notes\.ts$/u,
               includeDependenciesRecursively: false
