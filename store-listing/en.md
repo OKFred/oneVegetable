@@ -4,7 +4,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
-Version 2.23.0 adds explicit IOP warehouse, freight and tracking tools, plus confirmed attachment upload from local files or private S3 storage. Ordinary S3 files and attachments share a 5 MB (5,000,000-byte) limit with type, header, size and SHA-256 validation. Save context-bound receipts before upload; unknown outcomes never trigger automatic retries. Platform acceptance does not prove content readback or association with an order. No order placement, payment or shipment is added; TOP-only, IOP-only and dual authorization remain compatible.
+Version 2.24.0 adds local 3D packing previews to international logistics, with container and outer-package dimensions, rotation, zoom, highlighting and statistics. No TOP/IOP authorization or platform request is required. Built-in templates can now be edited, deleted (archived) and restored, stored locally in the extension or shared within the existing Web backend scope, without automatically changing products. No extension permission or platform mutation is added. Packing is a geometric estimate only: load limits, center of gravity, cushioning and loading access are excluded, and optimal packing or transport safety is not guaranteed.
 
 Known limitations: the checked authorizations still encounter IOP photo-group scope errors, video business rejections and TOP supplier upstream errors. Restrictions stay explicit and real failures never fall back to simulated results.
 
@@ -12,6 +12,7 @@ New users should start with IOP; merchants with an existing legacy application c
 
 Key features (subject to the selected protocol and account permissions):
 
+- Preview a single box or container in 3D for up to 20 cargo types and 500 outer packages, with optional rotation and side placement. Enter dimensions in cm and review packed/unpacked counts, volumes and utilization. Inputs stay on the current logistics page only and clear on leaving or refreshing;
 - Review authorization time remaining in Overview: yellow below half of the current lifetime and red below one quarter or after expiry. Unknown expiry is never guessed, and display changes never automatically renew a token.
 - Visually edit Schema-based products and standard descriptions, choosing category-supported direct-order or inquiry/custom types when creating a product.
 - Assess selected current-page products, open relevant editor fields from suggestions, retain results on return and explicitly recheck scores. Assessments are read-only and never automatically submit product changes.

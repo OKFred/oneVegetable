@@ -4,6 +4,63 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.24.0',
+      releasedAt: '2026-11-07',
+      title: {
+        'zh-CN': '装箱预览与可编辑内置模板',
+        'en-US': 'Packing preview and editable built-in templates'
+      },
+      summary: {
+        'zh-CN': '国际物流新增本地三维装箱预览；内置模板支持编辑、删除和恢复，不会自动修改商品。',
+        'en-US':
+          'Add local 3D packing previews to international logistics, plus editing, deletion and restoration of built-in templates without automatically changing products.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.24.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.23.0...v2.24.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '在国际物流预览单箱装载',
+            'en-US': 'Preview single-container packing in logistics'
+          },
+          description: {
+            'zh-CN':
+              '手动填写箱体内部尺寸和货物外包装尺寸，支持最多 20 种、500 件货物、可选旋转及侧放，以及三维旋转、缩放和高亮。计算在浏览器本地完成，不要求 TOP/IOP 授权，不发起平台请求；输入只保留在当前物流页面。结果仅为几何估算，不计算承重、重心或装卸通道，不保证最优或运输安全。',
+            'en-US':
+              'Enter internal container and outer-package dimensions for up to 20 cargo types and 500 packages, with optional rotation and side placement, interactive 3D views, zoom and highlighting. Calculations run locally without TOP/IOP authorization or platform requests; inputs stay only on the current logistics page. Results are geometric estimates, not optimal-packing or transport-safety assessments, and exclude load limits, center of gravity and loading access.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '按自己的需要维护内置模板',
+            'en-US': 'Customize the built-in templates'
+          },
+          description: {
+            'zh-CN':
+              '内置公司、物流等模板可直接编辑，删除后仍可从已归档列表恢复，并保留编辑内容。独立插件保存在本机，Web 使用现有后端共享范围；修改模板不会自动覆盖商品。保留 JSON、ZIP 和 S3 交换，修复切换模板语言后默认内容重新出现的问题，并校验并发版本。',
+            'en-US':
+              'Edit built-in company, logistics and other templates directly, or delete them and restore the edited content from archived templates. The standalone extension stores changes locally; Web uses the existing backend sharing scope. Template edits never automatically overwrite products. Keep JSON, ZIP and S3 exchange, prevent default content from reappearing after a language change, and enforce revision checks.'
+          }
+        },
+        {
+          type: 'improvement',
+          title: {
+            'zh-CN': '按需加载三维并保留安全边界',
+            'en-US': 'Lazy-load 3D while preserving safety boundaries'
+          },
+          description: {
+            'zh-CN':
+              '三维资源按需加载，隐藏页签后释放资源；WebGL 不可用时仍可查看统计。预览与真实物流表单相互独立，不增加平台写能力、扩展权限或数据库迁移。',
+            'en-US':
+              'Load 3D resources on demand and release them when hidden; keep statistics available without WebGL. Packing is separate from real logistics forms and adds no platform mutation, extension permission or database migration.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.23.0',
       releasedAt: '2026-11-06',
       title: {
