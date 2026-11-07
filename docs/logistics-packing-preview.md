@@ -47,3 +47,12 @@ product/order import, saved plans or exports are included.
 Three.js and OrbitControls are bundled locally and lazy-loaded; no CDN or remote executable code.
 The dedicated 3D vendor chunk is capped at 1,000,000 bytes. ZIP / unpacked budgets are 2,500,000 /
 8,500,000 bytes; existing startup, background, other business chunk and security gates remain unchanged.
+
+## 验收 / Acceptance — 2026-11-07
+
+- 远程 Windows：全量 5,979 项单测通过；原物流试算、订单、地址和草稿测试保留。
+- Web 与正式 MV3：3 项端到端测试通过，检查实际 WebGL 绘制调用、视角变化后的图像差异、
+  拖动旋转、滚轮缩放、方块点击、图例键盘操作、页签释放重建、刷新清空及 WebGL 不可用降级。
+- 中英文、明暗主题、390px 窄屏均检查；测试记录没有平台请求，不需 Alibaba 授权。
+- 插件实测 293 个文件、解包 7,212,883 字节、内存 ZIP 2,099,636 字节。
+  正式发布包未覆盖；验收不代表装载最优解或运输安全认证。
