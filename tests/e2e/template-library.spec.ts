@@ -39,12 +39,50 @@ async function archiveRestore(page: Page, name: string): Promise<void> {
     .locator('.ProseMirror')
     .fill('Template editing acceptance. Updated reusable content. {{productName}}');
   await page.getByRole('button', { name: '保存模板', exact: true }).click();
-  await card.getByRole('button', { name: '归档', exact: true }).click();
+  await card.getByRole('button', { name: '删除', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '删除模板', exact: true })
+    .getByRole('button', { name: '删除', exact: true })
+    .click();
   await expect(card).toBeHidden();
   await page.getByRole('checkbox', { name: '显示已归档模板' }).check();
   await card.getByRole('button', { name: '恢复', exact: true }).click();
   await page.getByRole('checkbox', { name: '显示已归档模板' }).uncheck();
   await expect(card).toBeVisible();
+}
+
+async function editBuiltIn(page: Page, persistent: boolean): Promise<void> {
+  const builtIn = page
+    .locator('article')
+    .filter({ has: page.getByText('内置', { exact: true }) })
+    .first();
+  await builtIn.getByRole('button', { name: '编辑', exact: true }).click();
+  const name = 'Built-in template acceptance';
+  await page.getByLabel('模板名称', { exact: true }).fill(name);
+  await page.locator('.ProseMirror').fill('Persisted built-in override. No Alibaba writes.');
+  await page.getByRole('button', { name: '保存模板', exact: true }).click();
+  const card = page.locator('article').filter({ hasText: name });
+  await expect(card).toHaveCount(1);
+  if (persistent) await page.reload();
+  await expect(card).toHaveCount(1);
+  await expect(card.getByText('内置', { exact: true })).toBeVisible();
+  await card.getByRole('button', { name: '删除', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: '删除模板', exact: true });
+  await expect(confirmation).toContainText('不影响已使用此模板的商品');
+  await confirmation.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: '删除', exact: true }).click();
+  await confirmation.getByRole('button', { name: '删除', exact: true }).click();
+  await expect(card).toBeHidden();
+  if (persistent) await page.reload();
+  await expect(card).toBeHidden();
+  await page.getByRole('checkbox', { name: '显示已归档模板' }).check();
+  await card.getByRole('button', { name: '恢复', exact: true }).click();
+  await page.getByRole('checkbox', { name: '显示已归档模板' }).uncheck();
+  await card.getByRole('button', { name: '预览', exact: true }).click();
+  const preview = page.getByRole('dialog', { name, exact: true });
+  await expect(preview).toContainText('Persisted built-in override');
+  await preview.getByRole('button', { name: `关闭${name}`, exact: true }).click();
 }
 
 async function exportImport(page: Page, name: string): Promise<void> {
@@ -123,6 +161,7 @@ test('Web template library supports rich editing, archive/restore and confirmed 
 }) => {
   await page.route(/https:\/\/.*(?:alibaba|taobao)\.com\//u, (route) => route.abort());
   await page.goto('/#/templates');
+  await editBuiltIn(page, false);
   const name = await createTemplate(page);
   await archiveRestore(page, name);
   await exportImport(page, name);
@@ -163,6 +202,7 @@ test('formal independent extension retains editable local templates across reloa
     );
     const page = await context.newPage();
     await page.goto(`chrome-extension://${new URL(worker.url()).host}/options.html#/templates`);
+    await editBuiltIn(page, true);
     const name = await createTemplate(page);
     await archiveRestore(page, name);
     await exportImport(page, name);

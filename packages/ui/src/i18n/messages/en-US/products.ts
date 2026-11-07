@@ -365,7 +365,12 @@ export const products = {
     append: 'Append to end',
     replace: 'Replace all',
     edit: 'Edit',
-    archive: 'Archive',
+    archive: 'Delete',
+    deleteTitle: 'Delete template',
+    deleteDescription:
+      'Delete “{name}”? Restore it from “Show archived templates”. Products already using it are not changed.',
+    deleted: 'Template deleted. You can restore it from archived templates.',
+    restored: 'Template restored',
     restore: 'Restore',
     name: 'Template name',
     category: 'Template category',

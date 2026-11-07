@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { applyNodeMigrations, openNodeDatabase } from '../src/db/node-database';
 import { EntityVersionConflictError } from '../src/db/repository';
+import { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from '@one-vegetable/core/runtime';
 import {
   ProductDescriptionTemplateNameConflictError,
   SqlProductDescriptionTemplateRepository
@@ -17,6 +18,89 @@ afterEach(() => {
 });
 
 describe('product description template repository', () => {
+  it('materializes built-in edits with stable IDs, revisions and recoverable deletion', async () => {
+    handle = openNodeDatabase(':memory:');
+    applyNodeMigrations(handle);
+    const source = BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates[0];
+    if (!source) throw new Error('Missing bundled fixture');
+    const repository = new SqlProductDescriptionTemplateRepository(handle.executor);
+    await expect(
+      repository.update({
+        ...source,
+        name: 'Invalid stale first edit',
+        expectedRevision: 99,
+        actorId: 'editor'
+      })
+    ).rejects.toBeInstanceOf(EntityVersionConflictError);
+    expect((await repository.list({ page: 1, pageSize: 20 })).total).toBe(0);
+    const updated = await repository.update({
+      ...source,
+      name: 'Edited built-in',
+      html: '<p>Edited content</p>',
+      expectedRevision: source.revision,
+      actorId: 'editor'
+    });
+    expect(updated).toMatchObject({
+      id: source.id,
+      creatorId: source.creatorId,
+      createTimeUtc: source.createTimeUtc,
+      updaterId: 'editor',
+      revision: 2,
+      html: '<p>Edited content</p>'
+    });
+    const reopened = new SqlProductDescriptionTemplateRepository(handle.executor);
+    expect(await reopened.get(source.id)).toEqual(updated);
+    await expect(
+      reopened.archive({
+        id: source.id,
+        expectedRevision: 1,
+        actorId: 'another-editor'
+      })
+    ).rejects.toBeInstanceOf(EntityVersionConflictError);
+    const archived = await reopened.archive({
+      id: source.id,
+      expectedRevision: 2,
+      actorId: 'editor'
+    });
+    expect((await reopened.list({ page: 1, pageSize: 20, status: 'active' })).total).toBe(0);
+    expect(
+      await reopened.restore({
+        id: source.id,
+        expectedRevision: archived.revision,
+        actorId: 'editor'
+      })
+    ).toMatchObject({ status: 'active', revision: 4, html: updated.html });
+    expect(BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates[0]).toEqual(source);
+  });
+
+  it('archives untouched built-ins and rejects racing first modifications atomically', async () => {
+    handle = openNodeDatabase(':memory:');
+    applyNodeMigrations(handle);
+    const source = BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates[0];
+    const other = BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates[1];
+    if (!source || !other) throw new Error('Missing bundled fixtures');
+    const repository = new SqlProductDescriptionTemplateRepository(handle.executor);
+    const outcomes = await Promise.allSettled([
+      repository.update({ ...source, expectedRevision: 1, actorId: 'first', name: 'Changed' }),
+      repository.archive({ id: source.id, expectedRevision: 1, actorId: 'second' })
+    ]);
+    expect(outcomes.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
+    expect(outcomes.find((item) => item.status === 'rejected')).toMatchObject({
+      reason: { name: 'EntityVersionConflictError' }
+    });
+    const archived = await repository.archive({ id: other.id, expectedRevision: 1, actorId: 'editor' });
+    expect(archived).toMatchObject({ id: other.id, status: 'archived', revision: 2 });
+    await expect(
+      repository.update({
+        ...source,
+        id: crypto.randomUUID(),
+        expectedRevision: 1,
+        actorId: 'editor'
+      })
+    ).rejects.toThrow('商品详情模板不存在');
+    expect((await repository.list({ page: 1, pageSize: 20 })).total).toBe(2);
+  });
+
   it('shares audited CRUD and archive semantics across SQL runtimes', async () => {
     handle = openNodeDatabase(':memory:');
     applyNodeMigrations(handle);

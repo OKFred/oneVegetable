@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { createRequestId } from '@one-vegetable/core';
 import { MockGatewayClient } from '@one-vegetable/core/mock';
+import { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from '@one-vegetable/core/runtime';
 
 import { StaticOperationFeatureFlags } from '../src/abac';
 import { createApiApp } from '../src/app';
@@ -62,6 +63,56 @@ function authHeaders(sessionToken: string, csrfToken?: string): Record<string, s
 }
 
 describe('shared product description template routes', () => {
+  it('edits and deletes built-ins through existing authenticated, audited routes without Alibaba flags', async () => {
+    const { app, authService, repository } = fixture();
+    const editor = await bootstrap(authService);
+    const source = BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates[0];
+    if (!source) throw new Error('Missing bundled fixture');
+    const input = {
+      requestId: createRequestId(),
+      id: source.id,
+      name: 'Updated built-in',
+      category: source.category,
+      language: source.language,
+      revision: source.revision,
+      html: '<p>Shared override</p><script>unsafe()</script>',
+      remark: null
+    };
+    const denied = await app.request('/api/v1/product-description-templates/update', {
+      method: 'POST',
+      headers: authHeaders(editor.sessionToken),
+      body: JSON.stringify(input)
+    });
+    expect(denied.status).toBe(403);
+    const updated = await app.request('/api/v1/product-description-templates/update', {
+      method: 'POST',
+      headers: authHeaders(editor.sessionToken, editor.session.csrfToken),
+      body: JSON.stringify(input)
+    });
+    await expect(updated.json()).resolves.toMatchObject({
+      ok: true,
+      data: { id: source.id, html: '<p>Shared override</p>', revision: 2, creatorId: source.creatorId }
+    });
+    const archive = await app.request('/api/v1/product-description-templates/archive', {
+      method: 'POST',
+      headers: authHeaders(editor.sessionToken, editor.session.csrfToken),
+      body: JSON.stringify({ requestId: createRequestId(), id: source.id, revision: 2 })
+    });
+    await expect(archive.json()).resolves.toMatchObject({
+      ok: true,
+      data: { id: source.id, status: 'archived', revision: 3 }
+    });
+    const audit = await repository.listAudit({ requestId: input.requestId, page: 1, pageSize: 20 });
+    expect(audit.items).toMatchObject([
+      {
+        action: 'product-description-template.update',
+        resourceId: source.id,
+        revisionBefore: 1,
+        revisionAfter: 2
+      }
+    ]);
+  });
+
   it('allows an active ordinary user to manage sanitized shared templates with CSRF and audit', async () => {
     const { app, authService, adminService, repository } = fixture();
     const admin = await bootstrap(authService);
