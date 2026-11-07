@@ -11,7 +11,11 @@
 | 独立 Chrome 插件 | IndexedDB `one-vegetable:description-templates:v1` | 本机、同一扩展；不要求 BFF |
 | Web Mock         | 内存                                               | 演示会话；刷新不保留       |
 
-内置模板只读；自定义模板支持编辑、归档及恢复，没有硬删除。共享写操作保留会话、CSRF、revision 和审计保护。本地写入使用事务校验同语言名称冲突和 revision，跨标签页不能静默覆盖旧版本；本地最多 1000 条。独立扩展的日志 → 本地数据清理也会删除本机模板，**不删除服务器共享模板或 S3 备份**。
+内置和自定义模板均支持编辑、删除及恢复。“删除”会先确认，再移入已归档模板，不是硬删除；勾选“显示已归档模板”可以恢复。已插入商品详情的内容不会随模板修改或删除而变化。共享写操作保留会话、CSRF、revision 和审计保护。本地写入使用事务校验同语言名称冲突和 revision，跨标签页不能静默覆盖旧版本；本地最多 1000 条。独立扩展的日志 → 本地数据清理也会删除本机模板，**不删除服务器共享模板或 S3 备份**。
+
+内置模板第一次修改或删除时，使用原 ID 在当前存储中保存覆盖记录；后续读取优先使用该记录，不重复添加原始模板。Node/Cloudflare 的改动对本站用户共享，插件仅保存在本机 IndexedDB，普通刷新、升级不会恢复默认内容。清除插件全部本地模板数据会同时清除覆盖记录，届时内置默认模板重新出现。内置模板仍显示“内置”来源标记，恢复已删除模板会保留之前编辑的内容，而不是重置为出厂内容。
+
+协议前置检查：模板文字编辑、删除和恢复不调用 Alibaba，因此 TOP、IOP 均为“不适用”，未配置任一授权也可操作；模板携图导入仍遵循其已有平台权限、选路和确认规则。本次不增加 Alibaba 方法、公开接口、数据库迁移或扩展权限。
 
 ## 在商品中使用
 
@@ -71,7 +75,9 @@ ZIP/S3 只是备份与迁移格式，模板仍存 SQLite/D1 或插件 IndexedDB�
 
 ## English quick guide
 
-Open **Templates** from the sidebar. Node and Cloudflare store shared templates in SQLite/D1; the independent extension stores editable templates locally in IndexedDB. Built-in templates are read-only. Active site users can edit shared templates; local templates are not synchronized across devices.
+Open **Templates** from the sidebar. Node and Cloudflare store shared templates in SQLite/D1; the independent extension stores editable templates locally in IndexedDB. Built-in and custom templates can both be edited, deleted and restored. Deletion requires confirmation and moves the template into the archived list; it never changes products that already used the content. Active site users can edit shared templates; local templates are not synchronized across devices.
+
+Built-in changes retain their stable IDs and are stored as overrides, so refreshes and upgrades do not resurrect the original. Restoring a deleted template keeps its edited content. Clearing all extension template data removes these overrides and brings back the bundled defaults. Text-only template management requires neither TOP nor IOP authorization; image transfer keeps its existing platform permissions and confirmation.
 
 Choose company, logistics, packaging, service or custom content. Insert at the cursor, append, or confirm a full replacement in the product-description editor. Saving a template never updates an Alibaba product. Replace placeholders with accurate information before publishing.
 

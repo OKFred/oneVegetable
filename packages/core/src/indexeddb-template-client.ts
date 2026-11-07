@@ -1,4 +1,5 @@
 import { createEntityAuditFields, updateEntityAuditFields } from './audit';
+import { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from './generated/product-description-templates';
 import { sanitizeProductDescriptionHtml } from './product-description';
 import { validateProductDescriptionTemplate } from './generated/validators-templates';
 import {
@@ -43,7 +44,6 @@ export class IndexedDbProductDescriptionTemplateClient implements ProductDescrip
     if (!validateProductDescriptionTemplateCreateRequest({ requestId: crypto.randomUUID(), ...input }))
       return Promise.reject(templateError('TEMPLATE_PACKAGE_INVALID'));
     return this.#mutate((values) => {
-      if (values.length >= 1000) throw templateError('TEMPLATE_STORAGE_LIMIT');
       this.#unique(values, input.name, input.language);
       return {
         id: crypto.randomUUID(),
@@ -85,6 +85,7 @@ export class IndexedDbProductDescriptionTemplateClient implements ProductDescrip
   #status(id: string, revision: number, status: 'active' | 'archived') {
     return this.#mutate((values) => {
       const current = required(values, id, revision);
+      this.#unique(values, current.name, current.language, current.id);
       return {
         ...current,
         ...updateEntityAuditFields(current, 'local:templates', Date.now(), current.remark),
@@ -164,7 +165,10 @@ export class IndexedDbProductDescriptionTemplateClient implements ProductDescrip
       let error: Error | undefined;
       request.onsuccess = () => {
         try {
-          value = prepare(validateRows(request.result as unknown));
+          const values = validateRows(request.result as unknown);
+          value = prepare(values);
+          if (values.length >= 1000 && !values.some((row) => row.id === value.id))
+            throw templateError('TEMPLATE_STORAGE_LIMIT');
           store.put(value);
         } catch (cause: unknown) {
           error = cause instanceof Error ? cause : templateError('TEMPLATE_STORAGE_INVALID');
@@ -210,7 +214,9 @@ function required(
   id: string,
   revision: number
 ): ProductDescriptionTemplate {
-  const value = values.find((v) => v.id === id);
+  const value =
+    values.find((v) => v.id === id) ??
+    BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates.find((v) => v.id === id);
   if (!value) throw templateError('TEMPLATE_NOT_FOUND');
   if (value.revision !== revision) throw templateError('ENTITY_VERSION_CONFLICT');
   return value;

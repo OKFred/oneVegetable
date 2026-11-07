@@ -1,4 +1,5 @@
 import { createEntityAuditFields, normalizeRemark, updateEntityAuditFields } from '@one-vegetable/core';
+import { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from '@one-vegetable/core/runtime';
 
 import { EntityVersionConflictError } from '../db/repository';
 
@@ -147,30 +148,7 @@ export class SqlProductDescriptionTemplateRepository implements ProductDescripti
     assertRevision(current.revision, input.expectedRevision);
     const value = normalizeWritableTemplate(input);
     const audit = updateEntityAuditFields(current, input.actorId, this.#clock(), input.remark);
-    try {
-      const result = await this.#executor.execute(
-        `UPDATE product_description_templates SET
-          name = ?, category = ?, language = ?, html = ?, update_time_utc = ?,
-          updater_id = ?, revision = ?, remark = ?
-         WHERE id = ? AND revision = ?`,
-        [
-          value.name,
-          value.category,
-          value.language,
-          value.html,
-          audit.updateTimeUtc,
-          audit.updaterId,
-          audit.revision,
-          normalizeRemark(audit.remark),
-          current.id,
-          input.expectedRevision
-        ]
-      );
-      if (result.changes !== 1) throw new EntityVersionConflictError();
-    } catch (error: unknown) {
-      throwNameConflict(error);
-    }
-    return this.#require(current.id);
+    return this.#save({ ...current, ...audit, ...value }, input.expectedRevision);
   }
 
   archive(input: ProductDescriptionTemplateStatusInput): Promise<ProductDescriptionTemplate> {
@@ -188,17 +166,52 @@ export class SqlProductDescriptionTemplateRepository implements ProductDescripti
     const current = await this.#require(input.id);
     assertRevision(current.revision, input.expectedRevision);
     const audit = updateEntityAuditFields(current, input.actorId, this.#clock(), current.remark);
-    const result = await this.#executor.execute(
-      `UPDATE product_description_templates SET status = ?, update_time_utc = ?,
-       updater_id = ?, revision = ? WHERE id = ? AND revision = ?`,
-      [status, audit.updateTimeUtc, audit.updaterId, audit.revision, current.id, input.expectedRevision]
-    );
-    if (result.changes !== 1) throw new EntityVersionConflictError();
-    return this.#require(current.id);
+    return this.#save({ ...current, ...audit, status }, input.expectedRevision);
+  }
+
+  async #save(
+    entity: ProductDescriptionTemplate,
+    expectedRevision: number
+  ): Promise<ProductDescriptionTemplate> {
+    try {
+      // Materialize built-in changes atomically; stale first edits must not overwrite another tab.
+      const result = await this.#executor.execute(
+        `INSERT INTO product_description_templates (
+          id, name, category, language, html, status,
+          create_time_utc, update_time_utc, creator_id, updater_id, revision, remark
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name, category = excluded.category, language = excluded.language,
+          html = excluded.html, status = excluded.status, update_time_utc = excluded.update_time_utc,
+          updater_id = excluded.updater_id, revision = excluded.revision, remark = excluded.remark
+        WHERE product_description_templates.revision = ?`,
+        [
+          entity.id,
+          entity.name,
+          entity.category,
+          entity.language,
+          entity.html,
+          entity.status,
+          entity.createTimeUtc,
+          entity.updateTimeUtc,
+          entity.creatorId,
+          entity.updaterId,
+          entity.revision,
+          normalizeRemark(entity.remark),
+          expectedRevision
+        ]
+      );
+      if (result.changes !== 1) throw new EntityVersionConflictError();
+    } catch (error: unknown) {
+      throwNameConflict(error);
+    }
+    return this.#require(entity.id);
   }
 
   async #require(id: string): Promise<ProductDescriptionTemplate> {
-    const entity = await this.get(id);
+    const entity =
+      (await this.get(id)) ??
+      BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates.find((value) => value.id === normalizeId(id));
     if (!entity) throw new ProductDescriptionTemplateNotFoundError();
     return entity;
   }

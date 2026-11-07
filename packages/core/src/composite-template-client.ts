@@ -13,12 +13,13 @@ export class CompositeProductDescriptionTemplateClient implements ProductDescrip
   async list(input: ProductDescriptionTemplateListInput = {}) {
     const [bundled, shared] = await Promise.all([
       listAllTemplates(this.bundled, input.language),
-      listAllTemplates(this.shared, input.language)
+      listAllTemplates(this.shared)
     ]);
     const merged = new Map([...bundled, ...shared].map((item) => [item.id, item]));
     const items = [...merged.values()]
       .filter(
         (item) =>
+          (!input.language || item.language === input.language) &&
           (!input.category || item.category === input.category) &&
           (!input.status || item.status === input.status)
       )

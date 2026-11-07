@@ -102,6 +102,45 @@ async function mountPanel(items: ProductDescriptionTemplate[] = [template]) {
 }
 
 describe('description template unsaved editing', () => {
+  it('exposes built-in editing and confirms reversible deletion without saving after cancellation', async () => {
+    const builtIn = { ...template, creatorId: 'system:bundled' };
+    const { wrapper, button, repository } = await mountPanel([builtIn]);
+    await button('Edit').trigger('click');
+    await wrapper.get('textarea').setValue('<p>Edited built-in content</p>');
+    await button('Save template').trigger('click');
+    await flushPromises();
+    expect(repository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: builtIn.id,
+        revision: builtIn.revision,
+        html: '<p>Edited built-in content</p>'
+      })
+    );
+    await wrapper.get('input[aria-label="Select Company"]').setValue(true);
+    await button('Delete').trigger('click');
+    await flushPromises();
+    expect(repository.archive).not.toHaveBeenCalled();
+    expect(wrapper.get<HTMLInputElement>('input[aria-label="Select Company"]').element.checked).toBe(true);
+    const confirmation = wrapper
+      .findAll('[role="dialog"]')
+      .find((item) => item.text().includes('Delete template'));
+    if (!confirmation) throw new Error('Missing delete confirmation');
+    expect(wrapper.text()).toContain('Products already using it are not changed');
+    const cancel = confirmation.findAll('button').find((item) => item.text() === 'Cancel');
+    if (!cancel) throw new Error('Missing cancel action');
+    await cancel.trigger('click');
+    await flushPromises();
+    expect(repository.archive).not.toHaveBeenCalled();
+    await button('Delete').trigger('click');
+    await flushPromises();
+    const confirm = confirmation.findAll('button').find((item) => item.text() === 'Delete');
+    if (!confirm) throw new Error('Missing delete action');
+    await confirm.trigger('click');
+    await flushPromises();
+    expect(repository.archive).toHaveBeenCalledExactlyOnceWith(builtIn.id, builtIn.revision);
+    expect(wrapper.get<HTMLInputElement>('input[aria-label="Select Company"]').element.checked).toBe(false);
+  });
+
   it('composes selected templates with product context and does not persist filled values or write products', async () => {
     const items: ProductDescriptionTemplate[] = compositionFixture.templates.slice(0, 2).map((item) => ({
       ...template,

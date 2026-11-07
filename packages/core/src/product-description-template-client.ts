@@ -1,5 +1,6 @@
 import { DEFAULT_API_PREFIX, normalizeApiPrefix } from './api-contract';
 import { createEntityAuditFields, updateEntityAuditFields } from './audit';
+import { BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA } from './generated/product-description-templates';
 import { notifyBffAuthenticationRequired } from './bff-authentication';
 import { GatewayException } from './errors';
 import { createRequestId, NetworkManager } from './network';
@@ -259,6 +260,7 @@ export class MemoryProductDescriptionTemplateClient implements ProductDescriptio
       this.#assertWritable();
       const current = this.#required(id);
       this.#assertRevision(current, revision);
+      this.#assertUniqueName(current.name, current.language, current.id);
       const entity: ProductDescriptionTemplate = {
         ...current,
         ...updateEntityAuditFields(current, this.#actorId, this.#clock(), current.remark),
@@ -298,7 +300,9 @@ export class MemoryProductDescriptionTemplateClient implements ProductDescriptio
   }
 
   #required(id: string): ProductDescriptionTemplate {
-    const entity = this.#values.get(id);
+    const entity =
+      this.#values.get(id) ??
+      BUNDLED_PRODUCT_DESCRIPTION_TEMPLATE_DATA.templates.find((value) => value.id === id);
     if (!entity) {
       throw new GatewayException({
         code: 'TEMPLATE_NOT_FOUND',

@@ -24,6 +24,7 @@ import {
 } from '@one-vegetable/core';
 
 import SafeHtmlContent from './SafeHtmlContent.vue';
+import ConfirmActionDialog from './ConfirmActionDialog.vue';
 import DescriptionTemplateComposer from './DescriptionTemplateComposer.vue';
 import Badge from './ui/Badge.vue';
 import Button from './ui/Button.vue';
@@ -63,6 +64,7 @@ const search = ref('');
 const selectedIds = ref<string[]>([]);
 const transferMode = ref<'import' | 'export' | null>(null);
 const previewTemplate = ref<ProductDescriptionTemplate | null>(null);
+const pendingArchive = ref<ProductDescriptionTemplate | null>(null);
 const ProductDescriptionEditor = defineAsyncComponent(() => import('./ProductDescriptionEditor.vue'));
 const TemplateTransferDialog = defineAsyncComponent(() => import('./TemplateTransferDialog.vue'));
 const compositionTemplates = ref<ProductDescriptionTemplate[]>([]);
@@ -263,19 +265,31 @@ async function changeStatus(template: ProductDescriptionTemplate): Promise<void>
   try {
     if (template.status === 'active') {
       await productDescriptionTemplates.archive(template.id, template.revision);
+      selectedIds.value = selectedIds.value.filter((id) => id !== template.id);
     } else {
       await productDescriptionTemplates.restore(template.id, template.revision);
     }
+    pendingArchive.value = null;
+    toast.success(
+      t(template.status === 'active' ? 'products.templates.deleted' : 'products.templates.restored')
+    );
     await loadTemplates();
   } catch (reason: unknown) {
+    pendingArchive.value = null;
     operationError.value = reason;
   } finally {
     saving.value = false;
   }
 }
 
+function requestStatusChange(template: ProductDescriptionTemplate): void {
+  if (template.status === 'active') pendingArchive.value = template;
+  else void changeStatus(template);
+}
+
 function resetView(): void {
   view.value = 'browse';
+  pendingArchive.value = null;
   compositionTemplates.value = [];
   operationError.value = null;
 }
@@ -431,17 +445,22 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
                 {{ t('products.templates.replace') }}
               </Button>
             </div>
-            <div v-if="canManage && !isBundled(template)" class="mt-3 flex flex-wrap gap-2 border-t pt-3">
+            <div v-if="canManage" class="mt-3 flex flex-wrap gap-2 border-t pt-3">
               <Button
                 v-if="template.status === 'active'"
                 size="sm"
                 variant="ghost"
-                :disabled="loading"
+                :disabled="loading || saving"
                 @click="startEdit(template)"
               >
                 <Pencil class="size-3" />{{ t('products.templates.edit') }}
               </Button>
-              <Button size="sm" variant="ghost" :disabled="loading || saving" @click="changeStatus(template)">
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="loading || saving"
+                @click="requestStatusChange(template)"
+              >
                 <Archive v-if="template.status === 'active'" class="size-3" />
                 <ArchiveRestore v-else class="size-3" />
                 {{
@@ -510,6 +529,16 @@ function categoryLabel(category: ProductDescriptionTemplateCategory): string {
 
     <ErrorNotice v-if="operationError" :error="operationError" compact />
   </component>
+  <ConfirmActionDialog
+    :open="pendingArchive !== null"
+    :title="t('products.templates.deleteTitle')"
+    :description="t('products.templates.deleteDescription', { name: pendingArchive?.name ?? '' })"
+    :confirm-label="t('products.templates.archive')"
+    :pending="saving"
+    destructive
+    @update:open="pendingArchive = $event ? pendingArchive : null"
+    @confirm="pendingArchive && changeStatus(pendingArchive)"
+  />
   <ModalDialog
     :open="previewTemplate !== null"
     :title="previewTemplate?.name ?? ''"
