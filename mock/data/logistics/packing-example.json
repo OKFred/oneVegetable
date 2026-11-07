@@ -1,0 +1,31 @@
+{
+  "container": {
+    "length": 600,
+    "width": 500,
+    "height": 450
+  },
+  "cargo": [
+    {
+      "id": "A",
+      "name": "Cargo A",
+      "size": {
+        "length": 200,
+        "width": 150,
+        "height": 200
+      },
+      "quantity": 12,
+      "allowRotation": true
+    },
+    {
+      "id": "B",
+      "name": "Cargo B",
+      "size": {
+        "length": 100,
+        "width": 150,
+        "height": 100
+      },
+      "quantity": 8,
+      "allowRotation": true
+    }
+  ]
+}
