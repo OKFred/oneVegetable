@@ -1,4 +1,6 @@
 import { createApiApp } from './app';
+import { ShippingServicesCipher, ShippingServicesService } from './shipping-services/service';
+import { SqlShippingServicesRepository } from './shipping-services/repository';
 import { SqlVideoUploadRepository } from './video-uploads/repository';
 import { SqlOrderAttachmentRepository } from './order-attachments/repository';
 import { SqlProductMaintenanceRepository } from './product-maintenance/repository';
@@ -135,6 +137,11 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       : undefined;
   return await createApiApp({
     runtime: 'cloudflare',
+    shippingServices: async () =>
+      new ShippingServicesService(
+        new SqlShippingServicesRepository(database.executor),
+        await ShippingServicesCipher.create(env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+      ),
     database: 'd1',
     environment: runtimeConfiguration.environment,
     gatewayMode,

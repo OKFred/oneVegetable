@@ -4,7 +4,7 @@ import {
   validateShippingProviderConfigurationSummary,
   validateShippingQuoteResult
 } from './generated/validators-shipping-services';
-import { createRequestId, isRequestId } from './network';
+import { isRequestId } from './network';
 import type { NetworkTransport } from './network';
 
 export type ShippingProviderId = components['schemas']['ShippingProviderId'];
@@ -41,6 +41,12 @@ export function parseShippingServicesRequest(value: unknown): ShippingServicesRe
   if (!validateShippingServicesRequest(value)) shippingServicesFail('SHIPPING_REQUEST_INVALID');
   const request = value as ShippingServicesRequest;
   if (!isRequestId(request.requestId)) shippingServicesFail('INVALID_REQUEST_ID');
+  if (
+    'expectedRevision' in request &&
+    request.expectedRevision !== null &&
+    (!Number.isSafeInteger(request.expectedRevision) || request.expectedRevision >= Number.MAX_SAFE_INTEGER)
+  )
+    shippingServicesFail('SHIPPING_REQUEST_INVALID');
   if (request.action === 'save') {
     if (!request.termsAccepted || !request.costAcknowledged)
       shippingServicesFail('SHIPPING_CONSENT_REQUIRED');
@@ -90,7 +96,10 @@ export function shippingCountryName(code: string): string {
 export function parseShippingConfigurationSummary(value: unknown): ShippingProviderConfigurationSummary {
   if (!validateShippingProviderConfigurationSummary(value)) shippingServicesFail('SHIPPING_RESPONSE_INVALID');
   const summary = value as ShippingProviderConfigurationSummary;
-  if (summary.configured !== (summary.revision !== null && summary.updatedAtUtc !== null))
+  if (
+    (summary.configured && (summary.revision === null || summary.updatedAtUtc === null)) ||
+    (summary.revision === null) !== (summary.updatedAtUtc === null)
+  )
     shippingServicesFail('SHIPPING_RESPONSE_INVALID');
   return summary;
 }
@@ -129,8 +138,4 @@ export async function requestShippingQuote(
 ): Promise<ShippingQuoteResult> {
   const { requestShippingQuote: send } = await import('./shipping-quote-provider');
   return send(input, apiKey, transport);
-}
-
-export function shippingRequestId(): string {
-  return createRequestId();
 }

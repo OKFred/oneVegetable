@@ -102,6 +102,14 @@ describe('third-party quote trust boundaries', () => {
     expect(send).not.toHaveBeenCalled();
   });
   it('never exposes credentials in summaries or permits unsafe result links', () => {
+    expect(
+      parseShippingConfigurationSummary({
+        provider: 'freightos',
+        configured: false,
+        revision: 2,
+        updatedAtUtc: 123
+      }).revision
+    ).toBe(2);
     expect(() =>
       parseShippingConfigurationSummary({
         provider: 'freightos',

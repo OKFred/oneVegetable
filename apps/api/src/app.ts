@@ -45,6 +45,8 @@ import { ProductDescriptionTemplateService } from './product-description-templat
 import { registerProductMutationRoutes } from './product-mutations/routes';
 import { registerMetaSocialRoutes } from './social-meta/routes';
 import { registerS3StorageRoutes } from './storage/s3-routes';
+import { registerShippingServicesRoutes } from './shipping-services/routes';
+import type { ShippingServicesService } from './shipping-services/service';
 import { registerVideoUploadRoutes } from './video-uploads/routes';
 import { registerOrderAttachmentRoutes } from './order-attachments/routes';
 import type { OrderAttachmentRepository } from '@one-vegetable/core/order-attachments';
@@ -134,6 +136,7 @@ export interface ApiAppOptions {
   socialPublishing?: SocialPublishingService;
   extensionSocialDevices?: ExtensionSocialDeviceService;
   s3Storage?: S3StorageConfigurationService;
+  shippingServices?: () => Promise<ShippingServicesService>;
   videoUploads?: { repository: VideoUploadRepository; credentials: AsyncAlibabaCredentialProvider };
   orderAttachments?: { repository: OrderAttachmentRepository; credentials: AsyncAlibabaCredentialProvider };
   productMaintenance?: {
@@ -494,6 +497,14 @@ export function createApiApp(options: ApiAppOptions): Hono {
       auth: options.authService,
       ...(options.s3Storage ? { storage: options.s3Storage } : {}),
       flags: featureFlags,
+      ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
+    });
+  }
+
+  if (options.authService && options.shippingServices) {
+    registerShippingServicesRoutes(api, {
+      authService: options.authService,
+      service: options.shippingServices,
       ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {})
     });
   }

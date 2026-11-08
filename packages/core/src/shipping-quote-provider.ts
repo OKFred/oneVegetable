@@ -74,7 +74,7 @@ export async function requestShippingQuote(
 ): Promise<ShippingQuoteResult> {
   const payload = freightosQuotePayload(input);
   // The provider accepts only a header key; never attach keys or shipment data to a URL.
-  if (!apiKey || apiKey.length > 2048 || /\s|\p{Cc}/u.test(apiKey))
+  if (apiKey.length < 8 || apiKey.length > 2048 || /\s|\p{Cc}/u.test(apiKey))
     shippingServicesFail('SHIPPING_CREDENTIAL_INVALID');
   const network = new NetworkManager({
     ...(transport ? { transport } : {}),

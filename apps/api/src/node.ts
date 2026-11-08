@@ -1,4 +1,7 @@
 import { serve } from '@hono/node-server';
+import { shippingServicesFail } from '@one-vegetable/core/shipping-services';
+import { ShippingServicesCipher, ShippingServicesService } from './shipping-services/service';
+import { SqlShippingServicesRepository } from './shipping-services/repository';
 
 import { createApiApp } from './app';
 import { EmergencyPauseFeatureFlags, StaticOperationFeatureFlags } from './abac';
@@ -167,6 +170,14 @@ const socialPublishing =
     : undefined;
 const app = createApiApp({
   runtime: 'node',
+  shippingServices: async () => {
+    if (!process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+      shippingServicesFail('SHIPPING_SERVICES_UNAVAILABLE');
+    return new ShippingServicesService(
+      new SqlShippingServicesRepository(database.executor),
+      await ShippingServicesCipher.create(process.env.ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY)
+    );
+  },
   database: 'sqlite',
   environment,
   gatewayMode,

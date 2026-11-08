@@ -1107,6 +1107,53 @@ export function normalizeHttpContract(document: OpenApiDocument): void {
       }
     }
   };
+  for (const [action, requestSchema, responseSchema] of [
+    ['configuration', 'ShippingProviderTargetRequest', 'ShippingProviderConfigurationSummary'],
+    ['save', 'ShippingProviderSaveRequest', 'ShippingProviderConfigurationSummary'],
+    ['clear', 'ShippingProviderClearRequest', null],
+    ['quote', 'ShippingQuoteRequest', 'ShippingQuoteResult']
+  ] as const) {
+    document.paths[`/admin/shipping-services/${action}`] = {
+      post: {
+        operationId: `shippingServices${action[0].toUpperCase()}${action.slice(1)}`,
+        summary: `Third-party shipping ${action}; independent of TOP/IOP`,
+        requestBody: requestBody(requestSchema),
+        responses: {
+          '200': {
+            description:
+              action === 'quote'
+                ? 'User-authorized market estimate, not a booking'
+                : 'Write-only provider credential configuration',
+            headers: { 'X-Request-ID': { schema: { $ref: '#/components/schemas/RequestId' } } },
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['requestId', 'ok', 'data'],
+                  properties: {
+                    requestId: { $ref: '#/components/schemas/RequestId' },
+                    ok: { const: true },
+                    data: responseSchema
+                      ? { $ref: `#/components/schemas/${responseSchema}` }
+                      : { type: 'null' }
+                  }
+                }
+              }
+            }
+          },
+          '400': envelopeResponse('Invalid input, provider rejection or missing data/cost consent'),
+          '401': envelopeResponse('Workbench session required'),
+          '403': envelopeResponse('Administrator and CSRF authorization required'),
+          '409': envelopeResponse('Configuration changed, serial lease held or request already sent'),
+          '413': envelopeResponse('Request exceeds the bounded shipping payload limit'),
+          '429': envelopeResponse('Local or provider quota reached'),
+          '500': envelopeResponse('Storage or runtime failure'),
+          '503': envelopeResponse('Provider credential encryption or service unavailable')
+        }
+      }
+    };
+  }
   document.components.responses = {
     ...(document.components.responses ?? {}),
     GatewayFailure: envelopeResponse('Gateway failure')

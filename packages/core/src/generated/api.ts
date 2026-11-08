@@ -1,72 +1,4 @@
 export interface paths {
-    "/admin/shipping-services/quote": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Third-party shipping quote; independent of TOP/IOP */
-        post: operations["shippingServicesQuote"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/shipping-services/clear": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Third-party shipping clear; independent of TOP/IOP */
-        post: operations["shippingServicesClear"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/shipping-services/save": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Third-party shipping save; independent of TOP/IOP */
-        post: operations["shippingServicesSave"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/shipping-services/configuration": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Third-party shipping configuration; independent of TOP/IOP */
-        post: operations["shippingServicesConfiguration"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/video-uploads/call": {
         parameters: {
             query?: never;
@@ -1359,137 +1291,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/shipping-services/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Third-party shipping configuration; independent of TOP/IOP */
+        post: operations["shippingServicesConfiguration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shipping-services/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Third-party shipping save; independent of TOP/IOP */
+        post: operations["shippingServicesSave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shipping-services/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Third-party shipping clear; independent of TOP/IOP */
+        post: operations["shippingServicesClear"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shipping-services/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Third-party shipping quote; independent of TOP/IOP */
+        post: operations["shippingServicesQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        ShippingProviderId: "freightos";
-        ShippingLocation: {
-            countryCode: string;
-            city: string;
-            postalCode: string;
-            state: string;
-        };
-        ShippingShipment: {
-            origin: components["schemas"]["ShippingLocation"];
-            destination: components["schemas"]["ShippingLocation"];
-            /** @enum {string} */
-            mode: "express" | "parcel" | "air" | "lcl" | "fcl";
-            /** @enum {string} */
-            packaging: "boxes" | "pallets" | "container20" | "container40" | "container40HC";
-            quantity: number;
-            weightKg: number;
-            lengthCm: number;
-            widthCm: number;
-            heightCm: number;
-            description: string;
-            hsCode: string;
-            declaredValue: number;
-            currency: string;
-            pickupDate: string;
-        };
-        ShippingQuoteConsent: {
-            dataSharing: boolean;
-            costAcknowledged: boolean;
-        };
-        ShippingProviderConfigurationInput: {
-            /** @enum {string} */
-            provider: "freightos";
-            apiKey: string;
-            expectedRevision: number | null;
-            termsAccepted: boolean;
-            costAcknowledged: boolean;
-        };
-        ShippingProviderConfigurationSummary: {
-            /** @enum {string} */
-            provider: "freightos";
-            configured: boolean;
-            revision: number | null;
-            updatedAtUtc: number | null;
-        };
-        ShippingQuoteRequest: {
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-            expectedRevision: number;
-            shipment: components["schemas"]["ShippingShipment"];
-            consent: components["schemas"]["ShippingQuoteConsent"];
-        };
-        ShippingQuoteOption: {
-            id: string;
-            /** @enum {string} */
-            provider: "freightos";
-            /** @enum {string} */
-            kind: "market-estimate";
-            serviceName: string;
-            mode: string;
-            amount: string | null;
-            currency: string | null;
-            transitDaysFrom: number | null;
-            transitDaysTo: number | null;
-        };
-        ShippingQuoteResult: {
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-            quotedAtUtc: number;
-            options: components["schemas"]["ShippingQuoteOption"][];
-            searchUrl: string | null;
-        };
-        ShippingProviderTargetRequest: {
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-        };
-        ShippingProviderSaveRequest: {
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-            apiKey: string;
-            expectedRevision: number | null;
-            termsAccepted: boolean;
-            costAcknowledged: boolean;
-        };
-        ShippingProviderClearRequest: {
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-            expectedRevision: number;
-        };
-        ShippingServicesRequest: {
-            /** @constant */
-            action: "configuration";
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-        } | {
-            /** @constant */
-            action: "save";
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-            apiKey: string;
-            expectedRevision: number | null;
-            termsAccepted: boolean;
-            costAcknowledged: boolean;
-        } | {
-            /** @constant */
-            action: "clear";
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-            expectedRevision: number;
-        } | {
-            /** @constant */
-            action: "quote";
-            requestId: components["schemas"]["RequestId"];
-            /** @enum {string} */
-            provider: "freightos";
-            expectedRevision: number;
-            shipment: components["schemas"]["ShippingShipment"];
-            consent: components["schemas"]["ShippingQuoteConsent"];
-        };
         AdminAuditListRequest: {
             requestId: components["schemas"]["RequestId"];
             requestIdFilter?: components["schemas"]["RequestId"];
@@ -12283,6 +12156,133 @@ export interface components {
             productId?: string;
             schemaXml: string;
         };
+        ShippingLocation: {
+            countryCode: string;
+            city: string;
+            postalCode: string;
+            state: string;
+        };
+        ShippingProviderClearRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+            expectedRevision: number;
+        };
+        ShippingProviderConfigurationInput: {
+            /** @enum {string} */
+            provider: "freightos";
+            apiKey: string;
+            expectedRevision: number | null;
+            termsAccepted: boolean;
+            costAcknowledged: boolean;
+        };
+        ShippingProviderConfigurationSummary: {
+            /** @enum {string} */
+            provider: "freightos";
+            configured: boolean;
+            revision: number | null;
+            updatedAtUtc: number | null;
+        };
+        /** @enum {string} */
+        ShippingProviderId: "freightos";
+        ShippingProviderSaveRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+            apiKey: string;
+            expectedRevision: number | null;
+            termsAccepted: boolean;
+            costAcknowledged: boolean;
+        };
+        ShippingProviderTargetRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+        };
+        ShippingQuoteConsent: {
+            dataSharing: boolean;
+            costAcknowledged: boolean;
+        };
+        ShippingQuoteOption: {
+            id: string;
+            /** @enum {string} */
+            provider: "freightos";
+            /** @enum {string} */
+            kind: "market-estimate";
+            serviceName: string;
+            mode: string;
+            amount: string | null;
+            currency: string | null;
+            transitDaysFrom: number | null;
+            transitDaysTo: number | null;
+        };
+        ShippingQuoteRequest: {
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+            expectedRevision: number;
+            shipment: components["schemas"]["ShippingShipment"];
+            consent: components["schemas"]["ShippingQuoteConsent"];
+        };
+        ShippingQuoteResult: {
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+            quotedAtUtc: number;
+            options: components["schemas"]["ShippingQuoteOption"][];
+            searchUrl: string | null;
+        };
+        ShippingServicesRequest: {
+            /** @constant */
+            action: "configuration";
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+        } | {
+            /** @constant */
+            action: "save";
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+            apiKey: string;
+            expectedRevision: number | null;
+            termsAccepted: boolean;
+            costAcknowledged: boolean;
+        } | {
+            /** @constant */
+            action: "clear";
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+            expectedRevision: number;
+        } | {
+            /** @constant */
+            action: "quote";
+            requestId: components["schemas"]["RequestId"];
+            /** @enum {string} */
+            provider: "freightos";
+            expectedRevision: number;
+            shipment: components["schemas"]["ShippingShipment"];
+            consent: components["schemas"]["ShippingQuoteConsent"];
+        };
+        ShippingShipment: {
+            origin: components["schemas"]["ShippingLocation"];
+            destination: components["schemas"]["ShippingLocation"];
+            /** @enum {string} */
+            mode: "express" | "parcel" | "air" | "lcl" | "fcl";
+            /** @enum {string} */
+            packaging: "boxes" | "pallets" | "container20" | "container40" | "container40HC";
+            quantity: number;
+            weightKg: number;
+            lengthCm: number;
+            widthCm: number;
+            heightCm: number;
+            description: string;
+            hsCode: string;
+            declaredValue: number;
+            currency: string;
+            pickupDate: string;
+        };
         ShippingTemplate: {
             id: string;
             name: string;
@@ -12767,366 +12767,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    shippingServicesQuote: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShippingQuoteRequest"];
-            };
-        };
-        responses: {
-            /** @description User-authorized third-party market estimate, not a booking */
-            200: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        requestId: components["schemas"]["RequestId"];
-                        /** @constant */
-                        ok: true;
-                        data: components["schemas"]["ShippingQuoteResult"];
-                    };
-                };
-            };
-            /** @description Invalid input or missing data/cost consent */
-            400: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Workbench session required */
-            401: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Administrator and CSRF authorization required */
-            403: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Configuration changed or request already sent */
-            409: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Local or provider quota reached */
-            429: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Provider response unavailable or unsafe */
-            502: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-        };
-    };
-    shippingServicesClear: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShippingProviderClearRequest"];
-            };
-        };
-        responses: {
-            /** @description Write-only provider credential configuration */
-            200: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        requestId: components["schemas"]["RequestId"];
-                        /** @constant */
-                        ok: true;
-                        data: null;
-                    };
-                };
-            };
-            /** @description Invalid input or missing data/cost consent */
-            400: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Workbench session required */
-            401: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Administrator and CSRF authorization required */
-            403: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Configuration changed or request already sent */
-            409: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Local or provider quota reached */
-            429: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Provider response unavailable or unsafe */
-            502: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-        };
-    };
-    shippingServicesSave: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShippingProviderSaveRequest"];
-            };
-        };
-        responses: {
-            /** @description Write-only provider credential configuration */
-            200: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        requestId: components["schemas"]["RequestId"];
-                        /** @constant */
-                        ok: true;
-                        data: components["schemas"]["ShippingProviderConfigurationSummary"];
-                    };
-                };
-            };
-            /** @description Invalid input or missing data/cost consent */
-            400: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Workbench session required */
-            401: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Administrator and CSRF authorization required */
-            403: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Configuration changed or request already sent */
-            409: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Local or provider quota reached */
-            429: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Provider response unavailable or unsafe */
-            502: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-        };
-    };
-    shippingServicesConfiguration: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShippingProviderTargetRequest"];
-            };
-        };
-        responses: {
-            /** @description Write-only provider credential configuration */
-            200: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        requestId: components["schemas"]["RequestId"];
-                        /** @constant */
-                        ok: true;
-                        data: components["schemas"]["ShippingProviderConfigurationSummary"];
-                    };
-                };
-            };
-            /** @description Invalid input or missing data/cost consent */
-            400: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Workbench session required */
-            401: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Administrator and CSRF authorization required */
-            403: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Configuration changed or request already sent */
-            409: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Local or provider quota reached */
-            429: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-            /** @description Provider response unavailable or unsafe */
-            502: {
-                headers: {
-                    "X-Request-ID"?: components["schemas"]["RequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiFailure"];
-                };
-            };
-        };
-    };
     videoUploadControl: {
         parameters: {
             query?: never;
@@ -17672,6 +17312,446 @@ export interface operations {
             };
             /** @description Social media asset not found */
             404: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    shippingServicesConfiguration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingProviderTargetRequest"];
+            };
+        };
+        responses: {
+            /** @description Write-only provider credential configuration */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requestId: components["schemas"]["RequestId"];
+                        /** @constant */
+                        ok: true;
+                        data: components["schemas"]["ShippingProviderConfigurationSummary"];
+                    };
+                };
+            };
+            /** @description Invalid input, provider rejection or missing data/cost consent */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Workbench session required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Administrator and CSRF authorization required */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Configuration changed, serial lease held or request already sent */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Request exceeds the bounded shipping payload limit */
+            413: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Local or provider quota reached */
+            429: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Storage or runtime failure */
+            500: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Provider credential encryption or service unavailable */
+            503: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    shippingServicesSave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingProviderSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Write-only provider credential configuration */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requestId: components["schemas"]["RequestId"];
+                        /** @constant */
+                        ok: true;
+                        data: components["schemas"]["ShippingProviderConfigurationSummary"];
+                    };
+                };
+            };
+            /** @description Invalid input, provider rejection or missing data/cost consent */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Workbench session required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Administrator and CSRF authorization required */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Configuration changed, serial lease held or request already sent */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Request exceeds the bounded shipping payload limit */
+            413: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Local or provider quota reached */
+            429: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Storage or runtime failure */
+            500: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Provider credential encryption or service unavailable */
+            503: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    shippingServicesClear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingProviderClearRequest"];
+            };
+        };
+        responses: {
+            /** @description Write-only provider credential configuration */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requestId: components["schemas"]["RequestId"];
+                        /** @constant */
+                        ok: true;
+                        data: null;
+                    };
+                };
+            };
+            /** @description Invalid input, provider rejection or missing data/cost consent */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Workbench session required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Administrator and CSRF authorization required */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Configuration changed, serial lease held or request already sent */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Request exceeds the bounded shipping payload limit */
+            413: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Local or provider quota reached */
+            429: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Storage or runtime failure */
+            500: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Provider credential encryption or service unavailable */
+            503: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+        };
+    };
+    shippingServicesQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description User-authorized market estimate, not a booking */
+            200: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requestId: components["schemas"]["RequestId"];
+                        /** @constant */
+                        ok: true;
+                        data: components["schemas"]["ShippingQuoteResult"];
+                    };
+                };
+            };
+            /** @description Invalid input, provider rejection or missing data/cost consent */
+            400: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Workbench session required */
+            401: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Administrator and CSRF authorization required */
+            403: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Configuration changed, serial lease held or request already sent */
+            409: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Request exceeds the bounded shipping payload limit */
+            413: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Local or provider quota reached */
+            429: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Storage or runtime failure */
+            500: {
+                headers: {
+                    "X-Request-ID"?: components["schemas"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSuccess"] | components["schemas"]["ApiFailure"];
+                };
+            };
+            /** @description Provider credential encryption or service unavailable */
+            503: {
                 headers: {
                     "X-Request-ID"?: components["schemas"]["RequestId"];
                     [name: string]: unknown;
