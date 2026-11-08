@@ -2,12 +2,12 @@ import { decodeBase64, encodeBase64 } from '@one-vegetable/core/encoded-file';
 import { isRequestId, NativeFetchTransport, type NetworkTransport } from '@one-vegetable/core/network';
 import {
   parseShippingServicesRequest,
-  requestShippingQuote,
   ShippingServicesError,
   shippingServicesFail as fail,
   type ShippingProviderConfigurationSummary,
   type ShippingServicesRequest
 } from '@one-vegetable/core/shipping-services';
+import { requestShippingQuote } from '@one-vegetable/core/shipping-quote-provider';
 import {
   EXTENSION_SHIPPING_SERVICES_STORAGE_KEY,
   SHIPPING_PERMISSION_ORIGINS,

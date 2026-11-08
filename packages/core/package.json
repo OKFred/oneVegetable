@@ -58,6 +58,8 @@
     "./control-client": "./src/control-client.ts",
     "./s3-storage": "./src/s3-storage.ts",
     "./shipping-services": "./src/shipping-services.ts",
+    "./shipping-services-protocol": "./src/shipping-services-protocol.ts",
+    "./shipping-quote-provider": "./src/shipping-quote-provider.ts",
     "./shipping-directory": "./src/shipping-directory.ts",
     "./templates": "./src/product-description-template-client.ts",
     "./composite-templates": "./src/composite-template-client.ts",

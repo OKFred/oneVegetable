@@ -2,7 +2,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { chromium, expect, test, type BrowserContext, type Page, type Worker } from '@playwright/test';
+import { chromium, expect, test, type Page, type Worker } from '@playwright/test';
 import { completeOnboarding, ONBOARDING_STORAGE_KEY } from '../../packages/core/src/privacy';
 import type { ShippingServicesStoredState } from '../../apps/extension/lib/shipping-services-service';
 import requestFixture from '../../mock/data/shipping-services/cn-export-request.json' with { type: 'json' };
@@ -19,7 +19,7 @@ interface PermissionQuery {
   permissions?: string[];
 }
 interface TestChrome {
-  runtime: { sendMessage(value: unknown): Promise<unknown> };
+  runtime: { sendMessage(value: unknown): Promise<unknown>; onMessage: { hasListeners(): boolean } };
   permissions: {
     contains(query: PermissionQuery): Promise<boolean>;
     request(query: PermissionQuery): Promise<boolean>;
@@ -137,8 +137,8 @@ async function allow(worker: Worker, page?: Page): Promise<void> {
     });
 }
 
-async function launch() {
-  const profile = await mkdtemp(resolve(tmpdir(), 'one-vegetable-shipping-mv3-'));
+async function launch(existingProfile?: string) {
+  const profile = existingProfile ?? (await mkdtemp(resolve(tmpdir(), 'one-vegetable-shipping-mv3-')));
   const extension = resolve(import.meta.dirname, '../../apps/extension/.output/chrome-mv3');
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'chromium',
@@ -159,6 +159,7 @@ async function launch() {
       if (new URL(request.url()).hostname === 'ship.freightos.com') providerNetwork.push(request.url());
     });
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+    await expect.poll(() => worker.evaluate(() => chrome.runtime.onMessage.hasListeners())).toBe(true);
     await installTransport(worker);
     await worker.evaluate(
       async ({ key, onboarding }) => {
@@ -228,38 +229,23 @@ async function launch() {
     await page.goto(origin + '/options.html#/logistics');
     await page.getByRole('button', { name: '物流服务', exact: true }).click();
     await expect(page.getByTestId('shipping-services-workspace')).toBeVisible();
-    return { context, page, worker, origin, providerNetwork };
+    return { context, page, worker, origin, providerNetwork, profile };
   } catch (error) {
     await context.close();
     throw error;
   }
 }
 
-async function restart(context: BrowserContext, page: Page, worker: Worker): Promise<Worker> {
-  const cdp = await context.newCDPSession(page);
-  try {
-    await cdp.send('ServiceWorker.enable');
-    const closed = new Promise<void>((resolve) => {
-      worker.once('close', () => {
-        resolve();
-      });
-    });
-    await cdp.send('ServiceWorker.stopAllWorkers');
-    await closed;
-    const replacement = context.waitForEvent(
-      'serviceworker',
-      (candidate) => candidate.url() === worker.url()
-    );
-    // A local summary wakes the real packaged listener without making a provider request.
-    const summary = invoke(page, { action: 'configuration' });
-    const next = await replacement;
-    await installTransport(next);
-    await allow(next);
-    expect(await summary).toMatchObject({ ok: true, data: { configured: true, revision: 1 } });
-    return next;
-  } finally {
-    await cdp.detach();
-  }
+async function restart(current: Awaited<ReturnType<typeof launch>>) {
+  // Reopen the same isolated profile to prove persisted recovery, not a cached worker result.
+  await current.context.close();
+  const next = await launch(current.profile);
+  await allow(next.worker, next.page);
+  expect(await invoke(next.page, { action: 'configuration' })).toMatchObject({
+    ok: true,
+    data: { configured: true, revision: 1 }
+  });
+  return next;
 }
 
 async function fillShipment(page: Page): Promise<void> {
@@ -291,7 +277,7 @@ async function sendFromUi(page: Page): Promise<void> {
 
 test('formal MV3 shipping: exact-host denial, real options/SW wiring, trusted senders, restart and durable attempt ceiling', async () => {
   test.setTimeout(120_000);
-  const h = await launch();
+  let h = await launch();
   let worker = h.worker;
   try {
     expect((await pageState(h.page)).permissions).toEqual([]);
@@ -395,7 +381,8 @@ test('formal MV3 shipping: exact-host denial, real options/SW wiring, trusted se
     expect(contentResult).toMatchObject({ ok: false, error: { code: 'SHIPPING_UNTRUSTED_SENDER' } });
     expect((await transportState(worker)).calls).toHaveLength(1);
 
-    worker = await restart(h.context, h.page, worker);
+    h = await restart(h);
+    worker = h.worker;
     expect(await invoke(h.page, { ...quote(), requestId: firstId })).toMatchObject({
       error: { code: 'SHIPPING_QUOTE_ALREADY_SENT' }
     });
@@ -437,7 +424,7 @@ test('formal MV3 shipping: exact-host denial, real options/SW wiring, trusted se
 
 test('formal MV3 crash keeps its ID claimed but releases other manual IDs after a bounded serial lease', async () => {
   test.setTimeout(120_000);
-  const h = await launch();
+  let h = await launch();
   let worker = h.worker;
   try {
     await allow(worker);
@@ -450,7 +437,7 @@ test('formal MV3 crash keeps its ID claimed but releases other manual IDs after 
     const crashed = quote();
     await h.page.evaluate(
       (message) => {
-        // Keep the message pending while CDP kills its worker; handle the expected closed-port rejection.
+        // Leave the message pending across browser exit; handle the expected closed-port rejection.
         void chrome.runtime.sendMessage(message).catch(() => undefined);
       },
       { kind: 'shipping-services-request', ...crashed }
@@ -459,7 +446,8 @@ test('formal MV3 crash keeps its ID claimed but releases other manual IDs after 
     expect((await readState(h.page))?.claims).toMatchObject([
       { requestId: crashed.requestId, completedAtUtc: null }
     ]);
-    worker = await restart(h.context, h.page, worker);
+    h = await restart(h);
+    worker = h.worker;
     expect(await invoke(h.page, crashed)).toMatchObject({ error: { code: 'SHIPPING_QUOTE_ALREADY_SENT' } });
     expect(await invoke(h.page, quote())).toMatchObject({ error: { code: 'SHIPPING_QUOTE_IN_PROGRESS' } });
     // Advance persisted lease metadata instead of sleeping 60s; leave ciphertext and IDs untouched.

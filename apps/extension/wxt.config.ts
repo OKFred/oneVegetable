@@ -115,6 +115,27 @@ export default defineConfig({
               includeDependenciesRecursively: false
             },
             {
+              name: 'shipping-services-model',
+              test: /core[\\/]src[\\/](?:shipping-services|generated[\\/]validators-shipping-services)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              // Both device-local stores need the key helper before background registration runs.
+              name: 'device-local-key',
+              test: /[\\/]apps[\\/]extension[\\/]lib[\\/]device-local-key\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'shipping-services-protocol',
+              test: /[\\/]apps[\\/]extension[\\/]lib[\\/]shipping-services-protocol\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
+              name: 'shipping-services-backend',
+              test: /(?:apps[\\/]extension[\\/]lib[\\/]shipping-services-(?:service|store)|core[\\/]src[\\/]shipping-quote-provider)\.ts$/u,
+              includeDependenciesRecursively: false
+            },
+            {
               name: 'order-attachment-backend',
               test: /(?:apps[\\/]extension[\\/]lib[\\/]order-attachment-(?:service|repository)|core[\\/]src[\\/]order-attachments)\.ts$/u,
               includeDependenciesRecursively: false

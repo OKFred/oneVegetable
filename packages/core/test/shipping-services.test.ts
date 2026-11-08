@@ -5,11 +5,14 @@ import {
   parseShippingServicesRequest,
   parseShippingConfigurationSummary,
   parseShippingQuoteResult,
-  safeShippingSearchUrl,
-  requestShippingQuote
+  safeShippingSearchUrl
 } from '../src/shipping-services';
 import type { ShippingQuoteRequest } from '../src/shipping-services';
-import { freightosQuotePayload, parseFreightosQuote } from '../src/shipping-quote-provider';
+import {
+  freightosQuotePayload,
+  parseFreightosQuote,
+  requestShippingQuote
+} from '../src/shipping-quote-provider';
 import { BffControlClient } from '../src/control-client';
 
 const source = JSON.parse(
@@ -228,10 +231,20 @@ describe('third-party quote trust boundaries', () => {
     });
     const client = new BffControlClient({
       baseUrl: 'https://workbench.test',
+      shippingServicesValidators: () => import('../src/shipping-services'),
       csrfToken: () => 'csrf-fixture',
       transport: { send }
     });
     expect((await client.shippingServices.quote(request())).requestId).toBe(source.requestId);
     expect(send).toHaveBeenCalledOnce();
+  });
+
+  it('does not dispatch from a BFF client without its shipping validator loader', async () => {
+    const send = vi.fn(() => Promise.resolve(Response.json({})));
+    const client = new BffControlClient({ baseUrl: 'https://workbench.test', transport: { send } });
+    await expect(client.shippingServices.configuration('freightos')).rejects.toMatchObject({
+      gatewayError: { code: 'SHIPPING_SERVICES_UNAVAILABLE' }
+    });
+    expect(send).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import type { ProductMaintenanceControl } from './product-maintenance-control';
 import type { OrderAttachmentControl } from './order-attachments';
 import type { ShippingServicesControl } from './shipping-services';
+import type * as ShippingValidators from './shipping-services';
 import { isOrderAttachmentReceipt } from './order-attachment-receipt';
 import type { ProductMaintenanceServiceResult } from './product-maintenance-service';
 import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
@@ -372,19 +373,20 @@ export interface BffControlClientOptions {
   extensionId?: string;
   onAuthenticationRequired?: BffAuthenticationRequiredHandler;
   productMaintenanceResultValidator?: (value: unknown) => Promise<ProductMaintenanceServiceResult>;
+  shippingServicesValidators?: () => Promise<typeof ShippingValidators>;
 }
 
 export class BffControlClient implements ControlClient {
   readonly shippingServices: ShippingServicesControl = {
     configuration: async (provider) => {
-      const { parseShippingConfigurationSummary } = await import('./shipping-services');
+      const { parseShippingConfigurationSummary } = await this.#shippingValidators();
       return parseShippingConfigurationSummary(
         await this.#call('/admin/shipping-services/configuration', { provider })
       );
     },
     saveConfiguration: async (input) => {
       const { parseShippingServicesRequest, parseShippingConfigurationSummary } =
-        await import('./shipping-services');
+        await this.#shippingValidators();
       const request = parseShippingServicesRequest({
         ...input,
         action: 'save',
@@ -398,7 +400,7 @@ export class BffControlClient implements ControlClient {
     },
     quote: async (input) => {
       const { parseShippingServicesRequest, parseShippingQuoteResult, shippingServicesFail } =
-        await import('./shipping-services');
+        await this.#shippingValidators();
       parseShippingServicesRequest({ ...input, action: 'quote' });
       const result = parseShippingQuoteResult(
         await this.#call('/admin/shipping-services/quote', { ...input })
@@ -440,6 +442,17 @@ export class BffControlClient implements ControlClient {
   readonly #onAuthenticationRequired: BffAuthenticationRequiredHandler | undefined;
   #sessionCsrfToken: string | null = null;
   readonly #productMaintenanceResultValidator: BffControlClientOptions['productMaintenanceResultValidator'];
+  readonly #loadShippingValidators: BffControlClientOptions['shippingServicesValidators'];
+
+  async #shippingValidators() {
+    if (!this.#loadShippingValidators)
+      throw new GatewayException({
+        code: 'SHIPPING_SERVICES_UNAVAILABLE',
+        message: 'SHIPPING_SERVICES_UNAVAILABLE',
+        retryable: false
+      });
+    return this.#loadShippingValidators();
+  }
 
   constructor(options: BffControlClientOptions) {
     this.#baseUrl = new URL(options.baseUrl);
@@ -452,6 +465,7 @@ export class BffControlClient implements ControlClient {
     this.#extensionId = options.extensionId;
     this.#onAuthenticationRequired = options.onAuthenticationRequired;
     this.#productMaintenanceResultValidator = options.productMaintenanceResultValidator;
+    this.#loadShippingValidators = options.shippingServicesValidators;
     this.#network = new NetworkManager({
       ...(options.transport ? { transport: options.transport } : {}),
       policies: {

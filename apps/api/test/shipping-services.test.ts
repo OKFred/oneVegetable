@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as ShippingCore from '@one-vegetable/core/shipping-services';
+import type * as ShippingProvider from '@one-vegetable/core/shipping-quote-provider';
+import { requestShippingQuote } from '@one-vegetable/core/shipping-quote-provider';
 import {
   parseShippingConfigurationSummary,
-  requestShippingQuote,
   ShippingServicesError,
   type ShippingProviderId,
   type ShippingQuoteRequest,
@@ -23,8 +23,8 @@ import {
   SHIPPING_TEST_ENCRYPTION_KEY
 } from './shipping-services-fixture';
 
-vi.mock('@one-vegetable/core/shipping-services', async (importOriginal) => ({
-  ...(await importOriginal<typeof ShippingCore>()),
+vi.mock('@one-vegetable/core/shipping-quote-provider', async (importOriginal) => ({
+  ...(await importOriginal<typeof ShippingProvider>()),
   requestShippingQuote: vi.fn()
 }));
 

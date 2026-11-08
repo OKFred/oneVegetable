@@ -1,38 +1,41 @@
 import { browser } from 'wxt/browser';
 import {
-  parseShippingServicesRequest,
-  parseShippingConfigurationSummary,
-  parseShippingQuoteResult,
-  shippingServicesFail as fail,
-  type ShippingServicesControl,
-  type ShippingServicesRequest
+  checkShippingConsent,
+  shippingServicesFail as fail
+} from '@one-vegetable/core/shipping-services-protocol';
+import type {
+  ShippingServicesControl,
+  ShippingServicesRequest,
+  ShippingProviderConfigurationSummary,
+  ShippingQuoteResult
 } from '@one-vegetable/core/shipping-services';
 import { SHIPPING_PERMISSION_ORIGINS, shippingRecord as record } from './shipping-services-protocol';
 
 export const extensionShippingServices: ShippingServicesControl = {
-  async configuration(provider) {
-    const data = await call({ action: 'configuration', provider, requestId: crypto.randomUUID() });
-    return parseShippingConfigurationSummary(data);
+  configuration(provider) {
+    return call({ action: 'configuration', provider, requestId: crypto.randomUUID() });
   },
-  async saveConfiguration(input) {
-    const data = await call({ ...input, action: 'save', requestId: crypto.randomUUID() });
-    return parseShippingConfigurationSummary(data);
+  saveConfiguration(input) {
+    return call({ ...input, action: 'save', requestId: crypto.randomUUID() });
   },
   async clearConfiguration(provider, expectedRevision) {
-    const data = await call({ action: 'clear', provider, expectedRevision, requestId: crypto.randomUUID() });
-    if (data !== null) fail('SHIPPING_RESPONSE_INVALID');
+    await call({ action: 'clear', provider, expectedRevision, requestId: crypto.randomUUID() });
   },
-  async quote(input) {
-    const data = await call({ ...input, action: 'quote' });
-    const result = parseShippingQuoteResult(data);
-    if (result.requestId !== input.requestId) return fail('SHIPPING_RESPONSE_INVALID');
-    return result;
+  quote(input) {
+    return call({ ...input, action: 'quote' });
   }
 };
 
-async function call(value: ShippingServicesRequest): Promise<unknown> {
-  const request = parseShippingServicesRequest(value);
-  if (request.action === 'save' || request.action === 'quote') {
+function call(
+  value: Extract<ShippingServicesRequest, { action: 'configuration' | 'save' }>
+): Promise<ShippingProviderConfigurationSummary>;
+function call(value: Extract<ShippingServicesRequest, { action: 'quote' }>): Promise<ShippingQuoteResult>;
+function call(value: Extract<ShippingServicesRequest, { action: 'clear' }>): Promise<null>;
+async function call(
+  value: ShippingServicesRequest
+): Promise<ShippingProviderConfigurationSummary | ShippingQuoteResult | null> {
+  checkShippingConsent(value);
+  if (value.action === 'save' || value.action === 'quote') {
     // Request directly in the click gesture, not after awaiting contains or on mount.
     try {
       if (!(await browser.permissions.request({ origins: [...SHIPPING_PERMISSION_ORIGINS] })))
@@ -41,6 +44,9 @@ async function call(value: ShippingServicesRequest): Promise<unknown> {
       fail('SHIPPING_PERMISSION_REQUIRED');
     }
   }
+  const { parseShippingServicesRequest, parseShippingConfigurationSummary, parseShippingQuoteResult } =
+    await import('@one-vegetable/core/shipping-services');
+  const request = parseShippingServicesRequest(value);
   let response: unknown;
   try {
     response = await browser.runtime.sendMessage({ kind: 'shipping-services-request', ...request });
@@ -58,5 +64,12 @@ async function call(value: ShippingServicesRequest): Promise<unknown> {
     return fail(code);
   }
   if (response.ok !== true || !('data' in response)) return fail('SHIPPING_RESPONSE_INVALID');
-  return response.data;
+  if (request.action === 'clear') {
+    if (response.data !== null) fail('SHIPPING_RESPONSE_INVALID');
+    return null;
+  }
+  if (request.action !== 'quote') return parseShippingConfigurationSummary(response.data);
+  const result = parseShippingQuoteResult(response.data);
+  if (result.requestId !== request.requestId) return fail('SHIPPING_RESPONSE_INVALID');
+  return result;
 }

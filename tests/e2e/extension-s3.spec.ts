@@ -34,10 +34,7 @@ test('MV3 stores S3 encrypted, restores after worker shutdown and rejects non-op
     const navigation = page.locator('aside nav');
     await expect(navigation.locator('a[href="#/files"]')).toHaveCount(0);
     await expect(navigation.locator('a[href="#/photos"]')).toHaveAttribute('aria-current', 'page');
-    await expect(page.getByRole('link', { name: '配置 S3 存储', exact: true })).toHaveAttribute(
-      'href',
-      '#/settings/storage'
-    );
+    await expect(page.getByTestId('files-storage-settings')).toBeVisible();
     await expect(page.getByTestId('files-upload')).toHaveCount(0);
     await page.getByTestId('files-storage-settings').click();
     await expect(page).toHaveURL(/#\/settings\/storage$/u);
@@ -59,8 +56,12 @@ test('MV3 stores S3 encrypted, restores after worker shutdown and rejects non-op
     const stored = await page.evaluate(() => chrome.storage.local.get('one-vegetable.s3.v1'));
     expect(JSON.stringify(stored)).not.toContain(configuration.secretAccessKey);
     const cdp = await context.newCDPSession(page);
-    await cdp.send('ServiceWorker.enable');
-    await cdp.send('ServiceWorker.stopAllWorkers');
+    const { targetInfos } = await cdp.send('Target.getTargets');
+    const target = targetInfos.find(
+      (candidate) => candidate.type === 'service_worker' && candidate.url === worker.url()
+    );
+    if (!target) throw new Error('Formal S3 worker is missing');
+    await cdp.send('Target.closeTarget', { targetId: target.targetId });
     await page.reload();
     await page.getByRole('button', { name: 'S3 素材存储', exact: true }).click();
     await expect(page.getByLabel('Endpoint', { exact: true })).toHaveValue(configuration.endpoint);

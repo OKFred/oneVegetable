@@ -1,13 +1,13 @@
 import { decodeBase64, encodeBase64 } from '@one-vegetable/core/encoded-file';
 import {
   parseShippingServicesRequest,
-  requestShippingQuote,
   ShippingServicesError,
   shippingServicesFail,
   type ShippingProviderConfigurationSummary,
   type ShippingProviderId,
   type ShippingQuoteResult
 } from '@one-vegetable/core/shipping-services';
+import { requestShippingQuote } from '@one-vegetable/core/shipping-quote-provider';
 
 import type { NetworkTransport } from '@one-vegetable/core/network';
 import type { SqlShippingServicesRepository, ShippingConfigurationRecord } from './repository';

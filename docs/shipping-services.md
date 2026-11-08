@@ -89,3 +89,20 @@ and sanitized outcome, and never buy or book anything.
 
 This development branch does not authorize merging mainline, deploying the existing
 Worker, creating a formal Tag/Release or submitting the Chrome Store.
+
+### Remote verification on 2026-11-09
+
+- The Windows 102 Chrome preview was checked in Chinese and English, including
+  the mainland-CN label, mode filtering, consent/configuration panel and narrow layout.
+- The directory opened DHL's official China quote page, whose origin was China.
+  No shipment form was submitted. This verifies the website entry, not a quote or booking.
+- Node/SQLite and workerd/D1 replay cover the same CN-export fixture, owner-bound
+  encryption, revision conflicts, pre-dispatch receipts and duplicate/daily guards.
+- Packaged MV3 tests use isolated permission decisions and a non-forwarding fixture
+  transport. Test keys cannot reach the real provider; they do not establish API access.
+- Provider credentials were not available. Live CN-origin Freightos estimates and
+  route coverage remain pending until the merchant obtains a key and approves costs.
+
+Existing backend installations need migration 0020 and their existing
+`ONE_VEGETABLE_CREDENTIAL_ENCRYPTION_KEY` before saving provider credentials.
+No production migration or deployment was performed during development.

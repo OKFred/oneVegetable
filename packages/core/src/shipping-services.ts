@@ -5,7 +5,16 @@ import {
   validateShippingQuoteResult
 } from './generated/validators-shipping-services';
 import { isRequestId } from './network';
-import type { NetworkTransport } from './network';
+import {
+  SHIPPING_PROVIDER_ORIGINS,
+  checkShippingConsent,
+  shippingServicesFail
+} from './shipping-services-protocol';
+export {
+  SHIPPING_PROVIDER_ORIGINS,
+  ShippingServicesError,
+  shippingServicesFail
+} from './shipping-services-protocol';
 
 export type ShippingProviderId = components['schemas']['ShippingProviderId'];
 export type ShippingLocation = components['schemas']['ShippingLocation'];
@@ -26,20 +35,10 @@ export interface ShippingServicesControl {
   quote(input: ShippingQuoteRequest): Promise<ShippingQuoteResult>;
 }
 
-export const SHIPPING_PROVIDER_ORIGINS = { freightos: 'https://ship.freightos.com' } as const;
-
-export class ShippingServicesError extends Error {
-  constructor(readonly code: string) {
-    super(code);
-  }
-}
-export function shippingServicesFail(code: string): never {
-  throw new ShippingServicesError(code);
-}
-
 export function parseShippingServicesRequest(value: unknown): ShippingServicesRequest {
   if (!validateShippingServicesRequest(value)) shippingServicesFail('SHIPPING_REQUEST_INVALID');
   const request = value as ShippingServicesRequest;
+  checkShippingConsent(request);
   if (!isRequestId(request.requestId)) shippingServicesFail('INVALID_REQUEST_ID');
   if (
     'expectedRevision' in request &&
@@ -48,15 +47,11 @@ export function parseShippingServicesRequest(value: unknown): ShippingServicesRe
   )
     shippingServicesFail('SHIPPING_REQUEST_INVALID');
   if (request.action === 'save') {
-    if (!request.termsAccepted || !request.costAcknowledged)
-      shippingServicesFail('SHIPPING_CONSENT_REQUIRED');
     const apiKey = request.apiKey.trim();
     if (apiKey.length < 8 || /\s|\p{Cc}/u.test(apiKey)) shippingServicesFail('SHIPPING_CREDENTIAL_INVALID');
     return { ...request, apiKey };
   }
   if (request.action === 'quote') {
-    if (!request.consent.dataSharing || !request.consent.costAcknowledged)
-      shippingServicesFail('SHIPPING_CONSENT_REQUIRED');
     const shipment = request.shipment;
     if (shipment.origin.countryCode !== 'CN') shippingServicesFail('SHIPPING_MAINLAND_ORIGIN_REQUIRED');
     if (shipment.destination.countryCode === 'CN')
@@ -129,13 +124,4 @@ export function safeShippingSearchUrl(value: unknown): string | null {
   } catch {
     return null;
   }
-}
-
-export async function requestShippingQuote(
-  input: ShippingQuoteRequest,
-  apiKey: string,
-  transport?: NetworkTransport
-): Promise<ShippingQuoteResult> {
-  const { requestShippingQuote: send } = await import('./shipping-quote-provider');
-  return send(input, apiKey, transport);
 }

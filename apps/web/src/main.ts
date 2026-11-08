@@ -67,6 +67,7 @@ const control =
             await import('@one-vegetable/core/product-maintenance-control');
           return validateProductMaintenanceServiceResult(value);
         },
+        shippingServicesValidators: () => import('@one-vegetable/core/shipping-services'),
         ...(authenticationEvents ? { onAuthenticationRequired: authenticationEvents.notify } : {})
       })
     : undefined;
