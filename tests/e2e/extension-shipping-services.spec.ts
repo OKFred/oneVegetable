@@ -307,6 +307,12 @@ test('formal MV3 shipping: exact-host denial, real options/SW wiring, trusted se
     expect(await readState(h.page)).toBeUndefined();
     expect((await transportState(worker)).calls).toEqual([]);
     await allow(worker, h.page);
+    await expect(h.page.getByTestId('shipping-api-key')).toHaveValue('');
+    await h.page.getByRole('dialog').getByRole('button', { name: '关闭详情', exact: true }).click();
+    await h.page.getByTestId('shipping-configure').click();
+    await h.page.getByTestId('shipping-api-key').fill(API_KEY);
+    await h.page.getByTestId('shipping-config-terms').check();
+    await h.page.getByTestId('shipping-config-cost').check();
     await h.page.getByTestId('shipping-save').click();
     await expect(h.page.getByTestId('shipping-api-key')).toHaveValue('');
     await h.page.getByRole('dialog').getByRole('button', { name: '关闭详情', exact: true }).click();
