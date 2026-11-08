@@ -10,7 +10,7 @@ import {
   shallowRef,
   watch
 } from 'vue';
-import { Download, Eye, File, FileUp, Folder, FolderPlus, RefreshCw, Upload } from '@lucide/vue';
+import { Download, Eye, File, FileUp, Folder, FolderPlus, RefreshCw, Settings, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import {
   useMenuItems,
@@ -34,6 +34,7 @@ import { useUiI18n } from '../i18n';
 import { useServices } from '../lib/services';
 import { useListIdentityScope } from '../lib/list-identity-scope';
 import { formatDateTime } from '../lib/date-time';
+import { appHash } from '../lib/hash-router';
 import {
   createOrderAttachmentFile,
   ORDER_ATTACHMENT_LIMIT
@@ -288,6 +289,9 @@ function refresh(): void {
   clearSelection();
   renderKey.value++;
 }
+function openStorageSettings(): void {
+  globalThis.location.hash = appHash('settings', 'storage');
+}
 function navigate(prefix: string): void {
   if (blocked.value || !driver.value) return;
   path.value = prefix;
@@ -503,9 +507,22 @@ onUnmounted(() => {
 <template>
   <section data-testid="files-view" class="files-workspace">
     <PageHeader :title="ft('title')" :description="ft('description')">
-      <ListActionButton :icon="RefreshCw" :disabled="blocked" data-testid="files-refresh" @click="refresh">{{
-        ft('refresh')
-      }}</ListActionButton>
+      <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <ListActionButton
+          :icon="Settings"
+          :disabled="writing || preparing"
+          data-testid="files-storage-settings"
+          @click="openStorageSettings"
+          >{{ ft('storageSettings') }}</ListActionButton
+        >
+        <ListActionButton
+          :icon="RefreshCw"
+          :disabled="blocked"
+          data-testid="files-refresh"
+          @click="refresh"
+          >{{ ft('refresh') }}</ListActionButton
+        >
+      </div>
     </PageHeader>
     <p
       v-if="error"
@@ -519,7 +536,9 @@ onUnmounted(() => {
       <p>
         {{ !storage ? ft('unavailable') : error ? ft(error) : ft('unconfigured') }}
       </p>
-      <a href="#/settings" class="mt-3 inline-block text-primary underline">{{ ft('settings') }}</a>
+      <a :href="appHash('settings', 'storage')" class="mt-3 inline-block text-primary underline">{{
+        ft('settings')
+      }}</a>
     </div>
     <template v-if="driver">
       <div
@@ -573,6 +592,8 @@ onUnmounted(() => {
         </Tooltip>
         <ListViewToggle
           v-model="view"
+          class="ml-auto"
+          data-testid="files-view-toggle"
           :label="ft('display')"
           :cards-label="ft('grid')"
           :list-label="ft('list')"

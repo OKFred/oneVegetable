@@ -112,6 +112,42 @@ function putRequests(state: Stats) {
   return state.requests.filter((request) => request.method === 'PUT');
 }
 
+for (const locale of ['zh-CN', 'en-US'] as const) {
+  test(`${locale}: S3 settings opens the storage section and view controls stay right-aligned`, async ({
+    page
+  }, testInfo) => {
+    await openFiles(page, locale);
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect
+        .poll(async () => {
+          return page.getByTestId('files-view-toggle').evaluate((toggle) => {
+            const toolbar = toggle.parentElement;
+            if (!toolbar) throw new Error('Missing file actions toolbar');
+            return Math.abs(toggle.getBoundingClientRect().right - toolbar.getBoundingClientRect().right);
+          });
+        })
+        .toBeLessThanOrEqual(1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`files-settings-${locale}-${width}.png`),
+        fullPage: true
+      });
+    }
+    await page.getByTestId('files-storage-settings').click();
+    await expect(page).toHaveURL(/#\/settings\/storage$/u);
+    await expect(page.locator('#settings-storage')).toBeVisible();
+    await expect(page.locator('#settings-credentials')).toBeHidden();
+    await expect(page.locator('#settings-storage').getByLabel('Endpoint', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.locator('#settings-storage')).toBeVisible();
+    await page.goBack();
+    await expect(page.getByTestId('files-view')).toBeVisible();
+    await expect(page.locator('.vuefinder')).toBeVisible();
+    expect(putRequests(await stats(page.context().request))).toHaveLength(0);
+  });
+}
+
 test('real VueFinder browses private directories, opaque pages and filters only the loaded page', async ({
   page
 }, testInfo) => {

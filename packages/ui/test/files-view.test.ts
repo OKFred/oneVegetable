@@ -225,7 +225,10 @@ describe('FilesView', () => {
     const first = mountView(s3);
     await flushPromises();
     expect(first.wrapper.text()).toContain('尚未配置 S3 存储');
-    expect(first.wrapper.get('a[href="#/settings"]').text()).toContain('配置 S3 存储');
+    expect(first.wrapper.get('a[href="#/settings/storage"]').text()).toContain('配置 S3 存储');
+    expect(
+      first.wrapper.get('[data-testid="files-storage-settings"]').attributes('disabled')
+    ).toBeUndefined();
     expect(s3.listS3Objects).not.toHaveBeenCalled();
     expect(first.request).not.toHaveBeenCalled();
     expect(first.load).not.toHaveBeenCalled();
@@ -236,6 +239,32 @@ describe('FilesView', () => {
     expect(second.wrapper.get('[role="alert"]').text()).toContain('缺少有效标识');
     expect(invalid.listS3Objects).not.toHaveBeenCalled();
   });
+  it.each(['zh-CN', 'en-US'] as const)(
+    'opens storage settings and right-aligns view controls in %s',
+    async (locale) => {
+      uiI18n.global.locale.value = locale;
+      const s3 = storage();
+      const { wrapper, request, load } = mountView(s3);
+      await ready(wrapper);
+      expect(wrapper.get('[data-testid="files-storage-settings"]').text()).toBe(
+        locale === 'zh-CN' ? 'S3 设置' : 'S3 settings'
+      );
+      expect(wrapper.get('[data-testid="files-view-toggle"]').classes()).toContain('ml-auto');
+      const previousUrl = globalThis.location.href;
+      const listCalls = s3.listS3Objects.mock.calls.length;
+      try {
+        await wrapper.get('[data-testid="files-storage-settings"]').trigger('click');
+        expect(globalThis.location.hash).toBe('#/settings/storage');
+        expect(s3.listS3Objects).toHaveBeenCalledTimes(listCalls);
+        expect(s3.putS3Object).not.toHaveBeenCalled();
+        expect(s3.updateS3StorageConfiguration).not.toHaveBeenCalled();
+        expect(request).not.toHaveBeenCalled();
+        expect(load).not.toHaveBeenCalled();
+      } finally {
+        globalThis.history.replaceState(null, '', previousUrl);
+      }
+    }
+  );
   it('uses the S3-only service without reading credentials', async () => {
     // Only the S3 methods are used even when the application supplies a broad control client.
     const s3 = storage();
@@ -532,11 +561,13 @@ describe('FilesView', () => {
     bodyButton('确认创建').click();
     await flushPromises();
     expect(s3.putS3Object).toHaveBeenCalledOnce();
+    expect(wrapper.get('[data-testid="files-storage-settings"]').attributes('disabled')).toBeDefined();
     s3.s3StorageConfiguration.mockResolvedValue(summary('b'.repeat(64)));
     identity.value = 'identity-b';
     await flushPromises();
     await ready(wrapper);
     expect(wrapper.get('[role="alert"]').text()).toContain('账户或存储配置已变化');
+    expect(wrapper.get('[data-testid="files-storage-settings"]').attributes('disabled')).toBeUndefined();
     identity.value = 'identity-b-hydrated';
     await flushPromises();
     await ready(wrapper);

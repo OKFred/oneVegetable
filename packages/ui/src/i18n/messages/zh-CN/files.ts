@@ -3,6 +3,7 @@ export const files = {
   description: '私有 S3 存储中的文件和目录，与阿里巴巴授权无关。',
   unconfigured: '尚未配置 S3 存储。请先在设置中配置私有存储。',
   settings: '配置 S3 存储',
+  storageSettings: 'S3 设置',
   unavailable: '当前运行环境尚未提供文件存储服务。',
   loading: '正在读取目录…',
   refresh: '刷新当前页',

@@ -61,6 +61,7 @@ import { notifyGatewayConfigurationChanged } from '../lib/gateway-configuration-
 import { openAlibabaAuthorizationTool } from '../lib/alibaba-authorization-tool';
 import { CREDENTIAL_VAULT_CHANGED_EVENT } from '../lib/credential-vault-events';
 import { formatDateTime } from '../lib/date-time';
+import { parseAppHash } from '../lib/hash-router';
 
 const {
   settings,
@@ -96,8 +97,15 @@ const dualSettings = computed(
     authorizationSummary.value !== null &&
     typeof settings.loadAuthorization === 'function'
 );
-const activeSection = ref('credentials');
-const visitedSections = ref(new Set(['credentials']));
+const initialRoute = parseAppHash(globalThis.location.hash);
+const activeSection = ref(
+  initialRoute?.page === 'settings' &&
+    initialRoute.segments[0] === 'storage' &&
+    ((mode === 'bff' && control) || s3Storage)
+    ? 'storage'
+    : 'credentials'
+);
+const visitedSections = ref(new Set(['credentials', activeSection.value]));
 function activateSection(section: string): void {
   visitedSections.value.add(section);
   activeSection.value = section;

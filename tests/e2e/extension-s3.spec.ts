@@ -34,10 +34,14 @@ test('MV3 stores S3 encrypted, restores after worker shutdown and rejects non-op
     const navigation = page.locator('aside nav');
     await expect(navigation.locator('a[href="#/files"]')).toHaveCount(0);
     await expect(navigation.locator('a[href="#/photos"]')).toHaveAttribute('aria-current', 'page');
-    await expect(page.getByRole('link', { name: '配置 S3 存储', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: '配置 S3 存储', exact: true })).toHaveAttribute(
+      'href',
+      '#/settings/storage'
+    );
     await expect(page.getByTestId('files-upload')).toHaveCount(0);
-    await page.goto(`chrome-extension://${id}/options.html#/settings`);
-    await page.getByRole('button', { name: 'S3 素材存储', exact: true }).click();
+    await page.getByTestId('files-storage-settings').click();
+    await expect(page).toHaveURL(/#\/settings\/storage$/u);
+    await expect(page.locator('#settings-credentials')).toBeHidden();
     await expect(page.getByRole('heading', { name: 'S3 素材存储', exact: true })).toBeVisible();
     // Uses an already-granted origin but performs NO network request. Permission UI is covered separately.
     const configuration = { ...fixture.configuration, endpoint: 'https://eco.taobao.com' };

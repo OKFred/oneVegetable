@@ -224,6 +224,18 @@ afterEach(async () => {
 });
 
 describe('SettingsView diagnostics', () => {
+  it('keeps credentials visible for a storage deep link when the runtime has no S3 settings', async () => {
+    const previousUrl = globalThis.location.href;
+    globalThis.history.replaceState(null, '', '#/settings/storage');
+    try {
+      const wrapper = mountView();
+      await flushPromises();
+      expect(wrapper.get('#settings-credentials').isVisible()).toBe(true);
+      expect(wrapper.find('#settings-storage').exists()).toBe(false);
+    } finally {
+      globalThis.history.replaceState(null, '', previousUrl);
+    }
+  });
   it('shows authorization skeletons while local settings are pending, without showing setup as ready', async () => {
     let resolve!: (settings: GatewaySettings) => void;
     const pending = new Promise<GatewaySettings>((done) => {

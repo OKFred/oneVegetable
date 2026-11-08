@@ -3,6 +3,7 @@ export const files = {
   description: 'Files and folders in private S3 storage. No Alibaba authorization required.',
   unconfigured: 'S3 storage is not configured. Configure private storage in Settings first.',
   settings: 'Configure S3 storage',
+  storageSettings: 'S3 settings',
   unavailable: 'File storage is not available in this runtime.',
   loading: 'Reading directory…',
   refresh: 'Refresh current page',
