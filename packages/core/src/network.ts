@@ -1,6 +1,6 @@
 import { GatewayException, withGatewayRequestId } from './errors';
 
-export type NetworkServiceId = 'alibaba' | 'bff' | 'external-photo' | 'meta' | 's3';
+export type NetworkServiceId = 'alibaba' | 'bff' | 'external-photo' | 'meta' | 's3' | 'shipping-quote';
 export type NetworkResponseType = 'json' | 'text' | 'bytes';
 
 export interface NetworkTransport {

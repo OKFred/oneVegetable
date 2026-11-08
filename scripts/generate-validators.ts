@@ -78,6 +78,20 @@ const domains: CapabilityDomain[] = [
 ];
 const targets = new Map<string, string>();
 targets.set(
+  'validators-shipping-services.ts',
+  compileValidators(
+    Object.fromEntries(
+      [
+        'ShippingServicesRequest',
+        'ShippingShipment',
+        'ShippingProviderConfigurationSummary',
+        'ShippingQuoteResult'
+      ].map((name) => [`validate${name}`, schemas[name]])
+    ),
+    'fast'
+  )
+);
+targets.set(
   'validators-templates.ts',
   compileValidators(
     Object.fromEntries(

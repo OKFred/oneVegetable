@@ -1,5 +1,6 @@
 import type { ProductMaintenanceControl } from './product-maintenance-control';
 import type { OrderAttachmentControl } from './order-attachments';
+import type { ShippingServicesControl } from './shipping-services';
 import { isOrderAttachmentReceipt } from './order-attachment-receipt';
 import type { ProductMaintenanceServiceResult } from './product-maintenance-service';
 import { validateVideoUploadResult, type VideoUploadControl, type VideoUploadResult } from './video-upload';
@@ -171,6 +172,7 @@ export interface PageResult<T> {
 }
 
 export interface ControlClient {
+  shippingServices?: ShippingServicesControl;
   orderAttachments?: OrderAttachmentControl;
   backendMeta(): Promise<BackendMeta>;
   session(): Promise<ControlSession>;
@@ -373,6 +375,38 @@ export interface BffControlClientOptions {
 }
 
 export class BffControlClient implements ControlClient {
+  readonly shippingServices: ShippingServicesControl = {
+    configuration: async (provider) => {
+      const { parseShippingConfigurationSummary } = await import('./shipping-services');
+      return parseShippingConfigurationSummary(
+        await this.#call('/admin/shipping-services/configuration', { provider })
+      );
+    },
+    saveConfiguration: async (input) => {
+      const { parseShippingServicesRequest, parseShippingConfigurationSummary } =
+        await import('./shipping-services');
+      const request = parseShippingServicesRequest({
+        ...input,
+        action: 'save',
+        requestId: createRequestId()
+      });
+      const { action: _action, ...body } = request;
+      return parseShippingConfigurationSummary(await this.#call('/admin/shipping-services/save', body));
+    },
+    clearConfiguration: async (provider, expectedRevision) => {
+      await this.#call('/admin/shipping-services/clear', { provider, expectedRevision });
+    },
+    quote: async (input) => {
+      const { parseShippingServicesRequest, parseShippingQuoteResult, shippingServicesFail } =
+        await import('./shipping-services');
+      parseShippingServicesRequest({ ...input, action: 'quote' });
+      const result = parseShippingQuoteResult(
+        await this.#call('/admin/shipping-services/quote', { ...input })
+      );
+      if (result.requestId !== input.requestId) shippingServicesFail('SHIPPING_QUOTE_RESPONSE_INVALID');
+      return result;
+    }
+  };
   readonly orderAttachments: OrderAttachmentControl = {
     upload: async (input) => {
       const result = await this.#call('/order-attachments/upload', input);

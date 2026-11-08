@@ -1,0 +1,36 @@
+{
+  "requestId": "fixture-provider-request",
+  "origin": {
+    "type": "address",
+    "countryCode": "CN",
+    "city": "Shenzhen"
+  },
+  "destination": {
+    "type": "address",
+    "countryCode": "US",
+    "city": "Los Angeles"
+  },
+  "load": {
+    "packagingType": "boxes",
+    "quantity": 2,
+    "totalWeight": {
+      "value": 20,
+      "unit": "kg"
+    }
+  },
+  "searchUrl": "https://ship.freightos.com/results/fixture-cn-export",
+  "modes": [
+    {
+      "mode": "LCL",
+      "averagePrice": {
+        "value": 394.43,
+        "currency": "USD"
+      },
+      "averageTransitTime": {
+        "from": 17,
+        "to": 25,
+        "unit": "days"
+      }
+    }
+  ]
+}

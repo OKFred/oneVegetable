@@ -1,0 +1,35 @@
+{
+  "requestId": "a86e78fa-d89f-4b75-9635-e8f58e6f4f91",
+  "provider": "freightos",
+  "expectedRevision": 1,
+  "shipment": {
+    "origin": {
+      "countryCode": "CN",
+      "city": "Shenzhen",
+      "postalCode": "518000",
+      "state": "Guangdong"
+    },
+    "destination": {
+      "countryCode": "US",
+      "city": "Los Angeles",
+      "postalCode": "90001",
+      "state": "CA"
+    },
+    "mode": "lcl",
+    "packaging": "boxes",
+    "quantity": 2,
+    "weightKg": 10,
+    "lengthCm": 40,
+    "widthCm": 30,
+    "heightCm": 25,
+    "description": "Unbranded cotton samples",
+    "hsCode": "",
+    "declaredValue": 100,
+    "currency": "USD",
+    "pickupDate": ""
+  },
+  "consent": {
+    "dataSharing": true,
+    "costAcknowledged": true
+  }
+}

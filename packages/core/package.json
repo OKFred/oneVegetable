@@ -57,6 +57,8 @@
     "./runtime": "./src/runtime.ts",
     "./control-client": "./src/control-client.ts",
     "./s3-storage": "./src/s3-storage.ts",
+    "./shipping-services": "./src/shipping-services.ts",
+    "./shipping-directory": "./src/shipping-directory.ts",
     "./templates": "./src/product-description-template-client.ts",
     "./composite-templates": "./src/composite-template-client.ts",
     "./template-library": "./src/template-library.ts",
