@@ -109,6 +109,8 @@ import {
 import { isTrustedExtensionPageSender } from '../lib/trusted-runtime-sender';
 import { ExtensionS3Service } from '../lib/s3-service';
 import { s3LocalStore } from '../lib/s3-local-store';
+import { ExtensionShippingServicesService } from '../lib/shipping-services-service';
+import { shippingServicesLocalStore } from '../lib/shipping-services-store';
 import { ExtensionVideoUploadRepository } from '../lib/video-upload-repository';
 import { handleVideoUpload } from '../lib/video-upload-service';
 import { handleOrderAttachment } from '../lib/order-attachment-service';
@@ -213,6 +215,9 @@ export default defineBackground({
   type: 'module',
   main() {
     const storageAccessReady = restrictStorageToTrustedContexts();
+    const shippingServices = new ExtensionShippingServicesService(shippingServicesLocalStore, (origins) =>
+      browser.permissions.contains({ origins })
+    );
     browser.runtime.onMessageExternal.addListener((value: unknown, sender, respond) => {
       void storageAccessReady
         .then(() => handlePublicAuthorization(value, sender))
@@ -234,6 +239,7 @@ export default defineBackground({
           await resetIopAuthorization();
           await new ExtensionVideoUploadRepository().clearAll();
           await new ExtensionOrderAttachmentRepository().clearAll();
+          await shippingServices.reset();
           await browser.storage.local.clear();
           await browser.storage.session.clear();
         })
@@ -252,6 +258,11 @@ export default defineBackground({
         return storageAccessReady.then(() => handleAuthorization(value, sender));
       }
       const trustedOptionsPage = isTrustedOptionsPageSender(sender);
+      if (isRecord(value) && value.kind === 'shipping-services-request') {
+        return storageAccessReady.then(() =>
+          serializeVaultOperation(() => shippingServices.handle(value, trustedOptionsPage))
+        );
+      }
       if (isRecord(value) && value.kind === 'order-attachment-request') {
         return storageAccessReady.then(() =>
           serializeVaultOperation(() =>

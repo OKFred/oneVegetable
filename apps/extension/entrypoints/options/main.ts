@@ -96,6 +96,8 @@ import { extensionS3Storage, requestS3 } from '../../lib/s3-client';
 import { EXTENSION_S3_STORAGE_KEY } from '../../lib/s3-protocol';
 import { requestVideoUpload } from '../../lib/video-upload-client';
 import { extensionOrderAttachments } from '../../lib/order-attachment-client';
+import { extensionShippingServices } from '../../lib/shipping-services-client';
+import { EXTENSION_SHIPPING_SERVICES_STORAGE_KEY } from '../../lib/shipping-services-protocol';
 import { requestProductMaintenance } from '../../lib/product-maintenance-client';
 import { extensionTemplates, inspectLocalTemplates, resetLocalTemplates } from '../../lib/template-client';
 
@@ -537,6 +539,7 @@ const localData: LocalDataRepository = {
           key !== EXTENSION_PRODUCT_MUTATION_JOBS_STORAGE_KEY &&
           key !== EXTENSION_SOCIAL_BACKEND_STORAGE_KEY &&
           key !== EXTENSION_S3_STORAGE_KEY &&
+          key !== EXTENSION_SHIPPING_SERVICES_STORAGE_KEY &&
           key !== IOP_VAULT_KEY &&
           key !== IOP_RECEIPT_KEY &&
           key !== IOP_SESSION_KEY &&
@@ -573,10 +576,12 @@ const localData: LocalDataRepository = {
         storage: 'chrome.storage.local',
         itemCount:
           Number(SETTINGS_STORAGE_KEY in local) +
+          Number(EXTENSION_SHIPPING_SERVICES_STORAGE_KEY in local) +
           Number(IOP_VAULT_KEY in local) +
           Number(TOP_VAULT_KEY in local),
         approximateBytes: approximateStorageBytes({
           settings: local[SETTINGS_STORAGE_KEY],
+          shippingServices: local[EXTENSION_SHIPPING_SERVICES_STORAGE_KEY],
           recovery: local[CREDENTIAL_VAULT_SESSION_STORAGE_KEY],
           deviceRecovery: local[DEVICE_PROTECTION_KEY],
           iop: local[IOP_VAULT_KEY],
@@ -987,6 +992,7 @@ async function mountOptionsApp(): Promise<void> {
     gateway,
     settings,
     s3Storage: extensionS3Storage,
+    shippingServices: extensionShippingServices,
     videoUploads: { videoUpload: requestVideoUpload },
     orderAttachments: extensionOrderAttachments,
     productMaintenance: { productMaintenance: requestProductMaintenance },
