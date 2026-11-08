@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: 2026-11-06
-Applicable version: 2.23.0
+Effective date: 2026-11-09
+Applicable version: 2.25.0
 
 ## Independent third-party notice
 
@@ -10,6 +10,14 @@ oneVegetable is an independently developed third-party tool and is not affiliate
 ## Single purpose
 
 oneVegetable is a user-operated local Alibaba.com operations workspace for managing products, assets (Photo Bank and videos), RFQs, trades, international logistics, related Open Platform capabilities, and user-selected gallery media published to business social accounts connected by the user. The extension does not provide advertising, tracking, or data services unrelated to this purpose.
+
+### Third-party shipping services
+
+The shipping directory filters locally without contacting providers. Official links open fixed pages without adding route or personal information. These are independent third-party services, not transportation provided or endorsed by Alibaba.com or oneVegetable.
+
+Optional Freightos estimates require the user's provider API key and explicit data-sharing and potential-fee confirmation for each query. Requests contain origin/destination country, city, region, postal code, transport mode, package type/count, per-piece weight/dimensions, optional pickup date/value and currency, never buyer contacts, Alibaba credentials or product/order content. Provider terms govern processing, records and fees. A local attempt ceiling is not a provider billing cap. Returned figures are market estimates, not a booking or carriage commitment.
+
+The extension encrypts separate provider credentials in trusted local storage with a non-exportable device key in IndexedDB, not Chrome sync, without a new passphrase. A copied or compromised browser profile can still access this material. Web encrypts credentials in the self-hosted backend with administrator-only configuration and queries. Forms and estimates stay in page memory; storage retains only request identifiers, configuration revision, time and status for duplicate-query protection and conservative attempt accounting, never addresses, plaintext keys or complete replies. Clearing provider configuration removes its credentials but retains safety attempt records to prevent duplicate requests or limit resets; clearing all local data removes related extension records. There is no background quoting, automatic retry, booking or payment.
 
 ### Optional S3 asset transfers
 

@@ -4,6 +4,64 @@ export const RELEASE_NOTES_DOCUMENT = {
   repositoryUrl: 'https://github.com/OKFred/oneVegetable',
   releases: [
     {
+      version: '2.25.0',
+      releasedAt: '2026-11-09',
+      title: {
+        'zh-CN': '中国始发物流服务',
+        'en-US': 'Shipping services from mainland China'
+      },
+      summary: {
+        'zh-CN':
+          '国际物流新增独立服务商目录与可选 Freightos 市场估价，优先中国大陆出口；询价须自行配置服务商账号并确认数据发送和费用，不自动下单或付款。',
+        'en-US':
+          'Discover shipping providers for mainland China exports and optionally request Freightos market estimates with your own account, explicit data sharing and fee confirmation. No automatic booking or payment.'
+      },
+      source: 'release',
+      githubUrl: 'https://github.com/OKFred/oneVegetable/releases/tag/v2.25.0',
+      compareUrl: 'https://github.com/OKFred/oneVegetable/compare/v2.24.0...v2.25.0',
+      changes: [
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '按出口方式查找官网询价入口',
+            'en-US': 'Find provider websites by export mode'
+          },
+          description: {
+            'zh-CN':
+              '在国际物流新增“物流服务”页签，覆盖中国大陆始发的国际快递、小包、空运及海运拼箱/整柜候选，支持中英文检索。名单本地筛选，标明信息来源和线路待确认，不要求 TOP、IOP 或一达通资格，也不在外链中发送地址。',
+            'en-US':
+              'A new Shipping services tab lists mainland China-origin express, parcel, air and LCL/FCL candidates with bilingual search, official sources and route-coverage caveats. Filtering is local and needs no TOP, IOP or OneTouch permission; website links carry no route data.'
+          }
+        },
+        {
+          type: 'feature',
+          title: {
+            'zh-CN': '用户主动授权的第三方市场估价',
+            'en-US': 'Explicitly authorized third-party market estimates'
+          },
+          description: {
+            'zh-CN':
+              '使用用户自己的 Freightos API Key，逐次确认发送字段和潜在费用后查询；密钥加密、按配置版本校验、发送前记录尝试并阻止同一请求重复发送。市场估价不冒充可下单报价；缺少结果不显示为零。服务商账号、线路权限与收费规则仍须自行开通及核实。',
+            'en-US':
+              'Use your own Freightos API key and confirm transmitted fields and possible fees for every query. Credentials are encrypted, revisions are checked and attempts are recorded before dispatch to prevent duplicate sends. Market estimates are not bookable quotes and missing values are never shown as zero. Provider accounts, route permissions and billing must be arranged and checked separately.'
+          }
+        },
+        {
+          type: 'security',
+          title: {
+            'zh-CN': '保留费用、隐私与协议边界',
+            'en-US': 'Keep billing, privacy and protocol boundaries'
+          },
+          description: {
+            'zh-CN':
+              'Web、Worker 与独立插件共用请求校验和报价适配，不复用阿里凭据，不后台询价、不自动重试、下单或付款。插件仅在用户操作时申请 Freightos 精确域名；当前 Easyship 官方范围未列中国大陆始发，因此未开放其 API，也不会替换为香港始发。',
+            'en-US':
+              'Web, Worker and the standalone extension share request validation and adapters without Alibaba credentials, background quotes, automatic retries, bookings or payments. The extension requests only the exact Freightos host on user action. Easyship API quoting stays disabled because current official origin coverage does not list mainland China; the app never substitutes Hong Kong.'
+          }
+        }
+      ]
+    },
+    {
       version: '2.24.0',
       releasedAt: '2026-11-07',
       title: {
