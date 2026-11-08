@@ -32,13 +32,20 @@ import { useServices } from '../lib/services';
 import type { DataColumn } from '../lib/table';
 import { useUnsavedEditing } from '../lib/unsaved-editing';
 
-type Workspace = 'quote' | 'orders' | 'addresses' | 'draft' | 'packing';
+type Workspace = 'quote' | 'orders' | 'addresses' | 'draft' | 'packing' | 'shipping-services';
 const PackingWorkspace = defineAsyncContent(() => import('../components/PackingWorkspace.vue'));
+const ShippingServicesWorkspace = defineAsyncContent(
+  () => import('../components/ShippingServicesWorkspace.vue')
+);
 
 const { gateway } = useServices();
 const { t } = useUiI18n();
 const workspace = ref<Workspace>('quote');
 const packingVisited = ref(false);
+const shippingServicesVisited = ref(false);
+const alibabaWorkspace = computed(
+  () => workspace.value !== 'packing' && workspace.value !== 'shipping-services'
+);
 const logisticsOperations = useOperationAvailability(
   [
     'listLogisticsAddressNodes',
@@ -50,7 +57,7 @@ const logisticsOperations = useOperationAvailability(
     'listShippingTemplates',
     'createLogisticsOrder'
   ],
-  { enabled: computed(() => workspace.value !== 'packing') }
+  { enabled: alibabaWorkspace }
 );
 const quoteBlocked = computed(() => !logisticsOperations.isAllowed('calculateLogisticsQuote'));
 const ordersBlocked = computed(() => !logisticsOperations.isAllowed('listLogisticsOrders'));
@@ -174,6 +181,7 @@ async function setWorkspace(value: Workspace): Promise<void> {
   }
   workspace.value = value;
   if (value === 'packing') packingVisited.value = true;
+  if (value === 'shipping-services') shippingServicesVisited.value = true;
 }
 
 const logisticsProducts = useQuery({
@@ -410,13 +418,14 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
   { id: 'orders', label: t('logistics.workspaces.orders') },
   { id: 'addresses', label: t('logistics.workspaces.addresses') },
   { id: 'draft', label: t('logistics.workspaces.draft') },
-  { id: 'packing', label: t('logistics.workspaces.packing') }
+  { id: 'packing', label: t('logistics.workspaces.packing') },
+  { id: 'shipping-services', label: t('logistics.workspaces.shippingServices') }
 ]);
 </script>
 
 <template>
   <PageHeader :title="t('logistics.title')" :description="t('logistics.description')" />
-  <ProductReferenceTools v-if="workspace !== 'packing'" kind="shipping" class="mb-4" />
+  <ProductReferenceTools v-if="alibabaWorkspace" kind="shipping" class="mb-4" />
 
   <div class="mb-4 flex flex-wrap gap-2" :aria-label="t('logistics.workspaceLabel')">
     <Button
@@ -435,6 +444,11 @@ const workspaces = computed<{ id: Workspace; label: string }[]>(() => [
     v-if="packingVisited"
     v-show="workspace === 'packing'"
     :active="workspace === 'packing'"
+  />
+  <ShippingServicesWorkspace
+    v-if="shippingServicesVisited"
+    v-show="workspace === 'shipping-services'"
+    :active="workspace === 'shipping-services'"
   />
 
   <template v-if="workspace === 'quote'">

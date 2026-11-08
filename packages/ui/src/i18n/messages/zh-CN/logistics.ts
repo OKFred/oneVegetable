@@ -10,7 +10,8 @@ export const logistics = {
     orders: '物流订单',
     addresses: '地址与模板',
     draft: '下单草稿',
-    packing: '装箱预览'
+    packing: '装箱预览',
+    shippingServices: '物流服务'
   },
   packing: {
     localOnly: '本地几何估算，不调用平台接口；输入仅保留在当前物流页面。',

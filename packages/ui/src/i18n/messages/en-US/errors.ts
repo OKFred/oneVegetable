@@ -3,6 +3,46 @@ const authorizationChanged =
 
 export const errors = {
   codes: {
+    SHIPPING_REQUEST_INVALID: 'Check the route, packaging and input format.',
+    SHIPPING_CREDENTIAL_INVALID: 'Enter the provider-issued API key, not Alibaba credentials.',
+    SHIPPING_CONSENT_REQUIRED: 'Confirm data sharing and possible API fees before continuing.',
+    SHIPPING_MAINLAND_ORIGIN_REQUIRED: 'This release supports mainland China origins only.',
+    SHIPPING_EXPORT_DESTINATION_REQUIRED: 'Choose a destination outside mainland China.',
+    SHIPPING_MODE_UNAVAILABLE:
+      'API estimates are unavailable for this mode. Inquire on the provider website.',
+    SHIPPING_PACKAGING_INVALID:
+      'Check packaging: loose cargo needs per-piece weight and dimensions; containers must not include dimensions.',
+    SHIPPING_PICKUP_DATE_INVALID: 'Choose a valid pickup date that is not in the past.',
+    SHIPPING_RESPONSE_INVALID: 'The provider configuration response is invalid. Reopen the panel.',
+    SHIPPING_QUOTE_RESPONSE_INVALID: 'The provider response could not be verified. Nothing was retried.',
+    SHIPPING_PROVIDER_AUTH_REQUIRED: 'Check the provider API key, account permissions and plan.',
+    SHIPPING_PROVIDER_RATE_LIMIT:
+      'The provider rate or quota limit was reached. Check the provider dashboard.',
+    SHIPPING_QUOTE_REJECTED: 'The provider rejected this query. Check the route and cargo requirements.',
+    SHIPPING_QUOTE_PROVIDER_UNAVAILABLE:
+      'The provider is unavailable or has no rates for this lane. Nothing was retried.',
+    SHIPPING_QUOTE_OUTCOME_UNKNOWN:
+      'The result is unknown and may have consumed allowance or incurred fees. Check provider records before submitting again.',
+    SHIPPING_CONFIGURATION_CHANGED: 'The configuration changed. Reload and review it before quoting.',
+    SHIPPING_CONFIGURATION_UNREADABLE: 'Saved provider credentials cannot be read. Configure them again.',
+    SHIPPING_CREDENTIAL_ENCRYPTION_KEY_INVALID:
+      'Provider credential encryption is unavailable. Contact the workbench administrator.',
+    SHIPPING_CREDENTIAL_REQUIRED: 'Configure your provider API key and confirm permissions and fees first.',
+    SHIPPING_LOCAL_DAILY_LIMIT:
+      "This workbench reached its daily query limit. This is not the provider's remaining allowance.",
+    SHIPPING_DAILY_ATTEMPT_LIMIT:
+      "This workbench reached its daily query limit. This is not the provider's remaining allowance.",
+    SHIPPING_QUOTE_ALREADY_SENT:
+      'This query was already sent or needs verification. It will not be sent again.',
+    SHIPPING_QUOTE_IN_PROGRESS: 'A query is already running. Wait instead of submitting again.',
+    SHIPPING_PERMISSION_REQUIRED: 'Allow the extension to access this provider, or inquire on its website.',
+    SHIPPING_OWNER_REQUIRED: 'Sign in with an administrator account.',
+    SHIPPING_UNTRUSTED_SENDER: 'Use shipping services from the extension workbench.',
+    SHIPPING_SERVICES_UNAVAILABLE:
+      'Third-party API quoting is unavailable here. Provider website links still work.',
+    SHIPPING_REQUEST_TOO_LARGE: 'The query is too large. Reduce the input and try again.',
+    SHIPPING_RUNTIME_FAILED: 'The quote did not complete. Check configuration or provider records.',
+    SHIPPING_SERVICES_FAILED: 'The quote did not complete. Check configuration or provider records.',
     FULFILLMENT_CONTEXT_CHANGED: 'The account or authorization changed. Run the query again.',
     FULFILLMENT_READ_RESPONSE_INVALID:
       'The platform returned incomplete fulfillment data. Try checking again later.',

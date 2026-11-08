@@ -23,6 +23,7 @@ import type { S3StorageControl } from '@one-vegetable/core/s3-storage';
 import type { VideoUploadControl } from '@one-vegetable/core/video-upload';
 import type { ProductMaintenanceControl } from '@one-vegetable/core/product-maintenance-control';
 import type { OrderAttachmentControl } from '@one-vegetable/core/order-attachments';
+import type { ShippingServicesControl } from '@one-vegetable/core/shipping-services';
 
 export interface AppRuntimeState {
   backendMeta: BackendMeta | null;
@@ -44,6 +45,7 @@ export interface AppServices {
   videoUploads?: VideoUploadControl;
   productMaintenance?: ProductMaintenanceControl;
   orderAttachments?: OrderAttachmentControl;
+  shippingServices?: ShippingServicesControl;
   socialPublishing?: SocialPublishingClient;
   extensionSocialBackend?: ExtensionSocialBackendRepository;
   productDescriptionTemplates?: ProductDescriptionTemplateClient;

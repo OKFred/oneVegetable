@@ -12,7 +12,8 @@ export const logistics = {
     orders: 'Logistics orders',
     addresses: 'Addresses and templates',
     draft: 'Order draft',
-    packing: 'Packing preview'
+    packing: 'Packing preview',
+    shippingServices: 'Shipping services'
   },
   packing: {
     localOnly: 'Local geometric estimate; no platform requests. Inputs stay only on this logistics page.',
