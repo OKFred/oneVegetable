@@ -71,7 +71,7 @@ describe('AuthService', () => {
     ).rejects.toMatchObject({ code: 'BOOTSTRAP_ALREADY_COMPLETED' });
   });
 
-  it('extends the four-hour idle window without exceeding the one-day absolute lifetime', async () => {
+  it('keeps login valid for seven days without activity and never slides past that deadline', async () => {
     const { service, setNow, now } = fixture();
     const startedAt = now();
     const result = await service.bootstrap({
@@ -81,8 +81,10 @@ describe('AuthService', () => {
       password: 'correct-password-value'
     });
 
-    for (let hour = 1; hour < 24; hour += 1) {
-      setNow(startedAt + hour * 60 * 60 * 1000);
+    expect(SESSION_ABSOLUTE_MILLISECONDS).toBe(604_800_000);
+    expect(SESSION_IDLE_MILLISECONDS).toBe(604_800_000);
+    for (const elapsed of [6 * 24 * 60 * 60 * 1000, 604_800_000 - 1]) {
+      setNow(startedAt + elapsed);
       const active = await service.authenticate(result.sessionToken);
       expect(active.session.idleExpiresTimeUtc).toBe(
         Math.min(now() + SESSION_IDLE_MILLISECONDS, startedAt + SESSION_ABSOLUTE_MILLISECONDS)

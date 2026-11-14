@@ -224,8 +224,8 @@ describe('authentication and ABAC routes', () => {
     expect(cookies).toContain('ov_csrf=');
     expect(setCookies.find((cookie) => cookie.startsWith('ov_session='))).toContain('Path=/api/v1');
     expect(setCookies.find((cookie) => cookie.startsWith('ov_csrf='))).toContain('Path=/');
-    expect(setCookies.find((cookie) => cookie.startsWith('ov_session='))).toContain('Max-Age=86400');
-    expect(setCookies.find((cookie) => cookie.startsWith('ov_csrf='))).toContain('Max-Age=86400');
+    expect(setCookies.find((cookie) => cookie.startsWith('ov_session='))).toContain('Max-Age=604800');
+    expect(setCookies.find((cookie) => cookie.startsWith('ov_csrf='))).toContain('Max-Age=604800');
     expect(JSON.stringify(await response.json())).not.toContain('password');
   });
 
