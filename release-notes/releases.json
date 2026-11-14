@@ -3,6 +3,36 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.26.0",
+      "releasedAt": "2026-11-14",
+      "title": { "zh-CN": "装箱方案复用", "en-US": "Reusable packing plans" },
+      "summary": {
+        "zh-CN": "装箱预览支持显式保存本机方案与 JSON 导入导出，网页版新登录会话有效期为 7 天。",
+        "en-US": "Explicitly save local packing plans and import or export JSON. New web login sessions last seven days."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.26.0",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.25.0...v2.26.0",
+      "changes": [
+        {
+          "type": "feature",
+          "title": { "zh-CN": "保存、打开及分享装箱方案", "en-US": "Save, open and share packing inputs" },
+          "description": {
+            "zh-CN": "最多显式保存 20 份本机方案，支持版本化 JSON 导入导出、尺寸与件数校验、同名覆盖及替换确认。仅保存输入，打开后重新生成预览；不自动恢复未保存编辑，不需要 TOP/IOP，不发起平台请求。",
+            "en-US": "Explicitly save up to 20 plans in this browser, with versioned JSON import/export, validated dimensions and counts, and replacement confirmations. Only inputs persist; generate a new preview after opening. Unsaved edits are not restored, and no TOP/IOP authorization or platform request is needed."
+          }
+        },
+        {
+          "type": "improvement",
+          "title": { "zh-CN": "网页版登录保持 7 天", "en-US": "Seven-day web sessions" },
+          "description": {
+            "zh-CN": "新登录的密码和 Passkey 会话最长保持 7 天，不因 4 小时空闲提前失效。Cookie 同步期限并保留原有安全属性，旧会话不批量延期；不改变 Alibaba Token、插件保护或设备令牌。",
+            "en-US": "New password and Passkey logins remain valid for up to seven days without the former four-hour idle cutoff. Cookies use the same lifetime with existing security attributes; older sessions keep their original deadline. Alibaba tokens, extension protection and device tokens are unchanged."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.25.0",
       "releasedAt": "2026-11-09",
       "title": { "zh-CN": "中国始发物流服务", "en-US": "Shipping services from mainland China" },

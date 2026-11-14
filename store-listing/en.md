@@ -4,7 +4,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
-Version 2.24.0 adds local 3D packing previews to international logistics, with container and outer-package dimensions, rotation, zoom, highlighting and statistics. No TOP/IOP authorization or platform request is required. Built-in templates can now be edited, deleted (archived) and restored, stored locally in the extension or shared within the existing Web backend scope, without automatically changing products. No extension permission or platform mutation is added. Packing is a geometric estimate only: load limits, center of gravity, cushioning and loading access are excluded, and optimal packing or transport safety is not guaranteed.
+Version 2.26.0 adds explicit saving of up to 20 browser-local packing plans and JSON import/export. Replacements and deletions require confirmation; generate a fresh preview after opening. Unsaved edits are not automatically restored. No TOP/IOP authorization, new extension permission or platform mutation is added. New companion self-hosted web login sessions last seven days. Packing remains a geometric estimate, not an optimal-packing or transport-safety guarantee.
 
 Known limitations: the checked authorizations still encounter IOP photo-group scope errors, video business rejections and TOP supplier upstream errors. Restrictions stay explicit and real failures never fall back to simulated results.
 
@@ -12,7 +12,8 @@ New users should start with IOP; merchants with an existing legacy application c
 
 Key features (subject to the selected protocol and account permissions):
 
-- Preview a single box or container in 3D for up to 20 cargo types and 500 outer packages, with optional rotation and side placement. Enter dimensions in cm and review packed/unpacked counts, volumes and utilization. Inputs stay on the current logistics page only and clear on leaving or refreshing;
+- Preview a single box or container in 3D for up to 20 cargo types and 500 outer packages, with optional rotation and side placement. Enter dimensions in cm and review packed/unpacked counts, volumes and utilization. Unsaved inputs clear on leaving. Explicitly saved plans can be opened, deleted or exchanged as JSON, without account binding or cloud sync.
+- Find official shipping websites serving mainland China origins. Optional Freightos market estimates require your own API key and confirmation of data sharing and potential fees for each request; no background quotes, booking or payment.
 - Review authorization time remaining in Overview: yellow below half of the current lifetime and red below one quarter or after expiry. Unknown expiry is never guessed, and display changes never automatically renew a token.
 - Visually edit Schema-based products and standard descriptions, choosing category-supported direct-order or inquiry/custom types when creating a product.
 - Assess selected current-page products, open relevant editor fields from suggestions, retain results on return and explicitly recheck scores. Assessments are read-only and never automatically submit product changes.

@@ -1,7 +1,7 @@
 # oneVegetable Privacy Policy
 
-Effective date: 2026-11-09
-Applicable version: 2.25.0
+Effective date: 2026-11-14
+Applicable version: 2.26.0
 
 ## Independent third-party notice
 
@@ -10,6 +10,10 @@ oneVegetable is an independently developed third-party tool and is not affiliate
 ## Single purpose
 
 oneVegetable is a user-operated local Alibaba.com operations workspace for managing products, assets (Photo Bank and videos), RFQs, trades, international logistics, related Open Platform capabilities, and user-selected gallery media published to business social accounts connected by the user. The extension does not provide advertising, tracking, or data services unrelated to this purpose.
+
+### Local packing plans
+
+Packing calculations remain browser-only. Only when you explicitly save a plan are its name, container/package dimensions, quantities, rotation options and save time stored in this browser's localStorage. Up to 20 plans are retained until you delete them or clear local data; they are not account-bound or cloud-synchronized. Unsaved edits and computed placements are not persisted. JSON import/export is local and includes plan inputs, not credentials or platform data. Exported files are plaintext: review names and dimensions before sharing them.
 
 ### Third-party shipping services
 
