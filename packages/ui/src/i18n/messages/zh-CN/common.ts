@@ -75,6 +75,7 @@ export const common = {
     close: '关闭',
     confirm: '确认',
     save: '保存',
+    delete: '删除',
     loading: '正在加载…',
     retry: '重新加载',
     processing: '正在处理…',

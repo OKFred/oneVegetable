@@ -4,7 +4,7 @@ oneVegetable is a local operations workspace for Alibaba.com international selle
 
 oneVegetable is an independently developed third-party tool and is not affiliated with, endorsed by, sponsored by, or officially associated with Alibaba.com or its affiliates. Before use, read and follow the Alibaba.com platform rules and any rules applicable to your business.
 
-Version 2.26.0 adds explicit saving of up to 20 browser-local packing plans and JSON import/export. Replacements and deletions require confirmation; generate a fresh preview after opening. Unsaved edits are not automatically restored. No TOP/IOP authorization, new extension permission or platform mutation is added. New companion self-hosted web login sessions last seven days. Packing remains a geometric estimate, not an optimal-packing or transport-safety guarantee.
+Version 2.26.1 adds explicit saving of up to 20 browser-local packing plans and JSON import/export, with corrected Chinese and English delete-button labels. Replacements and deletions require confirmation; generate a fresh preview after opening. Unsaved edits are not automatically restored. No TOP/IOP authorization, new extension permission or platform mutation is added. New companion self-hosted web login sessions last seven days. Packing remains a geometric estimate, not an optimal-packing or transport-safety guarantee.
 
 Known limitations: the checked authorizations still encounter IOP photo-group scope errors, video business rejections and TOP supplier upstream errors. Restrictions stay explicit and real failures never fall back to simulated results.
 

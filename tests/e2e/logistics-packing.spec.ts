@@ -166,7 +166,9 @@ async function exercisePacking(page: Page, testInfo: TestInfo, prefix: string): 
   await expect(page.getByTestId('packing-packed')).toHaveText('20');
   await capture(page, testInfo, prefix + '-reused-plan.png');
   await page.getByTestId('packing-plan-open').click();
-  await page.getByRole('button', { name: '删除方案 Packing example', exact: true }).click();
+  const removePlan = page.getByRole('button', { name: '删除方案 Packing example', exact: true });
+  await expect(removePlan).toHaveText('删除');
+  await removePlan.click();
   await page
     .getByRole('dialog', { name: '删除本机方案？', exact: true })
     .getByRole('button', { name: '确认', exact: true })

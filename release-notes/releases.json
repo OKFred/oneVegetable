@@ -3,6 +3,31 @@
   "repositoryUrl": "https://github.com/OKFred/oneVegetable",
   "releases": [
     {
+      "version": "2.26.1",
+      "releasedAt": "2026-11-14",
+      "title": { "zh-CN": "装箱方案文案修复", "en-US": "Packing plan label fix" },
+      "summary": {
+        "zh-CN": "保留装箱方案保存、JSON 导入导出和网页版 7 天登录，修复本机方案删除按钮漏翻译。",
+        "en-US": "Keep saved packing plans, JSON exchange and seven-day web sessions, with corrected saved-plan delete labels."
+      },
+      "source": "release",
+      "githubUrl": "https://github.com/OKFred/oneVegetable/releases/tag/v2.26.1",
+      "compareUrl": "https://github.com/OKFred/oneVegetable/compare/v2.26.0...v2.26.1",
+      "changes": [
+        {
+          "type": "fix",
+          "title": {
+            "zh-CN": "本机方案删除按钮显示完整文案",
+            "en-US": "Translate saved-plan delete buttons"
+          },
+          "description": {
+            "zh-CN": "中文显示“删除”、英文显示“Delete”，不再显示翻译键；补充实际按钮文案回归。不改变已有方案、导入导出或登录期限。",
+            "en-US": "Show Delete in both supported languages instead of a translation key, with actual button-text regression checks. Saved inputs, JSON exchange and session lifetimes are unchanged."
+          }
+        }
+      ]
+    },
+    {
       "version": "2.26.0",
       "releasedAt": "2026-11-14",
       "title": { "zh-CN": "装箱方案复用", "en-US": "Reusable packing plans" },

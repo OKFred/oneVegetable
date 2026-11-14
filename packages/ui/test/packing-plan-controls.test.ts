@@ -71,6 +71,7 @@ describe('packing plan controls', () => {
     wrapper = create(false);
     expect(wrapper.emitted('apply')).toBeUndefined();
     await wrapper.get('[data-testid="packing-plan-open"]').trigger('click');
+    expect(document.querySelector('[aria-label="删除方案 Example"]')?.textContent.trim()).toBe('删除');
     await click('打开');
     expect(wrapper.emitted('apply')?.[0]?.[0]).toEqual(input);
     expect(feedback.info).not.toHaveBeenCalled();
@@ -137,6 +138,7 @@ describe('packing plan controls', () => {
     uiI18n.global.locale.value = 'en-US';
     await wrapper.get('[data-testid="packing-plan-open"]').trigger('click');
     const remove = document.querySelector<HTMLButtonElement>('[aria-label="Delete plan Example"]');
+    expect(remove?.textContent.trim()).toBe('Delete');
     remove?.click();
     await flushPromises();
     expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);

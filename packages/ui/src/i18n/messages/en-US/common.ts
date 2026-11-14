@@ -77,6 +77,7 @@ export const common = {
     close: 'Close',
     confirm: 'Confirm',
     save: 'Save',
+    delete: 'Delete',
     loading: 'Loading…',
     retry: 'Reload',
     processing: 'Processing…',

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "extensionVersion": "2.26.0",
+  "extensionVersion": "2.26.1",
   "singlePurpose": "An independent, user-operated Alibaba.com seller workspace for product and asset management, RFQs, trade and logistics operations, with local reusable templates and packing estimates, documented Open Platform API calls, and sharing selected assets to the user's connected business social account.",
   "category": "productivity",
   "defaultLocale": "zh_CN",
