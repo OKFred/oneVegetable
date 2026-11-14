@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { chromium, expect, test, type Page, type TestInfo } from '@playwright/test';
@@ -110,13 +110,73 @@ async function exercisePacking(page: Page, testInfo: TestInfo, prefix: string): 
   await expect(workspace.getByTestId('packing-container-length')).toHaveValue('60');
   await expect(canvas).toBeVisible();
   await expect.poll(() => draws(page)).toBeGreaterThan(afterHide);
+  await workspace.getByTestId('packing-plan-save').click();
+  const saveDialog = page.getByRole('dialog', { name: '保存方案', exact: true });
+  await saveDialog.getByTestId('packing-plan-name').fill('Packing example');
+  await saveDialog.getByTestId('packing-plan-save-confirm').click();
+  await expect(saveDialog).not.toBeVisible();
+  const downloading = page.waitForEvent('download');
+  await workspace.getByTestId('packing-plan-export').click();
+  const downloaded = await downloading;
+  const filename = await downloaded.path();
+  if (!filename) throw new Error('Plan download unavailable');
+  const exported = JSON.parse(await readFile(filename, 'utf8')) as {
+    kind: string;
+    unit: string;
+    input: { container: { length: number } };
+  };
+  expect(exported.kind).toBe('one-vegetable-packing-plan');
+  expect(exported.unit).toBe('mm');
+  expect(exported.input.container.length).toBe(600);
+  expect(exported).not.toHaveProperty('placements');
+  expect(exported).not.toHaveProperty('result');
   await page.reload();
   await page.getByRole('button', { name: '装箱预览', exact: true }).click();
   await expect(page.getByTestId('packing-container-length')).toHaveValue('');
   await expect(page.getByTestId('packing-packed')).toHaveCount(0);
+  await page.getByTestId('packing-plan-open').click();
+  await page
+    .getByRole('dialog', { name: '本机方案', exact: true })
+    .getByRole('button', { name: '打开', exact: true })
+    .click();
+  await expect(page.getByTestId('packing-container-length')).toHaveValue('60');
+  await expect(page.getByTestId('packing-packed')).toHaveCount(0);
+  await page.getByTestId('packing-generate').click();
+  await expect(page.getByTestId('packing-packed')).toHaveText('20');
+  const incoming = {
+    name: 'plan.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        ...exported,
+        input: { ...exported.input, container: { ...exported.input.container, length: 610 } }
+      })
+    )
+  };
+  await page.getByTestId('packing-plan-file').setInputFiles(incoming);
+  let replace = page.getByRole('dialog', { name: '替换当前输入？', exact: true });
+  await replace.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByTestId('packing-container-length')).toHaveValue('60');
+  await page.getByTestId('packing-plan-file').setInputFiles(incoming);
+  replace = page.getByRole('dialog', { name: '替换当前输入？', exact: true });
+  await replace.getByRole('button', { name: '确认', exact: true }).click();
+  await expect(page.getByTestId('packing-container-length')).toHaveValue('61');
+  await expect(page.getByTestId('packing-packed')).toHaveCount(0);
+  await page.getByTestId('packing-generate').click();
+  await expect(page.getByTestId('packing-packed')).toHaveText('20');
+  await capture(page, testInfo, prefix + '-reused-plan.png');
+  await page.getByTestId('packing-plan-open').click();
+  await page.getByRole('button', { name: '删除方案 Packing example', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '删除本机方案？', exact: true })
+    .getByRole('button', { name: '确认', exact: true })
+    .click();
+  await expect(page.getByRole('dialog', { name: '本机方案', exact: true })).toContainText('暂无保存的方案');
+  await page.keyboard.press('Escape');
 }
 
 test('Web renders and releases local packing without platform calls', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
   const calls: string[] = [];
   await page.route('https://**', (route) => {
     calls.push(new URL(route.request().url()).origin);

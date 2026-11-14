@@ -292,6 +292,8 @@ export const settings = {
   },
   localData: {
     title: '本地数据与隐私',
+    packingPlans: '装箱方案',
+    packingPlansRetention: '最多 20 份，保留到用户删除或清除本地数据；不随账号同步。',
     description: '清单仅含类别和估算大小，不含密钥、Token、草稿或诊断正文。',
     columns: {
       category: '类别',

@@ -27,6 +27,8 @@ import dashboardFixture from '../../../mock/data/dashboard-authorization.json';
 import SettingsView from '../src/views/SettingsView.vue';
 import { uiI18n } from '../src/i18n';
 import LocalDiagnosticsPanel from '../src/components/LocalDiagnosticsPanel.vue';
+import packingInput from '../../../mock/data/logistics/packing-example.json';
+import { createPackingPlan, PACKING_PLANS_STORAGE_KEY, savePackingPlan } from '../src/lib/packing-plans';
 import { provideServices } from '../src/lib/services';
 import {
   installEditingNavigationGuard,
@@ -1096,10 +1098,12 @@ describe('SettingsView diagnostics', () => {
   });
 
   it('requires an exact phrase before clearing all extension data', async () => {
+    savePackingPlan(createPackingPlan('Cleanup test', packingInput));
     const wrapper = mountView('extension', undefined, 'manual', 'node', { logs: true });
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('本地数据与隐私');
       expect(wrapper.text()).toContain('加密开放平台凭证与网关设置');
+      expect(wrapper.text()).toContain('装箱方案');
     });
 
     const clearButton = wrapper.findAll('button').find((candidate) => candidate.text().includes('彻底清除'));
@@ -1114,6 +1118,7 @@ describe('SettingsView diagnostics', () => {
 
     await vi.waitFor(() => {
       expect(clearAllLocalData).toHaveBeenCalledOnce();
+      expect(localStorage.getItem(PACKING_PLANS_STORAGE_KEY)).toBeNull();
       expect(toast.success).toHaveBeenCalledWith('本地数据及额外权限已清除；重载后显示首次使用说明。');
     });
     await vi.waitFor(() => {

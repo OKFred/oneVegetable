@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vu
 import { Box, LoaderCircle, Plus, RotateCcw, Square, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import ConfirmActionDialog from './ConfirmActionDialog.vue';
+import PackingPlanControls from './PackingPlanControls.vue';
 import Button from './ui/Button.vue';
 import Card from './ui/Card.vue';
 import Input from './ui/Input.vue';
@@ -112,34 +113,55 @@ function dimensions(draft: DimensionsDraft): PackingInput['container'] {
   }
   return result;
 }
+function collectInput(): PackingInput {
+  const input: PackingInput = {
+    container: dimensions(container.value),
+    cargo: cargo.value.map((item, index) => {
+      if (!item.name.trim() || item.name.trim().length > 100) {
+        throw new Error(t('logistics.packing.invalidName', { row: index + 1 }));
+      }
+      if (!/^[1-9]\d*$/u.test(item.quantity) || Number(item.quantity) > 500) {
+        throw new Error(t('logistics.packing.invalidQuantity'));
+      }
+      return {
+        id: item.id,
+        name: item.name.trim(),
+        size: dimensions(item),
+        quantity: Number(item.quantity),
+        allowRotation: item.allowRotation
+      };
+    })
+  };
+  if (input.cargo.reduce((sum, item) => sum + item.quantity, 0) > 500) {
+    throw new Error(t('logistics.packing.invalidQuantity'));
+  }
+  validatePackingInput(input);
+  return input;
+}
+function applyPlan(input: PackingInput): void {
+  invalidate();
+  container.value = {
+    length: String(input.container.length / 10),
+    width: String(input.container.width / 10),
+    height: String(input.container.height / 10)
+  };
+  cargo.value = input.cargo.map((item) => ({
+    ...newCargo(),
+    name: item.name,
+    length: String(item.size.length / 10),
+    width: String(item.size.width / 10),
+    height: String(item.size.height / 10),
+    quantity: String(item.quantity),
+    allowRotation: item.allowRotation
+  }));
+}
 function generate(): void {
   if (busy.value || !props.active || !visible.value) return;
   error.value = '';
   preview.value = null;
   let input: PackingInput;
   try {
-    input = {
-      container: dimensions(container.value),
-      cargo: cargo.value.map((item, index) => {
-        if (!item.name.trim() || item.name.trim().length > 100) {
-          throw new Error(t('logistics.packing.invalidName', { row: index + 1 }));
-        }
-        if (!/^[1-9]\d*$/u.test(item.quantity) || Number(item.quantity) > 500) {
-          throw new Error(t('logistics.packing.invalidQuantity'));
-        }
-        return {
-          id: item.id,
-          name: item.name.trim(),
-          size: dimensions(item),
-          quantity: Number(item.quantity),
-          allowRotation: item.allowRotation
-        };
-      })
-    };
-    if (input.cargo.reduce((sum, item) => sum + item.quantity, 0) > 500) {
-      throw new Error(t('logistics.packing.invalidQuantity'));
-    }
-    validatePackingInput(input);
+    input = collectInput();
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : t('logistics.packing.invalidInput');
     return;
@@ -226,6 +248,12 @@ function selectCargo(id: string | null): void {
         </Button>
       </div>
     </div>
+    <PackingPlanControls
+      :active="active"
+      :has-input="hasInput"
+      :read-input="collectInput"
+      @apply="applyPlan"
+    />
     <div class="grid items-start gap-4 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(180px,220px)]">
       <form class="min-w-0 space-y-4" novalidate @submit.prevent="generate">
         <Card class="space-y-4 p-4">

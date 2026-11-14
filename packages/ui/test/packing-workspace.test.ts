@@ -51,6 +51,7 @@ async function start(): Promise<TestWorker> {
   return worker;
 }
 beforeEach(() => {
+  localStorage.clear();
   TestWorker.instances = [];
   sceneDisposed.mockClear();
   vi.stubGlobal('Worker', TestWorker);

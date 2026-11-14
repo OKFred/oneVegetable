@@ -185,12 +185,27 @@ async function refreshLocalData(): Promise<void> {
   dataError.value = null;
   dataInventory.value = null;
   try {
-    dataInventory.value = await localData.inspect();
+    const inventory = await localData.inspect();
+    const { readSavedPackingPlans, PACKING_PLANS_STORAGE_KEY } = await import('../lib/packing-plans');
+    const packingPlans = readSavedPackingPlans();
+    const packingBytes = new TextEncoder().encode(
+      globalThis.localStorage.getItem(PACKING_PLANS_STORAGE_KEY) ?? ''
+    ).length;
+    inventory.categories.push({
+      id: 'packing-plans',
+      label: t('settings.localData.packingPlans'),
+      storage: 'localStorage',
+      itemCount: packingPlans.length,
+      approximateBytes: packingBytes,
+      sensitive: false,
+      retention: t('settings.localData.packingPlansRetention')
+    });
+    inventory.totalApproximateBytes += packingBytes;
     if (galleryTransfers) {
       await galleryTransfers.reload();
       const tasks = galleryTransfers.tasks.value;
       const size = new TextEncoder().encode(JSON.stringify(tasks)).length;
-      dataInventory.value.categories.push({
+      inventory.categories.push({
         id: 'gallery-transfer-tasks',
         label: t('photos.tasks.title'),
         storage: 'IndexedDB',
@@ -199,8 +214,9 @@ async function refreshLocalData(): Promise<void> {
         sensitive: false,
         retention: t('photos.tasks.retention')
       });
-      dataInventory.value.totalApproximateBytes += size;
+      inventory.totalApproximateBytes += size;
     }
+    dataInventory.value = inventory;
   } catch (error: unknown) {
     dataError.value = userVisibleCause(error, t('settings.localData.loadError'));
   } finally {
@@ -231,6 +247,8 @@ async function clearAllLocalData(): Promise<void> {
     clearColumnPreferences();
     const { clearAllDashboardShopUrls } = await import('../lib/dashboard-shop-url');
     clearAllDashboardShopUrls(globalThis.localStorage);
+    const { PACKING_PLANS_STORAGE_KEY } = await import('../lib/packing-plans');
+    globalThis.localStorage.removeItem(PACKING_PLANS_STORAGE_KEY);
     clearConfirmation.value = '';
     // Clearing credentials remounts the workspace; keep the acknowledgement outside this panel.
     toast.success(t('settings.localData.cleared'));

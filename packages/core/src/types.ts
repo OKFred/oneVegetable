@@ -535,6 +535,7 @@ export interface LocalDataCategory {
     | 'social-backend-device'
     | 's3-credentials'
     | 'gallery-transfer-tasks'
+    | 'packing-plans'
     | 'description-templates'
     | 'drafts'
     | 'diagnostics'

@@ -13,7 +13,10 @@
 | 三维预览与交互 | 不适用 | 不适用 | 本地打包 Three.js / WebGL2  |
 
 不新增接口、权限、数据库或平台写能力。无授权或无 OneTouch 资格也能使用。
-箱体与货物只保留在当前物流页面内存：切换物流页签保留，离页或刷新清空。
+未保存的箱体与货物只保留在当前物流页面内存：切换物流页签保留，离页或刷新清空。
+2.26.0 起支持显式保存最多 20 份本机方案，以及不超过 64 KiB 的版本化 JSON 导入/导出。
+方案不随账号同步，不自动恢复；打开或导入后由用户重新生成预览。替换输入、同名覆盖和删除需确认。
+JSON 只含名称与输入（整数 mm），不信任导入的排布结果；文件为明文，分享前请检查内容。
 隐藏页签或窗口时终止计算、释放三维资源；已完成的结果可在返回后重建。
 主题、界面语言、视角变化不会查询平台或重新排布。
 
@@ -35,14 +38,17 @@ the outer dimensions of each package in cm, plus package counts. Rotation and si
 are opt-in per cargo type. Generate explicitly; editing an input invalidates the old preview.
 
 All validation, packing and 3D rendering run locally. Neither TOP nor IOP authorization applies.
-No API, database, extension permission or Alibaba mutation is added. Inputs survive switching
-logistics tabs, but not leaving or refreshing the page. Hidden tabs stop calculations and
+No API, database, extension permission or Alibaba mutation is added. Unsaved inputs survive switching
+logistics tabs, but not leaving or refreshing the page. Up to 20 plans can be explicitly saved in this
+browser, not synced or automatically restored. Versioned JSON import/export is limited to 64 KiB and
+includes only names and validated millimetre inputs. Opening/importing requires a fresh preview;
+replacing inputs, overwriting a saved plan and deletion require confirmation. Hidden tabs stop calculations and
 dispose 3D resources; completed results are rebuilt on return.
 
 The deterministic heuristic is not an optimal packing solver. Results ignore load limits,
 center of gravity, cushioning and loading access; they are not a transport-safety assessment.
-WebGL2 failure does not prevent reviewing statistics. No multi-container optimization, automatic
-product/order import, saved plans or exports are included.
+WebGL2 failure does not prevent reviewing statistics. Multi-container optimization and automatic
+product/order import are not included. See [packing plan reuse](packing-plan-reuse.md) for storage and file boundaries.
 
 Three.js and OrbitControls are bundled locally and lazy-loaded; no CDN or remote executable code.
 The dedicated 3D vendor chunk is capped at 1,000,000 bytes. ZIP / unpacked budgets are 2,500,000 /

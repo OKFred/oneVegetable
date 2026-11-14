@@ -306,6 +306,9 @@ export const settings = {
   },
   localData: {
     title: 'Local data and privacy',
+    packingPlans: 'Packing plans',
+    packingPlansRetention:
+      'Up to 20 plans until deleted or local data is cleared; not synced with your account.',
     description: 'Categories and estimated sizes only; no secrets, tokens, draft or diagnostic content.',
     columns: {
       category: 'Category',

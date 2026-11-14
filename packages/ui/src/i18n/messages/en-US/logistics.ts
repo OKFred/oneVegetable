@@ -16,7 +16,35 @@ export const logistics = {
     shippingServices: 'Shipping services'
   },
   packing: {
-    localOnly: 'Local geometric estimate; no platform requests. Inputs stay only on this logistics page.',
+    localOnly:
+      'Browser-only geometry estimate without platform calls. Unsaved inputs are cleared when leaving.',
+    plans: {
+      save: 'Save plan',
+      open: 'Saved plans',
+      import: 'Import JSON',
+      export: 'Export JSON',
+      name: 'Plan name',
+      defaultName: 'Packing plan',
+      load: 'Open',
+      localNotice:
+        'Up to 20 plans in this browser only, not synced with your account. Only inputs are saved; generate a new preview after opening.',
+      empty: 'No saved plans yet.',
+      saved: 'Plan saved in this browser.',
+      loaded: 'Plan inputs loaded. Select Generate preview.',
+      downloadStarted: 'JSON download started.',
+      deleteNamed: 'Delete plan {name}',
+      deleteTitle: 'Delete this saved plan?',
+      overwriteTitle: 'Replace the plan with this name?',
+      confirmDescription: 'This replaces or deletes an existing local plan. Export a backup first if needed.',
+      invalidName: 'Plan names must contain 1–80 characters.',
+      invalidFile:
+        'Cannot import. Use a JSON file exported by this app (up to 64 KiB) and check its version, dimensions and quantities.',
+      storageCorrupt:
+        'Saved plan data is invalid and was not overwritten. You can still export the current inputs.',
+      storageUnavailable:
+        'Cannot access or save plans. Check browser storage permissions and available space.',
+      limit: 'Up to 20 saved plans are allowed. Delete an unused plan first.'
+    },
     container: 'Internal container dimensions',
     cargo: 'Cargo to pack',
     name: 'Name',
